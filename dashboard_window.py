@@ -62,6 +62,7 @@ class DashboardWindowController:
         self.window = AppKit.NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(
             frame, style, AppKit.NSBackingStoreBuffered, False
         )
+        self.window.setReleasedWhenClosed_(False)
         self.window.setTitle_("QuakMeeting — Flight Deck")
         self.window.setTitlebarAppearsTransparent_(True)
         self.window.setTitleVisibility_(AppKit.NSWindowTitleHidden)

@@ -1124,6 +1124,7 @@ class QuakPitFlyingBanner:
             AppKit.NSBackingStoreBuffered,
             False
         )
+        self.window.setReleasedWhenClosed_(False)
         
         self.window.setLevel_(AppKit.NSStatusWindowLevel)
         self.window.setOpaque_(False)
@@ -1187,7 +1188,6 @@ class QuakPitFlyingBanner:
             self.timer = None
         if self.window:
             self.window.orderOut_(None)
-            self.window.close()
             self.window = None
             
         global active_banner_instance

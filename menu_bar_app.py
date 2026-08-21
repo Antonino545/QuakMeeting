@@ -16,6 +16,10 @@ class QuakMeetingAppDelegate(AppKit.NSObject):
     def applicationDidFinishLaunching_(self, notification):
         print("QuakMeeting App in esecuzione permanente nella barra dei menu macOS!")
 
+    def applicationShouldTerminateAfterLastWindowClosed_(self, sender):
+        # Non terminare MAI l'applicazione alla chiusura di finestre o banner
+        return False
+
     @objc.IBAction
     def showBannerOnMainThread_(self, meeting_data):
         _run_banner(meeting_data)
