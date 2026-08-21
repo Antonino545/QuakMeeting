@@ -6,7 +6,11 @@ import subprocess
 import time
 import os
 from datetime import datetime
-from config_manager import config
+
+try:
+    from core.config_manager import config
+except ImportError:
+    from config_manager import config
 
 class QuakPitBannerView(AppKit.NSView):
     def initWithFrame_meetingData_controller_(self, frame, meeting_data, controller):

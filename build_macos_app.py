@@ -53,16 +53,10 @@ def build_bundle():
     if os.path.exists(os.path.join(PROJECT_DIR, "assets", "icon.png")):
         shutil.copy2(os.path.join(PROJECT_DIR, "assets", "icon.png"), os.path.join(assets_dest, "icon.png"))
         
-    # 3. Copia file Python
-    py_files = [
-        "main.py", "dashboard_window.py", "menu_bar_app.py",
-        "banner_window.py", "calendar_scanner.py", "config_manager.py",
-        "autostart.py"
-    ]
-    for pf in py_files:
-        src = os.path.join(PROJECT_DIR, pf)
-        if os.path.exists(src):
-            shutil.copy2(src, os.path.join(RESOURCES_DIR, pf))
+    # 3. Copia directory di moduli Python (core/ e ui/) e main.py
+    shutil.copytree(os.path.join(PROJECT_DIR, "core"), os.path.join(RESOURCES_DIR, "core"), dirs_exist_ok=True)
+    shutil.copytree(os.path.join(PROJECT_DIR, "ui"), os.path.join(RESOURCES_DIR, "ui"), dirs_exist_ok=True)
+    shutil.copy2(os.path.join(PROJECT_DIR, "main.py"), os.path.join(RESOURCES_DIR, "main.py"))
             
     # 4. Crea Info.plist
     info_plist_content = """<?xml version="1.0" encoding="UTF-8"?>

@@ -1,41 +1,147 @@
-# 🦆 QuakMeeting - Meeting Reminders per macOS
+<div align="center">
 
-**QuakMeeting** è un'applicazione nativa per la barra dei menu di macOS, ispirata a [QuakPit](https://github.com/Ooble-Studio/QuakPit).
+# 🦆 QuakMeeting
+### macOS Native Flight Deck & Smart Meeting Reminder Assistant
+*Inspired by [QuakPit](https://github.com/Ooble-Studio/QuakPit) — Designed for ADHD Focus, Travel Precision, & 1-Click Meeting Joins.*
 
-Scansiona automaticamente i calendari del tuo Mac (Google Calendar, iCloud, Outlook, ecc.), rileva le riunioni che contengono link di videochiamata (**Google Meet, Zoom, Microsoft Teams, Webex, Jitsi**) e mostra avvisi fluttuanti in stile HUD con il pulsante **"🚀 PARTECIPA AL MEETING"** per accedere con un singolo click.
+[![macOS](https://img.shields.io/badge/macOS-12.0%2B-blue?logo=apple&style=flat-square)](https://apple.com)
+[![Python](https://img.shields.io/badge/Python-3.9%2B-yellow?logo=python&style=flat-square)](https://python.org)
+[![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 
----
+<img src="assets/icon.png" width="160" alt="QuakMeeting Icon" />
 
-## 🌟 Caratteristiche
-
-- 📅 **Integrazione Nativa macOS Calendar**: Legge in automatico tutti i calendari sincronizzati sul Mac (nessuna chiave API richiesta).
-- 🔗 **Rilevamento Automatico Link Video**: Riconosce Meet, Zoom, Teams, Webex, Jitsi e altri provider.
-- 🦆 **Banner Fluttuante Stile QuakPit**: Pop-up in primo piano al centro dello schermo 5 minuti prima della riunione con conto alla rovescia e pulsante di accesso rapido.
-- 🍏 **Icona nella Barra dei Menu macOS**: Mostra la prossima riunione, l'elenco dei meeting odierni e consente il lancio rapido con 1 click.
-- ⚡ **Zero Dipendenze Esterne**: Utilizza la libreria nativa macOS AppKit & Tkinter di Python.
+</div>
 
 ---
 
-## 🚀 Come Avviare QuakMeeting
+## 📖 Overview & Philosophy
 
-Puoi avviare l'applicazione in due modi:
+**QuakMeeting** is a native macOS companion application built to solve one of the biggest challenges for neurodivergent (ADHD), busy professionals, and university students: **forgetting upcoming meetings, missing transit departures, or getting lost in endless notification banners.**
 
-1. **Doppio Click sul File Eseguibile**:
-   Vai nella cartella `Documenti/QuakMeeting` e fai doppio click su:
-   `start_quakmeeting.command`
-
-2. **Da Terminale**:
-   ```bash
-   python3 /Users/antonino54/Documents/QuakMeeting/main.py
-   ```
+Instead of subtle notification center alerts that disappear after 5 seconds, QuakMeeting animates a **playful cartoon airplane towing an interactive HUD banner** across your screen. The banner provides a clear countdown, intelligent context-aware action buttons (1-click Google Meet / Zoom / Serenis join, 1-click Apple Maps navigation), and gentle snooze loops that keep you on track.
 
 ---
 
-## 📁 Struttura della Cartella (`/Users/antonino54/Documents/QuakMeeting`)
+## ✨ Key Features
 
-- `main.py`: Punto d'ingresso principale dell'applicazione.
-- `calendar_scanner.py`: Modulo di scansione ed estrazione link riunioni dal calendario Mac.
-- `banner_window.py`: Finestra fluttuante pop-up in stile QuakPit per i reminder.
-- `menu_bar_app.py`: Gestore dell'icona e del menu a tendina nella barra dei menu di macOS.
-- `start_quakmeeting.command`: File eseguibile con doppio click.
-- `README.md`: Documentazione d'uso.
+- 🖥️ **Flight Deck Control Center (`ui/dashboard_window.py`)**: Modern macOS Frosted Glass UI with 3 dedicated tabs:
+  - **📅 Agenda di Oggi**: Visual timeline of all today's events, pilot badges, locations, and instant join buttons.
+  - **🦆 Hangar Piloti**: Interactive playground to test flight animations for all 6 pilots.
+  - **⚙️ Impostazioni & ADHD**: Live controls for lead times, snooze intervals, flight speeds, sounds, and autostart.
+- ⚡ **Stale-While-Revalidate Instant Sync**: Displays today's schedule in **0.000013s** from persistent local disk cache while silently updating in the background without UI lag.
+- ✈️ **6 Specialized Pilot Themes**: Dynamic Mascot and HUD themes automatically assigned based on event keywords.
+- 🚀 **1-Click Smart Action Buttons**: Automatically launches meeting URLs in browser or sets Apple Maps GPS navigation with travel times.
+- 💤 **ADHD Snooze Loops**: Custom snooze intervals (2 min, 5 min, 10 min) ensuring critical events are never forgotten.
+- 🍎 **Menu Bar Companion**: Lightweight menu bar status item displaying your next upcoming meeting countdown.
+- 🔒 **Privacy-First & Local**: No external cloud accounts or servers. Runs entirely on your Mac through local Apple Calendar sync.
+
+---
+
+## 🦆 Pilot Themes & Smart Classification
+
+QuakMeeting automatically parses your calendar event titles, locations, and URLs to assign the ideal pilot mascot and action:
+
+| Pilot Mascot | Theme | Trigger Keywords / URLs | 1-Click Action |
+| :--- | :--- | :--- | :--- |
+| 🦆 **Papero Aviatore** | Google Green / Zoom Blue | Google Meet, Zoom, MS Teams, Webex, Online calls | `[🚀 PARTECIPA ORA]` (Browser) |
+| 👨‍🍳 **Papero Chef** | Coral Food | Cena, Pranzo, Dinner, Ristorante, Pizzeria, Sushi, Aperitivo | `[🗺️ INDICAZIONI MAPPE]` |
+| 🧑‍✈️ **Capitano Jet** | Sky Blue | Volo, Flight, Airport, WizzAir, Ryanair, Frecciarossa, Italo, Treno | `[🗺️ AEROPORTO / STAZIONE]` |
+| 🦉 **Gufo Accademico** | Amber Academic | Lezione, Politecnico, Università, Esame, Tesi, SmartGrid, Studio | `[📚 AULA / APPUNTI]` |
+| 🏎️ **Speed Racer** | Emerald Travel | In presenza, Palestra, Dottore, Dentista, Appuntamento con indirizzo | `[🗺️ VAI CON MAPPE]` |
+| 🦆🌸 **Papero Zen** | Teal Zen | Serenis, Terapia, Meditazione, Yoga, Benessere, Relax | `[🚀 PARTECIPA AL MEETING]` |
+
+---
+
+## 🏗️ Architecture & Project Structure
+
+The project follows a clean modular structure:
+
+```
+QuakMeeting/
+├── QuakMeeting.app/            # Native standalone macOS Application Bundle
+├── main.py                     # Primary Application Entrypoint (CLI / GUI)
+├── build_macos_app.py          # Automated macOS Bundle & ICNS Generator
+├── generate_app_icon.py        # Vector App Icon Generator (AppKit/Quartz)
+├── core/                       # Core Logic & Services
+│   ├── __init__.py
+│   ├── calendar_scanner.py     # Calendar queries, classifier & disk cache store
+│   ├── config_manager.py       # Configuration singleton (~/.quakmeeting/config.json)
+│   └── autostart.py            # macOS LaunchAgent login manager
+├── ui/                         # Native macOS User Interface
+│   ├── __init__.py
+│   ├── banner_window.py        # Quartz 2D animated flying banner HUD
+│   ├── dashboard_window.py     # Frosted glass Flight Deck window
+│   └── menu_bar_app.py         # NSStatusBar item & background daemon loop
+├── assets/                     # Graphic Assets (PNG, ICNS)
+└── docs/                       # Technical Documentation
+    ├── ARCHITECTURE.md         # Detailed lifecycle, threading & IPC design
+    └── CONFIGURATION.md        # Custom keywords & configuration guide
+```
+
+---
+
+## 🚀 Installation & Getting Started
+
+### Option 1: Standalone macOS App (`QuakMeeting.app`)
+1. Double-click **`QuakMeeting.app`** on your **Desktop** or inside **`/Applications/`**.
+2. When prompted by macOS, click **"Consenti" (Allow)** to grant Calendar access.
+3. The app will launch in your Menu Bar and open the **Flight Deck Control Center**.
+
+### Option 2: Run via Terminal / Python
+Ensure Python 3 with PyObjC is installed:
+```bash
+# Launch Menu Bar App + Flight Deck Dashboard
+python3 main.py --dashboard
+
+# Test a single flying banner notification
+python3 main.py --test
+```
+
+### Option 3: Rebuild the `.app` Bundle
+If you customize the code or add new pilots:
+```bash
+python3 build_macos_app.py
+```
+
+---
+
+## ⚙️ Configuration & Customization
+
+QuakMeeting stores all user preferences in `~/.quakmeeting/config.json`. You can edit it through the **Flight Deck UI**, the **Menu Bar**, or directly in your text editor:
+
+```json
+{
+  "lead_time_meeting_minutes": 6,
+  "lead_time_travel_minutes": 35,
+  "default_snooze_seconds": 120,
+  "flight_speed": 3.2,
+  "sound_enabled": true,
+  "sound_name": "Glass",
+  "ignored_calendars": [
+    "Festività in Italia",
+    "Birthdays",
+    "Scheduled Reminders",
+    "Siri Suggestions"
+  ],
+  "custom_keywords": {
+    "chef": ["cena", "pranzo", "pizzeria", "aperitivo"],
+    "captain": ["volo", "flight", "aeroporto", "treno", "frecciarossa"],
+    "owl": ["politecnico", "universit", "esame", "lezione"],
+    "zen_duck": ["serenis", "terapia", "yoga", "meditazione"],
+    "driver": ["palestra", "dentista", "visita"]
+  }
+}
+```
+
+---
+
+## 📜 Technical Documentation
+
+- 📐 **[Technical Architecture & Lifecycle (docs/ARCHITECTURE.md)](docs/ARCHITECTURE.md)**
+- 🏷️ **[Configuration & Rules Reference (docs/CONFIGURATION.md)](docs/CONFIGURATION.md)**
+
+---
+
+## 🤝 Credits & Acknowledgments
+- Inspired by the open-source concept of [QuakPit](https://github.com/Ooble-Studio/QuakPit).
+- Built with **Python 3**, **macOS PyObjC**, and native Apple **AppKit/Quartz 2D** rendering.

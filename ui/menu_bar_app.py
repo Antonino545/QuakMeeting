@@ -6,11 +6,18 @@ import time
 import os
 from datetime import datetime
 
-from calendar_scanner import get_upcoming_meetings
-from banner_window import show_banner_async, _run_banner
-from autostart import is_autostart_enabled, enable_autostart, disable_autostart
-from config_manager import config
-from dashboard_window import show_dashboard
+try:
+    from core.calendar_scanner import get_upcoming_meetings, sync_calendar_now
+    from core.autostart import is_autostart_enabled, enable_autostart, disable_autostart
+    from core.config_manager import config
+    from ui.banner_window import show_banner_async, _run_banner
+    from ui.dashboard_window import show_dashboard
+except ImportError:
+    from calendar_scanner import get_upcoming_meetings, sync_calendar_now
+    from autostart import is_autostart_enabled, enable_autostart, disable_autostart
+    from config_manager import config
+    from banner_window import show_banner_async, _run_banner
+    from dashboard_window import show_dashboard
 
 class QuakMeetingAppDelegate(AppKit.NSObject):
     def applicationDidFinishLaunching_(self, notification):

@@ -6,7 +6,11 @@ import json
 import time
 import threading
 from datetime import datetime, timedelta
-from config_manager import config
+
+try:
+    from .config_manager import config
+except (ImportError, ValueError):
+    from core.config_manager import config
 
 CACHE_DIR = os.path.expanduser("~/.quakmeeting")
 CACHE_FILE = os.path.join(CACHE_DIR, "calendar_cache.json")

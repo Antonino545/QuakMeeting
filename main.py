@@ -2,11 +2,12 @@ import sys
 import os
 
 # Assicurati che la directory corrente sia nel path di import
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
-from menu_bar_app import QuakMeetingMenuBar
-from banner_window import show_banner_async
-from dashboard_window import show_dashboard
+from ui import QuakMeetingMenuBar, show_banner_async, show_dashboard, _run_banner
+from core import config, get_upcoming_meetings
 from datetime import datetime
 
 def main():

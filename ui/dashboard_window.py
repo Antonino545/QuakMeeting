@@ -4,10 +4,16 @@ import webbrowser
 import os
 from datetime import datetime
 
-from config_manager import config
-from calendar_scanner import get_upcoming_meetings
-from banner_window import _run_banner
-from autostart import is_autostart_enabled, enable_autostart, disable_autostart
+try:
+    from core.config_manager import config
+    from core.calendar_scanner import get_upcoming_meetings, sync_calendar_now
+    from core.autostart import is_autostart_enabled, enable_autostart, disable_autostart
+    from ui.banner_window import _run_banner
+except ImportError:
+    from config_manager import config
+    from calendar_scanner import get_upcoming_meetings, sync_calendar_now
+    from autostart import is_autostart_enabled, enable_autostart, disable_autostart
+    from banner_window import _run_banner
 
 class DashboardWindowDelegate(AppKit.NSObject):
     def init(self):
