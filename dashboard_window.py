@@ -152,41 +152,58 @@ class DashboardWindowController:
         self._render_current_tab()
 
     def onRefreshClicked_(self, sender):
-        self.refresh_data()
+        self.refresh_data(force=True)
 
-    def refresh_data(self):
-        """Carica gli eventi del calendario in background in modo asincrono (zero lag all'apertura)."""
-        self.is_loading = True
-        self.status_lbl.setStringValue_("⏳ Sincronizzazione calendari macOS in corso...")
+    def refresh_data(self, force=False):
+        """Carica gli eventi istantaneamente dalla cache e sincronizza in background."""
+        # 1. Carica subito da cache in-memory/disco (0.001s)
+        self.meetings = get_upcoming_meetings(force_refresh=False)
+        now = datetime.now()
+        upcoming = [m for m in self.meetings if m["end_time"] > now]
+        count = len(upcoming)
+        
+        if upcoming:
+            next_m = upcoming[0]
+            s_str = next_m["start_time"].strftime("%H:%M")
+            self.status_lbl.setStringValue_(f"● Scanner Attivo  •  {count} eventi in programma oggi  •  Prossimo: {s_str}")
+        else:
+            self.status_lbl.setStringValue_("● Scanner Attivo  •  Nessun evento rimanente per oggi")
+            
         self._render_current_tab()
 
-        import threading
-        def worker():
-            try:
-                meetings = get_upcoming_meetings()
-            except Exception as e:
-                print(f"Errore lettura calendario: {e}")
-                meetings = []
-
-            def on_complete():
-                self.is_loading = False
-                self.meetings = meetings
-                now = datetime.now()
-                upcoming = [m for m in self.meetings if m["end_time"] > now]
-                count = len(upcoming)
-                
-                if upcoming:
-                    next_m = upcoming[0]
-                    s_str = next_m["start_time"].strftime("%H:%M")
-                    self.status_lbl.setStringValue_(f"● Scanner Attivo  •  {count} eventi in programma oggi  •  Prossimo: {s_str}")
-                else:
-                    self.status_lbl.setStringValue_("● Scanner Attivo  •  Nessun evento rimanente per oggi")
-                    
+        # 2. Se forzato o se non ci sono eventi, sincronizza in background
+        if force or not self.meetings:
+            self.is_loading = True
+            if not self.meetings:
                 self._render_current_tab()
+                
+            import threading
+            from calendar_scanner import sync_calendar_now
 
-            AppKit.NSOperationQueue.mainQueue().addOperationWithBlock_(on_complete)
+            def worker():
+                try:
+                    meetings = sync_calendar_now()
+                except Exception as e:
+                    print(f"Errore sincronizzazione: {e}")
+                    meetings = self.meetings
 
-        threading.Thread(target=worker, daemon=True).start()
+                def on_complete():
+                    self.is_loading = False
+                    self.meetings = meetings
+                    n = datetime.now()
+                    up = [m for m in self.meetings if m["end_time"] > n]
+                    cnt = len(up)
+                    if up:
+                        nx = up[0]
+                        st = nx["start_time"].strftime("%H:%M")
+                        self.status_lbl.setStringValue_(f"● Scanner Attivo  •  {cnt} eventi in programma oggi  •  Prossimo: {st}")
+                    else:
+                        self.status_lbl.setStringValue_("● Scanner Attivo  •  Nessun evento rimanente per oggi")
+                    self._render_current_tab()
+
+                AppKit.NSOperationQueue.mainQueue().addOperationWithBlock_(on_complete)
+
+            threading.Thread(target=worker, daemon=True).start()
 
     def _render_current_tab(self):
         if not self.content_container:

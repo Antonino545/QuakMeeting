@@ -1,8 +1,21 @@
 import subprocess
 import re
 import urllib.parse
+import os
+import json
+import time
+import threading
 from datetime import datetime, timedelta
 from config_manager import config
+
+CACHE_DIR = os.path.expanduser("~/.quakmeeting")
+CACHE_FILE = os.path.join(CACHE_DIR, "calendar_cache.json")
+CACHE_TTL_SECONDS = 90.0
+
+_in_memory_cache = []
+_last_fetch_time = 0.0
+_is_fetching = False
+_fetch_lock = threading.Lock()
 
 # Patterns per identificare i link di videochiamata
 MEETING_PATTERNS = [
@@ -32,6 +45,7 @@ def parse_applescript_date(date_str):
         return None
     
     formats = [
+        "%Y-%m-%dT%H:%M:%S",
         "%A, %d %B %Y at %H:%M:%S",
         "%A %d %B %Y %H:%M:%S",
         "%d %B %Y %H:%M:%S",
@@ -105,7 +119,7 @@ def classify_event(title, location, desc, meeting_url):
         if "serenis.it" in meeting_url or "serenis" in full_text:
             return {
                 "event_type": "health",
-                "pilot_type": "zen_duck", # Papero Zen 🦆🌸
+                "pilot_type": "zen_duck",
                 "provider": "Serenis 🛋️",
                 "action_btn_text": "🚀 PARTECIPA AL MEETING",
                 "action_url": meeting_url,
@@ -164,7 +178,7 @@ def classify_event(title, location, desc, meeting_url):
         encoded_query = urllib.parse.quote(maps_query)
         return {
             "event_type": "study",
-            "pilot_type": "owl", # Gufo Studioso 🦉🎓
+            "pilot_type": "owl",
             "provider": "Studio / Uni 🎓",
             "action_btn_text": "🗺️ INDICAZIONI AULA" if location and location != "missing value" else "📚 DETTAGLI STUDIO",
             "action_url": f"https://maps.apple.com/?q={encoded_query}" if location and location != "missing value" else "https://calendar.google.com",
@@ -192,7 +206,7 @@ def classify_event(title, location, desc, meeting_url):
         encoded_dest = urllib.parse.quote(dest)
         return {
             "event_type": "in_person",
-            "pilot_type": "driver", # Pilota Viaggiatore 🚗💨
+            "pilot_type": "driver",
             "provider": "In Presenza 📍 Tempo di Spostamento!",
             "action_btn_text": "🗺️ VAI CON MAPPE (NAVIGA)",
             "action_url": f"https://maps.apple.com/?daddr={encoded_dest}",
@@ -211,13 +225,48 @@ def classify_event(title, location, desc, meeting_url):
         "is_travel": False
     }
 
-def get_upcoming_meetings():
-    """Scansiona i calendari del Mac e restituisce tutti gli eventi e riunioni con classificazione tematica e filtri dinamici."""
+# -------------------------------------------------------------
+# CACHE STORE ARCHITECTURE (Zero UI Latency)
+# -------------------------------------------------------------
+def _save_cache_to_disk(meetings):
+    try:
+        os.makedirs(CACHE_DIR, exist_ok=True)
+        serializable = []
+        for m in meetings:
+            item = dict(m)
+            item["start_time"] = m["start_time"].isoformat() if m.get("start_time") else None
+            item["end_time"] = m["end_time"].isoformat() if m.get("end_time") else None
+            serializable.append(item)
+        with open(CACHE_FILE, "w", encoding="utf-8") as f:
+            json.dump(serializable, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"⚠️ Errore salvataggio cache: {e}")
+
+def _load_cache_from_disk():
+    global _in_memory_cache, _last_fetch_time
+    if os.path.exists(CACHE_FILE):
+        try:
+            with open(CACHE_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            loaded = []
+            for item in data:
+                m = dict(item)
+                m["start_time"] = datetime.fromisoformat(item["start_time"]) if item.get("start_time") else None
+                m["end_time"] = datetime.fromisoformat(item["end_time"]) if item.get("end_time") else None
+                loaded.append(m)
+            _in_memory_cache = loaded
+            _last_fetch_time = os.path.getmtime(CACHE_FILE)
+            return loaded
+        except Exception as e:
+            print(f"⚠️ Errore lettura cache disco: {e}")
+    return []
+
+def _query_applescript_raw():
+    """Esegue la query AppleScript per estrarre gli eventi odierni."""
     ignored = config.get("ignored_calendars", [
         "Festività in Italia", "Birthdays", "Scheduled Reminders", "Siri Suggestions"
     ])
     
-    # Costruisci condizioni di esclusione AppleScript
     if ignored:
         cond_parts = [f'cName is not "{cal}"' for cal in ignored]
         cal_filter_cond = " and ".join(cond_parts)
@@ -262,64 +311,98 @@ def get_upcoming_meetings():
     end tell
     '''
     
-    try:
-        res = subprocess.run(['osascript', '-e', script], capture_output=True, text=True, timeout=60)
-        if res.returncode != 0 or not res.stdout.strip():
-            return []
-            
-        raw_events = res.stdout.strip().split('###EVENT###')
-        meetings = []
-        
-        for raw_ev in raw_events:
-            parts = raw_ev.strip().split('<|>')
-            if len(parts) < 6:
-                continue
-                
-            title, start_str, end_str, url_raw, loc_raw, desc_raw = parts[:6]
-            
-            meeting_url = (
-                extract_meeting_url(url_raw) or 
-                extract_meeting_url(loc_raw) or 
-                extract_meeting_url(desc_raw)
-            )
-            
-            start_dt = parse_applescript_date(start_str)
-            end_dt = parse_applescript_date(end_str)
-            
-            if not start_dt:
-                continue
-
-            loc_clean = loc_raw if loc_raw != "missing value" else ""
-            desc_clean = desc_raw if desc_raw != "missing value" else ""
-            
-            meta = classify_event(title, loc_clean, desc_clean, meeting_url)
-            
-            meetings.append({
-                "title": title,
-                "start_time": start_dt,
-                "end_time": end_dt,
-                "meeting_url": meeting_url,
-                "location": loc_clean,
-                "description": desc_clean,
-                "event_type": meta["event_type"],
-                "pilot_type": meta["pilot_type"],
-                "provider": meta["provider"],
-                "action_btn_text": meta["action_btn_text"],
-                "action_url": meta["action_url"],
-                "theme_name": meta["theme_name"],
-                "is_travel": meta["is_travel"]
-            })
-            
-        meetings.sort(key=lambda x: x["start_time"])
-        return meetings
-
-    except Exception as e:
-        print(f"Errore scansione calendario: {e}")
+    res = subprocess.run(['osascript', '-e', script], capture_output=True, text=True, timeout=90)
+    if res.returncode != 0 or not res.stdout.strip():
         return []
+        
+    raw_events = res.stdout.strip().split('###EVENT###')
+    meetings = []
+    
+    for raw_ev in raw_events:
+        parts = raw_ev.strip().split('<|>')
+        if len(parts) < 6:
+            continue
+            
+        title, start_str, end_str, url_raw, loc_raw, desc_raw = parts[:6]
+        
+        meeting_url = (
+            extract_meeting_url(url_raw) or 
+            extract_meeting_url(loc_raw) or 
+            extract_meeting_url(desc_raw)
+        )
+        
+        start_dt = parse_applescript_date(start_str)
+        end_dt = parse_applescript_date(end_str)
+        
+        if not start_dt:
+            continue
+
+        loc_clean = loc_raw if loc_raw != "missing value" else ""
+        desc_clean = desc_raw if desc_raw != "missing value" else ""
+        
+        meta = classify_event(title, loc_clean, desc_clean, meeting_url)
+        
+        meetings.append({
+            "title": title,
+            "start_time": start_dt,
+            "end_time": end_dt,
+            "meeting_url": meeting_url,
+            "location": loc_clean,
+            "description": desc_clean,
+            "event_type": meta["event_type"],
+            "pilot_type": meta["pilot_type"],
+            "provider": meta["provider"],
+            "action_btn_text": meta["action_btn_text"],
+            "action_url": meta["action_url"],
+            "theme_name": meta["theme_name"],
+            "is_travel": meta["is_travel"]
+        })
+        
+    meetings.sort(key=lambda x: x["start_time"])
+    return meetings
+
+def sync_calendar_now():
+    """Forza la sincronizzazione con Calendar.app, aggiorna cache in memoria e disco."""
+    global _in_memory_cache, _last_fetch_time, _is_fetching
+    with _fetch_lock:
+        _is_fetching = True
+        try:
+            meetings = _query_applescript_raw()
+            _in_memory_cache = meetings
+            _last_fetch_time = time.time()
+            _save_cache_to_disk(meetings)
+            return meetings
+        except Exception as e:
+            print(f"Errore sincronizzazione: {e}")
+            return _in_memory_cache
+        finally:
+            _is_fetching = False
+
+def get_upcoming_meetings(force_refresh=False):
+    """
+    Restituisce gli eventi SEMPRE istantaneamente da cache in memoria o da disco (< 0.001s).
+    Se necessario, avvia un aggiornamento asincrono in background senza MAI bloccare l'interfaccia.
+    """
+    global _in_memory_cache, _last_fetch_time, _is_fetching
+    
+    # 1. Se la cache in memoria è vuota, leggi immediatamente dal file su disco
+    if not _in_memory_cache:
+        _load_cache_from_disk()
+
+    # 2. Se forzato o se non ci sono dati, avvia sync in background e restituisci la cache attuale
+    if force_refresh or (not _in_memory_cache and _last_fetch_time == 0.0):
+        if not _is_fetching:
+            threading.Thread(target=sync_calendar_now, daemon=True).start()
+
+    # 3. Se la cache è più vecchia del TTL, avvia sincronizzazione in background
+    elif time.time() - _last_fetch_time > CACHE_TTL_SECONDS and not _is_fetching:
+        threading.Thread(target=sync_calendar_now, daemon=True).start()
+
+    return list(_in_memory_cache)
 
 if __name__ == "__main__":
-    print("Testing Smart Event Classifier with Food & Travel...")
-    results = get_upcoming_meetings()
-    print(f"Trovati {len(results)} eventi nelle prossime 24h:")
-    for m in results:
-        print(f"- [{m['provider']}] {m['title']} alle {m['start_time'].strftime('%H:%M')} (Pilota: {m['pilot_type']}) -> Azione: {m['action_btn_text']}")
+    t0 = time.time()
+    res = get_upcoming_meetings()
+    print(f"⚡ Recuperati {len(res)} eventi in {time.time()-t0:.4f}s (Cache Store)")
+    for m in res:
+        print(f" - {m['title']} ({m['provider']})")
