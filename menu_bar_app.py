@@ -3,12 +3,14 @@ import objc
 import webbrowser
 import threading
 import time
+import os
 from datetime import datetime
 
 from calendar_scanner import get_upcoming_meetings
 from banner_window import show_banner_async, _run_banner
 from autostart import is_autostart_enabled, enable_autostart, disable_autostart
 from config_manager import config
+from dashboard_window import show_dashboard
 
 class QuakMeetingAppDelegate(AppKit.NSObject):
     def applicationDidFinishLaunching_(self, notification):
@@ -29,6 +31,12 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         self.app.setDelegate_(self.delegate)
         self.app.setActivationPolicy_(AppKit.NSApplicationActivationPolicyAccessory)
         
+        # Imposta icona dell'applicazione macOS
+        icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "icon.png")
+        if os.path.exists(icon_path):
+            icon_img = AppKit.NSImage.alloc().initWithContentsOfFile_(icon_path)
+            self.app.setApplicationIconImage_(icon_img)
+            
         self.status_bar = AppKit.NSStatusBar.systemStatusBar()
         self.status_item = self.status_bar.statusItemWithLength_(AppKit.NSVariableStatusItemLength)
         
@@ -54,6 +62,14 @@ class QuakMeetingMenuBar(AppKit.NSObject):
 
     def build_menu(self):
         self.menu.removeAllItems()
+
+        # 1. Apri Dashboard / Pannello di Controllo Principale
+        item_dash = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+            "🖥️ Apri Pannello di Controllo (Flight Deck)...", "openDashboard:", "o"
+        )
+        item_dash.setTarget_(self)
+        self.menu.addItem_(item_dash)
+        self.menu.addItem_(AppKit.NSMenuItem.separatorItem())
         
         now = datetime.now()
         upcoming = [m for m in self.meetings if m["end_time"] > now]
@@ -339,8 +355,12 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         self.menu.addItem_(item_quit)
 
     # -------------------------------------------------------------
-    # AZIONI DI PERSONALIZZAZIONE (CONFIG SETTERS)
+    # AZIONI DI PERSONALIZZAZIONE (CONFIG SETTERS & DASHBOARD)
     # -------------------------------------------------------------
+    @objc.IBAction
+    def openDashboard_(self, sender):
+        show_dashboard()
+
     @objc.IBAction
     def setMeetingLeadTime_(self, sender):
         val = sender.tag()
