@@ -1181,7 +1181,7 @@ class QuakPitFlyingBanner:
         threading.Thread(target=delayed_show, daemon=True).start()
 
     def close(self):
-        """Chiude definitivamente la finestra volante."""
+        """Chiude la finestra volante temporanea di notifica senza mai terminare l'applicazione principale."""
         if self.timer:
             self.timer.invalidate()
             self.timer = None
@@ -1195,9 +1195,6 @@ class QuakPitFlyingBanner:
         
         if self.on_close_callback:
             self.on_close_callback()
-        elif AppKit.NSApp().delegate() is None:
-            # Modalità standalone (es. test da terminale): termina il processo
-            AppKit.NSApplication.sharedApplication().terminate_(None)
 
 # Riferimento globale
 active_banner_instance = None
