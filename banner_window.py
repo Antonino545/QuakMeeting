@@ -4,7 +4,9 @@ import webbrowser
 import math
 import subprocess
 import time
+import os
 from datetime import datetime
+from config_manager import config
 
 class QuakPitBannerView(AppKit.NSView):
     def initWithFrame_meetingData_controller_(self, frame, meeting_data, controller):
@@ -24,11 +26,11 @@ class QuakPitBannerView(AppKit.NSView):
         self.pilot_type = meeting_data.get("pilot_type", "duck")
         self.is_travel = meeting_data.get("is_travel", False)
         
-        # Flight dynamics & geometry
+        # Flight dynamics & geometry (Caricati dinamicamente da config.json)
         self.x = -680.0
         self.base_y = 48.0
         self.tick = 0
-        self.speed = 3.2
+        self.speed = float(config.get("flight_speed", 3.2))
         self.is_paused = False
         self.smoke_particles = []
         self.sparkle_particles = []
@@ -136,7 +138,8 @@ class QuakPitBannerView(AppKit.NSView):
         if btn == "close":
             self.controller.close()
         elif btn == "snooze":
-            self.controller.snooze(120)
+            snooze_sec = int(config.get("default_snooze_seconds", 120))
+            self.controller.snooze(snooze_sec)
         elif btn == "action":
             self.controller.trigger_action()
 
@@ -652,7 +655,9 @@ class QuakPitBannerView(AppKit.NSView):
             AppKit.NSForegroundColorAttributeName: AppKit.NSColor.colorWithRed_green_blue_alpha_(0.88, 0.92, 1.0, 1.0)
         }
         
-        ns_str = AppKit.NSString.stringWithString_("💤 Snooze 2m")
+        snooze_sec = int(config.get("default_snooze_seconds", 120))
+        snooze_mins = max(1, snooze_sec // 60)
+        ns_str = AppKit.NSString.stringWithString_(f"💤 Snooze {snooze_mins}m")
         str_size = ns_str.sizeWithAttributes_(text_attrs)
         
         text_x = btn_rect.origin.x + (btn_rect.size.width - str_size.width) * 0.5
@@ -1103,7 +1108,13 @@ class QuakPitFlyingBanner:
         
         window_w = screen_rect.size.width
         window_h = 220.0
-        y_pos = screen_rect.size.height - window_h - 20.0
+        
+        # Posizione configurabile: in Alto (Top) o in Basso (Bottom)
+        banner_pos = config.get("banner_position", "top")
+        if banner_pos == "bottom":
+            y_pos = 40.0
+        else:
+            y_pos = screen_rect.size.height - window_h - 20.0
         
         frame = AppKit.NSMakeRect(0, y_pos, window_w, window_h)
         
@@ -1132,10 +1143,16 @@ class QuakPitFlyingBanner:
         )
         self.window.setContentView_(self.view)
         
-        try:
-            subprocess.Popen(["afplay", "/System/Library/Sounds/Glass.aiff"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        except Exception:
-            pass
+        # Riproduzione suono personalizzato
+        if config.get("sound_enabled", True):
+            sound_name = config.get("sound_name", "Glass")
+            sound_path = f"/System/Library/Sounds/{sound_name}.aiff"
+            if not os.path.exists(sound_path):
+                sound_path = "/System/Library/Sounds/Glass.aiff"
+            try:
+                subprocess.Popen(["afplay", sound_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except Exception:
+                pass
 
         self.timer = AppKit.NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
             1.0 / 60.0,

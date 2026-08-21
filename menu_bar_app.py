@@ -8,6 +8,7 @@ from datetime import datetime
 from calendar_scanner import get_upcoming_meetings
 from banner_window import show_banner_async, _run_banner
 from autostart import is_autostart_enabled, enable_autostart, disable_autostart
+from config_manager import config
 
 class QuakMeetingAppDelegate(AppKit.NSObject):
     def applicationDidFinishLaunching_(self, notification):
@@ -151,7 +152,7 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         )
         item_test_parent.setSubmenu_(submenu_test)
         
-        t0 = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("🍕 Test Cena / Cibo (Papero Chef + Pizza + Mappe)", "testFoodBanner:", "")
+        t0 = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("🍕 Test Cena / Cibo (Papero Chef + Pizza)", "testFoodBanner:", "")
         t0.setTarget_(self)
         submenu_test.addItem_(t0)
 
@@ -159,7 +160,7 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         t1.setTarget_(self)
         submenu_test.addItem_(t1)
 
-        t2 = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("🚗 Test In Presenza (Tempo Spostamento + Mappe)", "testDriveBanner:", "")
+        t2 = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("🚗 Test In Presenza (Tempo Spostamento)", "testDriveBanner:", "")
         t2.setTarget_(self)
         submenu_test.addItem_(t2)
 
@@ -167,7 +168,7 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         t3.setTarget_(self)
         submenu_test.addItem_(t3)
 
-        t4 = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("🛋️ Test Serenis / Terapia (Papero Zen)", "testSerenisBanner:", "")
+        t4 = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("🛋️ Test Serenis / Relax (Papero Zen)", "testSerenisBanner:", "")
         t4.setTarget_(self)
         submenu_test.addItem_(t4)
 
@@ -176,8 +177,138 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         submenu_test.addItem_(t5)
 
         self.menu.addItem_(item_test_parent)
+
+        # -------------------------------------------------------------
+        # SOTTO-MENU PERSONALIZZAZIONE & IMPOSTAZIONI AVANZATE (ADHD)
+        # -------------------------------------------------------------
+        submenu_prefs = AppKit.NSMenu.alloc().init()
+        item_prefs_parent = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+            "⚙️ Impostazioni & Personalizzazione...", None, ""
+        )
+        item_prefs_parent.setSubmenu_(submenu_prefs)
+
+        # 1. Anticipo Notifiche Meeting
+        curr_m_lead = config.get("lead_time_meeting_minutes", 6)
+        sub_m_lead = AppKit.NSMenu.alloc().init()
+        item_m_lead = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(f"⏱️ Anticipo Videochiamate ({curr_m_lead}m)", None, "")
+        item_m_lead.setSubmenu_(sub_m_lead)
         
-        # Aggiorna e Impostazioni
+        for m_val in [3, 5, 6, 10, 15]:
+            mi = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(f"{m_val} minuti prima", "setMeetingLeadTime:", "")
+            mi.setTarget_(self)
+            mi.setTag_(m_val)
+            if curr_m_lead == m_val:
+                mi.setState_(AppKit.NSControlStateValueOn)
+            sub_m_lead.addItem_(mi)
+        submenu_prefs.addItem_(item_m_lead)
+
+        # 2. Anticipo Viaggi & Spostamenti
+        curr_t_lead = config.get("lead_time_travel_minutes", 35)
+        sub_t_lead = AppKit.NSMenu.alloc().init()
+        item_t_lead = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(f"🚗 Anticipo Viaggi & Spostamenti ({curr_t_lead}m)", None, "")
+        item_t_lead.setSubmenu_(sub_t_lead)
+        
+        for t_val in [20, 30, 35, 45, 60]:
+            ti = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(f"{t_val} minuti prima", "setTravelLeadTime:", "")
+            ti.setTarget_(self)
+            ti.setTag_(t_val)
+            if curr_t_lead == t_val:
+                ti.setState_(AppKit.NSControlStateValueOn)
+            sub_t_lead.addItem_(ti)
+        submenu_prefs.addItem_(item_t_lead)
+
+        # 3. Durata Snooze
+        curr_snooze = config.get("default_snooze_seconds", 120)
+        curr_snooze_min = curr_snooze // 60
+        sub_snooze = AppKit.NSMenu.alloc().init()
+        item_snooze = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(f"💤 Durata Snooze ({curr_snooze_min}m)", None, "")
+        item_snooze.setSubmenu_(sub_snooze)
+
+        for s_val in [2, 5, 10]:
+            si = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(f"{s_val} minuti", "setSnoozeTime:", "")
+            si.setTarget_(self)
+            si.setTag_(s_val)
+            if curr_snooze_min == s_val:
+                si.setState_(AppKit.NSControlStateValueOn)
+            sub_snooze.addItem_(si)
+        submenu_prefs.addItem_(item_snooze)
+
+        # 4. Velocità Volo Aereo
+        curr_speed = float(config.get("flight_speed", 3.2))
+        sub_speed = AppKit.NSMenu.alloc().init()
+        item_speed = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(f"✈️ Velocità Volo Aereo ({curr_speed}x)", None, "")
+        item_speed.setSubmenu_(sub_speed)
+
+        speeds = [("Rilassato (2.0x)", 20), ("Standard (3.2x)", 32), ("Turbo (4.8x)", 48)]
+        for s_label, s_tag in speeds:
+            sp_item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(s_label, "setFlightSpeed:", "")
+            sp_item.setTarget_(self)
+            sp_item.setTag_(s_tag)
+            if abs(curr_speed - (s_tag / 10.0)) < 0.1:
+                sp_item.setState_(AppKit.NSControlStateValueOn)
+            sub_speed.addItem_(sp_item)
+        submenu_prefs.addItem_(item_speed)
+
+        # 5. Posizione Schermo
+        curr_pos = config.get("banner_position", "top")
+        sub_pos = AppKit.NSMenu.alloc().init()
+        pos_title = "In Alto (Menu Bar)" if curr_pos == "top" else "In Basso (Sopra Dock)"
+        item_pos = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(f"📍 Posizione Schermo ({pos_title})", None, "")
+        item_pos.setSubmenu_(sub_pos)
+
+        p_top = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("In Alto (Sotto Barra dei Menu)", "setBannerPosTop:", "")
+        p_top.setTarget_(self)
+        if curr_pos == "top":
+            p_top.setState_(AppKit.NSControlStateValueOn)
+        sub_pos.addItem_(p_top)
+
+        p_bot = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("In Basso (Floating sopra il Dock)", "setBannerPosBottom:", "")
+        p_bot.setTarget_(self)
+        if curr_pos == "bottom":
+            p_bot.setState_(AppKit.NSControlStateValueOn)
+        sub_pos.addItem_(p_bot)
+        submenu_prefs.addItem_(item_pos)
+
+        # 6. Suoni Notifica
+        sub_sound = AppKit.NSMenu.alloc().init()
+        sound_on = config.get("sound_enabled", True)
+        curr_snd = config.get("sound_name", "Glass")
+        item_snd_parent = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(f"🔔 Suono Notifica ({curr_snd if sound_on else 'Silenzioso'})", None, "")
+        item_snd_parent.setSubmenu_(sub_sound)
+
+        s_toggle = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("Suono Abilitato", "toggleSoundEnabled:", "")
+        s_toggle.setTarget_(self)
+        s_toggle.setState_(AppKit.NSControlStateValueOn if sound_on else AppKit.NSControlStateValueOff)
+        sub_sound.addItem_(s_toggle)
+        sub_sound.addItem_(AppKit.NSMenuItem.separatorItem())
+
+        for snd_name in ["Glass", "Hero", "Ping", "Pop", "Submarine"]:
+            s_item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(snd_name, "setSoundName:", "")
+            s_item.setTarget_(self)
+            s_item.setRepresentedObject_(snd_name)
+            if sound_on and curr_snd == snd_name:
+                s_item.setState_(AppKit.NSControlStateValueOn)
+            sub_sound.addItem_(s_item)
+        submenu_prefs.addItem_(item_snd_parent)
+
+        submenu_prefs.addItem_(AppKit.NSMenuItem.separatorItem())
+
+        # 7. Modifica manuale JSON & Parole chiave
+        item_open_json = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+            "📝 Modifica Regole & Parole Chiave (config.json)...", "openConfigJson:", ""
+        )
+        item_open_json.setTarget_(self)
+        submenu_prefs.addItem_(item_open_json)
+
+        item_reload_cfg = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+            "🔄 Ricarica Impostazioni Ora", "reloadConfig:", ""
+        )
+        item_reload_cfg.setTarget_(self)
+        submenu_prefs.addItem_(item_reload_cfg)
+
+        self.menu.addItem_(item_prefs_parent)
+        
+        # Aggiorna e Impostazioni di Sistema
         item_refresh = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
             "🔄 Aggiorna Calendario Ora", "refreshCalendar:", "r"
         )
@@ -206,6 +337,71 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         )
         item_quit.setTarget_(self)
         self.menu.addItem_(item_quit)
+
+    # -------------------------------------------------------------
+    # AZIONI DI PERSONALIZZAZIONE (CONFIG SETTERS)
+    # -------------------------------------------------------------
+    @objc.IBAction
+    def setMeetingLeadTime_(self, sender):
+        val = sender.tag()
+        config.set("lead_time_meeting_minutes", val)
+        self.build_menu()
+
+    @objc.IBAction
+    def setTravelLeadTime_(self, sender):
+        val = sender.tag()
+        config.set("lead_time_travel_minutes", val)
+        self.build_menu()
+
+    @objc.IBAction
+    def setSnoozeTime_(self, sender):
+        val_min = sender.tag()
+        config.set("default_snooze_seconds", val_min * 60)
+        self.build_menu()
+
+    @objc.IBAction
+    def setFlightSpeed_(self, sender):
+        speed_val = sender.tag() / 10.0
+        config.set("flight_speed", speed_val)
+        self.build_menu()
+
+    @objc.IBAction
+    def setBannerPosTop_(self, sender):
+        config.set("banner_position", "top")
+        self.build_menu()
+
+    @objc.IBAction
+    def setBannerPosBottom_(self, sender):
+        config.set("banner_position", "bottom")
+        self.build_menu()
+
+    @objc.IBAction
+    def toggleSoundEnabled_(self, sender):
+        curr = config.get("sound_enabled", True)
+        config.set("sound_enabled", not curr)
+        self.build_menu()
+
+    @objc.IBAction
+    def setSoundName_(self, sender):
+        snd_name = sender.representedObject()
+        config.set("sound_name", snd_name)
+        config.set("sound_enabled", True)
+        try:
+            import subprocess
+            subprocess.Popen(["afplay", f"/System/Library/Sounds/{snd_name}.aiff"])
+        except Exception:
+            pass
+        self.build_menu()
+
+    @objc.IBAction
+    def openConfigJson_(self, sender):
+        config.open_config_in_editor()
+
+    @objc.IBAction
+    def reloadConfig_(self, sender):
+        config.reload()
+        self.meetings = get_upcoming_meetings()
+        self.build_menu()
 
     @objc.IBAction
     def toggleAutostart_(self, sender):
@@ -330,22 +526,25 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         AppKit.NSApplication.sharedApplication().terminate_(self)
 
     def _background_scanner_loop(self):
-        """Scansiona periodicamente e controlla reminder intelligenti."""
+        """Scansiona periodicamente e controlla reminder intelligenti con tempi configurati."""
         while self.is_scanning:
             try:
                 self.meetings = get_upcoming_meetings()
                 now = datetime.now()
                 
+                meeting_lead = float(config.get("lead_time_meeting_minutes", 6.0))
+                travel_lead = float(config.get("lead_time_travel_minutes", 35.0))
+
                 for m in self.meetings:
                     m_id = f"{m['title']}_{m['start_time'].strftime('%Y%m%d%H%M')}"
                     diff_min = (m["start_time"] - now).total_seconds() / 60.0
                     
-                    # Notifiche differenziate per ADHD & Viaggio
-                    lead_time = 35.0 if m.get("is_travel") else 6.0
+                    # Notifiche differenziate per ADHD & Viaggio con lead times personalizzati
+                    lead_time = travel_lead if m.get("is_travel") else meeting_lead
                     
                     if -2 <= diff_min <= lead_time and m_id not in self.notified_meeting_ids:
                         self.notified_meeting_ids.add(m_id)
-                        print(f"NOTIFICA BANNER per: {m['title']} ({m.get('provider')})")
+                        print(f"NOTIFICA BANNER per: {m['title']} ({m.get('provider')}) [Lead: {lead_time}m]")
                         self.performSelectorOnMainThread_withObject_waitUntilDone_(
                             "triggerBannerOnMainThread:",
                             m,

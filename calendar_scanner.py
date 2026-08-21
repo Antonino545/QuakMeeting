@@ -2,6 +2,7 @@ import subprocess
 import re
 import urllib.parse
 from datetime import datetime, timedelta
+from config_manager import config
 
 # Patterns per identificare i link di videochiamata
 MEETING_PATTERNS = [
@@ -58,38 +59,42 @@ def parse_applescript_date(date_str):
     return None
 
 def classify_event(title, location, desc, meeting_url):
-    """Classifica l'evento in base al titolo, luogo e link per personalizzare pilota, grafica e mappe."""
+    """Classifica l'evento in base al titolo, luogo e link consultando le parole chiave personalizzate."""
     full_text = f"{title} {location} {desc}".lower()
+    custom_kw = config.get("custom_keywords", {})
     
     # 1. Voli, Treni, Bus, Navette, Aeroporto e Viaggi (Priorità Trasporti ✈️🚆🚌)
-    travel_keywords = [
+    travel_keywords = custom_kw.get("captain", [
         "flight", "volo", "airport", "aeroporto", "bus", "navetta", "shuttle", "pullman", 
         "ryanair", "easyjet", "wizz", "ita airways", "treno", "frecciarossa", "italo", 
         "stazione", "viaggio", "partenza", "gate", "terminal", "imbarco", "boarding", "taxi", "uber"
-    ]
+    ])
     if any(re.search(r'\b' + re.escape(k) + r'\b', full_text) if len(k) <= 4 else (k in full_text) for k in travel_keywords):
         maps_query = location if (location and location != "missing value") else title
         encoded_query = urllib.parse.quote(maps_query)
         return {
             "event_type": "travel",
             "pilot_type": "captain",
-            "provider": "Volo / Viaggio / Bus ✈️🚌 (Avviso Anticipato)",
-            "action_btn_text": "🗺️ INDICAZIONI MAPPE / ITINERARIO",
+            "provider": "Volo / Viaggio / Bus ✈️🚌",
+            "action_btn_text": "🗺️ INDICAZIONI MAPPE",
             "action_url": meeting_url if meeting_url else f"https://maps.apple.com/?q={encoded_query}",
             "theme_name": "Sky Blue",
             "is_travel": True
         }
 
     # 2. Cene, Pranzi, Ristoranti, Cibo, Aperitivi (Tema Chef 👨‍🍳🍕🍽️)
-    food_keywords = ["cena", "pranzo", "dinner", "lunch", "ristorante", "pizza", "pizzeria", "sushi", "aperitivo", "apericena", "osteria", "trattoria", "cibo", "food", "mangiare", "pub", "burger"]
+    food_keywords = custom_kw.get("chef", [
+        "cena", "pranzo", "dinner", "lunch", "ristorante", "pizza", "pizzeria", "sushi", 
+        "aperitivo", "apericena", "osteria", "trattoria", "cibo", "food", "mangiare", "pub", "burger"
+    ])
     if any(k in full_text for k in food_keywords):
         maps_query = location if (location and location != "missing value") else f"Ristorante {title}"
         encoded_query = urllib.parse.quote(maps_query)
         return {
             "event_type": "food",
             "pilot_type": "chef",
-            "provider": "Cena / Cibo 🍕 (Avviso Prima)",
-            "action_btn_text": "🗺️ INDICAZIONI RISTORANTE (MAPPE)",
+            "provider": "Cena / Cibo 🍕🍽️",
+            "action_btn_text": "🗺️ INDICAZIONI RISTORANTE",
             "action_url": meeting_url if meeting_url else f"https://maps.apple.com/?q={encoded_query}",
             "theme_name": "Coral Food",
             "is_travel": True
@@ -148,28 +153,43 @@ def classify_event(title, location, desc, meeting_url):
                 "is_travel": False
             }
 
-    # 4. Studio, Università, Lezioni, Esami, Corsi (con regex esatte per evitare collisioni)
-    study_patterns = [
-        r'\buniversit', r'\buni\b', r'\besame\b', r'\besami\b', r'\blezione\b', r'\blezioni\b', 
-        r'\bpolitecnico\b', r'\btesi\b', r'\bsmartgrid\b', r'\bbuilding\b', r'\bict\b', 
-        r'\bsatellite\b', r'\bricerca operativa\b', r'\bcorso\b', r'\baula\b'
-    ]
-    if any(re.search(p, full_text) for p in study_patterns):
+    # 4. Studio, Università, Lezioni, Esami, Corsi
+    study_keywords = custom_kw.get("owl", [
+        "universit", "uni", "esame", "esami", "lezione", "lezioni", 
+        "politecnico", "tesi", "smartgrid", "building", "ict", 
+        "satellite", "ricerca operativa", "corso", "aula"
+    ])
+    if any(re.search(r'\b' + re.escape(k) + r'\b', full_text) if len(k) <= 4 else (k in full_text) for k in study_keywords):
         maps_query = location if (location and location != "missing value") else "Politecnico Università"
         encoded_query = urllib.parse.quote(maps_query)
         return {
             "event_type": "study",
             "pilot_type": "owl", # Gufo Studioso 🦉🎓
             "provider": "Studio / Uni 🎓",
-            "action_btn_text": "🗺️ INDICAZIONI AULA / MAPPE" if location and location != "missing value" else "📚 DETTAGLI STUDIO",
+            "action_btn_text": "🗺️ INDICAZIONI AULA" if location and location != "missing value" else "📚 DETTAGLI STUDIO",
             "action_url": f"https://maps.apple.com/?q={encoded_query}" if location and location != "missing value" else "https://calendar.google.com",
             "theme_name": "Amber Academic",
             "is_travel": bool(location and location != "missing value")
         }
 
-    # 5. Appuntamenti in Presenza / Luoghi da raggiungere con Tempo di Spostamento
-    if location and location != "missing value" and len(location.strip()) > 2:
-        encoded_dest = urllib.parse.quote(location)
+    # 5. Salute, Terapia, Relax, Yoga (Zen Duck 🦆🌸)
+    zen_keywords = custom_kw.get("zen_duck", ["serenis", "terapia", "yoga", "meditazione", "benessere", "relax"])
+    if any(k in full_text for k in zen_keywords):
+        return {
+            "event_type": "health",
+            "pilot_type": "zen_duck",
+            "provider": "Salute & Relax 🌿",
+            "action_btn_text": "🗺️ APRI MAPPE" if location and location != "missing value" else "🌸 DETTAGLI",
+            "action_url": f"https://maps.apple.com/?q={urllib.parse.quote(location)}" if location and location != "missing value" else "https://calendar.google.com",
+            "theme_name": "Teal Zen",
+            "is_travel": bool(location and location != "missing value")
+        }
+
+    # 6. Appuntamenti in Presenza / Luoghi da raggiungere con Tempo di Spostamento
+    driver_keywords = custom_kw.get("driver", ["palestra", "dentista", "dottore", "visita", "medico", "allenamento", "studio", "ufficio"])
+    if any(k in full_text for k in driver_keywords) or (location and location != "missing value" and len(location.strip()) > 2):
+        dest = location if (location and location != "missing value") else title
+        encoded_dest = urllib.parse.quote(dest)
         return {
             "event_type": "in_person",
             "pilot_type": "driver", # Pilota Viaggiatore 🚗💨
@@ -178,19 +198,6 @@ def classify_event(title, location, desc, meeting_url):
             "action_url": f"https://maps.apple.com/?daddr={encoded_dest}",
             "theme_name": "Emerald Travel",
             "is_travel": True
-        }
-
-    # 6. Salute, Palestra, Dottore, Benessere
-    health_keywords = ["palestra", "dentista", "dottore", "visita", "medico", "allenamento", "terapia", "yoga"]
-    if any(k in full_text for k in health_keywords):
-        return {
-            "event_type": "health",
-            "pilot_type": "zen_duck",
-            "provider": "Salute & Cura 🌿",
-            "action_btn_text": "🗺️ APRI MAPPE" if location and location != "missing value" else "❤️ DETTAGLI",
-            "action_url": f"https://maps.apple.com/?q={urllib.parse.quote(location)}" if location and location != "missing value" else "https://calendar.google.com",
-            "theme_name": "Rose Health",
-            "is_travel": bool(location and location != "missing value")
         }
 
     # 7. Evento Generico / Promemoria
@@ -205,15 +212,26 @@ def classify_event(title, location, desc, meeting_url):
     }
 
 def get_upcoming_meetings():
-    """Scansiona i calendari del Mac e restituisce tutti gli eventi e riunioni con classificazione tematica."""
-    script = '''
+    """Scansiona i calendari del Mac e restituisce tutti gli eventi e riunioni con classificazione tematica e filtri dinamici."""
+    ignored = config.get("ignored_calendars", [
+        "Festività in Italia", "Birthdays", "Scheduled Reminders", "Siri Suggestions"
+    ])
+    
+    # Costruisci condizioni di esclusione AppleScript
+    if ignored:
+        cond_parts = [f'cName is not "{cal}"' for cal in ignored]
+        cal_filter_cond = " and ".join(cond_parts)
+    else:
+        cal_filter_cond = "true"
+
+    script = f'''
     tell application "Calendar"
         set todayStart to (current date) - (2 * hours)
         set todayEnd to (current date) + (24 * hours)
-        set outEvents to {}
+        set outEvents to {{}}
         repeat with cal in calendars
             set cName to name of cal
-            if cName is not "Festività in Italia" and cName is not "Birthdays" and cName is not "Scheduled Reminders" and cName is not "Siri Suggestions" then
+            if {cal_filter_cond} then
                 try
                     set evs to (every event of cal whose start date >= todayStart and start date <= todayEnd)
                     repeat with ev in evs
