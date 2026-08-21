@@ -33,15 +33,16 @@ class DashboardWindowController:
         self.window = None
         self.delegate = None
         self.meetings = []
+        self.is_loading = False
         self.current_tab = 0 # 0: Agenda, 1: Hangar, 2: Impostazioni
         self.content_container = None
 
     def show(self):
         if self.window is None:
             self._create_window()
-        self.refresh_data()
         self.window.makeKeyAndOrderFront_(None)
         AppKit.NSApp().activateIgnoringOtherApps_(True)
+        self.refresh_data()
 
     def _create_window(self):
         width, height = 820.0, 580.0
@@ -95,7 +96,7 @@ class DashboardWindowController:
         header_view = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(20, h - 85, w - 40, 75))
         
         # Icona App
-        icon_path = "assets/icon.png"
+        icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "icon.png")
         if os.path.exists(icon_path):
             icon_img = AppKit.NSImage.alloc().initWithContentsOfFile_(icon_path)
             icon_view = AppKit.NSImageView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 12, 52, 52))
@@ -154,22 +155,38 @@ class DashboardWindowController:
         self.refresh_data()
 
     def refresh_data(self):
-        try:
-            self.meetings = get_upcoming_meetings()
-            now = datetime.now()
-            upcoming = [m for m in self.meetings if m["end_time"] > now]
-            count = len(upcoming)
-            
-            if upcoming:
-                next_m = upcoming[0]
-                s_str = next_m["start_time"].strftime("%H:%M")
-                self.status_lbl.setStringValue_(f"● Scanner Attivo  •  {count} eventi in programma oggi  •  Prossimo: {s_str}")
-            else:
-                self.status_lbl.setStringValue_("● Scanner Attivo  •  Nessun evento rimanente per oggi")
-        except Exception as e:
-            self.status_lbl.setStringValue_(f"● Errore lettura calendario: {e}")
-            
+        """Carica gli eventi del calendario in background in modo asincrono (zero lag all'apertura)."""
+        self.is_loading = True
+        self.status_lbl.setStringValue_("⏳ Sincronizzazione calendari macOS in corso...")
         self._render_current_tab()
+
+        import threading
+        def worker():
+            try:
+                meetings = get_upcoming_meetings()
+            except Exception as e:
+                print(f"Errore lettura calendario: {e}")
+                meetings = []
+
+            def on_complete():
+                self.is_loading = False
+                self.meetings = meetings
+                now = datetime.now()
+                upcoming = [m for m in self.meetings if m["end_time"] > now]
+                count = len(upcoming)
+                
+                if upcoming:
+                    next_m = upcoming[0]
+                    s_str = next_m["start_time"].strftime("%H:%M")
+                    self.status_lbl.setStringValue_(f"● Scanner Attivo  •  {count} eventi in programma oggi  •  Prossimo: {s_str}")
+                else:
+                    self.status_lbl.setStringValue_("● Scanner Attivo  •  Nessun evento rimanente per oggi")
+                    
+                self._render_current_tab()
+
+            AppKit.NSOperationQueue.mainQueue().addOperationWithBlock_(on_complete)
+
+        threading.Thread(target=worker, daemon=True).start()
 
     def _render_current_tab(self):
         if not self.content_container:
@@ -193,6 +210,28 @@ class DashboardWindowController:
     # TAB 1: AGENDA & EVENTI DI OGGI
     # -------------------------------------------------------------
     def _render_agenda_tab(self, w, h):
+        if self.is_loading and not self.meetings:
+            loading_view = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 0, w, h))
+            
+            spinner = AppKit.NSProgressIndicator.alloc().initWithFrame_(AppKit.NSMakeRect((w - 32) * 0.5, (h - 32) * 0.5 + 24, 32, 32))
+            spinner.setStyle_(AppKit.NSProgressIndicatorStyleSpinning)
+            spinner.setControlSize_(AppKit.NSControlSizeRegular)
+            spinner.startAnimation_(None)
+            loading_view.addSubview_(spinner)
+            
+            load_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(20, (h - 32) * 0.5 - 34, w - 40, 48))
+            load_lbl.setStringValue_("🦆 Sincronizzazione dei tuoi Calendari macOS...\nIdentificazione orari, mappe, voli e link riunioni...")
+            load_lbl.setFont_(AppKit.NSFont.systemFontOfSize_(13.5))
+            load_lbl.setTextColor_(AppKit.NSColor.colorWithRed_green_blue_alpha_(0.72, 0.78, 0.92, 1.0))
+            load_lbl.setAlignment_(AppKit.NSTextAlignmentCenter)
+            load_lbl.setBezeled_(False)
+            load_lbl.setDrawsBackground_(False)
+            load_lbl.setEditable_(False)
+            loading_view.addSubview_(load_lbl)
+            
+            self.content_container.addSubview_(loading_view)
+            return
+
         scroll_view = AppKit.NSScrollView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 0, w, h))
         scroll_view.setHasVerticalScroller_(True)
         scroll_view.setDrawsBackground_(False)

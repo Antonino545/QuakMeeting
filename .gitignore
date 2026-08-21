@@ -5,3 +5,4 @@ __pycache__/
 .AppleDouble
 .LSOverride
 .quakmeeting/
+*.app/
