@@ -25,6 +25,23 @@ class EventKitCalendarProvider(BaseCalendarProvider):
             try:
                 import EventKit
                 self._store = EventKit.EKEventStore.alloc().init()
+                status = EventKit.EKEventStore.authorizationStatusForEntityType_(EventKit.EKEntityTypeEvent)
+                if status != 3:  # Not Full Access
+                    import threading
+                    sem = threading.Semaphore(0)
+                    def completion(granted, error):
+                        sem.release()
+                        
+                    if hasattr(self._store, "requestFullAccessToEventsWithCompletion_"):
+                        self._store.requestFullAccessToEventsWithCompletion_(completion)
+                    else:
+                        self._store.requestAccessToEntityType_completion_(EventKit.EKEntityTypeEvent, completion)
+                        
+                    sem.acquire()
+                    status = EventKit.EKEventStore.authorizationStatusForEntityType_(EventKit.EKEntityTypeEvent)
+                
+                if status != 3:  # Not Authorized
+                    logger.warning(f"EventKit Calendar access not granted! Status: {status}. Check System Settings -> Privacy & Security -> Calendars.")
             except ImportError:
                 self._store = None
         return self._store
@@ -87,6 +104,36 @@ class EventKitCalendarProvider(BaseCalendarProvider):
                 start_time=start_dt,
                 end_time=end_dt
             )
+
+            # Extract Apple Calendar's native travel time & structured location.
+            # These are set when a user enables "Travel Time" on a calendar event.
+            try:
+                travel_seconds = ev.travelTime()
+                if travel_seconds and travel_seconds > 0:
+                    travel_min = int(round(travel_seconds / 60.0))
+                    meeting.travel_time_minutes = travel_min
+                    meeting.is_travel = True
+                    if meeting.start_time:
+                        meeting.departure_time = meeting.start_time - timedelta(minutes=travel_min)
+                    logger.debug(f"EventKit travelTime for '{title}': {travel_min}m")
+            except Exception:
+                pass
+
+            try:
+                struct_loc = ev.structuredLocation()
+                if struct_loc:
+                    geo = struct_loc.geoLocation()
+                    if geo:
+                        lat = geo.coordinate().latitude
+                        lon = geo.coordinate().longitude
+                        if lat != 0.0 or lon != 0.0:
+                            # Store coordinates as "lat,lon" for downstream ETA/routing
+                            meeting._ek_latitude = lat
+                            meeting._ek_longitude = lon
+                            logger.debug(f"EventKit structuredLocation for '{title}': ({lat}, {lon})")
+            except Exception:
+                pass
+
             meetings.append(meeting)
 
         meetings.sort(key=lambda x: x.start_time)

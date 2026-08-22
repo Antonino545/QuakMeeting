@@ -21,6 +21,7 @@ DEFAULT_CONFIG = {
     "default_snooze_seconds": 120,
     "flight_speed": 3.2,
     "banner_position": "top", # "top" or "bottom"
+    "menubar_status_mode": "countdown", # "countdown", "event_time", "time_only", "icon_only"
     "sound_enabled": True,
     "sound_name": "Glass",    # "Glass", "Hero", "Ping", "Pop", "Submarine"
     "ignored_calendars": [

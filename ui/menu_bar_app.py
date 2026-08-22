@@ -46,9 +46,17 @@ class QuakMeetingMenuBar(AppKit.NSObject):
             return None
             
         self.app = AppKit.NSApplication.sharedApplication()
+        
+        # Force macOS to (re-)register this process as a GUI app with menu bar.
+        # When launched from a .app bundle via execv, the WindowServer may not
+        # recognise the Python process as the bundle's application. Toggling
+        # Accessory → Regular forces a re-registration so the top menu bar and
+        # keyboard shortcuts work correctly.
+        self.app.setActivationPolicy_(AppKit.NSApplicationActivationPolicyAccessory)
+        self.app.setActivationPolicy_(AppKit.NSApplicationActivationPolicyRegular)
+        
         self.delegate = QuakMeetingAppDelegate.alloc().init()
         self.app.setDelegate_(self.delegate)
-        self.app.setActivationPolicy_(AppKit.NSApplicationActivationPolicyRegular)
         
         # Application icon
         icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "icon.png")
@@ -78,6 +86,7 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         # Subscribe to EventBus
         event_bus.subscribe("REMINDER_TRIGGERED", self._on_reminder_triggered)
         event_bus.subscribe("CALENDAR_SYNCED", self._on_calendar_synced)
+        event_bus.subscribe("CONFIG_CHANGED", self._on_config_changed)
         
         # Periodic background scanner loop
         self.is_scanning = True
@@ -207,18 +216,89 @@ class QuakMeetingMenuBar(AppKit.NSObject):
             False
         )
 
+    def _on_config_changed(self, key: Optional[str] = None, **kwargs) -> None:
+        self._last_menu_signature = None
+        self.performSelectorOnMainThread_withObject_waitUntilDone_(
+            "refreshMenuOnMainThread:",
+            None,
+            False
+        )
+
     @objc.IBAction
     def refreshMenuOnMainThread_(self, sender):
         self.build_menu()
 
+    def _format_status_title(self, next_m: Optional[Dict[str, Any]], now: datetime) -> str:
+        """Formats the macOS status bar tray title according to the chosen live status mode."""
+        mode = config.get("menubar_status_mode", "countdown")
+        if not next_m:
+            return "🦆" if mode == "icon_only" else "🦆 QuakMeeting"
+            
+        icon_map = {"chef": "🍕", "captain": "✈️", "owl": "🎓", "driver": "🚗", "zen_duck": "🛋️", "duck": "🦆"}
+        p_type = next_m.get("pilot_type", "duck")
+        icon_prefix = icon_map.get(p_type, "🦆")
+        
+        if mode == "icon_only":
+            return icon_prefix
+            
+        start_dt = next_m.get("start_time")
+        end_dt = next_m.get("end_time")
+        dep_dt = next_m.get("departure_time")
+        travel_min = next_m.get("travel_time_minutes")
+        m_title = (next_m.get("title") or "Event").strip()
+        title_short = m_title[:14] + "…" if len(m_title) > 14 else m_title
+        
+        start_str = start_dt.strftime("%H:%M") if isinstance(start_dt, datetime) else "--:--"
+        
+        if mode == "event_time":
+            if travel_min:
+                return f"{icon_prefix} {start_str} {title_short} (~{travel_min}m)"
+            return f"{icon_prefix} {start_str} {title_short}"
+            
+        elif mode == "time_only":
+            if isinstance(start_dt, datetime):
+                diff_m = int(round((start_dt - now).total_seconds() / 60.0))
+                if diff_m > 0:
+                    return f"{icon_prefix} {start_str} (in {diff_m}m)"
+                elif diff_m == 0:
+                    return f"{icon_prefix} {start_str} (Now!)"
+                elif end_dt and isinstance(end_dt, datetime) and now < end_dt:
+                    return f"{icon_prefix} {start_str} (Active)"
+            return f"{icon_prefix} {start_str}"
+            
+        else: # "countdown" (Default & Most Informative)
+            if dep_dt and isinstance(dep_dt, datetime):
+                diff_dep = int(round((dep_dt - now).total_seconds() / 60.0))
+                if diff_dep > 0:
+                    return f"{icon_prefix} Leave in {diff_dep}m ({title_short})"
+                elif diff_dep >= -10:
+                    return f"🚨 {icon_prefix} Leave NOW! ({title_short})"
+            
+            if isinstance(start_dt, datetime):
+                diff_start = int(round((start_dt - now).total_seconds() / 60.0))
+                if diff_start > 60:
+                    hrs = diff_start // 60
+                    mins = diff_start % 60
+                    return f"{icon_prefix} in {hrs}h{mins:02d}m: {title_short}"
+                elif diff_start > 0:
+                    return f"{icon_prefix} in {diff_start}m: {title_short}"
+                elif diff_start == 0:
+                    return f"🔔 {icon_prefix} Starting NOW: {title_short}"
+                elif end_dt and isinstance(end_dt, datetime) and now < end_dt:
+                    diff_end = int(round((end_dt - now).total_seconds() / 60.0))
+                    return f"🟢 {icon_prefix} {title_short} ({diff_end}m left)"
+                    
+            return f"{icon_prefix} {start_str} {title_short}"
+
     def build_menu(self):
         now = datetime.now()
         upcoming = [m for m in self.meetings if (m.get("end_time") and m["end_time"] > now) or (m.get("start_time") and m["start_time"] > now)]
+        status_mode = config.get("menubar_status_mode", "countdown")
         
         # State signature diffing to avoid unnecessary menu rebuilding
         m_sigs = tuple((m.get("title"), str(m.get("start_time")), m.get("pilot_type")) for m in upcoming[:6])
         minute_str = now.strftime("%H:%M")
-        new_signature = (minute_str, len(upcoming), m_sigs)
+        new_signature = (minute_str, len(upcoming), status_mode, m_sigs)
         
         if self._last_menu_signature == new_signature:
             return
@@ -234,9 +314,6 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         self.menu.addItem_(item_dash)
         self.menu.addItem_(AppKit.NSMenuItem.separatorItem())
         
-        now = datetime.now()
-        upcoming = [m for m in self.meetings if (m.get("end_time") and m["end_time"] > now) or (m.get("start_time") and m["start_time"] > now)]
-        
         # 2. Next Event & Quick Join
         icon_map = {"chef": "🍕", "captain": "✈️", "owl": "🎓", "driver": "🚗", "zen_duck": "🛋️", "duck": "🦆"}
         
@@ -244,16 +321,25 @@ class QuakMeetingMenuBar(AppKit.NSObject):
             next_m = upcoming[0]
             start_str = next_m["start_time"].strftime("%H:%M") if next_m.get("start_time") else "--:--"
             m_title = (next_m.get("title") or "Event").strip()
-            title_short = m_title[:18] + "…" if len(m_title) > 18 else m_title
             
             p_type = next_m.get("pilot_type", "duck")
             icon_prefix = icon_map.get(p_type, "🦆")
             
-            if self.status_item.button():
-                self.status_item.button().setTitle_(f"{icon_prefix} {start_str} {title_short}")
+            travel_min = next_m.get("travel_time_minutes")
+            dep_dt = next_m.get("departure_time")
             
+            if self.status_item.button():
+                self.status_item.button().setTitle_(self._format_status_title(next_m, now))
+            
+            if travel_min and isinstance(dep_dt, datetime):
+                next_label = f"{icon_prefix} Next: {start_str} — {m_title} (🚗 ~{travel_min}m • Leave at {dep_dt.strftime('%H:%M')})"
+            elif travel_min:
+                next_label = f"{icon_prefix} Next: {start_str} — {m_title} (🚗 ~{travel_min}m)"
+            else:
+                next_label = f"{icon_prefix} Next: {start_str} — {m_title}"
+                
             item_next = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-                f"{icon_prefix} Next: {start_str} — {m_title}", None, ""
+                next_label, None, ""
             )
             item_next.setEnabled_(False)
             self.menu.addItem_(item_next)
@@ -270,7 +356,7 @@ class QuakMeetingMenuBar(AppKit.NSObject):
             self.menu.addItem_(AppKit.NSMenuItem.separatorItem())
         else:
             if self.status_item.button():
-                self.status_item.button().setTitle_(f"🦆 QuakMeeting")
+                self.status_item.button().setTitle_(self._format_status_title(None, now))
             
             item_none = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
                 "No further events today", None, ""
@@ -292,8 +378,13 @@ class QuakMeetingMenuBar(AppKit.NSObject):
                 m_title = (m.get("title") or "Event").strip()
                 title_short = m_title[:24] + "…" if len(m_title) > 24 else m_title
                 
+                tr_min = m.get("travel_time_minutes")
+                sub_text = f"  {icon} {start_str} - {title_short}"
+                if tr_min:
+                    sub_text += f" (~{tr_min}m)"
+                
                 sub_item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-                    f"  {icon} {start_str} - {title_short}", "openMeetingItem:", ""
+                    sub_text, "openMeetingItem:", ""
                 )
                 sub_item.setTarget_(self)
                 sub_item.setTag_(idx)
@@ -320,6 +411,34 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         item_settings.setTarget_(self)
         self.menu.addItem_(item_settings)
 
+        # Status Bar Display Mode Quick Switcher
+        item_display_mode = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+            "📊 Status Bar Mode", None, ""
+        )
+        mode_menu = AppKit.NSMenu.alloc().initWithTitle_("📊 Status Bar Mode")
+        
+        curr_mode = config.get("menubar_status_mode", "countdown")
+        modes_def = [
+            ("countdown", "⏳ Live Countdown (e.g. In 25m / Leave in 10m)"),
+            ("event_time", "🕐 Start Time & Title (e.g. 20:00 Dinner)"),
+            ("time_only", "⏱️ Time & Countdown (e.g. 20:00 in 25m)"),
+            ("icon_only", "🦆 Icon Only (Minimal)")
+        ]
+        for idx, (mode_key, mode_label) in enumerate(modes_def):
+            m_item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+                mode_label, "onSelectStatusMode:", ""
+            )
+            m_item.setTarget_(self)
+            m_item.setTag_(idx)
+            if mode_key == curr_mode:
+                m_item.setState_(AppKit.NSControlStateValueOn)
+            else:
+                m_item.setState_(AppKit.NSControlStateValueOff)
+            mode_menu.addItem_(m_item)
+            
+        item_display_mode.setSubmenu_(mode_menu)
+        self.menu.addItem_(item_display_mode)
+
         item_logs = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
             "📄 View Logs & Diagnostics...", "openLogFileAction:", "l"
         )
@@ -334,6 +453,16 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         )
         item_quit.setTarget_(self)
         self.menu.addItem_(item_quit)
+
+    @objc.IBAction
+    def onSelectStatusMode_(self, sender):
+        tag = sender.tag()
+        modes = ["countdown", "event_time", "time_only", "icon_only"]
+        if 0 <= tag < len(modes):
+            config.set("menubar_status_mode", modes[tag])
+            event_bus.publish("CONFIG_CHANGED", key="menubar_status_mode")
+            self._last_menu_signature = None
+            self.build_menu()
 
     @objc.IBAction
     def openDashboard_(self, sender):

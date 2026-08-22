@@ -70,9 +70,32 @@ class CalendarService:
         buffer_minutes = int(self.config.get("eta_buffer_minutes", 10))
 
         for m in meetings:
-            if m.is_travel and m.location and m.start_time:
-                dest = m.location if m.location and m.location != "missing value" else m.title
-                if home_address:
+            if m.is_travel and m.start_time:
+                dest = m.location if (m.location and m.location != "missing value") else m.title
+                
+                # 1. Native EventKit travel time already extracted from Apple Calendar
+                if m.travel_time_minutes and m.travel_time_minutes > 0:
+                    m.departure_time = eta_service.get_departure_time(m.start_time, m.travel_time_minutes, buffer_minutes)
+                    icon = MODE_ICONS.get(m.transport_mode or transport_mode, "🚗")
+                    dep_str = m.departure_time.strftime("%H:%M")
+                    m.eta_text = f"{icon} ~{m.travel_time_minutes}m • Leave at {dep_str}"
+                    if not m.action_url or "maps.apple.com" not in m.action_url:
+                        m.action_url = eta_service.build_apple_maps_url(home_address or None, dest, m.transport_mode or transport_mode)
+                    
+                    mode = m.transport_mode or transport_mode
+                    if mode == "transit":
+                        m.action_btn_text = f"🗺️ PUBLIC TRANSIT (~{m.travel_time_minutes}m)"
+                    elif mode == "automobile":
+                        m.action_btn_text = f"🗺️ DRIVE WITH MAPS (~{m.travel_time_minutes}m)"
+                    elif mode == "walking":
+                        m.action_btn_text = f"🗺️ WALKING ROUTE (~{m.travel_time_minutes}m)"
+                    elif mode == "bicycling":
+                        m.action_btn_text = f"🗺️ CYCLING ROUTE (~{m.travel_time_minutes}m)"
+                    else:
+                        m.action_btn_text = f"🗺️ MAPS ROUTE (~{m.travel_time_minutes}m)"
+
+                # 2. Fallback: calculate ETA via ETAService if home_address is configured
+                elif home_address and dest:
                     eta_res = eta_service.calculate_eta(home_address, dest, transport_mode)
                     if eta_res:
                         m.travel_time_minutes = eta_res["duration_minutes"]

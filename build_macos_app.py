@@ -135,13 +135,17 @@ def build_bundle():
     <true/>
     <key>NSCalendarsUsageDescription</key>
     <string>QuakMeeting requires Calendar access to display smart reminders and travel routes for your scheduled events.</string>
+    <key>NSCalendarsFullAccessUsageDescription</key>
+    <string>QuakMeeting requires full Calendar access to fetch your upcoming meetings and travel routes.</string>
+    <key>NSPrincipalClass</key>
+    <string>NSApplication</string>
 </dict>
 </plist>
 """
     with open(os.path.join(CONTENTS_DIR, "Info.plist"), "w", encoding="utf-8") as f:
         f.write(info_plist_content)
         
-    # 5. Create Launcher Bash executable in MacOS/QuakMeeting
+    # 5. Create Launcher Bash executable in MacOS/QuakMeeting.sh (debug fallback only)
     launcher_content = """#!/bin/bash
 DIR="$(cd "$(dirname "$0")/../Resources" && pwd)"
 LOG_DIR="$HOME/.quakmeeting"
@@ -169,14 +173,195 @@ if [ -z "$PYTHON_BIN" ]; then
     exit 1
 fi
 
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] [Launcher] Executing $PYTHON_BIN $DIR/main.py --dashboard $@" >> "$LAUNCHER_LOG"
-exec "$PYTHON_BIN" "$DIR/main.py" --dashboard "$@" >> "$LOG_FILE" 2>&1
+BUNDLE_PYTHON="$DIR/../MacOS/QuakMeeting_Python"
+if [ ! -f "$BUNDLE_PYTHON" ]; then
+    cp "$PYTHON_BIN" "$BUNDLE_PYTHON"
+    chmod +x "$BUNDLE_PYTHON"
+fi
+
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] [Launcher] Executing $BUNDLE_PYTHON $DIR/main.py --dashboard $@" >> "$LAUNCHER_LOG"
+exec "$BUNDLE_PYTHON" "$DIR/main.py" --dashboard "$@" >> "$LOG_FILE" 2>&1
 """
-    launcher_path = os.path.join(MACOS_DIR, "QuakMeeting")
-    with open(launcher_path, "w", encoding="utf-8") as f:
+    bash_path = os.path.join(MACOS_DIR, "QuakMeeting.sh")
+    with open(bash_path, "w", encoding="utf-8") as f:
         f.write(launcher_content)
+    os.chmod(bash_path, 0o755)
+    
+    # 5b. Copy Python binary at build time so the C stub can exec it directly
+    import sys
+    python_bin = None
+    candidates = ["/opt/miniconda3/bin/python3", "/usr/local/bin/python3", "/opt/homebrew/bin/python3", sys.executable]
+    for p in candidates:
+        if os.path.isfile(p) and os.access(p, os.X_OK):
+            try:
+                result = subprocess.run([p, "-c", "import AppKit; print('ok')"], capture_output=True, text=True, timeout=10)
+                if result.returncode == 0 and "ok" in result.stdout:
+                    python_bin = p
+                    break
+            except Exception:
+                continue
+    
+    if python_bin:
+        bundle_python_path = os.path.join(MACOS_DIR, "QuakMeeting_Python")
+        shutil.copy2(python_bin, bundle_python_path)
+        os.chmod(bundle_python_path, 0o755)
+        print(f"  ✓ Bundled Python binary: {python_bin} → QuakMeeting_Python")
+    else:
+        print("  ⚠️ Could not find Python with PyObjC at build time; will fall back to shell launcher.")
+    
+    # 5c. Compile a Mach-O C stub that embeds Python IN-PROCESS via dlopen/Py_Main.
+    # This is critical: execv replaces the process image, causing macOS to lose
+    # the bundle association and refuse to show the app's menu bar. By running
+    # Python in the same process, the Mach-O binary stays the running executable
+    # and macOS fully recognises it as the bundle's app.
+    c_stub = r"""
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <limits.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <dlfcn.h>
+#include <mach-o/dyld.h>
+
+/* Py_Main signature: int Py_Main(int argc, wchar_t **argv) */
+typedef int (*Py_Main_t)(int, wchar_t **);
+typedef wchar_t* (*Py_DecodeLocale_t)(const char *, size_t *);
+typedef void (*Py_SetProgramName_t)(const wchar_t *);
+typedef void (*Py_SetPath_t)(const wchar_t *);
+
+int main(int argc, char **argv) {
+    char exe_path[PATH_MAX];
+    uint32_t size = sizeof(exe_path);
+    if (_NSGetExecutablePath(exe_path, &size) != 0) {
+        fprintf(stderr, "QuakMeeting: _NSGetExecutablePath failed\n");
+        return 1;
+    }
+
+    char real_path[PATH_MAX];
+    if (!realpath(exe_path, real_path)) {
+        fprintf(stderr, "QuakMeeting: realpath failed\n");
+        return 1;
+    }
+
+    /* Trim to MacOS/ directory */
+    char *last_slash = strrchr(real_path, '/');
+    if (!last_slash) return 1;
+    *last_slash = '\0';
+
+    char resources_path[PATH_MAX];
+    char main_py_path[PATH_MAX];
+
+    snprintf(resources_path, sizeof(resources_path), "%s/../Resources", real_path);
+    snprintf(main_py_path, sizeof(main_py_path), "%s/../Resources/main.py", real_path);
+
+    /* Redirect stdout/stderr to the log file */
+    const char *home = getenv("HOME");
+    if (home) {
+        char log_dir[PATH_MAX];
+        snprintf(log_dir, sizeof(log_dir), "%s/.quakmeeting", home);
+        mkdir(log_dir, 0755);
+        char log_path[PATH_MAX];
+        snprintf(log_path, sizeof(log_path), "%s/quakmeeting.log", log_dir);
+        FILE *log_fp = fopen(log_path, "a");
+        if (log_fp) {
+            dup2(fileno(log_fp), STDOUT_FILENO);
+            dup2(fileno(log_fp), STDERR_FILENO);
+            fclose(log_fp);
+        }
+    }
+
+    /* Set PYTHONPATH to Resources/ so our modules are importable */
+    setenv("PYTHONPATH", resources_path, 1);
+
+    /* Try to find libpython - check common locations */
+    void *python_lib = NULL;
+    const char *dylib_candidates[] = {
+        "PLACEHOLDER_DYLIB",
+        "/opt/miniconda3/lib/libpython3.13.dylib",
+        "/opt/homebrew/lib/libpython3.13.dylib",
+        "/usr/local/lib/libpython3.13.dylib",
+        "/opt/miniconda3/lib/libpython3.12.dylib",
+        "/opt/homebrew/lib/libpython3.12.dylib",
+        "/usr/local/lib/libpython3.12.dylib",
+        NULL
+    };
+
+    for (int i = 0; dylib_candidates[i] != NULL; i++) {
+        python_lib = dlopen(dylib_candidates[i], RTLD_LAZY | RTLD_GLOBAL);
+        if (python_lib) {
+            fprintf(stderr, "[QuakMeeting Launcher] Loaded: %s\n", dylib_candidates[i]);
+            break;
+        }
+    }
+
+    if (!python_lib) {
+        fprintf(stderr, "QuakMeeting: Could not load libpython. dlerror: %s\n", dlerror());
+        /* Fall back to execv as last resort */
+        char python_bin[PATH_MAX];
+        snprintf(python_bin, sizeof(python_bin), "%s/QuakMeeting_Python", real_path);
+        char *fallback_argv[] = {python_bin, main_py_path, NULL};
+        execv(python_bin, fallback_argv);
+        perror("QuakMeeting: execv fallback also failed");
+        return 1;
+    }
+
+    /* Resolve Py_Main and helpers */
+    Py_Main_t py_main = (Py_Main_t)dlsym(python_lib, "Py_Main");
+    Py_DecodeLocale_t py_decode = (Py_DecodeLocale_t)dlsym(python_lib, "Py_DecodeLocale");
+
+    if (!py_main || !py_decode) {
+        fprintf(stderr, "QuakMeeting: Could not resolve Py_Main/Py_DecodeLocale\n");
+        return 1;
+    }
+
+    /* Build wchar_t argv for Py_Main: [exe_path, main.py, original_args...] */
+    int py_argc = argc + 1;  /* insert main.py as argv[1] */
+    wchar_t **py_argv = malloc(sizeof(wchar_t *) * (py_argc + 1));
+    if (!py_argv) return 1;
+
+    py_argv[0] = py_decode(exe_path, NULL);       /* argv[0] = our Mach-O binary */
+    py_argv[1] = py_decode(main_py_path, NULL);    /* argv[1] = main.py */
+    for (int i = 1; i < argc; i++) {
+        py_argv[i + 1] = py_decode(argv[i], NULL);
+    }
+    py_argv[py_argc] = NULL;
+
+    /* Run Python — this blocks until the app exits */
+    int rc = py_main(py_argc, py_argv);
+    return rc;
+}
+"""
+    # Find the actual dylib path to embed in the C code
+    dylib_path = None
+    py_version = f"{sys.version_info.major}.{sys.version_info.minor}"
+    for candidate in [
+        os.path.join(sys.prefix, "lib", f"libpython{py_version}.dylib"),
+        f"/opt/miniconda3/lib/libpython{py_version}.dylib",
+        f"/opt/homebrew/lib/libpython{py_version}.dylib",
+        f"/usr/local/lib/libpython{py_version}.dylib",
+    ]:
+        if os.path.exists(candidate):
+            dylib_path = candidate
+            break
+    
+    if dylib_path:
+        c_stub = c_stub.replace("PLACEHOLDER_DYLIB", dylib_path)
+        print(f"  ✓ Found libpython dylib: {dylib_path}")
+    else:
+        c_stub = c_stub.replace("PLACEHOLDER_DYLIB", f"/opt/miniconda3/lib/libpython{py_version}.dylib")
+        print(f"  ⚠️ libpython dylib not found at expected paths, using default")
+    
+    c_path = os.path.join(PROJECT_DIR, "launcher_stub.c")
+    with open(c_path, "w") as f:
+        f.write(c_stub)
         
-    os.chmod(launcher_path, 0o755)
+    launcher_path = os.path.join(MACOS_DIR, "QuakMeeting")
+    # Compile with include path for Python.h (not strictly needed for dlopen approach,
+    # but ensures the build environment is clean)
+    subprocess.run(["clang", "-O2", "-Wall", c_path, "-o", launcher_path], check=True)
+    os.remove(c_path)
+    
     print(f"🚀 QuakMeeting.app successfully created in: {APP_DIR}")
     
     # 6. Install cleanly into /Applications

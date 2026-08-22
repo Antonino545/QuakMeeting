@@ -14,12 +14,14 @@ try:
     from core.config_manager import config
     from core.calendar_scanner import get_upcoming_meetings, sync_calendar_now, get_available_calendars
     from core.services.eta_service import eta_service, MODE_ICONS, MODE_LABELS
+    from core.services.event_bus import event_bus
     from core.logger import open_log_file, open_log_folder
     from ui.banner_window import _run_banner
 except ImportError:
     from config_manager import config
     from calendar_scanner import get_upcoming_meetings, sync_calendar_now, get_available_calendars
     from eta_service import eta_service, MODE_ICONS, MODE_LABELS
+    from event_bus import event_bus
     from logger import open_log_file, open_log_folder
     from banner_window import _run_banner
 
@@ -203,7 +205,16 @@ class DashboardWindowController(AppKit.NSObject):
         if upcoming:
             next_m = upcoming[0]
             s_str = next_m["start_time"].strftime("%H:%M") if next_m.get("start_time") else "--:--"
-            self.status_lbl.setStringValue_(f"🟢 Scanner Active  •  {count} events scheduled today  •  Next: {s_str}")
+            travel_info = ""
+            if next_m.get("travel_time_minutes"):
+                t_mode = next_m.get("transport_mode", config.get("transport_mode", "transit"))
+                icon = MODE_ICONS.get(t_mode, "🚗")
+                dep_dt = next_m.get("departure_time")
+                if isinstance(dep_dt, datetime):
+                    travel_info = f"  •  ⏱️ {icon} ~{next_m['travel_time_minutes']}m (Leave at {dep_dt.strftime('%H:%M')})"
+                else:
+                    travel_info = f"  •  ⏱️ {icon} ~{next_m['travel_time_minutes']}m travel"
+            self.status_lbl.setStringValue_(f"🟢 Scanner Active  •  {count} events today  •  Next: {s_str}{travel_info}")
         else:
             self.status_lbl.setStringValue_("🟢 Scanner Active  •  No remaining events for today")
             
@@ -230,7 +241,16 @@ class DashboardWindowController(AppKit.NSObject):
                     if up:
                         nx = up[0]
                         st = nx["start_time"].strftime("%H:%M") if nx.get("start_time") else "--:--"
-                        self.status_lbl.setStringValue_(f"🟢 Scanner Active  •  {cnt} events scheduled today  •  Next: {st}")
+                        tr_info = ""
+                        if nx.get("travel_time_minutes"):
+                            tm = nx.get("transport_mode", config.get("transport_mode", "transit"))
+                            ic = MODE_ICONS.get(tm, "🚗")
+                            dp = nx.get("departure_time")
+                            if isinstance(dp, datetime):
+                                tr_info = f"  •  ⏱️ {ic} ~{nx['travel_time_minutes']}m (Leave at {dp.strftime('%H:%M')})"
+                            else:
+                                tr_info = f"  •  ⏱️ {ic} ~{nx['travel_time_minutes']}m travel"
+                        self.status_lbl.setStringValue_(f"🟢 Scanner Active  •  {cnt} events today  •  Next: {st}{tr_info}")
                     else:
                         self.status_lbl.setStringValue_("🟢 Scanner Active  •  No remaining events for today")
                     self._render_current_tab()
@@ -364,12 +384,18 @@ class DashboardWindowController(AppKit.NSObject):
         loc = m.get("location")
         if loc and loc != "missing value":
             sub_str += f"  •  📍 {loc[:35]}"
-            if m.get("travel_time_minutes"):
-                t_mode = m.get("transport_mode", config.get("transport_mode", "transit"))
-                icon = MODE_ICONS.get(t_mode, "🚆")
-                sub_str += f" ({icon} ~{m['travel_time_minutes']}m)"
         elif m.get("action_url") and "meet.google.com" in m["action_url"]:
             sub_str += "  •  🌐 Google Meet"
+
+        # Dedicated Travel Time Display
+        if m.get("travel_time_minutes"):
+            t_mode = m.get("transport_mode", config.get("transport_mode", "transit"))
+            icon = MODE_ICONS.get(t_mode, "🚗")
+            dep_dt = m.get("departure_time")
+            if isinstance(dep_dt, datetime):
+                sub_str += f"  •  ⏱️ {icon} ~{m['travel_time_minutes']} min (Leave at {dep_dt.strftime('%H:%M')})"
+            else:
+                sub_str += f"  •  ⏱️ {icon} ~{m['travel_time_minutes']} min travel"
 
         sub_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(62, 16, w - 275, 20))
         sub_lbl.setStringValue_(sub_str)
@@ -389,8 +415,9 @@ class DashboardWindowController(AppKit.NSObject):
 
         if action_url:
             btn_title = m.get("action_btn_text", "🚀 JOIN")
+            travel_min = m.get("travel_time_minutes")
             if "MAPS" in btn_title or "MAPPE" in btn_title or "maps.apple.com" in action_url:
-                btn_short = "🗺️ Maps"
+                btn_short = f"🗺️ Maps (~{travel_min}m)" if travel_min else "🗺️ Maps"
             elif "ZOOM" in btn_title or "zoom.us" in action_url:
                 btn_short = "🔷 Zoom"
             elif "TEAMS" in btn_title or "teams.microsoft" in action_url:
@@ -635,7 +662,7 @@ class DashboardWindowController(AppKit.NSObject):
         
         c1_h = 195.0 # Notification Lead Times
         c_eta_h = 185.0 # Home / Departure Address & Apple Maps ETA
-        c2_h = 140.0 # Screen Banner & Flight Dynamics
+        c2_h = 185.0 # Screen Banner & Menu Bar Live Display Dynamics
         c3_h = 140.0 # Sound Chimes
         c4_h = 135.0 # Included Calendars
         c5_h = 125.0 # System & JSON Config
@@ -848,10 +875,36 @@ class DashboardWindowController(AppKit.NSObject):
         ], buf_val, "onSelectETABuffer:", y, w)
 
     def _build_flight_section(self, card, w, h):
-        self._add_section_header(card, "✈️ Display & Banner Flight Dynamics", "Personalize screen position and aircraft flight traversal speed.", h - 28, w)
+        self._add_section_header(card, "✈️ Display & Menu Bar Live Status Modes", "Personalize menu bar status display style, screen position, and flight speed.", h - 28, w)
 
         y = h - 68.0
-        # 1. Banner Position
+        # 1. Menu Bar Display Mode
+        lbl0 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, y + 2, 280, 20))
+        lbl0.setStringValue_("🦆 Menu Bar Live Status Mode:")
+        lbl0.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.5))
+        lbl0.setTextColor_(AppKit.NSColor.whiteColor())
+        lbl0.setBezeled_(False)
+        lbl0.setDrawsBackground_(False)
+        lbl0.setEditable_(False)
+        card.addSubview_(lbl0)
+
+        modes = ["countdown", "event_time", "time_only", "icon_only"]
+        curr_mb_mode = config.get("menubar_status_mode", "countdown")
+        sel_mb_idx = modes.index(curr_mb_mode) if curr_mb_mode in modes else 0
+
+        mb_segmented = AppKit.NSSegmentedControl.alloc().initWithFrame_(AppKit.NSMakeRect(300, y - 2, 440, 28))
+        mb_segmented.setSegmentCount_(4)
+        mb_segmented.setLabel_forSegment_("⏳ Countdown", 0)
+        mb_segmented.setLabel_forSegment_("🕐 Start Time", 1)
+        mb_segmented.setLabel_forSegment_("⏱️ Time Only", 2)
+        mb_segmented.setLabel_forSegment_("🦆 Icon Only", 3)
+        mb_segmented.setSelectedSegment_(sel_mb_idx)
+        mb_segmented.setTarget_(self)
+        mb_segmented.setAction_("onSelectMenuBarMode:")
+        card.addSubview_(mb_segmented)
+
+        y -= 44.0
+        # 2. Banner Position
         lbl1 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, y + 2, 280, 20))
         lbl1.setStringValue_("📍 Banner Screen Position:")
         lbl1.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.5))
@@ -872,7 +925,7 @@ class DashboardWindowController(AppKit.NSObject):
         card.addSubview_(pos_segmented)
 
         y -= 44.0
-        # 2. Flight Speed
+        # 3. Flight Speed
         curr_spd = int(float(config.get("flight_speed", 3.2)) * 10)
         self._add_popup_row(card, "🚀 Flight Animation Speed:", "Adjust the horizontal crossing velocity of the notification banner", [
             ("🐢 Relaxed (2.0x)", 20), ("✈️ Standard (3.2x - Default)", 32), ("🚀 Turbo (4.8x)", 48), ("⚡ Supersonic (6.0x)", 60)
@@ -1083,6 +1136,16 @@ class DashboardWindowController(AppKit.NSObject):
     def onSelectSnoozeDuration_(self, sender):
         val_min = sender.selectedItem().representedObject()
         config.set("default_snooze_seconds", int(val_min) * 60)
+
+    def onSelectMenuBarMode_(self, sender):
+        modes = ["countdown", "event_time", "time_only", "icon_only"]
+        sel = sender.selectedSegment()
+        if 0 <= sel < len(modes):
+            config.set("menubar_status_mode", modes[sel])
+            try:
+                event_bus.publish("CONFIG_CHANGED", key="menubar_status_mode")
+            except Exception:
+                pass
 
     def onSelectBannerPosition_(self, sender):
         pos = "top" if sender.selectedSegment() == 0 else "bottom"
