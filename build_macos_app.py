@@ -65,7 +65,6 @@ def check_python_code():
         import core.providers
         import core.config_manager
         import core.calendar_scanner
-        import core.autostart
         import ui.banner
         import ui.dashboard_window
         import ui.menu_bar_app
@@ -107,7 +106,7 @@ def build_bundle():
     shutil.copytree(os.path.join(PROJECT_DIR, "ui"), os.path.join(RESOURCES_DIR, "ui"), dirs_exist_ok=True)
     shutil.copy2(os.path.join(PROJECT_DIR, "main.py"), os.path.join(RESOURCES_DIR, "main.py"))
             
-    # 4. Create Info.plist
+    # 4. Create Info.plist with LSUIElement (Menu Bar Accessory Agent)
     info_plist_content = """<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -130,6 +129,8 @@ def build_bundle():
     <string>1</string>
     <key>LSMinimumSystemVersion</key>
     <string>11.0</string>
+    <key>LSUIElement</key>
+    <false/>
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>NSCalendarsUsageDescription</key>
@@ -178,7 +179,20 @@ exec "$PYTHON_BIN" "$DIR/main.py" --dashboard "$@" >> "$LOG_FILE" 2>&1
     os.chmod(launcher_path, 0o755)
     print(f"🚀 QuakMeeting.app successfully created in: {APP_DIR}")
     
-    # 6. Create Desktop shortcut
+    # 6. Install cleanly into /Applications
+    apps_target = "/Applications/QuakMeeting.app"
+    try:
+        if os.path.exists(apps_target):
+            if os.path.islink(apps_target):
+                os.unlink(apps_target)
+            else:
+                shutil.rmtree(apps_target)
+        shutil.copytree(APP_DIR, apps_target, symlinks=True)
+        print(f"📦 Installed cleanly into /Applications: {apps_target}")
+    except Exception as e:
+        print(f"Applications install note: {e}")
+
+    # 7. Create Desktop shortcut
     desktop_app = os.path.expanduser("~/Desktop/QuakMeeting.app")
     try:
         if os.path.exists(desktop_app):
@@ -186,7 +200,7 @@ exec "$PYTHON_BIN" "$DIR/main.py" --dashboard "$@" >> "$LOG_FILE" 2>&1
                 os.unlink(desktop_app)
             else:
                 shutil.rmtree(desktop_app)
-        os.symlink(APP_DIR, desktop_app)
+        os.symlink(apps_target if os.path.exists(apps_target) else APP_DIR, desktop_app)
         print(f"📍 Shortcut created on Desktop: {desktop_app}")
     except Exception as e:
         print(f"Desktop note: {e}")

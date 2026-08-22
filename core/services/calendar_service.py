@@ -1,13 +1,14 @@
 """
 Calendar Service for QuakMeeting.
 Coordinates in-memory and disk caching, provider querying, background sync, and ETA route enrichment.
+Strictly retrieves only current and upcoming events for Today and Tomorrow.
 """
 import os
 import json
 import time
 import threading
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 
 from core.domain.models import Meeting
@@ -16,7 +17,6 @@ from core.services.config_service import config_service, ConfigService
 from core.services.event_bus import event_bus, EventBus
 from core.services.eta_service import eta_service, ETAService, MODE_ICONS
 from core.providers.base import BaseCalendarProvider
-from core.providers.applescript_provider import AppleScriptCalendarProvider
 from core.providers.eventkit_provider import EventKitCalendarProvider
 
 logger = logging.getLogger("QuakMeeting.CalendarService")
@@ -26,7 +26,7 @@ CACHE_FILE = os.path.join(CACHE_DIR, "calendar_cache.json")
 CACHE_TTL_SECONDS = 90.0
 
 class CalendarService:
-    """Manages meeting fetching, caching, and calendar synchronization."""
+    """Manages meeting fetching, caching, and calendar synchronization for Today and Tomorrow."""
     _instance = None
     _lock = threading.Lock()
 
@@ -42,10 +42,18 @@ class CalendarService:
             return
         self.config = config or config_service
         self.bus = bus or event_bus
-        self._provider = provider or AppleScriptCalendarProvider(self.config)
+        
+        # Select best available provider (EventKit if available, else AppleScript)
+        if provider:
+            self._provider = provider
+        else:
+            self._provider = EventKitCalendarProvider(self.config)
+
         self._in_memory_cache: List[Meeting] = []
         self._last_fetch_time: float = 0.0
         self._is_fetching: bool = False
+        self._cached_calendars: List[Dict[str, Any]] = []
+        self._last_calendars_fetch_time: float = 0.0
         self._fetch_lock = threading.Lock()
         self._initialized = True
 
@@ -96,15 +104,29 @@ class CalendarService:
         except Exception as e:
             logger.warning(f"Error saving calendar cache to disk: {e}")
 
+    def _filter_today_and_tomorrow(self, meetings: List[Meeting]) -> List[Meeting]:
+        """Filters events so only events starting between today (00:00) and tomorrow (23:59:59) are kept."""
+        now = datetime.now()
+        start_of_today = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(hours=2)
+        end_of_tomorrow = (now + timedelta(days=1)).replace(hour=23, minute=59, second=59, microsecond=999999)
+
+        filtered = [
+            m for m in meetings 
+            if m.start_time and start_of_today <= m.start_time <= end_of_tomorrow
+        ]
+        filtered.sort(key=lambda m: m.start_time)
+        return filtered
+
     def _load_cache_from_disk(self) -> List[Meeting]:
         if os.path.exists(CACHE_FILE):
             try:
                 with open(CACHE_FILE, "r", encoding="utf-8") as f:
                     data = json.load(f)
                 loaded = [Meeting.from_dict(item) for item in data]
-                self._in_memory_cache = loaded
+                filtered = self._filter_today_and_tomorrow(loaded)
+                self._in_memory_cache = filtered
                 self._last_fetch_time = os.path.getmtime(CACHE_FILE)
-                return loaded
+                return filtered
             except Exception as e:
                 logger.warning(f"Error loading calendar cache from disk: {e}")
         return []
@@ -114,15 +136,17 @@ class CalendarService:
         with self._fetch_lock:
             self._is_fetching = True
             try:
-                meetings = self._provider.fetch_events()
-                self._enrich_with_eta(meetings)
-                self._in_memory_cache = meetings
+                raw_meetings = self._provider.fetch_events()
+                filtered = self._filter_today_and_tomorrow(raw_meetings)
+                self._enrich_with_eta(filtered)
+                self._in_memory_cache = filtered
                 self._last_fetch_time = time.time()
-                self._save_cache_to_disk(meetings)
-                self.bus.publish("CALENDAR_SYNCED", meetings=meetings)
-                return meetings
+                self._save_cache_to_disk(filtered)
+                logger.info(f"Synchronized {len(filtered)} events scheduled for today and tomorrow.")
+                self.bus.publish("CALENDAR_SYNCED", meetings=filtered)
+                return filtered
             except Exception as e:
-                logger.error(f"Error during calendar synchronization: {e}")
+                logger.error(f"Error during calendar synchronization: {e}", exc_info=True)
                 return self._in_memory_cache
             finally:
                 self._is_fetching = False
@@ -140,8 +164,19 @@ class CalendarService:
 
         return list(self._in_memory_cache)
 
-    def get_available_calendars(self) -> List[Dict[str, Any]]:
-        return self._provider.get_available_calendars()
+    def get_available_calendars(self, force_refresh: bool = False) -> List[Dict[str, Any]]:
+        """Return list of macOS calendars with 5-minute cache to prevent main-thread UI blocking."""
+        if not force_refresh and self._cached_calendars and (time.time() - self._last_calendars_fetch_time < 300.0):
+            return list(self._cached_calendars)
+        
+        try:
+            cals = self._provider.get_available_calendars()
+            self._cached_calendars = cals
+            self._last_calendars_fetch_time = time.time()
+            return list(cals)
+        except Exception as e:
+            logger.error(f"Error fetching calendars list: {e}")
+            return list(self._cached_calendars)
 
 # Global singleton instance
 calendar_service = CalendarService()

@@ -5,7 +5,7 @@ Pure Python matching logic for video meeting providers, keyword pilots, and trav
 import re
 import urllib.parse
 from datetime import datetime
-from typing import Dict, Any, Tuple, Optional, List
+from typing import Dict, Any, Tuple, Optional, List, Union
 from .models import Meeting, PilotType, EventCategory
 
 MEETING_PATTERNS = [
@@ -31,9 +31,9 @@ class EventClassifier:
         self.keywords = custom_keywords or DEFAULT_KEYWORDS
 
     @staticmethod
-    def extract_meeting_url(text: str) -> Optional[str]:
+    def extract_meeting_url(text: Optional[str]) -> Optional[str]:
         """Extract first known video meeting URL from text (notes, description, location)."""
-        if not text or not isinstance(text, str):
+        if not text or not isinstance(text, str) or text == "missing value":
             return None
         for pattern, _, _, _ in MEETING_PATTERNS:
             match = re.search(pattern, text, re.IGNORECASE)
@@ -41,34 +41,82 @@ class EventClassifier:
                 return match.group(0)
         return None
 
-    def classify(self, title: str, location: str = "", description: str = "",
-                 start_time: Optional[datetime] = None, end_time: Optional[datetime] = None) -> Meeting:
+    @staticmethod
+    def extract_classroom_and_teacher(title: str, location: str = "", description: str = "") -> Tuple[Optional[str], Optional[str]]:
+        """
+        Extracts university/academic classroom and professor from strings such as:
+        'ICT for smart mobility (VASSIO LUCA) - Aula 5M'
+        'Sistemi Operativi - Aula 3B (Prof. Rossi)'
+        'Room 201', 'Lab 4', 'Edificio B'
+        """
+        full_text = f"{title} {location} {description}"
+        classroom = None
+        teacher = None
+
+        # 1. Match Teacher in parentheses e.g. (VASSIO LUCA), (Prof. Mario Rossi)
+        teacher_match = re.search(r'\(([A-Z\s\.,\'-]{3,35}|Prof[^\)]+)\)', title)
+        if teacher_match:
+            cand = teacher_match.group(1).strip()
+            if cand.lower() not in ["online", "zoom", "meet", "teams", "remoto", "exam", "oral", "written"]:
+                teacher = cand
+
+        # 2. Match Classroom patterns: "Aula 5M", "Aula Magna", "Room 101", "Lab 3", "Edificio 2"
+        room_match = re.search(r'\b(Aula\s+[0-9A-Za-z]+|Room\s+[0-9A-Za-z]+|Lab(?:oratorio|\.)?\s+[0-9A-Za-z]+|Edificio\s+[0-9A-Za-z]+|Auditorium\s+[0-9A-Za-z]+)', full_text, re.IGNORECASE)
+        if room_match:
+            classroom = room_match.group(1).strip()
+            classroom = re.sub(r'[\-\(\)\]].*$', '', classroom).strip()
+
+        if not classroom and location and location != "missing value":
+            if any(term in location.lower() for term in ["aula", "room", "lab", "campus", "edificio"]):
+                classroom = location.strip()
+
+        return classroom, teacher
+
+    @classmethod
+    def classify(cls, title: str, location: str = "", description: str = "",
+                 meeting_url: Optional[str] = None,
+                 custom_keywords: Optional[Dict[str, List[str]]] = None,
+                 start_time: Optional[datetime] = None,
+                 end_time: Optional[datetime] = None) -> Meeting:
         """Classifies an event by inspecting URLs, keywords, and location metadata."""
-        search_blob = f"{title} {location} {description}".lower()
+        keywords_dict = DEFAULT_KEYWORDS.copy()
+        if isinstance(cls, EventClassifier) and hasattr(cls, 'keywords') and cls.keywords:
+            keywords_dict.update(cls.keywords)
+        if custom_keywords and isinstance(custom_keywords, dict):
+            for k, v in custom_keywords.items():
+                if k in keywords_dict and isinstance(v, list):
+                    keywords_dict[k] = list(set(keywords_dict[k] + v))
+                elif isinstance(v, list):
+                    keywords_dict[k] = v
+
+        classroom, teacher = cls.extract_classroom_and_teacher(title, location, description)
+        search_blob = f"{title} {location} {description} {meeting_url or ''}".lower()
         
         # 1. Match Video Meeting Patterns
-        for pattern, provider_name, p_type, btn_text in MEETING_PATTERNS:
-            match = re.search(pattern, search_blob, re.IGNORECASE)
-            if match:
-                url = match.group(0)
-                return Meeting(
-                    title=title,
-                    start_time=start_time or datetime.now(),
-                    end_time=end_time,
-                    meeting_url=url,
-                    location=location,
-                    description=description,
-                    event_type=EventCategory.VIDEO_MEETING.value,
-                    pilot_type=p_type,
-                    provider=provider_name,
-                    action_btn_text=btn_text,
-                    action_url=url,
-                    theme_name="Teal Modern" if p_type == "zen_duck" else "Sunset Orange",
-                    is_travel=False
-                )
+        active_url = meeting_url or cls.extract_meeting_url(search_blob)
+        if active_url:
+            for pattern, provider_name, p_type, btn_text in MEETING_PATTERNS:
+                if re.search(pattern, active_url, re.IGNORECASE):
+                    return Meeting(
+                        title=title,
+                        start_time=start_time or datetime.now(),
+                        end_time=end_time,
+                        meeting_url=active_url,
+                        location=location,
+                        description=description,
+                        event_type=EventCategory.VIDEO_MEETING.value,
+                        pilot_type=p_type,
+                        provider=provider_name,
+                        action_btn_text=btn_text,
+                        action_url=active_url,
+                        theme_name="Teal Modern" if p_type == "zen_duck" else "Sunset Orange",
+                        is_travel=False,
+                        classroom=classroom,
+                        teacher=teacher
+                    )
 
         # 2. Check Physical Food / Dinner keywords
-        for kw in self.keywords.get("chef", []):
+        for kw in keywords_dict.get("chef", []):
             if kw in search_blob:
                 maps_dest = location if (location and location != "missing value") else title
                 maps_url = f"https://maps.apple.com/?q={urllib.parse.quote(maps_dest)}"
@@ -83,12 +131,14 @@ class EventClassifier:
                     provider="Dinner / Food 🍕🍽️",
                     action_btn_text="🗺️ RESTAURANT DIRECTIONS (MAPS)",
                     action_url=maps_url,
-                    theme_name="Chef Orange",
-                    is_travel=True
+                    theme_name="Coral Food",
+                    is_travel=True,
+                    classroom=classroom,
+                    teacher=teacher
                 )
 
         # 3. Check Travel / Flights / Airport / Trains
-        for kw in self.keywords.get("captain", []):
+        for kw in keywords_dict.get("captain", []):
             if kw in search_blob:
                 maps_dest = location if (location and location != "missing value") else title
                 maps_url = f"https://maps.apple.com/?q={urllib.parse.quote(maps_dest)}"
@@ -104,32 +154,37 @@ class EventClassifier:
                     action_btn_text="🗺️ TRAVEL DIRECTIONS (MAPS)",
                     action_url=maps_url,
                     theme_name="Sky Captain Blue",
-                    is_travel=True
+                    is_travel=True,
+                    classroom=classroom,
+                    teacher=teacher
                 )
 
-        # 4. Check University / Academic Owl
-        for kw in self.keywords.get("owl", []):
-            if kw in search_blob:
-                is_trav = bool(location and location != "missing value" and "online" not in search_blob)
-                maps_dest = location if is_trav else title
-                maps_url = f"https://maps.apple.com/?q={urllib.parse.quote(maps_dest)}" if is_trav else "https://calendar.apple.com"
-                return Meeting(
-                    title=title,
-                    start_time=start_time or datetime.now(),
-                    end_time=end_time,
-                    location=location,
-                    description=description,
-                    event_type=EventCategory.STUDY.value,
-                    pilot_type=PilotType.OWL.value,
-                    provider="Study / University 🎓",
-                    action_btn_text="🗺️ CAMPUS & CLASSROOM" if is_trav else "📚 CLASSROOM & NOTES",
-                    action_url=maps_url,
-                    theme_name="Academic Purple",
-                    is_travel=is_trav
-                )
+        # 4. Check University / Academic Owl or Classroom presence
+        is_academic = bool(classroom) or any(kw in search_blob for kw in keywords_dict.get("owl", []))
+        if is_academic:
+            is_trav = bool(location and location != "missing value" and "online" not in search_blob)
+            maps_dest = location if is_trav else (f"{title} {classroom or ''}".strip())
+            maps_url = f"https://maps.apple.com/?q={urllib.parse.quote(maps_dest)}" if is_trav else "https://calendar.apple.com"
+            provider_label = f"Study / Class 🎓 {classroom}" if classroom else "Study / University 🎓"
+            return Meeting(
+                title=title,
+                start_time=start_time or datetime.now(),
+                end_time=end_time,
+                location=location,
+                description=description,
+                event_type=EventCategory.STUDY.value,
+                pilot_type=PilotType.OWL.value,
+                provider=provider_label,
+                action_btn_text=f"🗺️ {classroom or 'CAMPUS'} (MAPS)" if is_trav else "📚 CLASSROOM & NOTES",
+                action_url=maps_url,
+                theme_name="Academic Purple",
+                is_travel=is_trav,
+                classroom=classroom,
+                teacher=teacher
+            )
 
         # 5. Check Gym / Fitness / Driver
-        for kw in self.keywords.get("driver", []):
+        for kw in keywords_dict.get("driver", []):
             if kw in search_blob:
                 maps_dest = location if (location and location != "missing value") else title
                 maps_url = f"https://maps.apple.com/?daddr={urllib.parse.quote(maps_dest)}"
@@ -149,7 +204,7 @@ class EventClassifier:
                 )
 
         # 6. Check Therapy / Zen Duck
-        for kw in self.keywords.get("zen_duck", []):
+        for kw in keywords_dict.get("zen_duck", []):
             if kw in search_blob:
                 return Meeting(
                     title=title,
@@ -200,27 +255,3 @@ class EventClassifier:
             is_travel=False
         )
 
-    @staticmethod
-    def parse_applescript_date(date_str: str) -> Optional[datetime]:
-        """Parses AppleScript localized dates into Python datetime objects."""
-        if not date_str or date_str == "missing value":
-            return None
-        cleaned = date_str.replace("alle ", "").replace("at ", "").strip()
-        formats = [
-            "%d/%m/%Y, %H:%M:%S",
-            "%d/%m/%Y %H:%M:%S",
-            "%Y-%m-%d %H:%M:%S",
-            "%d %B %Y %H:%M:%S",
-            "%d/%m/%Y, %H:%M",
-            "%d/%m/%Y %H:%M",
-            "%Y-%m-%dT%H:%M:%S",
-            "%A %d %B %Y %H:%M:%S",
-            "%A, %d %B %Y %H:%M:%S",
-            "%a %d %b %Y %H:%M:%S"
-        ]
-        for fmt in formats:
-            try:
-                return datetime.strptime(cleaned, fmt)
-            except ValueError:
-                continue
-        return None

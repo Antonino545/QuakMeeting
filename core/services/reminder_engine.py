@@ -10,17 +10,27 @@ from typing import List, Set, Dict, Optional, Tuple
 from core.domain.models import Meeting
 from core.services.event_bus import event_bus, EventBus
 from core.services.config_service import config_service, ConfigService
+from core.services.arrival_service import arrival_service, ArrivalService
 from core.logger import setup_logging
 
 logger = logging.getLogger("QuakMeeting.ReminderEngine")
 
 class ReminderEngine:
-    """Calculates reminder triggers for meetings based on configurable stage intervals and travel ETA."""
+    """Calculates reminder triggers for meetings based on configurable stage intervals, arrival status, and travel ETA."""
 
     def __init__(self, config: Optional[ConfigService] = None, bus: Optional[EventBus] = None):
         self.config = config or config_service
         self.bus = bus or event_bus
         self.notified_stage_keys: Set[str] = set()
+
+    def mark_arrived(self, meeting_id: str) -> None:
+        """Marks meeting as arrived, suppressing all remaining reminder stages for it."""
+        arrival_service.mark_arrived(meeting_id)
+        # Suppress all future keys for this meeting
+        for s in range(0, 60):
+            self.notified_stage_keys.add(f"{meeting_id}_stage_{s}")
+        self.notified_stage_keys.add(f"{meeting_id}_departure_alert")
+        logger.info(f"Suppressed future reminders for arrived event: {meeting_id}")
 
     def reset_state(self) -> None:
         """Clear fired notifications cache (useful for testing or daily reset)."""
@@ -71,6 +81,11 @@ class ReminderEngine:
 
         for m in meetings:
             if not m.start_time:
+                continue
+
+            # Check if user already arrived (manually or via Wi-Fi/Active app)
+            if arrival_service.is_meeting_arrived(m):
+                logger.info(f"  ✓ \"{m.title}\" ({m.provider}) | Arrived / Active. Suppressed.")
                 continue
 
             diff_min = (m.start_time - now).total_seconds() / 60.0

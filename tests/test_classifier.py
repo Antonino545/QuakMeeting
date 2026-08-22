@@ -62,6 +62,14 @@ class TestEventClassifier(unittest.TestCase):
         self.assertEqual(meeting.pilot_type, PilotType.OWL.value)
         self.assertEqual(meeting.event_type, EventCategory.STUDY.value)
 
+    def test_classroom_and_teacher_extraction(self):
+        title = "ICT for smart mobility (VASSIO LUCA) - Aula 5M"
+        meeting = self.classifier.classify(title=title, location="Politecnico")
+        self.assertEqual(meeting.pilot_type, PilotType.OWL.value)
+        self.assertEqual(meeting.classroom, "Aula 5M")
+        self.assertEqual(meeting.teacher, "VASSIO LUCA")
+        self.assertIn("Aula 5M", meeting.provider)
+
     def test_classify_zen_duck(self):
         meeting = self.classifier.classify(
             title="Serenis Online Therapy Session",
@@ -71,14 +79,3 @@ class TestEventClassifier(unittest.TestCase):
         self.assertEqual(meeting.pilot_type, PilotType.ZEN_DUCK.value)
         self.assertEqual(meeting.provider, "Serenis 🛋️")
 
-    def test_parse_applescript_date(self):
-        dt = EventClassifier.parse_applescript_date("2026-08-22T15:30:00")
-        self.assertIsNotNone(dt)
-        self.assertEqual(dt.year, 2026)
-        self.assertEqual(dt.month, 8)
-        self.assertEqual(dt.day, 22)
-        self.assertEqual(dt.hour, 15)
-        self.assertEqual(dt.minute, 30)
-
-if __name__ == "__main__":
-    unittest.main()

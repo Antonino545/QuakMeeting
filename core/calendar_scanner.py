@@ -9,7 +9,6 @@ from core.services.calendar_service import calendar_service, CACHE_DIR, CACHE_FI
 from core.services.config_service import config
 
 extract_meeting_url = EventClassifier.extract_meeting_url
-parse_applescript_date = EventClassifier.parse_applescript_date
 classify_event = EventClassifier.classify
 
 def get_upcoming_meetings(force_refresh: bool = False) -> List[Dict[str, Any]]:
@@ -27,7 +26,6 @@ def get_available_calendars() -> List[Dict[str, Any]]:
 
 __all__ = [
     "extract_meeting_url",
-    "parse_applescript_date",
     "classify_event",
     "get_upcoming_meetings",
     "sync_calendar_now",

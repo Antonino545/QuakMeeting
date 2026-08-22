@@ -130,7 +130,7 @@ def main():
             logger.error("Failed to allocate and initialize QuakMeetingMenuBar!")
             return
         
-        if "--silent" not in sys.argv and "--autostart" not in sys.argv:
+        if "--silent" not in sys.argv:
             show_dashboard()
             
         logger.info("Entering macOS Application Run Loop...")

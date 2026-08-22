@@ -4,19 +4,21 @@ import webbrowser
 import os
 import time
 import threading
+import warnings
 from datetime import datetime
+
+if hasattr(objc, 'ObjCPointerWarning'):
+    warnings.filterwarnings("ignore", category=objc.ObjCPointerWarning)
 
 try:
     from core.config_manager import config
     from core.calendar_scanner import get_upcoming_meetings, sync_calendar_now, get_available_calendars
-    from core.autostart import is_autostart_enabled, enable_autostart, disable_autostart
     from core.services.eta_service import eta_service, MODE_ICONS, MODE_LABELS
     from core.logger import open_log_file, open_log_folder
     from ui.banner_window import _run_banner
 except ImportError:
     from config_manager import config
     from calendar_scanner import get_upcoming_meetings, sync_calendar_now, get_available_calendars
-    from autostart import is_autostart_enabled, enable_autostart, disable_autostart
     from eta_service import eta_service, MODE_ICONS, MODE_LABELS
     from logger import open_log_file, open_log_folder
     from banner_window import _run_banner
@@ -30,6 +32,8 @@ class DashboardWindowDelegate(AppKit.NSObject):
     def windowShouldClose_(self, sender):
         if self.controller:
             self.controller.window.orderOut_(None)
+        else:
+            sender.orderOut_(None)
         return False
 
 class DashboardWindowController(AppKit.NSObject):
@@ -49,10 +53,19 @@ class DashboardWindowController(AppKit.NSObject):
         self.window = None
         self.current_tab = 0 # 0: Agenda, 1: Hangar, 2: Preferences & Settings
         self.meetings = []
+        self.cached_calendars = []
         self.is_loading = False
+        self._last_rendered_signature = None
         
+        threading.Thread(target=self._prewarm_calendars, daemon=True).start()
         self._create_window()
         return self
+
+    def _prewarm_calendars(self):
+        try:
+            self.cached_calendars = get_available_calendars()
+        except Exception:
+            pass
 
     def show(self, tab_index=None):
         if not self.window:
@@ -64,7 +77,6 @@ class DashboardWindowController(AppKit.NSObject):
                 self.tab_segmented.setSelectedSegment_(tab_index)
                 
         app = AppKit.NSApp()
-        app.setActivationPolicy_(AppKit.NSApplicationActivationPolicyRegular)
         self.window.makeKeyAndOrderFront_(None)
         self.window.orderFrontRegardless()
         app.activateIgnoringOtherApps_(True)
@@ -100,7 +112,7 @@ class DashboardWindowController(AppKit.NSObject):
         self.delegate.controller = self
         self.window.setDelegate_(self.delegate)
 
-        # Visual Effect View (Frosted Glass macOS Background)
+        # Single Window Backdrop Frosted Glass Effect
         visual_view = AppKit.NSVisualEffectView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 0, width, height))
         visual_view.setMaterial_(AppKit.NSVisualEffectMaterialUnderWindowBackground)
         visual_view.setBlendingMode_(AppKit.NSVisualEffectBlendingModeBehindWindow)
@@ -231,6 +243,13 @@ class DashboardWindowController(AppKit.NSObject):
         if not self.content_container:
             return
             
+        # Diff render state to prevent redundant subview rebuilds
+        m_sig = tuple((m.get("title"), str(m.get("start_time")), m.get("travel_time_minutes")) for m in self.meetings)
+        current_sig = (self.current_tab, self.is_loading, len(self.meetings), m_sig)
+        if self._last_rendered_signature == current_sig:
+            return
+        self._last_rendered_signature = current_sig
+
         for sub in list(self.content_container.subviews()):
             sub.removeFromSuperview()
 
@@ -305,18 +324,12 @@ class DashboardWindowController(AppKit.NSObject):
 
     def _create_meeting_card(self, m, idx, x, y, w, h):
         card = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(x, y, w, h))
-        
-        # Rounded Frosted Card
-        bg_effect = AppKit.NSVisualEffectView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 0, w, h))
-        bg_effect.setMaterial_(AppKit.NSVisualEffectMaterialPopover)
-        bg_effect.setBlendingMode_(AppKit.NSVisualEffectBlendingModeWithinWindow)
-        bg_effect.setState_(AppKit.NSVisualEffectStateActive)
-        bg_effect.setWantsLayer_(True)
-        bg_effect.layer().setCornerRadius_(12.0)
-        bg_effect.layer().setMasksToBounds_(True)
-        bg_effect.layer().setBorderWidth_(1.0)
-        bg_effect.layer().setBorderColor_(AppKit.NSColor.colorWithWhite_alpha_(1.0, 0.08).CGColor())
-        card.addSubview_(bg_effect)
+        card.setWantsLayer_(True)
+        card.layer().setBackgroundColor_(AppKit.NSColor.colorWithRed_green_blue_alpha_(0.14, 0.16, 0.22, 0.85).CGColor())
+        card.layer().setCornerRadius_(12.0)
+        card.layer().setMasksToBounds_(True)
+        card.layer().setBorderWidth_(1.0)
+        card.layer().setBorderColor_(AppKit.NSColor.colorWithWhite_alpha_(1.0, 0.10).CGColor())
 
         # Pilot Icon
         p_type = m.get("pilot_type", "duck")
@@ -437,12 +450,12 @@ class DashboardWindowController(AppKit.NSObject):
         scroll_view.setDrawsBackground_(False)
         
         pilots = [
-            ("duck", "🦆 Aviator Duck", "Video conferences: Google Meet, Zoom, MS Teams & online meetings.", "Google Green", self.testAviatorDuck),
-            ("chef", "👨‍🍳 Chef Duck & Food", "Dinners, Lunches, Restaurants, Pizzerias & Apple Maps food routes.", "Coral Food", self.testChefDuck),
-            ("captain", "🧑‍✈️ Jet Airliner Captain", "Airline Flights, Airports, High-speed trains, Buses & Travel Routes.", "Sky Blue", self.testCaptainJet),
-            ("owl", "🦉 Academic Owl", "University Lectures, Exams, Campus courses & Study sessions.", "Amethyst Academic", self.testAcademicOwl),
-            ("driver", "🏎️ Speed Racer Driver", "In-person meetings, Gym workouts, Doctor visits & Real-Time Navigation.", "Emerald Speed", self.testSpeedRacer),
-            ("zen_duck", "🦆🌸 Zen Duck", "Serenis sessions, Psychological Therapy, Yoga, Wellness & Meditation.", "Teal Zen", self.testZenDuck)
+            ("duck", "🦆 Aviator Duck", "Video conferences: Google Meet, Zoom, MS Teams & online meetings.", "Google Green", self.testAviatorDuck_),
+            ("chef", "👨‍🍳 Chef Duck & Food", "Dinners, Lunches, Restaurants, Pizzerias & Apple Maps food routes.", "Coral Food", self.testChefDuck_),
+            ("captain", "🧑‍✈️ Jet Airliner Captain", "Airline Flights, Airports, High-speed trains, Buses & Travel Routes.", "Sky Blue", self.testCaptainJet_),
+            ("owl", "🦉 Academic Owl", "University Lectures, Exams, Campus courses & Study sessions.", "Amethyst Academic", self.testAcademicOwl_),
+            ("driver", "🏎️ Speed Racer Driver", "In-person meetings, Gym workouts, Doctor visits & Real-Time Navigation.", "Emerald Speed", self.testSpeedRacer_),
+            ("zen_duck", "🦆🌸 Zen Duck", "Serenis sessions, Psychological Therapy, Yoga, Wellness & Meditation.", "Teal Zen", self.testZenDuck_)
         ]
 
         card_h = 108.0
@@ -463,17 +476,12 @@ class DashboardWindowController(AppKit.NSObject):
 
     def _create_pilot_card(self, p_id, p_name, p_desc, p_theme, p_action, x, y, w, h):
         card = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(x, y, w, h))
-        
-        bg_effect = AppKit.NSVisualEffectView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 0, w, h))
-        bg_effect.setMaterial_(AppKit.NSVisualEffectMaterialPopover)
-        bg_effect.setBlendingMode_(AppKit.NSVisualEffectBlendingModeWithinWindow)
-        bg_effect.setState_(AppKit.NSVisualEffectStateActive)
-        bg_effect.setWantsLayer_(True)
-        bg_effect.layer().setCornerRadius_(14.0)
-        bg_effect.layer().setMasksToBounds_(True)
-        bg_effect.layer().setBorderWidth_(1.0)
-        bg_effect.layer().setBorderColor_(AppKit.NSColor.colorWithWhite_alpha_(1.0, 0.10).CGColor())
-        card.addSubview_(bg_effect)
+        card.setWantsLayer_(True)
+        card.layer().setBackgroundColor_(AppKit.NSColor.colorWithRed_green_blue_alpha_(0.14, 0.16, 0.22, 0.85).CGColor())
+        card.layer().setCornerRadius_(14.0)
+        card.layer().setMasksToBounds_(True)
+        card.layer().setBorderWidth_(1.0)
+        card.layer().setBorderColor_(AppKit.NSColor.colorWithWhite_alpha_(1.0, 0.10).CGColor())
 
         # Pilot Title
         title_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(20, h - 38, w - 210, 26))
@@ -511,13 +519,14 @@ class DashboardWindowController(AppKit.NSObject):
         test_btn.setBezelStyle_(AppKit.NSBezelStyleRounded)
         test_btn.setFont_(AppKit.NSFont.boldSystemFontOfSize_(13))
         test_btn.setTarget_(self)
-        test_btn.setAction_(p_action.__name__ + ":")
+        test_btn.setAction_(p_action.__name__.rstrip('_') + ":")
         card.addSubview_(test_btn)
 
         return card
 
     # Pilot Test Presets
-    def testAviatorDuck(self):
+    @objc.IBAction
+    def testAviatorDuck_(self, sender):
         _run_banner({
             "title": "Weekly Sprint Planning (Google Meet)",
             "provider": "Google Meet 🟢",
@@ -528,19 +537,21 @@ class DashboardWindowController(AppKit.NSObject):
             "is_travel": False
         })
 
-    def testChefDuck(self):
+    @objc.IBAction
+    def testChefDuck_(self, sender):
         _run_banner({
             "title": "Dinner with Friends at Pizzeria",
             "provider": "Dinner / Food 🍕🍽️",
             "pilot_type": "chef",
             "action_btn_text": "🗺️ RESTAURANT DIRECTIONS (MAPS)",
             "action_url": "https://maps.apple.com/?q=Pizzeria+Napoli",
-            "location": "Pizzeria Da Michele",
+            "location": "Pizzeria Da Michele, London",
             "start_time": datetime.now(),
             "is_travel": True
         })
 
-    def testCaptainJet(self):
+    @objc.IBAction
+    def testCaptainJet_(self, sender):
         _run_banner({
             "title": "Flight to London (BA 257)",
             "provider": "Flight / Travel ✈️",
@@ -552,19 +563,23 @@ class DashboardWindowController(AppKit.NSObject):
             "is_travel": True
         })
 
-    def testAcademicOwl(self):
+    @objc.IBAction
+    def testAcademicOwl_(self, sender):
         _run_banner({
-            "title": "SmartGrid & ICT Lecture",
-            "provider": "Study / University 🎓",
+            "title": "ICT for smart mobility (VASSIO LUCA) - Aula 5M",
+            "provider": "Study / Class 🎓 Aula 5M",
             "pilot_type": "owl",
+            "classroom": "Aula 5M",
+            "teacher": "VASSIO LUCA",
             "action_btn_text": "📚 CLASSROOM & NOTES",
             "action_url": "https://calendar.apple.com",
-            "location": "Politecnico - Room 7",
+            "location": "Politecnico - Aula 5M",
             "start_time": datetime.now(),
             "is_travel": False
         })
 
-    def testSpeedRacer(self):
+    @objc.IBAction
+    def testSpeedRacer_(self, sender):
         _run_banner({
             "title": "CrossFit Training & Workout",
             "provider": "In Person 📍 Travel Time!",
@@ -576,7 +591,8 @@ class DashboardWindowController(AppKit.NSObject):
             "is_travel": True
         })
 
-    def testZenDuck(self):
+    @objc.IBAction
+    def testZenDuck_(self, sender):
         _run_banner({
             "title": "Serenis Online Therapy Session",
             "provider": "Serenis 🛋️",
@@ -586,6 +602,24 @@ class DashboardWindowController(AppKit.NSObject):
             "start_time": datetime.now(),
             "is_travel": False
         })
+
+    @objc.IBAction
+    def onMarkArrived_(self, sender):
+        idx = sender.tag()
+        if 0 <= idx < len(self.meetings):
+            m = self.meetings[idx]
+            from core.services.reminder_engine import reminder_engine
+            from core.domain.models import Meeting
+            if isinstance(m, Meeting):
+                m_id = m.id
+            else:
+                m_title = m.get("title", "")
+                m_start = m.get("start_time")
+                time_str = m_start.strftime("%Y%m%d%H%M") if hasattr(m_start, "strftime") else "000000000000"
+                m_id = f"{m_title}_{time_str}"
+            reminder_engine.mark_arrived(m_id)
+            sender.setTitle_("✓ Arrived")
+            sender.setEnabled_(False)
 
     # -------------------------------------------------------------
     # TAB 3: PREFERENCES & TIMING SETTINGS
@@ -653,18 +687,14 @@ class DashboardWindowController(AppKit.NSObject):
         self.content_container.addSubview_(scroll_view)
 
     def _create_card_container(self, x, y, w, h):
-        """Creates a modern frosted glass container."""
+        """Creates a modern lightweight card container with zero blur overhead."""
         card = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(x, y, w, h))
-        bg_effect = AppKit.NSVisualEffectView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 0, w, h))
-        bg_effect.setMaterial_(AppKit.NSVisualEffectMaterialPopover)
-        bg_effect.setBlendingMode_(AppKit.NSVisualEffectBlendingModeWithinWindow)
-        bg_effect.setState_(AppKit.NSVisualEffectStateActive)
-        bg_effect.setWantsLayer_(True)
-        bg_effect.layer().setCornerRadius_(14.0)
-        bg_effect.layer().setMasksToBounds_(True)
-        bg_effect.layer().setBorderWidth_(1.0)
-        bg_effect.layer().setBorderColor_(AppKit.NSColor.colorWithWhite_alpha_(1.0, 0.10).CGColor())
-        card.addSubview_(bg_effect)
+        card.setWantsLayer_(True)
+        card.layer().setBackgroundColor_(AppKit.NSColor.colorWithRed_green_blue_alpha_(0.14, 0.16, 0.22, 0.85).CGColor())
+        card.layer().setCornerRadius_(14.0)
+        card.layer().setMasksToBounds_(True)
+        card.layer().setBorderWidth_(1.0)
+        card.layer().setBorderColor_(AppKit.NSColor.colorWithWhite_alpha_(1.0, 0.10).CGColor())
         return card
 
     def _add_section_header(self, parent, title, subtitle, y, w):
@@ -904,7 +934,10 @@ class DashboardWindowController(AppKit.NSObject):
     def _build_calendars_section(self, card, w, h):
         self._add_section_header(card, "📅 Included macOS Calendars", "Select which calendars to actively monitor for reminders.", h - 28, w)
         
-        cals = get_available_calendars()
+        cals = self.cached_calendars if self.cached_calendars else get_available_calendars()
+        if not self.cached_calendars and cals:
+            self.cached_calendars = cals
+
         if not cals:
             lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 68, w - 36, 22))
             lbl.setStringValue_("All Apple Calendar accounts are currently monitored.")
@@ -935,21 +968,10 @@ class DashboardWindowController(AppKit.NSObject):
                 y -= 30.0
 
     def _build_system_section(self, card, w, h):
-        self._add_section_header(card, "🚀 System & macOS Integration", "Manage login startup and advanced JSON rule customization.", h - 28, w)
+        self._add_section_header(card, "🛠️ System Diagnostics & JSON Rules", "Customize classification rules and view diagnostic crash logs.", h - 28, w)
 
         y = h - 68.0
-        # 1. Autostart Switch
-        autostart_chk = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(18, y, 420, 24))
-        autostart_chk.setButtonType_(AppKit.NSButtonTypeSwitch)
-        autostart_chk.setTitle_("🚀 Launch QuakMeeting automatically at macOS login")
-        autostart_chk.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.5))
-        autostart_chk.setState_(AppKit.NSControlStateValueOn if is_autostart_enabled() else AppKit.NSControlStateValueOff)
-        autostart_chk.setTarget_(self)
-        autostart_chk.setAction_("onToggleAutostart:")
-        card.addSubview_(autostart_chk)
-
-        y -= 44.0
-        # 2. Config JSON & Log Diagnostic Buttons
+        # Config JSON & Log Diagnostic Buttons
         open_json_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(18, y - 2, 210, 32))
         open_json_btn.setTitle_("📝 Edit Rules (config.json)...")
         open_json_btn.setBezelStyle_(AppKit.NSBezelStyleRounded)
@@ -1046,12 +1068,16 @@ class DashboardWindowController(AppKit.NSObject):
 
     def onToggleCalendarSource_(self, sender):
         cal_name = sender.toolTip() or sender.title().replace("📅 ", "")
+        is_on = (sender.state() == AppKit.NSControlStateValueOn)
         ignored = set(config.get("ignored_calendars", []))
-        if sender.state() == AppKit.NSControlStateValueOn:
+        if is_on:
             ignored.discard(cal_name)
         else:
             ignored.add(cal_name)
         config.set("ignored_calendars", list(ignored))
+        for cal in self.cached_calendars:
+            if cal.get("name") == cal_name:
+                cal["enabled"] = is_on
         self.refresh_data(force=True)
 
     def onSelectSnoozeDuration_(self, sender):
@@ -1086,12 +1112,6 @@ class DashboardWindowController(AppKit.NSObject):
         except Exception:
             pass
 
-    def onToggleAutostart_(self, sender):
-        if is_autostart_enabled():
-            disable_autostart()
-        else:
-            enable_autostart()
-
     def onOpenConfigEditor_(self, sender):
         config.open_config_in_editor()
 
@@ -1111,6 +1131,6 @@ def show_dashboard(tab_index=None):
 
 if __name__ == "__main__":
     app = AppKit.NSApplication.sharedApplication()
-    app.setActivationPolicy_(AppKit.NSApplicationActivationPolicyRegular)
+    app.setActivationPolicy_(AppKit.NSApplicationActivationPolicyAccessory)
     show_dashboard()
     app.run()

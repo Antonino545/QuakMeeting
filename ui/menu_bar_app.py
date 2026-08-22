@@ -17,7 +17,6 @@ from core.services.calendar_service import calendar_service
 from core.services.reminder_engine import reminder_engine
 from core.services.event_bus import event_bus
 from core.services.config_service import config
-from core.autostart import is_autostart_enabled, enable_autostart, disable_autostart
 from core.logger import setup_logging, logger, open_log_file, open_log_folder
 from ui.banner import show_banner_async, _run_banner
 from ui.dashboard_window import show_dashboard
@@ -26,7 +25,7 @@ class QuakMeetingAppDelegate(AppKit.NSObject):
     def applicationDidFinishLaunching_(self, notification):
         logger.info("QuakMeeting running in macOS menu bar & system status bar!")
         import sys
-        if "--silent" not in sys.argv and "--autostart" not in sys.argv:
+        if "--silent" not in sys.argv:
             show_dashboard()
 
     def applicationShouldHandleReopen_hasVisibleWindows_(self, sender, flag):
@@ -67,12 +66,13 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         
         btn = self.status_item.button()
         if btn:
-            btn.setTitle_("🦆 QuakMeeting")
+            btn.setTitle_("🦆")
             btn.setToolTip_("QuakMeeting — Smart Meeting & Travel Reminders")
         
         self.menu = AppKit.NSMenu.alloc().init()
         self.status_item.setMenu_(self.menu)
         
+        self._last_menu_signature = None
         self.meetings: List[Dict[str, Any]] = []
         
         # Subscribe to EventBus
@@ -197,11 +197,7 @@ class QuakMeetingMenuBar(AppKit.NSObject):
 
     def _on_reminder_triggered(self, meeting: Meeting, stage: int) -> None:
         m_dict = meeting.to_dict() if isinstance(meeting, Meeting) else meeting
-        self.performSelectorOnMainThread_withObject_waitUntilDone_(
-            "triggerBannerOnMainThread:",
-            m_dict,
-            False
-        )
+        show_banner_async(m_dict)
 
     def _on_calendar_synced(self, meetings: List[Any]) -> None:
         self.meetings = [m.to_dict() if isinstance(m, Meeting) else m for m in meetings]
@@ -216,6 +212,18 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         self.build_menu()
 
     def build_menu(self):
+        now = datetime.now()
+        upcoming = [m for m in self.meetings if (m.get("end_time") and m["end_time"] > now) or (m.get("start_time") and m["start_time"] > now)]
+        
+        # State signature diffing to avoid unnecessary menu rebuilding
+        m_sigs = tuple((m.get("title"), str(m.get("start_time")), m.get("pilot_type")) for m in upcoming[:6])
+        minute_str = now.strftime("%H:%M")
+        new_signature = (minute_str, len(upcoming), m_sigs)
+        
+        if self._last_menu_signature == new_signature:
+            return
+        self._last_menu_signature = new_signature
+
         self.menu.removeAllItems()
 
         # 1. Open Flight Deck

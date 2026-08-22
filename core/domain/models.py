@@ -55,12 +55,28 @@ class Meeting:
     departure_time: Optional[datetime] = None
     origin_address: Optional[str] = None
     eta_text: Optional[str] = None
+    
+    # Academic & Presence Metadata
+    classroom: Optional[str] = None
+    teacher: Optional[str] = None
+    is_arrived: bool = False
 
     def __post_init__(self):
         if self.category and not self.event_type:
             self.event_type = self.category
         elif self.event_type and not self.category:
             self.category = self.event_type
+
+    def __getitem__(self, key: str) -> Any:
+        if hasattr(self, key):
+            return getattr(self, key)
+        raise KeyError(key)
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return getattr(self, key, default)
+
+    def __contains__(self, key: str) -> bool:
+        return hasattr(self, key)
 
     @property
     def id(self) -> str:
@@ -104,7 +120,10 @@ class Meeting:
             "transport_mode": self.transport_mode,
             "departure_time": self.departure_time,
             "origin_address": self.origin_address,
-            "eta_text": self.eta_text
+            "eta_text": self.eta_text,
+            "classroom": self.classroom,
+            "teacher": self.teacher,
+            "is_arrived": self.is_arrived
         }
 
     def to_serializable_dict(self) -> Dict[str, Any]:
@@ -157,5 +176,8 @@ class Meeting:
             transport_mode=d.get("transport_mode", "transit"),
             departure_time=dep_dt,
             origin_address=d.get("origin_address"),
-            eta_text=d.get("eta_text")
+            eta_text=d.get("eta_text"),
+            classroom=d.get("classroom"),
+            teacher=d.get("teacher"),
+            is_arrived=bool(d.get("is_arrived", False))
         )

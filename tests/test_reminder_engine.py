@@ -61,11 +61,26 @@ class TestReminderEngine(unittest.TestCase):
         )
 
         stages = self.engine.get_stages_for_meeting(meeting_travel)
-        self.assertEqual(stages, [45, 30, 15, 5, 2, 0])
+        self.assertEqual(stages, [45, 30, 15, 5, 0])
 
         res = self.engine.evaluate_meetings([meeting_travel], current_time=now)
         self.assertEqual(len(res), 1)
         self.assertEqual(res[0][1], 45)
+
+    def test_mark_arrived_suppression(self):
+        now = datetime(2026, 8, 22, 12, 0, 0)
+        meeting = Meeting(
+            title="ICT for smart mobility (VASSIO LUCA) - Aula 5M",
+            start_time=now + timedelta(minutes=5),
+            classroom="Aula 5M"
+        )
+        
+        # Mark arrived
+        self.engine.mark_arrived(meeting.id)
+        
+        # Should not trigger any reminder
+        results = self.engine.evaluate_meetings([meeting], current_time=now)
+        self.assertEqual(len(results), 0)
 
 if __name__ == "__main__":
     unittest.main()

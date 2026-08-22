@@ -41,8 +41,11 @@ class EventKitCalendarProvider(BaseCalendarProvider):
         import Foundation
 
         now = datetime.now()
-        start_date = Foundation.NSDate.dateWithTimeIntervalSinceNow_(-start_offset_hours * 3600)
-        end_date = Foundation.NSDate.dateWithTimeIntervalSinceNow_(end_offset_hours * 3600)
+        start_of_today = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(hours=start_offset_hours)
+        end_of_tomorrow = (now + timedelta(days=1)).replace(hour=23, minute=59, second=59, microsecond=999999)
+
+        start_date = Foundation.NSDate.dateWithTimeIntervalSince1970_(start_of_today.timestamp())
+        end_date = Foundation.NSDate.dateWithTimeIntervalSince1970_(end_of_tomorrow.timestamp())
 
         ignored = set(self.config.get("ignored_calendars", []))
         all_cals = store.calendarsForEntityType_(EventKit.EKEntityTypeEvent)
@@ -75,22 +78,14 @@ class EventKitCalendarProvider(BaseCalendarProvider):
                 end_ts = ev.endDate().timeIntervalSince1970()
                 end_dt = datetime.fromtimestamp(end_ts)
 
-            meta = EventClassifier.classify(title, loc, desc, meeting_url, custom_kw)
-
-            meeting = Meeting(
+            meeting = EventClassifier.classify(
                 title=title,
-                start_time=start_dt,
-                end_time=end_dt,
-                meeting_url=meeting_url,
                 location=loc,
                 description=desc,
-                event_type=meta["event_type"],
-                pilot_type=meta["pilot_type"],
-                provider=meta["provider"],
-                action_btn_text=meta["action_btn_text"],
-                action_url=meta["action_url"],
-                theme_name=meta["theme_name"],
-                is_travel=meta["is_travel"]
+                meeting_url=meeting_url,
+                custom_keywords=custom_kw,
+                start_time=start_dt,
+                end_time=end_dt
             )
             meetings.append(meeting)
 

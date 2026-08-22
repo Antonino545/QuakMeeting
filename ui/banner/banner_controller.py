@@ -123,6 +123,22 @@ class QuakPitFlyingBanner:
             webbrowser.open(self.action_url)
         self.dismiss()
 
+    def trigger_arrived(self) -> None:
+        try:
+            from core.services.reminder_engine import reminder_engine
+            from core.domain.models import Meeting
+            if isinstance(self.meeting_data, Meeting):
+                m_id = self.meeting_data.id
+            else:
+                m_title = self.meeting_data.get("title", "")
+                m_start = self.meeting_data.get("start_time")
+                time_str = m_start.strftime("%Y%m%d%H%M") if hasattr(m_start, "strftime") else "000000000000"
+                m_id = f"{m_title}_{time_str}"
+            reminder_engine.mark_arrived(m_id)
+        except Exception as e:
+            logger.error(f"Error marking arrived: {e}")
+        self.dismiss()
+
     def trigger_snooze(self) -> None:
         snooze_sec = int(config.get("default_snooze_seconds", 120))
         m_copy = dict(self.meeting_data)
@@ -130,7 +146,7 @@ class QuakPitFlyingBanner:
         
         def _re_notify():
             time.sleep(snooze_sec)
-            show_banner_async(m_copy)
+            _run_banner(m_copy)
             
         threading.Thread(target=_re_notify, daemon=True).start()
 
@@ -162,14 +178,7 @@ def _run_banner(meeting_data: Dict[str, Any]) -> None:
 
 def show_banner_async(meeting_data: Dict[str, Any]) -> None:
     """Safely dispatches banner display onto the AppKit main UI thread."""
-    app = AppKit.NSApplication.sharedApplication()
-    delegate = app.delegate()
-    
-    if delegate and hasattr(delegate, 'showBannerOnMainThread_'):
-        delegate.performSelectorOnMainThread_withObject_waitUntilDone_(
-            "showBannerOnMainThread:",
-            meeting_data,
-            False
-        )
-    else:
+    def _main_show():
         _run_banner(meeting_data)
+        
+    AppKit.NSOperationQueue.mainQueue().addOperationWithBlock_(_main_show)
