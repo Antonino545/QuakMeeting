@@ -67,6 +67,22 @@ class TestReminderEngine(unittest.TestCase):
         self.assertEqual(len(res), 1)
         self.assertEqual(res[0][1], 45)
 
+    def test_travel_departure_time_stages(self):
+        now = datetime(2026, 8, 22, 12, 0, 0)
+        # Event is in 2 hours (14:00), but departure time is in 15 minutes (12:15)
+        meeting_transit = Meeting(
+            title="Dinner at Restaurant",
+            start_time=now + timedelta(hours=2),
+            departure_time=now + timedelta(minutes=15),
+            travel_time_minutes=35,
+            is_travel=True
+        )
+
+        # Evaluating at 12:00: departure is in 15 mins -> triggers stage 15 (15m before leave time!)
+        res = self.engine.evaluate_meetings([meeting_transit], current_time=now)
+        self.assertEqual(len(res), 1)
+        self.assertEqual(res[0][1], 15)
+
     def test_mark_arrived_suppression(self):
         now = datetime(2026, 8, 22, 12, 0, 0)
         meeting = Meeting(

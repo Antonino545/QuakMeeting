@@ -776,9 +776,9 @@ class DashboardWindowController(AppKit.NSObject):
             x_btn += (btn_w + 6.0)
             
         y -= 44.0
-        # 2. Travel Stages
+        # 2. Travel Stages (Before Departure Time)
         lbl2 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, y + 2, 230, 20))
-        lbl2.setStringValue_("🚗 Travel & Transit:")
+        lbl2.setStringValue_("🚗 Travel (Before Leave Time):")
         lbl2.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.5))
         lbl2.setTextColor_(AppKit.NSColor.whiteColor())
         lbl2.setBezeled_(False)
@@ -787,7 +787,7 @@ class DashboardWindowController(AppKit.NSObject):
         card.addSubview_(lbl2)
         
         curr_travel_stages = set(config.get("travel_reminder_stages", [45, 30, 15, 5, 2, 0]))
-        travel_opts = [(60, "60m"), (45, "45m"), (30, "30m"), (15, "15m"), (5, "5m"), (2, "2m"), (0, "At start (0m)")]
+        travel_opts = [(60, "60m"), (45, "45m"), (30, "30m"), (15, "15m"), (5, "5m"), (2, "2m"), (0, "At leave (0m)")]
         
         x_btn = 250.0
         for val, label in travel_opts:

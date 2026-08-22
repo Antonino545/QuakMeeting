@@ -88,29 +88,22 @@ class ReminderEngine:
                 logger.info(f"  ✓ \"{m.title}\" ({m.provider}) | Arrived / Active. Suppressed.")
                 continue
 
-            diff_min = (m.start_time - now).total_seconds() / 60.0
-            start_str = m.start_time.strftime("%H:%M")
-            stages = self.get_stages_for_meeting(m)
+            # Determine reference target time and label:
+            # - For travel/transit events with ETA: stages are relative to DEPARTURE (leave) time
+            # - For video meetings & regular events: stages are relative to START time
+            is_departure_mode = bool(m.is_travel and m.departure_time)
+            target_time = m.departure_time if is_departure_mode else m.start_time
             
-            # 1. Check Departure Time (Time to Leave) for physical/transit events
-            if m.departure_time and m.is_travel:
-                dep_diff_min = (m.departure_time - now).total_seconds() / 60.0
-                dep_key = f"{m.id}_departure_alert"
-                dep_str = m.departure_time.strftime("%H:%M")
-                
-                if -2.0 <= dep_diff_min <= 1.5 and dep_key not in self.notified_stage_keys:
-                    self.notified_stage_keys.add(dep_key)
-                    m_dep = Meeting.from_dict(m.to_dict())
-                    m_dep.reminder_stage = max(0, round(diff_min))
-                    triggered_events.append((m_dep, m_dep.reminder_stage))
-                    logger.info(f"🚨 >>> TRIGGER DEPARTURE ALERT (Leave at {dep_str}) for \"{m.title}\" ({m.eta_text})")
-                    self.bus.publish("REMINDER_TRIGGERED", meeting=m_dep, stage=m_dep.reminder_stage)
-                    continue
+            diff_min = (target_time - now).total_seconds() / 60.0
+            start_str = m.start_time.strftime("%H:%M")
+            dep_str = m.departure_time.strftime("%H:%M") if m.departure_time else ""
+            stages = self.get_stages_for_meeting(m)
 
-            # 2. Check Standard Multi-Stage Intervals
             matched_stage = None
+
+            # 1. Evaluate Multi-Stage Intervals relative to target time (Departure vs Start)
             for stage in stages:
-                stage_key = f"{m.id}_stage_{stage}"
+                stage_key = f"{m.id}_dep_stage_{stage}" if is_departure_mode else f"{m.id}_stage_{stage}"
                 if self.is_within_stage_window(diff_min, stage):
                     if stage_key not in self.notified_stage_keys:
                         matched_stage = stage
@@ -119,28 +112,41 @@ class ReminderEngine:
                         m_triggered.reminder_stage = stage
                         triggered_events.append((m_triggered, stage))
                         
-                        stage_label = f"at start (0m)" if stage == 0 else f"{stage}m ahead"
-                        logger.info(f"🔔 >>> TRIGGER BANNER [{stage_label}] for \"{m.title}\" ({m.provider}, at {start_str}, diff={diff_min:+.1f}m)")
+                        if is_departure_mode:
+                            stage_label = f"LEAVE NOW (0m)" if stage == 0 else f"leave in {stage}m"
+                            logger.info(f"🚨 >>> TRIGGER DEPARTURE BANNER [{stage_label}] for \"{m.title}\" (Leave at {dep_str}, Event at {start_str}, diff={diff_min:+.1f}m)")
+                        else:
+                            stage_label = f"at start (0m)" if stage == 0 else f"{stage}m ahead"
+                            logger.info(f"🔔 >>> TRIGGER BANNER [{stage_label}] for \"{m.title}\" ({m.provider}, at {start_str}, diff={diff_min:+.1f}m)")
+                            
                         self.bus.publish("REMINDER_TRIGGERED", meeting=m_triggered, stage=stage)
                         break
 
-            # 3. Fallback: If event is starting very soon (<= 5 min) or in progress and has NEVER been notified
+            # 2. Fallback: If target time is imminent (<= 5 min) or in progress and has NEVER been notified
             if matched_stage is None and not self.has_notified_meeting(m.id):
                 if -3.5 <= diff_min <= 5.0:
                     fallback_stage = max(0, round(diff_min))
-                    stage_key = f"{m.id}_stage_{fallback_stage}"
+                    stage_key = f"{m.id}_dep_stage_{fallback_stage}" if is_departure_mode else f"{m.id}_stage_{fallback_stage}"
                     self.notified_stage_keys.add(stage_key)
                     m_triggered = Meeting.from_dict(m.to_dict())
                     m_triggered.reminder_stage = fallback_stage
                     triggered_events.append((m_triggered, fallback_stage))
                     
-                    stage_label = f"at start (0m)" if fallback_stage == 0 else f"imminent ({fallback_stage}m)"
-                    logger.info(f"🔔 >>> TRIGGER IMMEDIATE BANNER [{stage_label}] for \"{m.title}\" ({m.provider}, at {start_str}, diff={diff_min:+.1f}m)")
+                    if is_departure_mode:
+                        stage_label = f"DEPART NOW" if fallback_stage == 0 else f"leave imminent ({fallback_stage}m)"
+                        logger.info(f"🚨 >>> TRIGGER IMMEDIATE DEPARTURE BANNER [{stage_label}] for \"{m.title}\" (Leave at {dep_str}, Event at {start_str}, diff={diff_min:+.1f}m)")
+                    else:
+                        stage_label = f"at start (0m)" if fallback_stage == 0 else f"imminent ({fallback_stage}m)"
+                        logger.info(f"🔔 >>> TRIGGER IMMEDIATE BANNER [{stage_label}] for \"{m.title}\" ({m.provider}, at {start_str}, diff={diff_min:+.1f}m)")
+                        
                     self.bus.publish("REMINDER_TRIGGERED", meeting=m_triggered, stage=fallback_stage)
                     matched_stage = fallback_stage
 
             if not matched_stage:
-                logger.info(f"  📅 \"{m.title}\" ({m.provider}) | Start: {start_str} | In: {diff_min:+.1f} min | Stages: {stages}")
+                if is_departure_mode:
+                    logger.info(f"  🚗 \"{m.title}\" (Travel) | Leave: {dep_str} | Event: {start_str} | Leave In: {diff_min:+.1f} min | Stages: {stages}")
+                else:
+                    logger.info(f"  📅 \"{m.title}\" ({m.provider}) | Start: {start_str} | In: {diff_min:+.1f} min | Stages: {stages}")
 
         return triggered_events
 
