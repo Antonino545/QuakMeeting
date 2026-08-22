@@ -2,10 +2,10 @@
 DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$DIR"
 
-# Imposta il PATH
+# Set PATH
 export PATH="/opt/miniconda3/bin:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:$PATH"
 
-# Cerca l'interprete Python con PyObjC/AppKit
+# Find Python interpreter with PyObjC / AppKit
 PYTHON_BIN=""
 for p in "/opt/miniconda3/bin/python3" "/usr/local/bin/python3" "/opt/homebrew/bin/python3" "$(which python3)"; do
     if [ -n "$p" ] && [ -x "$p" ] && "$p" -c "import AppKit" 2>/dev/null; then
@@ -20,21 +20,21 @@ fi
 
 clear
 echo "============================================================"
-echo " 🦆 QuakMeeting - Test Banner & Full Screen Overlay"
+echo " 🦆 QuakMeeting - Banner & Full Screen Overlay Test"
 echo "============================================================"
 echo ""
-echo "Scegli che tipo di banner testare sopra le tue app a Schermo Intero:"
+echo "Select which notification banner to test over your Full Screen apps:"
 echo ""
-echo " 1) 🦆 Papero Aviatore Classico (Google Meet / Zoom)"
-echo " 2) 🍕 Chef Duck (Cena in Pizzeria / Cibo)"
-echo " 3) ✈️  Capitano Jet (Volo Aereo / Viaggio)"
-echo " 4) 🎓 Gufo Accademico (Studio / Lezione Universitaria)"
-echo " 5) 🚗 Speed Racer (Auto / Navigazione Mappe)"
-echo " 6) 🛋️  Zen Duck (Serenis / Benessere)"
-echo " 7) ⏱️  Test Schermo Intero Rapido (con countdown di 4 sec)"
-echo " 8) 🚪 Esci"
+echo " 1) 🦆 Classic Aviator Duck (Google Meet / Zoom)"
+echo " 2) 🍕 Chef Duck (Dinner / Restaurant & Food)"
+echo " 3) ✈️  Jet Captain (Flights, Trains & Travel)"
+echo " 4) 🎓 Academic Owl (University & Lectures)"
+echo " 5) 🚗 Speed Racer (Driving / Real-Time Navigation)"
+echo " 6) 🛋️  Zen Duck (Serenis & Wellness)"
+echo " 7) ⏱️  Quick Full Screen Test (with 4-second delay)"
+echo " 8) 🚪 Exit"
 echo ""
-read -p "Inserisci la tua scelta [1-8] (default: 7): " CHOICE
+read -p "Enter your choice [1-8] (default: 7): " CHOICE
 
 if [ -z "$CHOICE" ]; then
     CHOICE="7"
@@ -70,9 +70,9 @@ case "$CHOICE" in
         ;;
     7)
         echo ""
-        echo "Scegli il pilota per il test a schermo intero:"
-        echo " 1) Papero Aviatore  2) Chef  3) Capitano Jet  4) Gufo  5) Driver  6) Zen Duck"
-        read -p "Scelta [1-6] (default: 1): " P_CHOICE
+        echo "Choose the pilot character for the full-screen test:"
+        echo " 1) Aviator Duck  2) Chef  3) Jet Captain  4) Academic Owl  5) Speed Racer  6) Zen Duck"
+        read -p "Choice [1-6] (default: 1): " P_CHOICE
         case "$P_CHOICE" in
             2) PILOT="chef" ;;
             3) PILOT="captain" ;;
@@ -84,7 +84,7 @@ case "$CHOICE" in
         DELAY=4
         ;;
     8)
-        echo "Uscita..."
+        echo "Exiting..."
         exit 0
         ;;
     *)
@@ -94,12 +94,12 @@ case "$CHOICE" in
 esac
 
 echo ""
-echo "💡 SUGGERIMENTO:"
-echo "Passa ORA all'app a Schermo Intero (Safari, Chrome, YouTube, Keynote, ecc.)!"
+echo "💡 TIP:"
+echo "Switch NOW to any Full Screen app (Safari, Chrome, YouTube, Keynote, etc.)!"
 echo ""
 
 "$PYTHON_BIN" "$DIR/main.py" --test --pilot "$PILOT" --delay "$DELAY"
 
 echo ""
-echo "✅ Test completato. Premi Invio per chiudere..."
+echo "✅ Test finished. Press Enter to close..."
 read

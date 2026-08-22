@@ -64,10 +64,10 @@ class ReminderEngine:
         triggered_events = []
 
         if not meetings:
-            logger.debug(f"[{now.strftime('%H:%M:%S')}] Nessun evento da valutare.")
+            logger.debug(f"[{now.strftime('%H:%M:%S')}] No events to evaluate.")
             return []
 
-        logger.info(f"📊 [Scanner] Valutazione di {len(meetings)} eventi a {now.strftime('%H:%M:%S')}...")
+        logger.info(f"📊 [Scanner] Evaluating {len(meetings)} events at {now.strftime('%H:%M:%S')}...")
 
         for m in meetings:
             if not m.start_time:
@@ -77,7 +77,7 @@ class ReminderEngine:
             start_str = m.start_time.strftime("%H:%M")
             stages = self.get_stages_for_meeting(m)
             
-            # 1. Check Departure Time (Time to Leave / Parti Ora!) for physical/transit events
+            # 1. Check Departure Time (Time to Leave) for physical/transit events
             if m.departure_time and m.is_travel:
                 dep_diff_min = (m.departure_time - now).total_seconds() / 60.0
                 dep_key = f"{m.id}_departure_alert"
@@ -88,7 +88,7 @@ class ReminderEngine:
                     m_dep = Meeting.from_dict(m.to_dict())
                     m_dep.reminder_stage = max(0, round(diff_min))
                     triggered_events.append((m_dep, m_dep.reminder_stage))
-                    logger.info(f"🚨 >>> TRIGGER PARTENZA (Parti alle {dep_str}) per \"{m.title}\" ({m.eta_text})")
+                    logger.info(f"🚨 >>> TRIGGER DEPARTURE ALERT (Leave at {dep_str}) for \"{m.title}\" ({m.eta_text})")
                     self.bus.publish("REMINDER_TRIGGERED", meeting=m_dep, stage=m_dep.reminder_stage)
                     continue
 
@@ -104,8 +104,8 @@ class ReminderEngine:
                         m_triggered.reminder_stage = stage
                         triggered_events.append((m_triggered, stage))
                         
-                        stage_label = f"inizio (0m)" if stage == 0 else f"{stage}m prima"
-                        logger.info(f"🔔 >>> TRIGGER BANNER [{stage_label}] per \"{m.title}\" ({m.provider}, ore {start_str}, diff={diff_min:+.1f}m)")
+                        stage_label = f"at start (0m)" if stage == 0 else f"{stage}m ahead"
+                        logger.info(f"🔔 >>> TRIGGER BANNER [{stage_label}] for \"{m.title}\" ({m.provider}, at {start_str}, diff={diff_min:+.1f}m)")
                         self.bus.publish("REMINDER_TRIGGERED", meeting=m_triggered, stage=stage)
                         break
 
@@ -119,13 +119,13 @@ class ReminderEngine:
                     m_triggered.reminder_stage = fallback_stage
                     triggered_events.append((m_triggered, fallback_stage))
                     
-                    stage_label = f"inizio (0m)" if fallback_stage == 0 else f"imminente ({fallback_stage}m)"
-                    logger.info(f"🔔 >>> TRIGGER BANNER IMMEDIATO [{stage_label}] per \"{m.title}\" ({m.provider}, ore {start_str}, diff={diff_min:+.1f}m)")
+                    stage_label = f"at start (0m)" if fallback_stage == 0 else f"imminent ({fallback_stage}m)"
+                    logger.info(f"🔔 >>> TRIGGER IMMEDIATE BANNER [{stage_label}] for \"{m.title}\" ({m.provider}, at {start_str}, diff={diff_min:+.1f}m)")
                     self.bus.publish("REMINDER_TRIGGERED", meeting=m_triggered, stage=fallback_stage)
                     matched_stage = fallback_stage
 
             if not matched_stage:
-                logger.info(f"  📅 \"{m.title}\" ({m.provider}) | Inizio: {start_str} | Tra: {diff_min:+.1f} min | Scaglioni: {stages}")
+                logger.info(f"  📅 \"{m.title}\" ({m.provider}) | Start: {start_str} | In: {diff_min:+.1f} min | Stages: {stages}")
 
         return triggered_events
 

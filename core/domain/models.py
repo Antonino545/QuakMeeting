@@ -25,10 +25,10 @@ class EventCategory(str, Enum):
     GENERAL = "general"
 
 class TransportMode(str, Enum):
-    TRANSIT = "transit"           # Mezzi Pubblici (Bus, Tram, Metro, Treno) 🚆🚌
-    AUTOMOBILE = "automobile"     # Auto / Moto 🚗
-    WALKING = "walking"           # A Piedi 🚶‍♂️
-    BICYCLING = "bicycling"       # Bicicletta 🚲
+    TRANSIT = "transit"           # Public Transit (Bus, Tram, Subway, Train) 🚆🚌
+    AUTOMOBILE = "automobile"     # Car / Motorcycle 🚗
+    WALKING = "walking"           # Walking 🚶‍♂️
+    BICYCLING = "bicycling"       # Cycling 🚲
 
 @dataclass
 class Meeting:
@@ -40,8 +40,8 @@ class Meeting:
     description: str = ""
     event_type: str = "general"
     pilot_type: str = "duck"
-    provider: str = "Promemoria ⏰"
-    action_btn_text: str = "📋 APRI EVENTO"
+    provider: str = "Reminder ⏰"
+    action_btn_text: str = "📋 OPEN EVENT"
     action_url: Optional[str] = None
     theme_name: str = "Sunset Orange"
     is_travel: bool = False
@@ -145,8 +145,8 @@ class Meeting:
             description=d.get("description", ""),
             event_type=d.get("event_type", d.get("category", "general")),
             pilot_type=d.get("pilot_type", "duck"),
-            provider=d.get("provider", "Promemoria ⏰"),
-            action_btn_text=d.get("action_btn_text", "📋 APRI EVENTO"),
+            provider=d.get("provider", "Reminder ⏰"),
+            action_btn_text=d.get("action_btn_text", "📋 OPEN EVENT"),
             action_url=d.get("action_url"),
             theme_name=d.get("theme_name", "Sunset Orange"),
             is_travel=bool(d.get("is_travel", False)),

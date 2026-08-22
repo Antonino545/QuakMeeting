@@ -1,7 +1,7 @@
 import sys
 import os
 
-# Assicurati che la directory corrente sia nel path di import
+# Ensure current project directory is in import path
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
@@ -16,7 +16,7 @@ from datetime import datetime
 def main():
     print("=" * 60)
     print(" 🦆 QuakMeeting - macOS Meeting Reminders & Flight Deck")
-    print(" Ispirato a QuakPit (https://github.com/Ooble-Studio/QuakPit)")
+    print(" Inspired by QuakPit (https://github.com/Ooble-Studio/QuakPit)")
     print("=" * 60)
 
     if "--test" in sys.argv:
@@ -24,7 +24,6 @@ def main():
         import AppKit
         from ui.banner_window import _run_banner
         
-        # Gestione delay per permettere all'utente di passare all'app Full Screen
         delay_sec = 0
         if "--delay" in sys.argv:
             try:
@@ -33,7 +32,6 @@ def main():
             except Exception:
                 delay_sec = 3
                 
-        # Gestione pilot type personalizzato
         pilot_type = "duck"
         if "--pilot" in sys.argv:
             try:
@@ -43,72 +41,72 @@ def main():
                 pilot_type = "duck"
                 
         if delay_sec > 0:
-            print(f"\n⏳ Attesa di {delay_sec} secondi per permetterti di passare a un'app a Schermo Intero...")
+            print(f"\n⏳ Waiting {delay_sec} seconds to allow switching to a Full Screen app...")
             for i in range(delay_sec, 0, -1):
                 print(f"   ⏱️  {i}...")
                 time.sleep(1)
-            print("🚀 Lancio del banner sopra lo Schermo Intero!")
+            print("🚀 Launching banner over Full Screen!")
         else:
-            print("\n🚀 Esecuzione Test Banner Notifica in corso...")
+            print("\n🚀 Running Notification Banner Test...")
             
         app = AppKit.NSApplication.sharedApplication()
         app.setActivationPolicy_(AppKit.NSApplicationActivationPolicyAccessory)
         
         pilot_presets = {
             "chef": {
-                "title": "Cena con Amici in Pizzeria",
-                "provider": "Cena / Cibo 🍕🍽️",
+                "title": "Dinner with Friends at Pizzeria",
+                "provider": "Dinner / Food 🍕🍽️",
                 "pilot_type": "chef",
-                "action_btn_text": "🗺️ INDICAZIONI RISTORANTE (MAPPE)",
-                "action_url": "https://maps.apple.com/?q=Pizzeria+Torino",
-                "location": "Pizzeria Da Michele, Torino",
+                "action_btn_text": "🗺️ RESTAURANT DIRECTIONS (MAPS)",
+                "action_url": "https://maps.apple.com/?q=Pizzeria+Napoli",
+                "location": "Pizzeria Da Michele, London",
                 "start_time": datetime.now(),
                 "is_travel": True
             },
             "captain": {
-                "title": "Flight to Torino (W4 6555)",
-                "provider": "Volo / Viaggio ✈️",
+                "title": "Flight to London (BA 257)",
+                "provider": "Flight / Travel ✈️",
                 "pilot_type": "captain",
-                "action_btn_text": "🗺️ AEROPORTO CATANIA (MAPPE)",
-                "action_url": "https://maps.apple.com/?q=Catania+Airport+CTA",
-                "location": "Terminal 1 - Gate 12",
+                "action_btn_text": "🗺️ AIRPORT DIRECTIONS (MAPS)",
+                "action_url": "https://maps.apple.com/?q=Heathrow+Airport",
+                "location": "Terminal 5 - Gate B12",
                 "start_time": datetime.now(),
                 "is_travel": True
             },
             "owl": {
-                "title": "Lezione SmartGrid & Reti Neurali",
-                "provider": "Studio / Uni 🎓",
+                "title": "SmartGrid & Neural Networks Lecture",
+                "provider": "Study / University 🎓",
                 "pilot_type": "owl",
-                "action_btn_text": "📚 AULA & APPUNTI",
-                "action_url": "https://calendar.google.com",
-                "location": "Aula 3B - Politecnico",
+                "action_btn_text": "📚 CLASSROOM & NOTES",
+                "action_url": "https://calendar.apple.com",
+                "location": "Room 3B - Campus",
                 "start_time": datetime.now(),
                 "is_travel": False
             },
             "driver": {
-                "title": "Incontro Studio Architettura",
-                "provider": "In Presenza 📍 Tempo di Spostamento!",
+                "title": "Architecture Studio Meeting",
+                "provider": "In Person 📍 Travel Time!",
                 "pilot_type": "driver",
-                "action_btn_text": "🗺️ VAI CON MAPPE (NAVIGA)",
-                "action_url": "https://maps.apple.com/?daddr=Torino+Centro",
-                "location": "Corso Vittorio Emanuele II, Torino",
+                "action_btn_text": "🗺️ NAVIGATE WITH MAPS",
+                "action_url": "https://maps.apple.com/?daddr=City+Center",
+                "location": "Victoria Street, London",
                 "start_time": datetime.now(),
                 "is_travel": True
             },
             "zen_duck": {
-                "title": "Seduta Serenis Online",
+                "title": "Serenis Online Therapy Session",
                 "provider": "Serenis 🛋️",
                 "pilot_type": "zen_duck",
-                "action_btn_text": "🚀 PARTECIPA AL MEETING",
-                "action_url": "https://app.serenis.it/join/ths_pwtsvfnwpea5b8wg",
+                "action_btn_text": "🚀 JOIN SESSION",
+                "action_url": "https://app.serenis.it/join/test",
                 "start_time": datetime.now(),
                 "is_travel": False
             },
             "duck": {
-                "title": "Test Riunione QuakMeeting (Google Meet)",
+                "title": "Weekly Team Sync (Google Meet)",
                 "provider": "Google Meet 🟢",
                 "pilot_type": "duck",
-                "action_btn_text": "🚀 PARTECIPA ORA",
+                "action_btn_text": "🚀 JOIN GOOGLE MEET",
                 "action_url": "https://meet.google.com/test-quak-pit",
                 "start_time": datetime.now(),
                 "is_travel": False
@@ -120,13 +118,12 @@ def main():
         app.run()
         return
 
-    print(" Avvio dell'icona nella barra dei menu e del Flight Deck...")
-    print("\n 📌 NOTA SUI PERMESSI:")
-    print(" Se macOS richiede l'accesso al Calendario, premi 'CONSENTI'.\n")
+    print(" Launching Menu Bar icon and Flight Deck...")
+    print("\n 📌 PERMISSION NOTICE:")
+    print(" If macOS prompts for Calendar access, select 'ALLOW'.\n")
 
     app = QuakMeetingMenuBar.alloc().init()
     
-    # Se avviato normalmente (interattivo o doppio clic), apri il Flight Deck
     if "--silent" not in sys.argv and "--autostart" not in sys.argv:
         show_dashboard()
         

@@ -20,10 +20,10 @@ class QuakPitBannerView(AppKit.NSView):
         self.meeting_data = meeting_data
         self.controller = controller
         
-        self.title = str(meeting_data.get("title") or "Promemoria Evento")
-        self.provider = str(meeting_data.get("provider") or "Evento")
+        self.title = str(meeting_data.get("title") or "Event Reminder")
+        self.provider = str(meeting_data.get("provider") or "Event")
         self.action_url = meeting_data.get("action_url") or meeting_data.get("meeting_url")
-        self.action_btn_text = str(meeting_data.get("action_btn_text") or "🚀 PARTECIPA ORA")
+        self.action_btn_text = str(meeting_data.get("action_btn_text") or "🚀 JOIN NOW")
         self.start_time = meeting_data.get("start_time")
         self.end_time = meeting_data.get("end_time")
         self.location = str(meeting_data.get("location") or "")
@@ -446,7 +446,7 @@ class QuakPitBannerView(AppKit.NSView):
         ns_str.drawAtPoint_withAttributes_(text_pt, attrs)
 
     def _draw_countdown_pill(self, bx, by, bw, bh, accent):
-        countdown_text = "⏰ Avviso Imminente"
+        countdown_text = "⏰ Upcoming Alert"
         is_urgent = False
         mode_icon = MODE_ICONS.get(self.transport_mode, "🚆")
         
@@ -461,37 +461,37 @@ class QuakPitBannerView(AppKit.NSView):
                 dep_time_str = self.departure_time.strftime("%H:%M")
                 
                 if dep_diff <= 0:
-                    countdown_text = f"🚨 {mode_icon} TEMPO DI PARTIRE!"
+                    countdown_text = f"🚨 {mode_icon} TIME TO LEAVE!"
                     is_urgent = True
                 elif dep_mins <= 10:
-                    countdown_text = f"⏳ {mode_icon} Parti tra {dep_mins}m ({dep_time_str})"
+                    countdown_text = f"⏳ {mode_icon} Leave in {dep_mins}m ({dep_time_str})"
                     is_urgent = True
                 else:
-                    countdown_text = f"{mode_icon} Parti alle {dep_time_str} (~{self.travel_time_minutes or 20}m)"
+                    countdown_text = f"{mode_icon} Leave at {dep_time_str} (~{self.travel_time_minutes or 20}m)"
             elif diff > 0:
                 mins = int(diff // 60)
                 secs = int(diff % 60)
                 if self.is_travel:
                     if mins >= 30:
-                        countdown_text = f"{mode_icon} Tra {mins}m • Preavviso Spostamento"
+                        countdown_text = f"{mode_icon} In {mins}m • Travel Notice"
                     elif mins >= 15:
-                        countdown_text = f"{mode_icon} Tra {mins}m • Preparati a Partire"
+                        countdown_text = f"{mode_icon} In {mins}m • Prepare to Leave"
                     else:
-                        countdown_text = f"🚨 {mode_icon} Parti Adesso!"
+                        countdown_text = f"🚨 {mode_icon} Leave Now!"
                         is_urgent = True
                 else:
                     if mins >= 15:
-                        countdown_text = f"⏰ Tra {mins}m • Anticipo"
+                        countdown_text = f"⏰ In {mins}m • Early Alert"
                     elif mins >= 5:
-                        countdown_text = f"⏳ Tra {mins}m • Preparati"
+                        countdown_text = f"⏳ In {mins}m • Get Ready"
                     elif mins >= 1:
-                        countdown_text = f"🚀 Tra {mins}m • Quasi Pronto!"
+                        countdown_text = f"🚀 In {mins}m • Almost Time!"
                         is_urgent = True
                     else:
-                        countdown_text = f"⏳ Tra {secs}s • Inizia Ora!"
+                        countdown_text = f"⏳ In {secs}s • Starting Now!"
                         is_urgent = True
             elif diff > -1800:
-                countdown_text = "🔴 IN CORSO ORA"
+                countdown_text = "🔴 IN PROGRESS NOW"
                 is_urgent = True
                 
         time_col = AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.40, 0.40, 1.0) if is_urgent else AppKit.NSColor.colorWithRed_green_blue_alpha_(0.96, 0.88, 0.65, 1.0)
@@ -572,7 +572,7 @@ class QuakPitBannerView(AppKit.NSView):
                 e_time = self.end_time.strftime("%H:%M")
                 detail_text = f"🕒 {s_time} - {e_time}"
             else:
-                detail_text = f"🕒 Ore {s_time}"
+                detail_text = f"🕒 At {s_time}"
                 
         if self.location:
             loc_short = self.location if len(self.location) <= 24 else self.location[:21] + "..."

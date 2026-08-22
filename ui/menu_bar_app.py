@@ -97,44 +97,44 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         app_menu = AppKit.NSMenu.alloc().initWithTitle_("QuakMeeting")
         
         about_item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "Informazioni su QuakMeeting", "openAbout:", ""
+            "About QuakMeeting", "openAbout:", ""
         )
         about_item.setTarget_(self)
         app_menu.addItem_(about_item)
         app_menu.addItem_(AppKit.NSMenuItem.separatorItem())
 
         pref_item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "Preferenze (Flight Deck)...", "openDashboard:", ","
+            "Preferences (Flight Deck)...", "openDashboard:", ","
         )
         pref_item.setTarget_(self)
         app_menu.addItem_(pref_item)
 
         sync_item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "Sincronizza Calendari Ora", "refreshCalendar:", "r"
+            "Sync Calendars Now", "refreshCalendar:", "r"
         )
         sync_item.setTarget_(self)
         app_menu.addItem_(sync_item)
         app_menu.addItem_(AppKit.NSMenuItem.separatorItem())
 
         hide_item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "Nascondi QuakMeeting", "hide:", "h"
+            "Hide QuakMeeting", "hide:", "h"
         )
         app_menu.addItem_(hide_item)
 
         hide_others = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "Nascondi altre", "hideOtherApplications:", "h"
+            "Hide Others", "hideOtherApplications:", "h"
         )
         hide_others.setKeyEquivalentModifierMask_(AppKit.NSEventModifierFlagCommand | AppKit.NSEventModifierFlagOption)
         app_menu.addItem_(hide_others)
 
         show_all = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "Mostra tutte", "unhideAllApplications:", ""
+            "Show All", "unhideAllApplications:", ""
         )
         app_menu.addItem_(show_all)
         app_menu.addItem_(AppKit.NSMenuItem.separatorItem())
 
         quit_item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "Esci da QuakMeeting", "terminate:", "q"
+            "Quit QuakMeeting", "terminate:", "q"
         )
         app_menu.addItem_(quit_item)
         app_menu_item.setSubmenu_(app_menu)
@@ -142,36 +142,36 @@ class QuakMeetingMenuBar(AppKit.NSObject):
 
         # --- EDIT MENU (Enables standard cut, copy, paste, select all) ---
         edit_menu_item = AppKit.NSMenuItem.alloc().init()
-        edit_menu = AppKit.NSMenu.alloc().initWithTitle_("Modifica")
-        edit_menu.addItemWithTitle_action_keyEquivalent_("Annulla", "undo:", "z")
-        edit_menu.addItemWithTitle_action_keyEquivalent_("Ripristina", "redo:", "Z")
+        edit_menu = AppKit.NSMenu.alloc().initWithTitle_("Edit")
+        edit_menu.addItemWithTitle_action_keyEquivalent_("Undo", "undo:", "z")
+        edit_menu.addItemWithTitle_action_keyEquivalent_("Redo", "redo:", "Z")
         edit_menu.addItem_(AppKit.NSMenuItem.separatorItem())
-        edit_menu.addItemWithTitle_action_keyEquivalent_("Taglia", "cut:", "x")
-        edit_menu.addItemWithTitle_action_keyEquivalent_("Copia", "copy:", "c")
-        edit_menu.addItemWithTitle_action_keyEquivalent_("Incolla", "paste:", "v")
-        edit_menu.addItemWithTitle_action_keyEquivalent_("Seleziona tutto", "selectAll:", "a")
+        edit_menu.addItemWithTitle_action_keyEquivalent_("Cut", "cut:", "x")
+        edit_menu.addItemWithTitle_action_keyEquivalent_("Copy", "copy:", "c")
+        edit_menu.addItemWithTitle_action_keyEquivalent_("Paste", "paste:", "v")
+        edit_menu.addItemWithTitle_action_keyEquivalent_("Select All", "selectAll:", "a")
         edit_menu_item.setSubmenu_(edit_menu)
         main_menu.addItem_(edit_menu_item)
 
         # --- WINDOW MENU ---
         win_menu_item = AppKit.NSMenuItem.alloc().init()
-        win_menu = AppKit.NSMenu.alloc().initWithTitle_("Finestra")
+        win_menu = AppKit.NSMenu.alloc().initWithTitle_("Window")
         
         dash_win_item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "Apri Flight Deck", "openDashboard:", "o"
+            "Open Flight Deck", "openDashboard:", "o"
         )
         dash_win_item.setTarget_(self)
         win_menu.addItem_(dash_win_item)
-        win_menu.addItemWithTitle_action_keyEquivalent_("Riduci a icona", "performMiniaturize:", "m")
-        win_menu.addItemWithTitle_action_keyEquivalent_("Chiudi Finestra", "performClose:", "w")
+        win_menu.addItemWithTitle_action_keyEquivalent_("Minimize", "performMiniaturize:", "m")
+        win_menu.addItemWithTitle_action_keyEquivalent_("Close Window", "performClose:", "w")
         win_menu_item.setSubmenu_(win_menu)
         main_menu.addItem_(win_menu_item)
 
         # --- HELP MENU ---
         help_menu_item = AppKit.NSMenuItem.alloc().init()
-        help_menu = AppKit.NSMenu.alloc().initWithTitle_("Aiuto")
+        help_menu = AppKit.NSMenu.alloc().initWithTitle_("Help")
         help_doc = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "Guida QuakMeeting & GitHub", "openHelp:", ""
+            "QuakMeeting Guide & GitHub", "openHelp:", ""
         )
         help_doc.setTarget_(self)
         help_menu.addItem_(help_doc)
@@ -213,7 +213,7 @@ class QuakMeetingMenuBar(AppKit.NSObject):
 
         # 1. Open Flight Deck
         item_dash = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "🦆 Apri Flight Deck", "openDashboard:", "o"
+            "🦆 Open Flight Deck", "openDashboard:", "o"
         )
         item_dash.setTarget_(self)
         self.menu.addItem_(item_dash)
@@ -228,7 +228,7 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         if upcoming:
             next_m = upcoming[0]
             start_str = next_m["start_time"].strftime("%H:%M") if next_m.get("start_time") else "--:--"
-            m_title = (next_m.get("title") or "Evento").strip()
+            m_title = (next_m.get("title") or "Event").strip()
             title_short = m_title[:18] + "…" if len(m_title) > 18 else m_title
             
             p_type = next_m.get("pilot_type", "duck")
@@ -238,14 +238,14 @@ class QuakMeetingMenuBar(AppKit.NSObject):
                 self.status_item.button().setTitle_(f"{icon_prefix} {start_str} {title_short}")
             
             item_next = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-                f"{icon_prefix} Prossimo: {start_str} — {m_title}", None, ""
+                f"{icon_prefix} Next: {start_str} — {m_title}", None, ""
             )
             item_next.setEnabled_(False)
             self.menu.addItem_(item_next)
             
             action_url = next_m.get("action_url") or next_m.get("meeting_url")
             if action_url:
-                btn_title = f"   {next_m.get('action_btn_text', '🚀 Partecipa Subito')}"
+                btn_title = f"   {next_m.get('action_btn_text', '🚀 Join Now')}"
                 item_join = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
                     btn_title, "openNextMeeting:", "j"
                 )
@@ -255,10 +255,10 @@ class QuakMeetingMenuBar(AppKit.NSObject):
             self.menu.addItem_(AppKit.NSMenuItem.separatorItem())
         else:
             if self.status_item.button():
-                self.status_item.button().setTitle_("🦆 QuakMeeting")
+                self.status_item.button().setTitle_(f"🦆 QuakMeeting")
             
             item_none = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-                "Nessun altro evento per oggi", None, ""
+                "No further events today", None, ""
             )
             item_none.setEnabled_(False)
             self.menu.addItem_(item_none)
@@ -266,7 +266,7 @@ class QuakMeetingMenuBar(AppKit.NSObject):
 
         # 3. Upcoming Today List
         if len(upcoming) > 1:
-            item_header = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("Eventi di Oggi:", None, "")
+            item_header = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("Today's Events:", None, "")
             item_header.setEnabled_(False)
             self.menu.addItem_(item_header)
             
@@ -274,7 +274,7 @@ class QuakMeetingMenuBar(AppKit.NSObject):
                 start_str = m["start_time"].strftime("%H:%M") if m.get("start_time") else "--:--"
                 p_type = m.get("pilot_type", "duck")
                 icon = icon_map.get(p_type, "🦆")
-                m_title = (m.get("title") or "Evento").strip()
+                m_title = (m.get("title") or "Event").strip()
                 title_short = m_title[:24] + "…" if len(m_title) > 24 else m_title
                 
                 sub_item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
@@ -288,19 +288,19 @@ class QuakMeetingMenuBar(AppKit.NSObject):
 
         # 4. Utilities (Sync, Preferences, Quit)
         item_sync = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "🔄 Sincronizza Calendari", "refreshCalendar:", "r"
+            "🔄 Sync Calendars", "refreshCalendar:", "r"
         )
         item_sync.setTarget_(self)
         self.menu.addItem_(item_sync)
 
         item_test = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "🧪 Test Volo Notifica...", "testFlightBanner:", "t"
+            "🧪 Test Flight Banner...", "testFlightBanner:", "t"
         )
         item_test.setTarget_(self)
         self.menu.addItem_(item_test)
 
         item_settings = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "⚙️ Impostazioni & Timing...", "openSettings:", ","
+            "⚙️ Settings & Preferences...", "openSettings:", ","
         )
         item_settings.setTarget_(self)
         self.menu.addItem_(item_settings)
@@ -309,7 +309,7 @@ class QuakMeetingMenuBar(AppKit.NSObject):
 
         # 5. Quit
         item_quit = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "❌ Esci da QuakMeeting", "quitApp:", "q"
+            "❌ Quit QuakMeeting", "quitApp:", "q"
         )
         item_quit.setTarget_(self)
         self.menu.addItem_(item_quit)
@@ -325,10 +325,10 @@ class QuakMeetingMenuBar(AppKit.NSObject):
     @objc.IBAction
     def testFlightBanner_(self, sender):
         _run_banner({
-            "title": "Test Volo QuakMeeting",
-            "provider": "Test Manuale 🚀",
+            "title": "QuakMeeting Flight Test",
+            "provider": "Manual Test 🚀",
             "pilot_type": "duck",
-            "action_btn_text": "🚀 APRI GOOGLE MEET",
+            "action_btn_text": "🚀 OPEN GOOGLE MEET",
             "action_url": "https://meet.google.com/test",
             "start_time": datetime.now(),
             "is_travel": False

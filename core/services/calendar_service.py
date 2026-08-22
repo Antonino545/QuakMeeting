@@ -75,17 +75,17 @@ class CalendarService:
                         
                         icon = MODE_ICONS.get(transport_mode, "🚆")
                         dep_str = m.departure_time.strftime("%H:%M")
-                        m.eta_text = f"{icon} ~{m.travel_time_minutes}m • Parti alle {dep_str}"
+                        m.eta_text = f"{icon} ~{m.travel_time_minutes}m • Leave at {dep_str}"
                         m.action_url = eta_res["maps_url"]
                         
                         if transport_mode == "transit":
-                            m.action_btn_text = f"🗺️ MEZZI PUBBLICI (~{m.travel_time_minutes}m)"
+                            m.action_btn_text = f"🗺️ PUBLIC TRANSIT (~{m.travel_time_minutes}m)"
                         elif transport_mode == "automobile":
-                            m.action_btn_text = f"🗺️ VAI CON MAPPE (~{m.travel_time_minutes}m)"
+                            m.action_btn_text = f"🗺️ DRIVE WITH MAPS (~{m.travel_time_minutes}m)"
                         elif transport_mode == "walking":
-                            m.action_btn_text = f"🗺️ A PIEDI (~{m.travel_time_minutes}m)"
+                            m.action_btn_text = f"🗺️ WALKING ROUTE (~{m.travel_time_minutes}m)"
                         elif transport_mode == "bicycling":
-                            m.action_btn_text = f"🗺️ IN BICI (~{m.travel_time_minutes}m)"
+                            m.action_btn_text = f"🗺️ CYCLING ROUTE (~{m.travel_time_minutes}m)"
 
     def _save_cache_to_disk(self, meetings: List[Meeting]) -> None:
         try:

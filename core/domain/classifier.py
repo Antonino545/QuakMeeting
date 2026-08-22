@@ -1,220 +1,226 @@
 """
-Domain event classifier for QuakMeeting.
-Extracts video conference links, classifies meeting categories, and assigns pilot themes.
+Event Classification and URL Extraction Engine for QuakMeeting.
+Pure Python matching logic for video meeting providers, keyword pilots, and travel detection.
 """
 import re
 import urllib.parse
 from datetime import datetime
-from typing import Optional, Dict, Any, List
-from .models import PilotType, EventCategory
+from typing import Dict, Any, Tuple, Optional, List
+from .models import Meeting, PilotType, EventCategory
 
 MEETING_PATTERNS = [
-    r'https?://meet\.google\.com/[a-z0-9-]+',
-    r'https?://[a-z0-9-]+\.zoom\.us/j/[0-9]+[^\s"\'<>]*',
-    r'https?://teams\.microsoft\.com/[^\s"\'<>]+',
-    r'https?://teams\.live\.com/[^\s"\'<>]+',
-    r'https?://[a-z0-9-]+\.webex\.com/[^\s"\'<>]+',
-    r'https?://meet\.jit\.si/[^\s"\'<>]+',
-    r'https?://whereby\.com/[^\s"\'<>]+',
-    r'https?://(?:app\.)?serenis\.it/join/[a-zA-Z0-9_-]+',
-    r'https?://[^\s"\'<>]+(?:meeting|join|call|vc)[^\s"\'<>]*'
+    (r"https://meet\.google\.com/[a-z0-9-]+", "Google Meet 🟢", "duck", "🚀 JOIN GOOGLE MEET"),
+    (r"https://[a-zA-Z0-9-]+\.zoom\.us/[jsw]/[0-9a-zA-Z?=&_-]+", "Zoom Meeting 🔷", "duck", "🚀 JOIN ZOOM MEETING"),
+    (r"https://teams\.microsoft\.com/l/meetup-join/[0-9a-zA-Z%?=&_-]+", "Microsoft Teams 🟣", "duck", "🚀 JOIN TEAMS MEETING"),
+    (r"https://teams\.live\.com/meet/[0-9a-zA-Z?=&_-]+", "Microsoft Teams 🟣", "duck", "🚀 JOIN TEAMS MEETING"),
+    (r"https://app\.serenis\.it/join/[0-9a-zA-Z_-]+", "Serenis 🛋️", "zen_duck", "🚀 JOIN SESSION")
 ]
 
 DEFAULT_KEYWORDS = {
-    "chef": ["cena", "pranzo", "dinner", "lunch", "ristorante", "pizza", "pizzeria", "sushi", "aperitivo", "apericena", "osteria", "trattoria", "cibo", "food", "mangiare", "pub", "burger"],
-    "captain": ["flight", "volo", "airport", "aeroporto", "bus", "navetta", "shuttle", "pullman", "ryanair", "easyjet", "wizz", "ita airways", "treno", "frecciarossa", "italo", "stazione", "viaggio", "partenza", "gate", "terminal", "imbarco", "boarding", "taxi", "uber"],
-    "owl": ["universit", "uni", "esame", "esami", "lezione", "lezioni", "politecnico", "tesi", "smartgrid", "building", "ict", "satellite", "ricerca operativa", "corso", "aula"],
-    "driver": ["palestra", "dentista", "dottore", "visita", "medico", "allenamento", "terapia", "yoga", "studio", "ufficio"],
-    "zen_duck": ["serenis", "terapia", "yoga", "meditazione", "benessere", "relax"]
+    "chef": ["dinner", "lunch", "cena", "pranzo", "restaurant", "ristorante", "pizza", "pizzeria", "sushi", "aperitivo", "apericena", "osteria", "trattoria", "food", "cibo", "eat", "mangiare", "pub", "burger", "barbecue", "bbq", "cocktail"],
+    "captain": ["flight", "volo", "airport", "aeroporto", "bus", "navetta", "shuttle", "pullman", "ryanair", "easyjet", "wizz", "ita airways", "train", "treno", "frecciarossa", "italo", "station", "stazione", "travel", "viaggio", "trip", "departure", "partenza", "gate", "terminal", "boarding", "imbarco", "taxi", "uber"],
+    "owl": ["university", "universit", "uni", "exam", "esame", "esami", "lecture", "lezione", "lezioni", "study", "studio", "politecnico", "thesis", "tesi", "smartgrid", "building", "ict", "satellite", "operations research", "ricerca operativa", "course", "corso", "classroom", "aula"],
+    "driver": ["gym", "palestra", "workout", "allenamento", "dentist", "dentista", "doctor", "dottore", "visit", "visita", "medical", "medico", "therapy", "terapia", "yoga", "office", "ufficio", "drive", "driving"],
+    "zen_duck": ["serenis", "therapy", "terapia", "yoga", "meditation", "meditazione", "mindfulness", "wellness", "benessere", "relax", "spa", "chill"]
 }
 
 class EventClassifier:
-    """Classifies calendar events into domain types, pilots, themes and action URLs."""
+    """Classifies raw calendar events into enriched domain Meeting objects."""
+
+    def __init__(self, custom_keywords: Optional[Dict[str, List[str]]] = None):
+        self.keywords = custom_keywords or DEFAULT_KEYWORDS
 
     @staticmethod
-    def extract_meeting_url(text: Optional[str]) -> Optional[str]:
-        if not text or text == 'missing value':
+    def extract_meeting_url(text: str) -> Optional[str]:
+        """Extract first known video meeting URL from text (notes, description, location)."""
+        if not text or not isinstance(text, str):
             return None
-        for pattern in MEETING_PATTERNS:
+        for pattern, _, _, _ in MEETING_PATTERNS:
             match = re.search(pattern, text, re.IGNORECASE)
             if match:
-                return match.group(0).rstrip('.,;)')
+                return match.group(0)
         return None
+
+    def classify(self, title: str, location: str = "", description: str = "",
+                 start_time: Optional[datetime] = None, end_time: Optional[datetime] = None) -> Meeting:
+        """Classifies an event by inspecting URLs, keywords, and location metadata."""
+        search_blob = f"{title} {location} {description}".lower()
+        
+        # 1. Match Video Meeting Patterns
+        for pattern, provider_name, p_type, btn_text in MEETING_PATTERNS:
+            match = re.search(pattern, search_blob, re.IGNORECASE)
+            if match:
+                url = match.group(0)
+                return Meeting(
+                    title=title,
+                    start_time=start_time or datetime.now(),
+                    end_time=end_time,
+                    meeting_url=url,
+                    location=location,
+                    description=description,
+                    event_type=EventCategory.VIDEO_MEETING.value,
+                    pilot_type=p_type,
+                    provider=provider_name,
+                    action_btn_text=btn_text,
+                    action_url=url,
+                    theme_name="Teal Modern" if p_type == "zen_duck" else "Sunset Orange",
+                    is_travel=False
+                )
+
+        # 2. Check Physical Food / Dinner keywords
+        for kw in self.keywords.get("chef", []):
+            if kw in search_blob:
+                maps_dest = location if (location and location != "missing value") else title
+                maps_url = f"https://maps.apple.com/?q={urllib.parse.quote(maps_dest)}"
+                return Meeting(
+                    title=title,
+                    start_time=start_time or datetime.now(),
+                    end_time=end_time,
+                    location=location,
+                    description=description,
+                    event_type=EventCategory.FOOD.value,
+                    pilot_type=PilotType.CHEF.value,
+                    provider="Dinner / Food 🍕🍽️",
+                    action_btn_text="🗺️ RESTAURANT DIRECTIONS (MAPS)",
+                    action_url=maps_url,
+                    theme_name="Chef Orange",
+                    is_travel=True
+                )
+
+        # 3. Check Travel / Flights / Airport / Trains
+        for kw in self.keywords.get("captain", []):
+            if kw in search_blob:
+                maps_dest = location if (location and location != "missing value") else title
+                maps_url = f"https://maps.apple.com/?q={urllib.parse.quote(maps_dest)}"
+                return Meeting(
+                    title=title,
+                    start_time=start_time or datetime.now(),
+                    end_time=end_time,
+                    location=location,
+                    description=description,
+                    event_type=EventCategory.TRAVEL.value,
+                    pilot_type=PilotType.CAPTAIN.value,
+                    provider="Flight / Travel ✈️",
+                    action_btn_text="🗺️ TRAVEL DIRECTIONS (MAPS)",
+                    action_url=maps_url,
+                    theme_name="Sky Captain Blue",
+                    is_travel=True
+                )
+
+        # 4. Check University / Academic Owl
+        for kw in self.keywords.get("owl", []):
+            if kw in search_blob:
+                is_trav = bool(location and location != "missing value" and "online" not in search_blob)
+                maps_dest = location if is_trav else title
+                maps_url = f"https://maps.apple.com/?q={urllib.parse.quote(maps_dest)}" if is_trav else "https://calendar.apple.com"
+                return Meeting(
+                    title=title,
+                    start_time=start_time or datetime.now(),
+                    end_time=end_time,
+                    location=location,
+                    description=description,
+                    event_type=EventCategory.STUDY.value,
+                    pilot_type=PilotType.OWL.value,
+                    provider="Study / University 🎓",
+                    action_btn_text="🗺️ CAMPUS & CLASSROOM" if is_trav else "📚 CLASSROOM & NOTES",
+                    action_url=maps_url,
+                    theme_name="Academic Purple",
+                    is_travel=is_trav
+                )
+
+        # 5. Check Gym / Fitness / Driver
+        for kw in self.keywords.get("driver", []):
+            if kw in search_blob:
+                maps_dest = location if (location and location != "missing value") else title
+                maps_url = f"https://maps.apple.com/?daddr={urllib.parse.quote(maps_dest)}"
+                return Meeting(
+                    title=title,
+                    start_time=start_time or datetime.now(),
+                    end_time=end_time,
+                    location=location,
+                    description=description,
+                    event_type=EventCategory.IN_PERSON.value,
+                    pilot_type=PilotType.DRIVER.value,
+                    provider="In Person 📍 Travel Time!",
+                    action_btn_text="🗺️ NAVIGATE WITH MAPS",
+                    action_url=maps_url,
+                    theme_name="Racing Green",
+                    is_travel=True
+                )
+
+        # 6. Check Therapy / Zen Duck
+        for kw in self.keywords.get("zen_duck", []):
+            if kw in search_blob:
+                return Meeting(
+                    title=title,
+                    start_time=start_time or datetime.now(),
+                    end_time=end_time,
+                    location=location,
+                    description=description,
+                    event_type=EventCategory.HEALTH.value,
+                    pilot_type=PilotType.ZEN_DUCK.value,
+                    provider="Serenis & Wellness 🛋️",
+                    action_btn_text="🚀 JOIN SESSION",
+                    action_url="https://app.serenis.it",
+                    theme_name="Zen Teal",
+                    is_travel=False
+                )
+
+        # 7. Generic Physical Event (if non-empty location)
+        if location and location != "missing value" and len(location.strip()) > 2:
+            maps_url = f"https://maps.apple.com/?daddr={urllib.parse.quote(location)}"
+            return Meeting(
+                title=title,
+                start_time=start_time or datetime.now(),
+                end_time=end_time,
+                location=location,
+                description=description,
+                event_type=EventCategory.IN_PERSON.value,
+                pilot_type=PilotType.DRIVER.value,
+                provider="In Person 📍 Travel Time!",
+                action_btn_text="🗺️ OPEN IN APPLE MAPS",
+                action_url=maps_url,
+                theme_name="Racing Green",
+                is_travel=True
+            )
+
+        # 8. General Default Meeting / Reminder
+        return Meeting(
+            title=title,
+            start_time=start_time or datetime.now(),
+            end_time=end_time,
+            location=location,
+            description=description,
+            event_type=EventCategory.GENERAL.value,
+            pilot_type=PilotType.DUCK.value,
+            provider="Reminder ⏰",
+            action_btn_text="📋 OPEN IN CALENDAR",
+            action_url="https://calendar.apple.com",
+            theme_name="Sunset Orange",
+            is_travel=False
+        )
 
     @staticmethod
-    def parse_applescript_date(date_str: Optional[str]) -> Optional[datetime]:
-        if not date_str or date_str == 'missing value':
+    def parse_applescript_date(date_str: str) -> Optional[datetime]:
+        """Parses AppleScript localized dates into Python datetime objects."""
+        if not date_str or date_str == "missing value":
             return None
-        
+        cleaned = date_str.replace("alle ", "").replace("at ", "").strip()
         formats = [
-            "%Y-%m-%dT%H:%M:%S",
-            "%A, %d %B %Y at %H:%M:%S",
-            "%A %d %B %Y %H:%M:%S",
+            "%d/%m/%Y, %H:%M:%S",
+            "%d/%m/%Y %H:%M:%S",
+            "%Y-%m-%d %H:%M:%S",
             "%d %B %Y %H:%M:%S",
-            "%Y-%m-%d %H:%M:%S"
+            "%d/%m/%Y, %H:%M",
+            "%d/%m/%Y %H:%M",
+            "%Y-%m-%dT%H:%M:%S",
+            "%A %d %B %Y %H:%M:%S",
+            "%A, %d %B %Y %H:%M:%S",
+            "%a %d %b %Y %H:%M:%S"
         ]
-        
-        clean_str = date_str.replace(" alle ", " ").replace(" at ", " ")
         for fmt in formats:
             try:
-                return datetime.strptime(clean_str, fmt)
+                return datetime.strptime(cleaned, fmt)
             except ValueError:
-                pass
-
-        try:
-            time_match = re.search(r'(\d{1,2}):(\d{2}):(\d{2})', date_str)
-            if time_match:
-                h, m, s = map(int, time_match.groups())
-                now = datetime.now()
-                day_match = re.search(r'\b(\d{1,2})\b', date_str)
-                day = int(day_match.group(1)) if day_match else now.day
-                return datetime(now.year, now.month, day, h, m, s)
-        except Exception:
-            pass
-            
+                continue
         return None
-
-    @classmethod
-    def classify(cls, title: str, location: str = "", description: str = "", meeting_url: Optional[str] = None, custom_keywords: Optional[Dict[str, List[str]]] = None) -> Dict[str, Any]:
-        """Classify event based on title, location, description and keywords."""
-        full_text = f"{title or ''} {location or ''} {description or ''}".lower()
-        kw = {**DEFAULT_KEYWORDS, **(custom_keywords or {})}
-
-        # 1. Travel & Transport (Captain Jet)
-        travel_keywords = kw.get("captain", DEFAULT_KEYWORDS["captain"])
-        if any(re.search(r'\b' + re.escape(k) + r'\b', full_text) if len(k) <= 4 else (k in full_text) for k in travel_keywords):
-            maps_query = location if (location and location != "missing value") else title
-            encoded_query = urllib.parse.quote(maps_query or "Aeroporto")
-            return {
-                "event_type": EventCategory.TRAVEL.value,
-                "pilot_type": PilotType.CAPTAIN.value,
-                "provider": "Volo / Viaggio / Bus ✈️🚌",
-                "action_btn_text": "🗺️ INDICAZIONI MAPPE",
-                "action_url": meeting_url if meeting_url else f"https://maps.apple.com/?q={encoded_query}",
-                "theme_name": "Sky Blue",
-                "is_travel": True
-            }
-
-        # 2. Food & Dinners (Chef Duck)
-        food_keywords = kw.get("chef", DEFAULT_KEYWORDS["chef"])
-        if any(k in full_text for k in food_keywords):
-            maps_query = location if (location and location != "missing value") else f"Ristorante {title}"
-            encoded_query = urllib.parse.quote(maps_query)
-            return {
-                "event_type": EventCategory.FOOD.value,
-                "pilot_type": PilotType.CHEF.value,
-                "provider": "Cena / Cibo 🍕🍽️",
-                "action_btn_text": "🗺️ INDICAZIONI RISTORANTE",
-                "action_url": meeting_url if meeting_url else f"https://maps.apple.com/?q={encoded_query}",
-                "theme_name": "Coral Food",
-                "is_travel": True
-            }
-
-        # 3. Video Meetings
-        if meeting_url:
-            if "serenis.it" in meeting_url or "serenis" in full_text:
-                return {
-                    "event_type": EventCategory.HEALTH.value,
-                    "pilot_type": PilotType.ZEN_DUCK.value,
-                    "provider": "Serenis 🛋️",
-                    "action_btn_text": "🚀 PARTECIPA AL MEETING",
-                    "action_url": meeting_url,
-                    "theme_name": "Teal Zen",
-                    "is_travel": False
-                }
-            elif "meet.google.com" in meeting_url:
-                return {
-                    "event_type": EventCategory.VIDEO_MEETING.value,
-                    "pilot_type": PilotType.DUCK.value,
-                    "provider": "Google Meet 🟢",
-                    "action_btn_text": "🚀 PARTECIPA ORA",
-                    "action_url": meeting_url,
-                    "theme_name": "Google Green",
-                    "is_travel": False
-                }
-            elif "zoom.us" in meeting_url:
-                return {
-                    "event_type": EventCategory.VIDEO_MEETING.value,
-                    "pilot_type": PilotType.DUCK.value,
-                    "provider": "Zoom 🔷",
-                    "action_btn_text": "🚀 ENTRA IN ZOOM",
-                    "action_url": meeting_url,
-                    "theme_name": "Zoom Blue",
-                    "is_travel": False
-                }
-            elif "teams.microsoft.com" in meeting_url or "teams.live.com" in meeting_url:
-                return {
-                    "event_type": EventCategory.VIDEO_MEETING.value,
-                    "pilot_type": PilotType.DUCK.value,
-                    "provider": "MS Teams 🟣",
-                    "action_btn_text": "🚀 PARTECIPA SU TEAMS",
-                    "action_url": meeting_url,
-                    "theme_name": "Teams Purple",
-                    "is_travel": False
-                }
-            else:
-                return {
-                    "event_type": EventCategory.VIDEO_MEETING.value,
-                    "pilot_type": PilotType.DUCK.value,
-                    "provider": "Video Call 🌐",
-                    "action_btn_text": "🚀 PARTECIPA ORA",
-                    "action_url": meeting_url,
-                    "theme_name": "Classic Blue",
-                    "is_travel": False
-                }
-
-        # 4. Academic & Study (Academic Owl)
-        study_keywords = kw.get("owl", DEFAULT_KEYWORDS["owl"])
-        if any(re.search(r'\b' + re.escape(k) + r'\b', full_text) if len(k) <= 4 else (k in full_text) for k in study_keywords):
-            has_loc = bool(location and location != "missing value")
-            maps_query = location if has_loc else "Politecnico Università"
-            encoded_query = urllib.parse.quote(maps_query)
-            return {
-                "event_type": EventCategory.STUDY.value,
-                "pilot_type": PilotType.OWL.value,
-                "provider": "Studio / Uni 🎓",
-                "action_btn_text": "🗺️ INDICAZIONI AULA" if has_loc else "📚 DETTAGLI STUDIO",
-                "action_url": f"https://maps.apple.com/?q={encoded_query}" if has_loc else "https://calendar.google.com",
-                "theme_name": "Amber Academic",
-                "is_travel": has_loc
-            }
-
-        # 5. Health & Wellbeing (Zen Duck)
-        zen_keywords = kw.get("zen_duck", DEFAULT_KEYWORDS["zen_duck"])
-        if any(k in full_text for k in zen_keywords):
-            has_loc = bool(location and location != "missing value")
-            return {
-                "event_type": EventCategory.HEALTH.value,
-                "pilot_type": PilotType.ZEN_DUCK.value,
-                "provider": "Salute & Relax 🌿",
-                "action_btn_text": "🗺️ APRI MAPPE" if has_loc else "🌸 DETTAGLI",
-                "action_url": f"https://maps.apple.com/?q={urllib.parse.quote(location)}" if has_loc else "https://calendar.google.com",
-                "theme_name": "Teal Zen",
-                "is_travel": has_loc
-            }
-
-        # 6. In Person & Travel (Driver Racer)
-        driver_keywords = kw.get("driver", DEFAULT_KEYWORDS["driver"])
-        if any(k in full_text for k in driver_keywords) or (location and location != "missing value" and len(location.strip()) > 2):
-            dest = location if (location and location != "missing value") else title
-            encoded_dest = urllib.parse.quote(dest or "Destinazione")
-            return {
-                "event_type": EventCategory.IN_PERSON.value,
-                "pilot_type": PilotType.DRIVER.value,
-                "provider": "In Presenza 📍 Tempo di Spostamento!",
-                "action_btn_text": "🗺️ VAI CON MAPPE (NAVIGA)",
-                "action_url": f"https://maps.apple.com/?daddr={encoded_dest}",
-                "theme_name": "Emerald Travel",
-                "is_travel": True
-            }
-
-        # 7. General Reminder (Classic Aviator Duck)
-        return {
-            "event_type": EventCategory.GENERAL.value,
-            "pilot_type": PilotType.DUCK.value,
-            "provider": "Promemoria ⏰",
-            "action_btn_text": "📋 APRI EVENTO",
-            "action_url": "https://calendar.google.com",
-            "theme_name": "Sunset Orange",
-            "is_travel": False
-        }

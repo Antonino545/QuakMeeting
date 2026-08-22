@@ -26,10 +26,10 @@ MODE_ICONS = {
 }
 
 MODE_LABELS = {
-    "transit": "Mezzi Pubblici",
-    "automobile": "In Auto",
-    "walking": "A Piedi",
-    "bicycling": "In Bici"
+    "transit": "Public Transit",
+    "automobile": "Driving",
+    "walking": "Walking",
+    "bicycling": "Cycling"
 }
 
 # Apple Maps Direction Flags

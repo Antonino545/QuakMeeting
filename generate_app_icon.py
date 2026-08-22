@@ -150,7 +150,7 @@ def create_app_icon(output_path="assets/icon.png", size=512):
     bitmap = AppKit.NSBitmapImageRep.imageRepsWithData_(tiff_data)[0]
     png_data = bitmap.representationUsingType_properties_(AppKit.NSBitmapImageFileTypePNG, None)
     png_data.writeToFile_atomically_(output_path, True)
-    print(f"✅ Icona generata con successo: {output_path}")
+    print(f"✅ Icon successfully generated: {output_path}")
 
 if __name__ == "__main__":
     create_app_icon("assets/icon.png", 512)
