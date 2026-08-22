@@ -253,7 +253,7 @@ class QuakMeetingMenuBar(AppKit.NSObject):
             except Exception as e:
                 logger.error(f"Error in background scanner loop: {e}", exc_info=True)
                 
-            time.sleep(30)
+            time.sleep(15)
 
     @objc.IBAction
     def triggerBannerOnMainThread_(self, meeting_data):

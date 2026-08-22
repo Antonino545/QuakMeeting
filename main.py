@@ -6,6 +6,9 @@ PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
+from core.logger import setup_logging
+setup_logging()
+
 from ui import QuakMeetingMenuBar, show_banner_async, show_dashboard, _run_banner
 from core import config, get_upcoming_meetings
 from datetime import datetime
