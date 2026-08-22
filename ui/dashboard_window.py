@@ -11,12 +11,14 @@ try:
     from core.calendar_scanner import get_upcoming_meetings, sync_calendar_now, get_available_calendars
     from core.autostart import is_autostart_enabled, enable_autostart, disable_autostart
     from core.services.eta_service import eta_service, MODE_ICONS, MODE_LABELS
+    from core.logger import open_log_file, open_log_folder
     from ui.banner_window import _run_banner
 except ImportError:
     from config_manager import config
     from calendar_scanner import get_upcoming_meetings, sync_calendar_now, get_available_calendars
     from autostart import is_autostart_enabled, enable_autostart, disable_autostart
     from eta_service import eta_service, MODE_ICONS, MODE_LABELS
+    from logger import open_log_file, open_log_folder
     from banner_window import _run_banner
 
 class DashboardWindowDelegate(AppKit.NSObject):
@@ -947,22 +949,38 @@ class DashboardWindowController(AppKit.NSObject):
         card.addSubview_(autostart_chk)
 
         y -= 44.0
-        # 2. Config JSON Buttons
-        open_json_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(18, y - 2, 300, 32))
+        # 2. Config JSON & Log Diagnostic Buttons
+        open_json_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(18, y - 2, 210, 32))
         open_json_btn.setTitle_("📝 Edit Rules (config.json)...")
         open_json_btn.setBezelStyle_(AppKit.NSBezelStyleRounded)
-        open_json_btn.setFont_(AppKit.NSFont.systemFontOfSize_(12.5))
+        open_json_btn.setFont_(AppKit.NSFont.systemFontOfSize_(12.0))
         open_json_btn.setTarget_(self)
         open_json_btn.setAction_("onOpenConfigEditor:")
         card.addSubview_(open_json_btn)
 
-        reload_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(330, y - 2, 200, 32))
+        reload_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(236, y - 2, 140, 32))
         reload_btn.setTitle_("🔄 Reload Rules")
         reload_btn.setBezelStyle_(AppKit.NSBezelStyleRounded)
-        reload_btn.setFont_(AppKit.NSFont.systemFontOfSize_(12.5))
+        reload_btn.setFont_(AppKit.NSFont.systemFontOfSize_(12.0))
         reload_btn.setTarget_(self)
         reload_btn.setAction_("onReloadConfig:")
         card.addSubview_(reload_btn)
+
+        view_logs_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(384, y - 2, 160, 32))
+        view_logs_btn.setTitle_("📄 View Logs")
+        view_logs_btn.setBezelStyle_(AppKit.NSBezelStyleRounded)
+        view_logs_btn.setFont_(AppKit.NSFont.systemFontOfSize_(12.0))
+        view_logs_btn.setTarget_(self)
+        view_logs_btn.setAction_("onOpenLogs:")
+        card.addSubview_(view_logs_btn)
+
+        folder_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(552, y - 2, 140, 32))
+        folder_btn.setTitle_("📂 Log Folder")
+        folder_btn.setBezelStyle_(AppKit.NSBezelStyleRounded)
+        folder_btn.setFont_(AppKit.NSFont.systemFontOfSize_(12.0))
+        folder_btn.setTarget_(self)
+        folder_btn.setAction_("onOpenLogFolder:")
+        card.addSubview_(folder_btn)
 
     def _add_popup_row(self, parent, label_text, sub_text, options, current_val, action_name, y, w):
         lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, y + 2, 280, 20))
@@ -1080,6 +1098,12 @@ class DashboardWindowController(AppKit.NSObject):
     def onReloadConfig_(self, sender):
         config.reload()
         self.refresh_data(force=True)
+
+    def onOpenLogs_(self, sender):
+        open_log_file()
+
+    def onOpenLogFolder_(self, sender):
+        open_log_folder()
 
 def show_dashboard(tab_index=None):
     controller = DashboardWindowController.sharedController()

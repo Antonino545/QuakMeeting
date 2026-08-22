@@ -18,7 +18,7 @@ from core.services.reminder_engine import reminder_engine
 from core.services.event_bus import event_bus
 from core.services.config_service import config
 from core.autostart import is_autostart_enabled, enable_autostart, disable_autostart
-from core.logger import setup_logging, logger
+from core.logger import setup_logging, logger, open_log_file, open_log_folder
 from ui.banner import show_banner_async, _run_banner
 from ui.dashboard_window import show_dashboard
 
@@ -69,7 +69,6 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         if btn:
             btn.setTitle_("🦆 QuakMeeting")
             btn.setToolTip_("QuakMeeting — Smart Meeting & Travel Reminders")
-            btn.setHighlightMode_(True)
         
         self.menu = AppKit.NSMenu.alloc().init()
         self.status_item.setMenu_(self.menu)
@@ -170,6 +169,14 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         # --- HELP MENU ---
         help_menu_item = AppKit.NSMenuItem.alloc().init()
         help_menu = AppKit.NSMenu.alloc().initWithTitle_("Help")
+        
+        help_log = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+            "View Log File (quakmeeting.log)", "openLogFileAction:", "l"
+        )
+        help_log.setTarget_(self)
+        help_menu.addItem_(help_log)
+        help_menu.addItem_(AppKit.NSMenuItem.separatorItem())
+
         help_doc = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
             "QuakMeeting Guide & GitHub", "openHelp:", ""
         )
@@ -305,6 +312,12 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         item_settings.setTarget_(self)
         self.menu.addItem_(item_settings)
 
+        item_logs = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+            "📄 View Logs & Diagnostics...", "openLogFileAction:", "l"
+        )
+        item_logs.setTarget_(self)
+        self.menu.addItem_(item_logs)
+
         self.menu.addItem_(AppKit.NSMenuItem.separatorItem())
 
         # 5. Quit
@@ -321,6 +334,10 @@ class QuakMeetingMenuBar(AppKit.NSObject):
     @objc.IBAction
     def openSettings_(self, sender):
         show_dashboard(2)
+
+    @objc.IBAction
+    def openLogFileAction_(self, sender):
+        open_log_file()
 
     @objc.IBAction
     def testFlightBanner_(self, sender):

@@ -1,17 +1,86 @@
 """
-Centralized logging configuration for QuakMeeting.
-Provides formatted console output and rotating file logs.
+Centralized logging and diagnostic system for QuakMeeting.
+Provides formatted console output, rotating file logs, global crash hooks,
+threading exception catchers, and native macOS error alerts.
 """
 import os
 import sys
 import logging
+import traceback
+import threading
+import platform
 from logging.handlers import RotatingFileHandler
 
 LOG_DIR = os.path.expanduser("~/.quakmeeting")
 LOG_FILE = os.path.join(LOG_DIR, "quakmeeting.log")
+CRASH_FILE = os.path.join(LOG_DIR, "crash.log")
+
+def _show_macos_error_dialog(title: str, message: str) -> None:
+    """Displays a native macOS alert modal if a critical startup crash occurs."""
+    try:
+        import subprocess
+        script = f'display alert "{title}" message "{message}" as critical buttons {{"OK"}} default button "OK"'
+        subprocess.run(["osascript", "-e", script], capture_output=True, timeout=5)
+    except Exception:
+        pass
+
+def _global_exception_handler(exc_type, exc_value, exc_traceback):
+    """Intercepts uncaught top-level exceptions, writes full crash report, and logs."""
+    if issubclass(exc_type, KeyboardInterrupt):
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        return
+
+    tb_lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
+    tb_text = "".join(tb_lines)
+    
+    crash_report = (
+        f"\n{'='*70}\n"
+        f"🚨 CRITICAL UNCAUGHT EXCEPTION — QUAKMEETING CRASH REPORT\n"
+        f"{'='*70}\n"
+        f"Timestamp:        {logging.Formatter().formatTime(logging.LogRecord('', 0, '', 0, '', (), None))}\n"
+        f"Python:           {sys.version}\n"
+        f"Executable:       {sys.executable}\n"
+        f"Platform:         {platform.platform()} ({platform.machine()})\n"
+        f"Working Dir:      {os.getcwd()}\n"
+        f"Arguments:        {sys.argv}\n"
+        f"Exception Type:   {exc_type.__name__}\n"
+        f"Exception Msg:    {exc_value}\n"
+        f"\nTraceback:\n{tb_text}\n"
+        f"{'='*70}\n"
+    )
+
+    # Write to crash file
+    try:
+        os.makedirs(LOG_DIR, exist_ok=True)
+        with open(CRASH_FILE, "a", encoding="utf-8") as f:
+            f.write(crash_report)
+    except Exception:
+        pass
+
+    # Log to logger
+    log = logging.getLogger("QuakMeeting")
+    log.critical(f"Uncaught Exception: {exc_value}\n{tb_text}")
+
+    # Fallback to sys.stderr
+    sys.stderr.write(crash_report)
+    
+    # If starting up or GUI active, alert the user
+    short_msg = f"{exc_type.__name__}: {exc_value}\n\nCheck logs at ~/.quakmeeting/quakmeeting.log"
+    _show_macos_error_dialog("QuakMeeting Startup Error", short_msg)
+
+def _threading_exception_handler(args):
+    """Intercepts unhandled exceptions in background threads (Python 3.8+)."""
+    tb_lines = traceback.format_exception(args.exc_type, args.exc_value, args.exc_traceback)
+    tb_text = "".join(tb_lines)
+    
+    log = logging.getLogger("QuakMeeting")
+    log.error(
+        f"💥 Unhandled exception in background thread '{args.thread.name}': "
+        f"{args.exc_type.__name__}: {args.exc_value}\n{tb_text}"
+    )
 
 def setup_logging(level=logging.INFO) -> logging.Logger:
-    """Configures root logger with formatted console and rotating file handlers."""
+    """Configures root logger with formatted console, rotating file handlers, and crash hooks."""
     try:
         os.makedirs(LOG_DIR, exist_ok=True)
     except Exception:
@@ -24,7 +93,7 @@ def setup_logging(level=logging.INFO) -> logging.Logger:
     if not root_logger.handlers:
         formatter = logging.Formatter(
             fmt="%(asctime)s [%(levelname)s] [%(name)s] %(message)s",
-            datefmt="%H:%M:%S"
+            datefmt="%Y-%m-%d %H:%M:%S"
         )
 
         # 1. Console Stream Handler
@@ -33,12 +102,12 @@ def setup_logging(level=logging.INFO) -> logging.Logger:
         console_handler.setFormatter(formatter)
         root_logger.addHandler(console_handler)
 
-        # 2. Rotating File Handler (max 2MB, up to 3 backups)
+        # 2. Rotating File Handler (max 5MB, up to 5 backups)
         try:
             file_handler = RotatingFileHandler(
                 LOG_FILE,
-                maxBytes=2 * 1024 * 1024,
-                backupCount=3,
+                maxBytes=5 * 1024 * 1024,
+                backupCount=5,
                 encoding="utf-8"
             )
             file_handler.setLevel(level)
@@ -47,7 +116,49 @@ def setup_logging(level=logging.INFO) -> logging.Logger:
         except Exception as e:
             sys.stderr.write(f"Warning: could not initialize file logger: {e}\n")
 
+    # Install global exception hooks
+    sys.excepthook = _global_exception_handler
+    if hasattr(threading, "excepthook"):
+        threading.excepthook = _threading_exception_handler
+
     return root_logger
+
+def log_system_diagnostics():
+    """Logs complete environment diagnostics on startup for debugging."""
+    log = logging.getLogger("QuakMeeting.Diagnostics")
+    log.info("=" * 60)
+    log.info("🚀 QuakMeeting Initializing")
+    log.info(f"📍 Log File:       {LOG_FILE}")
+    log.info(f"🐍 Python:         {sys.version.split()[0]} ({sys.executable})")
+    log.info(f"💻 System:         {platform.platform()} ({platform.machine()})")
+    log.info(f"📂 Working Dir:    {os.getcwd()}")
+    log.info(f"⚙️  PID:            {os.getpid()}")
+    log.info("=" * 60)
+
+def open_log_file() -> bool:
+    """Opens the active log file in the user's default text editor or Console.app."""
+    try:
+        import subprocess
+        if not os.path.exists(LOG_FILE):
+            os.makedirs(LOG_DIR, exist_ok=True)
+            with open(LOG_FILE, "w", encoding="utf-8") as f:
+                f.write("QuakMeeting Log Initialized\n")
+        subprocess.run(["open", LOG_FILE], check=True)
+        return True
+    except Exception as e:
+        logger.error(f"Failed to open log file: {e}")
+        return False
+
+def open_log_folder() -> bool:
+    """Opens ~/.quakmeeting in Finder."""
+    try:
+        import subprocess
+        os.makedirs(LOG_DIR, exist_ok=True)
+        subprocess.run(["open", LOG_DIR], check=True)
+        return True
+    except Exception as e:
+        logger.error(f"Failed to open log folder: {e}")
+        return False
 
 # Initialize global logger
 logger = setup_logging()

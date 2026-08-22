@@ -143,21 +143,33 @@ def build_bundle():
     # 5. Create Launcher Bash executable in MacOS/QuakMeeting
     launcher_content = """#!/bin/bash
 DIR="$(cd "$(dirname "$0")/../Resources" && pwd)"
+LOG_DIR="$HOME/.quakmeeting"
+mkdir -p "$LOG_DIR"
+LOG_FILE="$LOG_DIR/quakmeeting.log"
+LAUNCHER_LOG="$LOG_DIR/launcher.log"
+
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] [Launcher] QuakMeeting launching from $DIR..." >> "$LAUNCHER_LOG"
+
 export PATH="/opt/miniconda3/bin:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:$PATH"
 
 PYTHON_BIN=""
 for p in "/opt/miniconda3/bin/python3" "/usr/local/bin/python3" "/opt/homebrew/bin/python3" "$(which python3)"; do
-    if [ -x "$p" ] && "$p" -c "import AppKit" 2>/dev/null; then
+    if [ -n "$p" ] && [ -x "$p" ] && "$p" -c "import AppKit" 2>/dev/null; then
         PYTHON_BIN="$p"
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] [Launcher] Found Python with PyObjC: $PYTHON_BIN" >> "$LAUNCHER_LOG"
         break
     fi
 done
 
 if [ -z "$PYTHON_BIN" ]; then
-    PYTHON_BIN="python3"
+    ERR_MSG="Python 3 with PyObjC (AppKit) not found. Please install pyobjc: pip3 install pyobjc"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [Launcher Error] $ERR_MSG" >> "$LAUNCHER_LOG"
+    osascript -e "display alert \"QuakMeeting Launch Error\" message \"$ERR_MSG\" as critical"
+    exit 1
 fi
 
-exec "$PYTHON_BIN" "$DIR/main.py" --dashboard "$@"
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] [Launcher] Executing $PYTHON_BIN $DIR/main.py --dashboard $@" >> "$LAUNCHER_LOG"
+exec "$PYTHON_BIN" "$DIR/main.py" --dashboard "$@" >> "$LOG_FILE" 2>&1
 """
     launcher_path = os.path.join(MACOS_DIR, "QuakMeeting")
     with open(launcher_path, "w", encoding="utf-8") as f:
