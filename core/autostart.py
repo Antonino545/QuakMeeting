@@ -3,10 +3,14 @@ import subprocess
 import sys
 
 PLIST_PATH = os.path.expanduser("~/Library/LaunchAgents/com.quakmeeting.app.plist")
-MAIN_SCRIPT_PATH = os.path.expanduser("/Users/antonino54/Documents/QuakMeeting/main.py")
+PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MAIN_SCRIPT_PATH = os.path.join(PROJECT_DIR, "main.py")
 PYTHON_EXEC = sys.executable
+LOG_OUT = os.path.join(PROJECT_DIR, "quakmeeting.log")
+LOG_ERR = os.path.join(PROJECT_DIR, "quakmeeting_error.log")
 
-PLIST_CONTENT = f"""<?xml version="1.0" encoding="UTF-8"?>
+def get_plist_content():
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
@@ -16,17 +20,16 @@ PLIST_CONTENT = f"""<?xml version="1.0" encoding="UTF-8"?>
     <array>
         <string>{PYTHON_EXEC}</string>
         <string>{MAIN_SCRIPT_PATH}</string>
+        <string>--autostart</string>
     </array>
     <key>RunAtLoad</key>
-    <true/>
-    <key>KeepAlive</key>
     <true/>
     <key>ProcessType</key>
     <string>Interactive</string>
     <key>StandardOutPath</key>
-    <string>/Users/antonino54/Documents/QuakMeeting/quakmeeting.log</string>
+    <string>{LOG_OUT}</string>
     <key>StandardErrorPath</key>
-    <string>/Users/antonino54/Documents/QuakMeeting/quakmeeting_error.log</string>
+    <string>{LOG_ERR}</string>
 </dict>
 </plist>
 """
@@ -38,7 +41,7 @@ def enable_autostart():
     try:
         os.makedirs(os.path.dirname(PLIST_PATH), exist_ok=True)
         with open(PLIST_PATH, "w", encoding="utf-8") as f:
-            f.write(PLIST_CONTENT.strip())
+            f.write(get_plist_content().strip())
         subprocess.run(["launchctl", "unload", PLIST_PATH], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         subprocess.run(["launchctl", "load", PLIST_PATH], check=True)
         print("✅ Avvio automatico al login configurato con successo!")

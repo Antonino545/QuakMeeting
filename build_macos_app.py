@@ -35,7 +35,56 @@ def generate_icns():
     print(f"✅ AppIcon.icns generata con successo: {icns_path}")
     return icns_path
 
+def check_python_code():
+    print("🧪 Controllo e validazione del codice Python in corso...")
+    import py_compile
+    
+    py_files = []
+    for root, _, files in os.walk(PROJECT_DIR):
+        if ".git" in root or "QuakMeeting.app" in root or "__pycache__" in root:
+            continue
+        for file in files:
+            if file.endswith(".py"):
+                py_files.append(os.path.join(root, file))
+    
+    for py_file in py_files:
+        try:
+            py_compile.compile(py_file, doraise=True)
+            print(f"  ✓ {os.path.relpath(py_file, PROJECT_DIR)}: Sintassi OK")
+        except py_compile.PyCompileError as e:
+            print(f"  ❌ ERRORE SINTASSI in {py_file}: {e}")
+            raise SystemExit(1)
+                
+    # Verifica import dei moduli
+    try:
+        import sys
+        if PROJECT_DIR not in sys.path:
+            sys.path.insert(0, PROJECT_DIR)
+        import core.domain
+        import core.services
+        import core.providers
+        import core.config_manager
+        import core.calendar_scanner
+        import core.autostart
+        import ui.banner
+        import ui.dashboard_window
+        import ui.menu_bar_app
+        print("  ✓ Tutti i moduli core/ e ui/ importati correttamente!")
+    except Exception as e:
+        print(f"  ❌ ERRORE IMPORT: {e}")
+        raise SystemExit(1)
+        
+    # Esegui suite di test automatici
+    print("  🧪 Esecuzione test suite automatica...")
+    res = subprocess.run([sys.executable, "-m", "unittest", "discover", "-s", "tests", "-v"], cwd=PROJECT_DIR, capture_output=True, text=True)
+    if res.returncode != 0:
+        print(f"  ❌ TEST SUITE FALLITA:\n{res.stderr}")
+        raise SystemExit(1)
+    print("  ✓ Test suite superata al 100%!")
+    print("✅ Controllo Python completato con successo (Zero Errori).\n")
+
 def build_bundle():
+    check_python_code()
     print(f"📦 Creazione del bundle macOS nativo: {APP_DIR}...")
     if os.path.exists(APP_DIR):
         shutil.rmtree(APP_DIR)

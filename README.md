@@ -2,7 +2,7 @@
 
 # 🦆 QuakMeeting
 ### macOS Native Flight Deck & Smart Meeting Reminder Assistant
-*Inspired by [QuakPit](https://github.com/Ooble-Studio/QuakPit) — Designed for ADHD Focus, Travel Precision, & 1-Click Meeting Joins.*
+*Inspired by [QuakPit](https://github.com/Ooble-Studio/QuakPit) — Designed for Timing Precision, Travel Readiness, & 1-Click Meeting Joins.*
 
 [![macOS](https://img.shields.io/badge/macOS-12.0%2B-blue?logo=apple&style=flat-square)](https://apple.com)
 [![Python](https://img.shields.io/badge/Python-3.9%2B-yellow?logo=python&style=flat-square)](https://python.org)
@@ -16,7 +16,7 @@
 
 ## 📖 Overview & Philosophy
 
-**QuakMeeting** is a native macOS companion application built to solve one of the biggest challenges for neurodivergent (ADHD), busy professionals, and university students: **forgetting upcoming meetings, missing transit departures, or getting lost in endless notification banners.**
+**QuakMeeting** is a native macOS companion application built to solve one of the biggest challenges for busy professionals, neurodivergent users, and university students: **forgetting upcoming meetings, missing transit departures, or getting lost in endless notification banners.**
 
 Instead of subtle notification center alerts that disappear after 5 seconds, QuakMeeting animates a **playful cartoon airplane towing an interactive HUD banner** across your screen. The banner provides a clear countdown, intelligent context-aware action buttons (1-click Google Meet / Zoom / Serenis join, 1-click Apple Maps navigation), and gentle snooze loops that keep you on track.
 
@@ -27,11 +27,11 @@ Instead of subtle notification center alerts that disappear after 5 seconds, Qua
 - 🖥️ **Flight Deck Control Center (`ui/dashboard_window.py`)**: Modern macOS Frosted Glass UI with 3 dedicated tabs:
   - **📅 Agenda di Oggi**: Visual timeline of all today's events, pilot badges, locations, and instant join buttons.
   - **🦆 Hangar Piloti**: Interactive playground to test flight animations for all 6 pilots.
-  - **⚙️ Impostazioni & ADHD**: Live controls for lead times, snooze intervals, flight speeds, sounds, and autostart.
+  - **⚙️ Impostazioni & Timing**: Live controls for lead times, snooze intervals, banner screen position, flight speeds, chime audio, and autostart.
 - ⚡ **Stale-While-Revalidate Instant Sync**: Displays today's schedule in **0.000013s** from persistent local disk cache while silently updating in the background without UI lag.
 - ✈️ **6 Specialized Pilot Themes**: Dynamic Mascot and HUD themes automatically assigned based on event keywords.
 - 🚀 **1-Click Smart Action Buttons**: Automatically launches meeting URLs in browser or sets Apple Maps GPS navigation with travel times.
-- 💤 **ADHD Snooze Loops**: Custom snooze intervals (2 min, 5 min, 10 min) ensuring critical events are never forgotten.
+- 💤 **Smart Timing Snooze Loops**: Custom snooze intervals (1 min, 2 min, 5 min, 10 min) ensuring critical events are never forgotten.
 - 🍎 **Menu Bar Companion**: Lightweight menu bar status item displaying your next upcoming meeting countdown.
 - 🔒 **Privacy-First & Local**: No external cloud accounts or servers. Runs entirely on your Mac through local Apple Calendar sync.
 
@@ -87,17 +87,24 @@ QuakMeeting/
 2. When prompted by macOS, click **"Consenti" (Allow)** to grant Calendar access.
 3. The app will launch in your Menu Bar and open the **Flight Deck Control Center**.
 
-### Option 2: Run via Terminal / Python
+### Option 2: Test Flying Banner over Full Screen Apps
+You can test the banner immediately (including over any full screen application like Safari, Chrome, YouTube, or Keynote):
+- Double-click **`test_banner.command`** in the project folder, OR
+- Run via terminal:
+```bash
+./test_banner.command
+# Or with Python directly:
+python3 main.py --test --delay 3 --pilot duck
+```
+
+### Option 3: Run via Terminal / Python
 Ensure Python 3 with PyObjC is installed:
 ```bash
 # Launch Menu Bar App + Flight Deck Dashboard
 python3 main.py --dashboard
-
-# Test a single flying banner notification
-python3 main.py --test
 ```
 
-### Option 3: Rebuild the `.app` Bundle
+### Option 4: Rebuild the `.app` Bundle
 If you customize the code or add new pilots:
 ```bash
 python3 build_macos_app.py
