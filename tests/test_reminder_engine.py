@@ -61,7 +61,7 @@ class TestReminderEngine(unittest.TestCase):
         )
 
         stages = self.engine.get_stages_for_meeting(meeting_travel)
-        self.assertEqual(stages, [45, 30, 15, 5])
+        self.assertEqual(stages, [45, 30, 15, 5, 2, 0])
 
         res = self.engine.evaluate_meetings([meeting_travel], current_time=now)
         self.assertEqual(len(res), 1)

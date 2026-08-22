@@ -734,12 +734,13 @@ class DashboardWindowController:
         lbl2.setEditable_(False)
         card.addSubview_(lbl2)
         
-        curr_travel_stages = set(config.get("travel_reminder_stages", [45, 30, 15, 5]))
-        travel_opts = [(90, "90m"), (60, "60m"), (45, "45m"), (30, "30m"), (15, "15m"), (5, "5m")]
+        curr_travel_stages = set(config.get("travel_reminder_stages", [45, 30, 15, 5, 2, 0]))
+        travel_opts = [(60, "60m"), (45, "45m"), (30, "30m"), (15, "15m"), (5, "5m"), (2, "2m"), (0, "All'inizio (0m)")]
         
         x_btn = 250.0
         for val, label in travel_opts:
-            chk = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(x_btn, y, 64, 24))
+            btn_w = 64.0 if val != 0 else 102.0
+            chk = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(x_btn, y, btn_w, 24))
             chk.setButtonType_(AppKit.NSButtonTypeSwitch)
             chk.setTitle_(label)
             chk.setFont_(AppKit.NSFont.systemFontOfSize_(11.5))
@@ -748,7 +749,7 @@ class DashboardWindowController:
             chk.setTarget_(self)
             chk.setAction_("onToggleTravelStage:")
             card.addSubview_(chk)
-            x_btn += 70.0
+            x_btn += (btn_w + 6.0)
 
         y -= 44.0
         # 3. Snooze
