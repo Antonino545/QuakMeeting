@@ -1,6 +1,6 @@
 """
 Banner View component for QuakMeeting.
-Handles HUD layout, countdown, buttons, particle physics, and pilot sprite delegation.
+Handles HUD layout, multi-modal travel countdown, buttons, particle physics, and pilot sprite delegation.
 """
 import AppKit
 import objc
@@ -9,6 +9,7 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 
 from core.services.config_service import config
+from core.services.eta_service import MODE_ICONS, MODE_LABELS
 from .renderers import get_pilot_renderer
 
 class QuakPitBannerView(AppKit.NSView):
@@ -28,6 +29,14 @@ class QuakPitBannerView(AppKit.NSView):
         self.location = str(meeting_data.get("location") or "")
         self.pilot_type = str(meeting_data.get("pilot_type") or "duck")
         self.is_travel = bool(meeting_data.get("is_travel", False))
+        
+        # Multi-modal Travel & ETA metadata
+        self.travel_time_minutes = meeting_data.get("travel_time_minutes")
+        self.travel_distance_km = meeting_data.get("travel_distance_km")
+        self.transport_mode = meeting_data.get("transport_mode", config.get("transport_mode", "transit"))
+        self.departure_time = meeting_data.get("departure_time")
+        self.origin_address = meeting_data.get("origin_address")
+        self.eta_text = meeting_data.get("eta_text")
         
         # Instantiate pilot renderer
         self.renderer = get_pilot_renderer(self.pilot_type)
@@ -311,13 +320,13 @@ class QuakPitBannerView(AppKit.NSView):
         # 4. Provider Pill
         self._draw_provider_pill(banner_x, banner_y, banner_h, accent)
 
-        # 5. Countdown Pill
+        # 5. Countdown Pill (with Multi-modal ETA)
         self._draw_countdown_pill(banner_x, banner_y, banner_w, banner_h, accent)
 
         # 6. Close Button
         self._draw_close_button(banner_x, banner_y, banner_w, banner_h)
 
-        # 7. Event Details
+        # 7. Event Details & ETA Route
         self._draw_event_details(banner_x, banner_y, banner_w, banner_h)
 
         # 8. Action Button
@@ -439,20 +448,36 @@ class QuakPitBannerView(AppKit.NSView):
     def _draw_countdown_pill(self, bx, by, bw, bh, accent):
         countdown_text = "⏰ Avviso Imminente"
         is_urgent = False
+        mode_icon = MODE_ICONS.get(self.transport_mode, "🚆")
         
         if self.start_time:
             now = datetime.now()
             diff = (self.start_time - now).total_seconds()
-            if diff > 0:
+            
+            # Check Departure Deadline if available
+            if self.is_travel and self.departure_time:
+                dep_diff = (self.departure_time - now).total_seconds()
+                dep_mins = int(dep_diff // 60)
+                dep_time_str = self.departure_time.strftime("%H:%M")
+                
+                if dep_diff <= 0:
+                    countdown_text = f"🚨 {mode_icon} TEMPO DI PARTIRE!"
+                    is_urgent = True
+                elif dep_mins <= 10:
+                    countdown_text = f"⏳ {mode_icon} Parti tra {dep_mins}m ({dep_time_str})"
+                    is_urgent = True
+                else:
+                    countdown_text = f"{mode_icon} Parti alle {dep_time_str} (~{self.travel_time_minutes or 20}m)"
+            elif diff > 0:
                 mins = int(diff // 60)
                 secs = int(diff % 60)
                 if self.is_travel:
                     if mins >= 30:
-                        countdown_text = f"🚗 Tra {mins}m • Preavviso Viaggio"
+                        countdown_text = f"{mode_icon} Tra {mins}m • Preavviso Spostamento"
                     elif mins >= 15:
-                        countdown_text = f"🚗 Tra {mins}m • Preparati a Partire"
+                        countdown_text = f"{mode_icon} Tra {mins}m • Preparati a Partire"
                     else:
-                        countdown_text = f"🚗 Tra {mins}m • Parti Adesso!"
+                        countdown_text = f"🚨 {mode_icon} Parti Adesso!"
                         is_urgent = True
                 else:
                     if mins >= 15:
@@ -552,6 +577,9 @@ class QuakPitBannerView(AppKit.NSView):
         if self.location:
             loc_short = self.location if len(self.location) <= 24 else self.location[:21] + "..."
             detail_text += f"  •  📍 {loc_short}"
+            if self.travel_time_minutes:
+                mode_icon = MODE_ICONS.get(self.transport_mode, "🚆")
+                detail_text += f" ({mode_icon} ~{self.travel_time_minutes}m)"
         elif self.action_url and ("meet.google.com" in self.action_url or "zoom" in self.action_url):
             detail_text += "  •  🌐 Online Meeting"
 

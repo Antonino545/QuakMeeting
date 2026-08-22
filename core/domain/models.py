@@ -24,6 +24,12 @@ class EventCategory(str, Enum):
     IN_PERSON = "in_person"
     GENERAL = "general"
 
+class TransportMode(str, Enum):
+    TRANSIT = "transit"           # Mezzi Pubblici (Bus, Tram, Metro, Treno) 🚆🚌
+    AUTOMOBILE = "automobile"     # Auto / Moto 🚗
+    WALKING = "walking"           # A Piedi 🚶‍♂️
+    BICYCLING = "bicycling"       # Bicicletta 🚲
+
 @dataclass
 class Meeting:
     title: str
@@ -41,6 +47,14 @@ class Meeting:
     is_travel: bool = False
     reminder_stage: Optional[int] = None
     category: Optional[str] = None
+    
+    # Travel & ETA Metadata
+    travel_time_minutes: Optional[int] = None
+    travel_distance_km: Optional[float] = None
+    transport_mode: str = "transit"
+    departure_time: Optional[datetime] = None
+    origin_address: Optional[str] = None
+    eta_text: Optional[str] = None
 
     def __post_init__(self):
         if self.category and not self.event_type:
@@ -83,7 +97,14 @@ class Meeting:
             "action_url": self.action_url,
             "theme_name": self.theme_name,
             "is_travel": self.is_travel,
-            "reminder_stage": self.reminder_stage
+            "reminder_stage": self.reminder_stage,
+            "category": self.category,
+            "travel_time_minutes": self.travel_time_minutes,
+            "travel_distance_km": self.travel_distance_km,
+            "transport_mode": self.transport_mode,
+            "departure_time": self.departure_time,
+            "origin_address": self.origin_address,
+            "eta_text": self.eta_text
         }
 
     def to_serializable_dict(self) -> Dict[str, Any]:
@@ -91,6 +112,7 @@ class Meeting:
         d = self.to_dict()
         d["start_time"] = self.start_time.isoformat() if self.start_time else None
         d["end_time"] = self.end_time.isoformat() if self.end_time else None
+        d["departure_time"] = self.departure_time.isoformat() if self.departure_time else None
         return d
 
     @classmethod
@@ -108,6 +130,12 @@ class Meeting:
         else:
             end_dt = end_val
 
+        dep_val = d.get("departure_time")
+        if isinstance(dep_val, str):
+            dep_dt = datetime.fromisoformat(dep_val)
+        else:
+            dep_dt = dep_val
+
         return cls(
             title=d.get("title", ""),
             start_time=start_dt,
@@ -122,5 +150,12 @@ class Meeting:
             action_url=d.get("action_url"),
             theme_name=d.get("theme_name", "Sunset Orange"),
             is_travel=bool(d.get("is_travel", False)),
-            reminder_stage=d.get("reminder_stage")
+            reminder_stage=d.get("reminder_stage"),
+            category=d.get("category"),
+            travel_time_minutes=d.get("travel_time_minutes"),
+            travel_distance_km=d.get("travel_distance_km"),
+            transport_mode=d.get("transport_mode", "transit"),
+            departure_time=dep_dt,
+            origin_address=d.get("origin_address"),
+            eta_text=d.get("eta_text")
         )

@@ -29,6 +29,11 @@ DEFAULT_CONFIG = {
         "Scheduled Reminders",
         "Siri Suggestions"
     ],
+    # Smart Travel & ETA Settings (Mezzi Pubblici, Auto, Piedi, Bici)
+    "home_address": "",               # e.g. "Corso Duca degli Abruzzi 24, Torino"
+    "transport_mode": "transit",       # "transit" (Mezzi Pubblici), "automobile" (Auto), "walking" (A Piedi), "bicycling" (Bici)
+    "enable_eta_service": True,
+    "eta_buffer_minutes": 10,          # Margine di anticipo per raggiungere la fermata/parcheggio
     "custom_keywords": {
         "chef": ["cena", "pranzo", "dinner", "lunch", "ristorante", "pizza", "pizzeria", "sushi", "aperitivo", "apericena", "osteria", "trattoria", "cibo", "food", "mangiare", "pub", "burger"],
         "captain": ["flight", "volo", "airport", "aeroporto", "bus", "navetta", "shuttle", "pullman", "ryanair", "easyjet", "wizz", "ita airways", "treno", "frecciarossa", "italo", "stazione", "viaggio", "partenza", "gate", "terminal", "imbarco", "boarding", "taxi", "uber"],

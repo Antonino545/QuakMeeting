@@ -1,6 +1,6 @@
 """
 Calendar Service for QuakMeeting.
-Coordinates in-memory and disk caching, provider querying, and background sync.
+Coordinates in-memory and disk caching, provider querying, background sync, and ETA route enrichment.
 """
 import os
 import json
@@ -14,6 +14,7 @@ from core.domain.models import Meeting
 from core.domain.classifier import EventClassifier
 from core.services.config_service import config_service, ConfigService
 from core.services.event_bus import event_bus, EventBus
+from core.services.eta_service import eta_service, ETAService, MODE_ICONS
 from core.providers.base import BaseCalendarProvider
 from core.providers.applescript_provider import AppleScriptCalendarProvider
 from core.providers.eventkit_provider import EventKitCalendarProvider
@@ -51,6 +52,41 @@ class CalendarService:
     def set_provider(self, provider: BaseCalendarProvider) -> None:
         self._provider = provider
 
+    def _enrich_with_eta(self, meetings: List[Meeting]) -> None:
+        """Enriches physical/travel meetings with ETA travel time and departure deadlines."""
+        if not self.config.get("enable_eta_service", True):
+            return
+
+        home_address = self.config.get("home_address", "").strip()
+        transport_mode = self.config.get("transport_mode", "transit")
+        buffer_minutes = int(self.config.get("eta_buffer_minutes", 10))
+
+        for m in meetings:
+            if m.is_travel and m.location and m.start_time:
+                dest = m.location if m.location and m.location != "missing value" else m.title
+                if home_address:
+                    eta_res = eta_service.calculate_eta(home_address, dest, transport_mode)
+                    if eta_res:
+                        m.travel_time_minutes = eta_res["duration_minutes"]
+                        m.travel_distance_km = eta_res["distance_km"]
+                        m.transport_mode = transport_mode
+                        m.origin_address = home_address
+                        m.departure_time = eta_service.get_departure_time(m.start_time, m.travel_time_minutes, buffer_minutes)
+                        
+                        icon = MODE_ICONS.get(transport_mode, "🚆")
+                        dep_str = m.departure_time.strftime("%H:%M")
+                        m.eta_text = f"{icon} ~{m.travel_time_minutes}m • Parti alle {dep_str}"
+                        m.action_url = eta_res["maps_url"]
+                        
+                        if transport_mode == "transit":
+                            m.action_btn_text = f"🗺️ MEZZI PUBBLICI (~{m.travel_time_minutes}m)"
+                        elif transport_mode == "automobile":
+                            m.action_btn_text = f"🗺️ VAI CON MAPPE (~{m.travel_time_minutes}m)"
+                        elif transport_mode == "walking":
+                            m.action_btn_text = f"🗺️ A PIEDI (~{m.travel_time_minutes}m)"
+                        elif transport_mode == "bicycling":
+                            m.action_btn_text = f"🗺️ IN BICI (~{m.travel_time_minutes}m)"
+
     def _save_cache_to_disk(self, meetings: List[Meeting]) -> None:
         try:
             os.makedirs(CACHE_DIR, exist_ok=True)
@@ -79,6 +115,7 @@ class CalendarService:
             self._is_fetching = True
             try:
                 meetings = self._provider.fetch_events()
+                self._enrich_with_eta(meetings)
                 self._in_memory_cache = meetings
                 self._last_fetch_time = time.time()
                 self._save_cache_to_disk(meetings)

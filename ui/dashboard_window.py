@@ -10,11 +10,13 @@ try:
     from core.config_manager import config
     from core.calendar_scanner import get_upcoming_meetings, sync_calendar_now, get_available_calendars
     from core.autostart import is_autostart_enabled, enable_autostart, disable_autostart
+    from core.services.eta_service import eta_service, MODE_ICONS, MODE_LABELS
     from ui.banner_window import _run_banner
 except ImportError:
     from config_manager import config
     from calendar_scanner import get_upcoming_meetings, sync_calendar_now, get_available_calendars
     from autostart import is_autostart_enabled, enable_autostart, disable_autostart
+    from eta_service import eta_service, MODE_ICONS, MODE_LABELS
     from banner_window import _run_banner
 
 class DashboardWindowDelegate(AppKit.NSObject):
@@ -349,6 +351,10 @@ class DashboardWindowController:
         loc = m.get("location")
         if loc and loc != "missing value":
             sub_str += f"  •  📍 {loc[:35]}"
+            if m.get("travel_time_minutes"):
+                t_mode = m.get("transport_mode", config.get("transport_mode", "transit"))
+                icon = MODE_ICONS.get(t_mode, "🚆")
+                sub_str += f" ({icon} ~{m['travel_time_minutes']}m)"
         elif m.get("action_url") and "meet.google.com" in m["action_url"]:
             sub_str += "  •  🌐 Google Meet"
 
@@ -597,14 +603,15 @@ class DashboardWindowController:
         card_w = w - 16.0
         gap = 14.0
         
-        # Calcolo dinamico altezza contenuto (5 sezioni essenziali e pulite)
+        # Calcolo dinamico altezza contenuto (6 sezioni essenziali e pulite)
         c1_h = 195.0 # Timing & Anticipi Multipli
+        c_eta_h = 185.0 # Indirizzo Casa / Partenza & Stima Percorso (Apple Maps ETA)
         c2_h = 140.0 # Banner & Dinamica Volo
         c3_h = 140.0 # Audio & Chime
         c4_h = 135.0 # Calendari macOS Inclusi
         c5_h = 125.0 # Sistema & Config
         
-        content_h = c1_h + c2_h + c3_h + c4_h + c5_h + gap * 6 + 20.0
+        content_h = c1_h + c_eta_h + c2_h + c3_h + c4_h + c5_h + gap * 7 + 20.0
         doc_view = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 0, w, content_h))
 
         curr_y = content_h - gap
@@ -615,25 +622,31 @@ class DashboardWindowController:
         self._build_timing_section(card1, card_w, c1_h)
         doc_view.addSubview_(card1)
 
-        # SEZIONE 2: BANNER A SCHERMO & DINAMICA DI VOLO
+        # SEZIONE 2: INDIRIZZO DI PARTENZA & STIMA PERCORSO (APPLE MAPS ETA)
+        curr_y -= (c_eta_h + gap)
+        card_eta = self._create_card_container(0, curr_y, card_w, c_eta_h)
+        self._build_eta_section(card_eta, card_w, c_eta_h)
+        doc_view.addSubview_(card_eta)
+
+        # SEZIONE 3: BANNER A SCHERMO & DINAMICA DI VOLO
         curr_y -= (c2_h + gap)
         card2 = self._create_card_container(0, curr_y, card_w, c2_h)
         self._build_flight_section(card2, card_w, c2_h)
         doc_view.addSubview_(card2)
 
-        # SEZIONE 3: AUDIO & SUONI DI SISTEMA
+        # SEZIONE 4: AUDIO & SUONI DI SISTEMA
         curr_y -= (c3_h + gap)
         card3 = self._create_card_container(0, curr_y, card_w, c3_h)
         self._build_audio_section(card3, card_w, c3_h)
         doc_view.addSubview_(card3)
 
-        # SEZIONE 4: CALENDARI MACOS INCLUSI
+        # SEZIONE 5: CALENDARI MACOS INCLUSI
         curr_y -= (c4_h + gap)
         card4 = self._create_card_container(0, curr_y, card_w, c4_h)
         self._build_calendars_section(card4, card_w, c4_h)
         doc_view.addSubview_(card4)
 
-        # SEZIONE 5: SISTEMA & CONFIGURAZIONE JSON
+        # SEZIONE 6: SISTEMA & CONFIGURAZIONE JSON
         curr_y -= (c5_h + gap)
         card5 = self._create_card_container(0, curr_y, card_w, c5_h)
         self._build_system_section(card5, card_w, c5_h)
@@ -743,6 +756,70 @@ class DashboardWindowController:
         self._add_popup_row(card, "💤 Durata Snooze Promemoria:", "Intervallo di rinvio quando premi il pulsante Snooze sul banner", [
             ("1 minuto", 1), ("2 minuti (Predefinito)", 2), ("5 minuti", 5), ("10 minuti", 10), ("15 minuti", 15)
         ], snooze_val, "onSelectSnoozeDuration:", y, w)
+
+    def _build_eta_section(self, card, w, h):
+        self._add_section_header(card, "📍 Indirizzo di Partenza & Stima Percorso (Apple Maps ETA)", "Calcola in tempo reale la durata del tragitto con Mezzi Pubblici, Auto, Piedi o Bici.", h - 28, w)
+
+        y = h - 68.0
+        # 1. Indirizzo Casa / Partenza
+        lbl1 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, y + 2, 275, 20))
+        lbl1.setStringValue_("🏠 Indirizzo di Casa / Partenza:")
+        lbl1.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.5))
+        lbl1.setTextColor_(AppKit.NSColor.whiteColor())
+        lbl1.setBezeled_(False)
+        lbl1.setDrawsBackground_(False)
+        lbl1.setEditable_(False)
+        card.addSubview_(lbl1)
+
+        curr_addr = str(config.get("home_address", "") or "")
+        self.home_addr_field = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(300, y, 260, 26))
+        self.home_addr_field.setStringValue_(curr_addr)
+        self.home_addr_field.setPlaceholderString_("Es. Corso Duca degli Abruzzi 24, Torino")
+        self.home_addr_field.setFont_(AppKit.NSFont.systemFontOfSize_(12))
+        self.home_addr_field.setTarget_(self)
+        self.home_addr_field.setAction_("onSaveHomeAddress:")
+        card.addSubview_(self.home_addr_field)
+
+        save_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(570, y - 2, 90, 30))
+        save_btn.setTitle_("💾 Salva")
+        save_btn.setBezelStyle_(AppKit.NSBezelStyleRounded)
+        save_btn.setFont_(AppKit.NSFont.boldSystemFontOfSize_(11.5))
+        save_btn.setTarget_(self)
+        save_btn.setAction_("onSaveHomeAddress:")
+        card.addSubview_(save_btn)
+
+        y -= 44.0
+        # 2. Modalità di Trasporto Predefinita (Segmented Control: Mezzi, Auto, Piedi, Bici)
+        lbl2 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, y + 2, 275, 20))
+        lbl2.setStringValue_("🚦 Modalità Trasporto Predefinita:")
+        lbl2.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.5))
+        lbl2.setTextColor_(AppKit.NSColor.whiteColor())
+        lbl2.setBezeled_(False)
+        lbl2.setDrawsBackground_(False)
+        lbl2.setEditable_(False)
+        card.addSubview_(lbl2)
+
+        modes = ["transit", "automobile", "walking", "bicycling"]
+        curr_mode = config.get("transport_mode", "transit")
+        sel_idx = modes.index(curr_mode) if curr_mode in modes else 0
+
+        self.mode_segmented = AppKit.NSSegmentedControl.alloc().initWithFrame_(AppKit.NSMakeRect(300, y - 2, 360, 28))
+        self.mode_segmented.setSegmentCount_(4)
+        self.mode_segmented.setLabel_forSegment_("🚆 Mezzi", 0)
+        self.mode_segmented.setLabel_forSegment_("🚗 Auto", 1)
+        self.mode_segmented.setLabel_forSegment_("🚶 Piedi", 2)
+        self.mode_segmented.setLabel_forSegment_("🚲 Bici", 3)
+        self.mode_segmented.setSelectedSegment_(sel_idx)
+        self.mode_segmented.setTarget_(self)
+        self.mode_segmented.setAction_("onSelectTransportMode:")
+        card.addSubview_(self.mode_segmented)
+
+        y -= 44.0
+        # 3. Margine di Anticipo Partenza
+        buf_val = config.get("eta_buffer_minutes", 10)
+        self._add_popup_row(card, "⏳ Margine di Anticipo Partenza:", "Tempo extra per raggiungere la fermata/stazione o trovare parcheggio", [
+            ("5 minuti", 5), ("10 minuti (Predefinito)", 10), ("15 minuti", 15), ("20 minuti", 20), ("30 minuti", 30)
+        ], buf_val, "onSelectETABuffer:", y, w)
 
     def _build_flight_section(self, card, w, h):
         self._add_section_header(card, "✈️ Display & Dinamica di Volo Banner", "Personalizza la posizione e la velocità di attraversamento del velivolo a schermo.", h - 28, w)
@@ -936,6 +1013,24 @@ class DashboardWindowController:
         else:
             curr.discard(val)
         config.set("travel_reminder_stages", sorted(list(curr), reverse=True))
+
+    def onSaveHomeAddress_(self, sender):
+        if hasattr(self, 'home_addr_field') and self.home_addr_field:
+            addr = str(self.home_addr_field.stringValue() or "").strip()
+            config.set("home_address", addr)
+            self.refresh_data(force=True)
+
+    def onSelectTransportMode_(self, sender):
+        modes = ["transit", "automobile", "walking", "bicycling"]
+        idx = sender.selectedSegment()
+        if 0 <= idx < len(modes):
+            config.set("transport_mode", modes[idx])
+            self.refresh_data(force=True)
+
+    def onSelectETABuffer_(self, sender):
+        val_buf = sender.selectedItem().representedObject()
+        config.set("eta_buffer_minutes", int(val_buf))
+        self.refresh_data(force=True)
 
     def onToggleCalendarSource_(self, sender):
         cal_name = sender.toolTip() or sender.title().replace("📅 ", "")

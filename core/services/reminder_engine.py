@@ -1,7 +1,7 @@
 """
 Reminder Engine for QuakMeeting.
 Calculates multi-stage notification windows (e.g. 20m, 10m, 5m, 2m), handles snooze timers,
-and publishes REMINDER_TRIGGERED events via EventBus.
+departure time triggers for travel/transit events, and publishes REMINDER_TRIGGERED events via EventBus.
 """
 import logging
 from datetime import datetime
@@ -13,7 +13,7 @@ from core.services.config_service import config_service, ConfigService
 logger = logging.getLogger("QuakMeeting.ReminderEngine")
 
 class ReminderEngine:
-    """Calculates reminder triggers for meetings based on configurable stage intervals."""
+    """Calculates reminder triggers for meetings based on configurable stage intervals and travel ETA."""
 
     def __init__(self, config: Optional[ConfigService] = None, bus: Optional[EventBus] = None):
         self.config = config or config_service
@@ -48,7 +48,7 @@ class ReminderEngine:
 
     def evaluate_meetings(self, meetings: List[Meeting], current_time: Optional[datetime] = None) -> List[Tuple[Meeting, int]]:
         """
-        Evaluate all upcoming meetings against notification windows.
+        Evaluate all upcoming meetings against notification windows and departure times.
         Returns a list of (meeting, triggered_stage) tuples and publishes REMINDER_TRIGGERED events.
         """
         now = current_time or datetime.now()
@@ -59,8 +59,23 @@ class ReminderEngine:
                 continue
 
             diff_min = (m.start_time - now).total_seconds() / 60.0
-            stages = self.get_stages_for_meeting(m)
+            
+            # 1. Check Departure Time (Time to Leave / Parti Ora!) for physical/transit events
+            if m.departure_time and m.is_travel:
+                dep_diff_min = (m.departure_time - now).total_seconds() / 60.0
+                dep_key = f"{m.id}_departure_alert"
+                # If now is within [-1.5, +1.0] of departure time
+                if -1.5 <= dep_diff_min <= 1.0 and dep_key not in self.notified_stage_keys:
+                    self.notified_stage_keys.add(dep_key)
+                    m_dep = Meeting.from_dict(m.to_dict())
+                    m_dep.reminder_stage = max(1, round((m.start_time - now).total_seconds() / 60.0))
+                    triggered_events.append((m_dep, m_dep.reminder_stage))
+                    logger.info(f"Triggering DEPARTURE REMINDER for '{m.title}' ({m.eta_text})")
+                    self.bus.publish("REMINDER_TRIGGERED", meeting=m_dep, stage=m_dep.reminder_stage)
+                    continue
 
+            # 2. Check Standard Multi-Stage Intervals
+            stages = self.get_stages_for_meeting(m)
             for stage in stages:
                 stage_key = f"{m.id}_stage_{stage}"
                 if self.is_within_stage_window(diff_min, stage):
@@ -71,7 +86,7 @@ class ReminderEngine:
                         triggered_events.append((m_triggered, stage))
                         logger.info(f"Triggering reminder ({stage}m before) for '{m.title}'")
                         self.bus.publish("REMINDER_TRIGGERED", meeting=m_triggered, stage=stage)
-                        break # Only trigger the highest matched stage per evaluation cycle
+                        break
 
         return triggered_events
 
