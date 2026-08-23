@@ -122,22 +122,28 @@ def main():
 
         logger.info("Initializing QuakMeeting Menu Bar and Flight Deck UI...")
         print(" Launching Menu Bar icon and Flight Deck...")
-        print("\n 📌 PERMISSION NOTICE:")
-        print(" If macOS prompts for Calendar access, select 'ALLOW'.\n")
 
-        app = QuakMeetingMenuBar.alloc().init()
-        if app is None:
-            logger.error("Failed to allocate and initialize QuakMeetingMenuBar!")
-            return
-        
-        if "--silent" not in sys.argv:
-            show_dashboard()
+        if sys.platform == "darwin":
+            print("\n 📌 PERMISSION NOTICE:")
+            print(" If macOS prompts for Calendar access, select 'ALLOW'.\n")
+
+            app = QuakMeetingMenuBar.alloc().init()
+            if app is None:
+                logger.error("Failed to allocate and initialize QuakMeetingMenuBar!")
+                return
             
-        logger.info("Entering macOS Application Run Loop...")
-        app.run()
+            if "--silent" not in sys.argv:
+                show_dashboard()
+                
+            logger.info("Entering macOS Application Run Loop...")
+            app.run()
+        else:
+            from ui.app_launcher import launch_application
+            launch_application()
     except Exception as e:
         logger.exception(f"Fatal error in main application run loop: {e}")
         raise
 
 if __name__ == "__main__":
     main()
+

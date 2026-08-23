@@ -1,0 +1,205 @@
+"""
+Universal CalDAV / iCalendar (.ics / webcal) Calendar Provider for QuakMeeting.
+Pure Python calendar provider for Ubuntu/Linux and cross-platform feed sync.
+"""
+import os
+import re
+import urllib.request
+import logging
+from datetime import datetime, timedelta, timezone, date
+from typing import List, Dict, Any, Optional
+from core.domain.models import Meeting
+from core.domain.classifier import EventClassifier
+from core.services.config_service import config_service, ConfigService
+from .base import BaseCalendarProvider
+
+logger = logging.getLogger("QuakMeeting.CalDAVProvider")
+
+class CalDAVCalendarProvider(BaseCalendarProvider):
+    """Calendar provider supporting CalDAV endpoints, webcal feeds, and local .ics files."""
+
+    def __init__(self, config: Optional[ConfigService] = None):
+        self.config = config or config_service
+
+    def fetch_events(self, start_offset_hours: int = 2, end_offset_hours: int = 24) -> List[Meeting]:
+        """Fetch today's events from configured remote calendar feeds or local .ics files."""
+        calendar_sources = list(self.config.get("calendar_urls", []))
+        if not calendar_sources:
+            # Check default local calendars directory or test ICS
+            local_cal_dir = os.path.expanduser("~/.quakmeeting/calendars")
+            if os.path.exists(local_cal_dir):
+                for fname in os.listdir(local_cal_dir):
+                    if fname.endswith(".ics"):
+                        calendar_sources.append(os.path.join(local_cal_dir, fname))
+
+        if not calendar_sources:
+            return []
+
+        meetings: List[Meeting] = []
+        ignored = set(self.config.get("ignored_calendars", []))
+        custom_kw = self.config.get("custom_keywords", {})
+        now = datetime.now()
+        today_date = now.date()
+
+        for source in calendar_sources:
+            source_str = str(source).strip()
+            if not source_str or source_str in ignored:
+                continue
+
+            ics_text = self._load_ics_content(source_str)
+            if not ics_text:
+                continue
+
+            cal_name = self._extract_calendar_name(ics_text, source_str)
+            if cal_name in ignored:
+                continue
+
+            events = self._parse_ics_events(ics_text)
+            for ev in events:
+                s_dt = ev.get("start_time")
+                e_dt = ev.get("end_time")
+                if not s_dt:
+                    continue
+
+                # Strict Today-only filter
+                if s_dt.date() != today_date:
+                    continue
+
+                title = ev.get("title", "Untitled Event")
+                loc = ev.get("location", "")
+                desc = ev.get("description", "")
+                url_val = ev.get("url", "")
+
+                classified = EventClassifier.classify(
+                    title=title,
+                    location=loc,
+                    notes=desc,
+                    url=url_val,
+                    custom_keywords=custom_kw
+                )
+
+                action_url = classified.action_url or url_val or EventClassifier.extract_meeting_url(f"{loc} {desc}")
+                
+                meeting = Meeting(
+                    id=f"{title}_{s_dt.strftime('%Y%m%d%H%M')}",
+                    title=title,
+                    start_time=s_dt,
+                    end_time=e_dt or (s_dt + timedelta(hours=1)),
+                    location=loc,
+                    notes=desc,
+                    url=url_val,
+                    provider=cal_name,
+                    pilot_type=classified.pilot_type,
+                    category=classified.category,
+                    action_btn_text=classified.action_btn_text,
+                    action_url=action_url,
+                    is_travel=classified.is_travel,
+                    travel_time_minutes=None,
+                    departure_time=None,
+                    classroom=classified.classroom,
+                    teacher=classified.teacher
+                )
+                meetings.append(meeting)
+
+        meetings.sort(key=lambda m: m.start_time)
+        return meetings
+
+    def get_available_calendars(self) -> List[Dict[str, Any]]:
+        """List configured calendar URLs and local sources."""
+        sources = self.config.get("calendar_urls", [])
+        ignored = set(self.config.get("ignored_calendars", []))
+        cals: List[Dict[str, Any]] = []
+
+        for src in sources:
+            name = src.split("/")[-1].replace(".ics", "") or src
+            cals.append({
+                "name": name,
+                "enabled": name not in ignored and src not in ignored,
+                "source": src
+            })
+        return cals
+
+    def _load_ics_content(self, source: str) -> Optional[str]:
+        try:
+            if source.startswith("webcal://"):
+                source = "https://" + source[len("webcal://"):]
+            
+            if source.startswith("http://") or source.startswith("https://"):
+                req = urllib.request.Request(source, headers={"User-Agent": "QuakMeeting/1.0"})
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    return resp.read().decode("utf-8", errors="ignore")
+            elif os.path.exists(source):
+                with open(source, "r", encoding="utf-8", errors="ignore") as f:
+                    return f.read()
+        except Exception as e:
+            logger.warning(f"Failed to load calendar source {source}: {e}")
+        return None
+
+    def _extract_calendar_name(self, ics_text: str, default_source: str) -> str:
+        for line in ics_text.splitlines():
+            if line.startswith("X-WR-CALNAME:"):
+                return line.split(":", 1)[1].strip()
+        base = os.path.basename(default_source).replace(".ics", "")
+        return base or "Linux Calendar"
+
+    def _parse_ics_events(self, ics_text: str) -> List[Dict[str, Any]]:
+        """Parses VEVENT components from raw iCalendar text."""
+        events = []
+        in_event = False
+        current_event: Dict[str, Any] = {}
+
+        # Unfold lines according to RFC 5545
+        unfolded_lines = []
+        for line in ics_text.splitlines():
+            if line.startswith(" ") or line.startswith("\t"):
+                if unfolded_lines:
+                    unfolded_lines[-1] += line[1:]
+            else:
+                unfolded_lines.append(line)
+
+        for line in unfolded_lines:
+            line = line.strip()
+            if line == "BEGIN:VEVENT":
+                in_event = True
+                current_event = {}
+            elif line == "END:VEVENT":
+                if in_event and "title" in current_event and "start_time" in current_event:
+                    events.append(current_event)
+                in_event = False
+            elif in_event:
+                if ":" in line:
+                    raw_key, val = line.split(":", 1)
+                    key = raw_key.split(";")[0].upper()
+                    
+                    if key == "SUMMARY":
+                        current_event["title"] = self._unescape_ics(val)
+                    elif key == "LOCATION":
+                        current_event["location"] = self._unescape_ics(val)
+                    elif key == "DESCRIPTION":
+                        current_event["description"] = self._unescape_ics(val)
+                    elif key == "URL":
+                        current_event["url"] = val.strip()
+                    elif key == "DTSTART":
+                        current_event["start_time"] = self._parse_ics_datetime(val)
+                    elif key == "DTEND":
+                        current_event["end_time"] = self._parse_ics_datetime(val)
+
+        return events
+
+    def _parse_ics_datetime(self, val: str) -> Optional[datetime]:
+        val = val.strip()
+        try:
+            if val.endswith("Z"):
+                dt = datetime.strptime(val, "%Y%m%dT%H%M%SZ")
+                return dt.replace(tzinfo=timezone.utc).astimezone().replace(tzinfo=None)
+            elif "T" in val:
+                return datetime.strptime(val[:15], "%Y%m%dT%H%M%S")
+            elif len(val) == 8:
+                d = datetime.strptime(val, "%Y%m%d")
+                return d.replace(hour=0, minute=0, second=0)
+        except Exception:
+            pass
+        return None
+
+    def _unescape_ics(self, text: str) -> str:
+        return text.replace(r"\,", ",").replace(r"\;", ";").replace(r"\n", "\n").replace(r"\\", "\\").strip()

@@ -136,25 +136,27 @@ def log_system_diagnostics():
     log.info("=" * 60)
 
 def open_log_file() -> bool:
-    """Opens the active log file in the user's default text editor or Console.app."""
+    """Opens the active log file in the user's default text editor."""
     try:
         import subprocess
         if not os.path.exists(LOG_FILE):
             os.makedirs(LOG_DIR, exist_ok=True)
             with open(LOG_FILE, "w", encoding="utf-8") as f:
                 f.write("QuakMeeting Log Initialized\n")
-        subprocess.run(["open", LOG_FILE], check=True)
+        cmd = ["open", LOG_FILE] if sys.platform == "darwin" else ["xdg-open", LOG_FILE]
+        subprocess.run(cmd, check=True)
         return True
     except Exception as e:
         logger.error(f"Failed to open log file: {e}")
         return False
 
 def open_log_folder() -> bool:
-    """Opens ~/.quakmeeting in Finder."""
+    """Opens ~/.quakmeeting in file manager."""
     try:
         import subprocess
         os.makedirs(LOG_DIR, exist_ok=True)
-        subprocess.run(["open", LOG_DIR], check=True)
+        cmd = ["open", LOG_DIR] if sys.platform == "darwin" else ["xdg-open", LOG_DIR]
+        subprocess.run(cmd, check=True)
         return True
     except Exception as e:
         logger.error(f"Failed to open log folder: {e}")
@@ -162,3 +164,4 @@ def open_log_folder() -> bool:
 
 # Initialize global logger
 logger = setup_logging()
+

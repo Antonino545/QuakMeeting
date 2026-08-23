@@ -16,8 +16,10 @@ from core.domain.classifier import EventClassifier
 from core.services.config_service import config_service, ConfigService
 from core.services.event_bus import event_bus, EventBus
 from core.services.eta_service import eta_service, ETAService, MODE_ICONS
+import sys
 from core.providers.base import BaseCalendarProvider
 from core.providers.eventkit_provider import EventKitCalendarProvider
+from core.providers.caldav_provider import CalDAVCalendarProvider
 
 logger = logging.getLogger("QuakMeeting.CalendarService")
 
@@ -43,11 +45,13 @@ class CalendarService:
         self.config = config or config_service
         self.bus = bus or event_bus
         
-        # Select best available provider (EventKit if available, else AppleScript)
+        # Select best available provider based on platform (EventKit on macOS, CalDAV on Linux)
         if provider:
             self._provider = provider
-        else:
+        elif sys.platform == "darwin":
             self._provider = EventKitCalendarProvider(self.config)
+        else:
+            self._provider = CalDAVCalendarProvider(self.config)
 
         self._in_memory_cache: List[Meeting] = []
         self._last_fetch_time: float = 0.0

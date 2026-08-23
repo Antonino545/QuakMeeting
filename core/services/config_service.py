@@ -31,6 +31,7 @@ DEFAULT_CONFIG = {
         "Scheduled Reminders",
         "Siri Suggestions"
     ],
+    "calendar_urls": [],               # Remote ICS / CalDAV feeds for Linux (Google, iCloud, Outlook, Nextcloud)
     # Smart Travel & ETA Settings (Mezzi Pubblici, Auto, Piedi, Bici)
     "home_address": "",               # e.g. "Corso Duca degli Abruzzi 24, Torino"
     "transport_mode": "transit",       # "transit" (Mezzi Pubblici), "automobile" (Auto), "walking" (A Piedi), "bicycling" (Bici)
@@ -102,7 +103,9 @@ class ConfigService:
         if not os.path.exists(CONFIG_PATH):
             self._save_raw(self.config)
         try:
-            subprocess.Popen(["open", CONFIG_PATH])
+            import sys
+            cmd = ["open", CONFIG_PATH] if sys.platform == "darwin" else ["xdg-open", CONFIG_PATH]
+            subprocess.Popen(cmd)
         except Exception as e:
             logger.error(f"Error opening config editor: {e}")
 
