@@ -30,6 +30,31 @@ class TransportMode(str, Enum):
     WALKING = "walking"           # Walking 🚶‍♂️
     BICYCLING = "bicycling"       # Cycling 🚲
 
+def format_duration(minutes: Optional[int], long_form: bool = False) -> str:
+    """
+    Converts a duration in minutes into a human-readable string with hours and minutes.
+    Examples:
+    - 30 min -> "30m" (short) or "30 min" (long)
+    - 60 min -> "1h" (short) or "1 hour" (long)
+    - 90 min -> "1h 30m" (short) or "1h 30m" (long)
+    - 120 min -> "2h" (short) or "2 hours" (long)
+    - 145 min -> "2h 25m" (short) or "2h 25m" (long)
+    """
+    if minutes is None or minutes <= 0:
+        return "0m" if not long_form else "0 min"
+    
+    hours = int(minutes // 60)
+    rem_min = int(minutes % 60)
+    
+    if hours > 0 and rem_min > 0:
+        return f"{hours}h {rem_min}m"
+    elif hours > 0:
+        if long_form:
+            return f"{hours} hour" if hours == 1 else f"{hours} hours"
+        return f"{hours}h"
+    else:
+        return f"{rem_min}m" if not long_form else f"{rem_min} min"
+
 @dataclass
 class Meeting:
     title: str

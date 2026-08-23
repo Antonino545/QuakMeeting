@@ -56,5 +56,17 @@ class TestMeetingModel(unittest.TestCase):
         self.assertFalse(past_meeting.is_upcoming)
         self.assertTrue(past_meeting.is_past)
 
+    def test_format_duration(self):
+        from core.domain.models import format_duration
+        self.assertEqual(format_duration(0), "0m")
+        self.assertEqual(format_duration(25), "25m")
+        self.assertEqual(format_duration(60), "1h")
+        self.assertEqual(format_duration(90), "1h 30m")
+        self.assertEqual(format_duration(120), "2h")
+        self.assertEqual(format_duration(135), "2h 15m")
+        self.assertEqual(format_duration(120, long_form=True), "2 hours")
+        self.assertEqual(format_duration(60, long_form=True), "1 hour")
+        self.assertEqual(format_duration(45, long_form=True), "45 min")
+
 if __name__ == "__main__":
     unittest.main()

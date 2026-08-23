@@ -1,4 +1,4 @@
-from .models import Meeting, PilotType, EventCategory, TransportMode
+from .models import Meeting, PilotType, EventCategory, TransportMode, format_duration
 from .classifier import EventClassifier, MEETING_PATTERNS, DEFAULT_KEYWORDS
 
 __all__ = [
@@ -6,6 +6,7 @@ __all__ = [
     "PilotType",
     "EventCategory",
     "TransportMode",
+    "format_duration",
     "EventClassifier",
     "MEETING_PATTERNS",
     "DEFAULT_KEYWORDS"

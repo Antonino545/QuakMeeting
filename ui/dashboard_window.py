@@ -15,6 +15,7 @@ try:
     from core.calendar_scanner import get_upcoming_meetings, sync_calendar_now, get_available_calendars
     from core.services.eta_service import eta_service, MODE_ICONS, MODE_LABELS
     from core.services.event_bus import event_bus
+    from core.domain.models import format_duration
     from core.logger import open_log_file, open_log_folder
     from ui.banner_window import _run_banner
 except ImportError:
@@ -22,6 +23,7 @@ except ImportError:
     from calendar_scanner import get_upcoming_meetings, sync_calendar_now, get_available_calendars
     from eta_service import eta_service, MODE_ICONS, MODE_LABELS
     from event_bus import event_bus
+    from models import format_duration
     from logger import open_log_file, open_log_folder
     from banner_window import _run_banner
 
@@ -199,24 +201,31 @@ class DashboardWindowController(AppKit.NSObject):
         """Loads events from cache immediately and syncs in background."""
         self.meetings = get_upcoming_meetings(force_refresh=False)
         now = datetime.now()
-        upcoming = [m for m in self.meetings if (m.get("end_time") and m["end_time"] > now) or (m.get("start_time") and m["start_time"] > now)]
-        count = len(upcoming)
         
-        if upcoming:
-            next_m = upcoming[0]
+        today_meetings = [m for m in self.meetings if m.get("start_time") and m["start_time"].date() == now.date()]
+        tomorrow_meetings = [m for m in self.meetings if m.get("start_time") and m["start_time"].date() > now.date()]
+        today_upcoming = [m for m in today_meetings if (m.get("end_time") and m["end_time"] > now) or (m.get("start_time") and m["start_time"] > now)]
+        
+        if today_upcoming:
+            next_m = today_upcoming[0]
             s_str = next_m["start_time"].strftime("%H:%M") if next_m.get("start_time") else "--:--"
             travel_info = ""
             if next_m.get("travel_time_minutes"):
+                dur_str = format_duration(next_m["travel_time_minutes"])
                 t_mode = next_m.get("transport_mode", config.get("transport_mode", "transit"))
                 icon = MODE_ICONS.get(t_mode, "🚗")
                 dep_dt = next_m.get("departure_time")
                 if isinstance(dep_dt, datetime):
-                    travel_info = f"  •  ⏱️ {icon} ~{next_m['travel_time_minutes']}m (Leave at {dep_dt.strftime('%H:%M')})"
+                    travel_info = f"  •  ⏱️ {icon} ~{dur_str} (Leave at {dep_dt.strftime('%H:%M')})"
                 else:
-                    travel_info = f"  •  ⏱️ {icon} ~{next_m['travel_time_minutes']}m travel"
-            self.status_lbl.setStringValue_(f"🟢 Scanner Active  •  {count} events today  •  Next: {s_str}{travel_info}")
+                    travel_info = f"  •  ⏱️ {icon} ~{dur_str} travel"
+            self.status_lbl.setStringValue_(f"🟢 Scanner Active  •  {len(today_meetings)} events today  •  Next: {s_str}{travel_info}")
+        elif tomorrow_meetings:
+            next_tom = tomorrow_meetings[0]
+            tom_s = next_tom["start_time"].strftime("%H:%M") if next_tom.get("start_time") else "--:--"
+            self.status_lbl.setStringValue_(f"🟢 Scanner Active  •  No remaining events today  •  Tomorrow: {tom_s} ({next_tom.get('title')[:20]})")
         else:
-            self.status_lbl.setStringValue_("🟢 Scanner Active  •  No remaining events for today")
+            self.status_lbl.setStringValue_("🟢 Scanner Active  •  No upcoming events for today")
             
         self._render_current_tab()
 
@@ -236,21 +245,28 @@ class DashboardWindowController(AppKit.NSObject):
                     self.is_loading = False
                     self.meetings = meetings
                     n = datetime.now()
-                    up = [m for m in self.meetings if (m.get("end_time") and m["end_time"] > n) or (m.get("start_time") and m["start_time"] > n)]
-                    cnt = len(up)
-                    if up:
-                        nx = up[0]
+                    t_meets = [m for m in self.meetings if m.get("start_time") and m["start_time"].date() == n.date()]
+                    tom_meets = [m for m in self.meetings if m.get("start_time") and m["start_time"].date() > n.date()]
+                    t_up = [m for m in t_meets if (m.get("end_time") and m["end_time"] > n) or (m.get("start_time") and m["start_time"] > n)]
+                    
+                    if t_up:
+                        nx = t_up[0]
                         st = nx["start_time"].strftime("%H:%M") if nx.get("start_time") else "--:--"
                         tr_info = ""
                         if nx.get("travel_time_minutes"):
+                            dur_s = format_duration(nx["travel_time_minutes"])
                             tm = nx.get("transport_mode", config.get("transport_mode", "transit"))
                             ic = MODE_ICONS.get(tm, "🚗")
                             dp = nx.get("departure_time")
                             if isinstance(dp, datetime):
-                                tr_info = f"  •  ⏱️ {ic} ~{nx['travel_time_minutes']}m (Leave at {dp.strftime('%H:%M')})"
+                                tr_info = f"  •  ⏱️ {ic} ~{dur_s} (Leave at {dp.strftime('%H:%M')})"
                             else:
-                                tr_info = f"  •  ⏱️ {ic} ~{nx['travel_time_minutes']}m travel"
-                        self.status_lbl.setStringValue_(f"🟢 Scanner Active  •  {cnt} events today  •  Next: {st}{tr_info}")
+                                tr_info = f"  •  ⏱️ {ic} ~{dur_s} travel"
+                        self.status_lbl.setStringValue_(f"🟢 Scanner Active  •  {len(t_meets)} events today  •  Next: {st}{tr_info}")
+                    elif tom_meets:
+                        nxt = tom_meets[0]
+                        t_s = nxt["start_time"].strftime("%H:%M") if nxt.get("start_time") else "--:--"
+                        self.status_lbl.setStringValue_(f"🟢 Scanner Active  •  No remaining events today  •  Tomorrow: {t_s} ({nxt.get('title')[:20]})")
                     else:
                         self.status_lbl.setStringValue_("🟢 Scanner Active  •  No remaining events for today")
                     self._render_current_tab()
@@ -316,8 +332,15 @@ class DashboardWindowController(AppKit.NSObject):
 
         card_h = 76.0
         gap = 12.0
-        total_items = max(1, len(self.meetings))
-        content_h = max(h, total_items * (card_h + gap) + 20.0)
+        header_h = 32.0
+        
+        now = datetime.now()
+        today_list = [m for m in self.meetings if m.get("start_time") and m["start_time"].date() == now.date()]
+        tomorrow_list = [m for m in self.meetings if m.get("start_time") and m["start_time"].date() > now.date()]
+        
+        total_items = len(today_list) + len(tomorrow_list)
+        section_count = (1 if today_list else 0) + (1 if tomorrow_list else 0)
+        content_h = max(h, total_items * (card_h + gap) + section_count * header_h + 30.0)
         
         doc_view = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 0, w, content_h))
         
@@ -332,10 +355,41 @@ class DashboardWindowController(AppKit.NSObject):
             empty_lbl.setEditable_(False)
             doc_view.addSubview_(empty_lbl)
         else:
-            for idx, m in enumerate(self.meetings):
-                y_item = content_h - (idx + 1) * (card_h + gap)
-                card = self._create_meeting_card(m, idx, 0, y_item, w - 16, card_h)
-                doc_view.addSubview_(card)
+            curr_y = content_h - 10.0
+            
+            # 1. Render Today Section
+            if today_list:
+                curr_y -= header_h
+                hdr_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(16, curr_y + 4, w - 32, 22))
+                hdr_lbl.setStringValue_(f"📅 TODAY'S AGENDA ({len(today_list)} event{'s' if len(today_list) > 1 else ''})")
+                hdr_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(13))
+                hdr_lbl.setTextColor_(AppKit.NSColor.colorWithRed_green_blue_alpha_(0.50, 0.78, 1.0, 1.0))
+                hdr_lbl.setBezeled_(False)
+                hdr_lbl.setDrawsBackground_(False)
+                hdr_lbl.setEditable_(False)
+                doc_view.addSubview_(hdr_lbl)
+                
+                for idx, m in enumerate(today_list):
+                    curr_y -= (card_h + gap)
+                    card = self._create_meeting_card(m, idx, 0, curr_y, w - 16, card_h)
+                    doc_view.addSubview_(card)
+                    
+            # 2. Render Tomorrow Section
+            if tomorrow_list:
+                curr_y -= header_h
+                tom_hdr = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(16, curr_y + 4, w - 32, 22))
+                tom_hdr.setStringValue_(f"🌅 TOMORROW'S PREVIEW ({len(tomorrow_list)} event{'s' if len(tomorrow_list) > 1 else ''})")
+                tom_hdr.setFont_(AppKit.NSFont.boldSystemFontOfSize_(13))
+                tom_hdr.setTextColor_(AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.82, 0.45, 1.0))
+                tom_hdr.setBezeled_(False)
+                tom_hdr.setDrawsBackground_(False)
+                tom_hdr.setEditable_(False)
+                doc_view.addSubview_(tom_hdr)
+                
+                for idx, m in enumerate(tomorrow_list, start=len(today_list)):
+                    curr_y -= (card_h + gap)
+                    card = self._create_meeting_card(m, idx, 0, curr_y, w - 16, card_h)
+                    doc_view.addSubview_(card)
 
         scroll_view.setDocumentView_(doc_view)
         if scroll_view.contentView():
@@ -365,15 +419,20 @@ class DashboardWindowController(AppKit.NSObject):
         card.addSubview_(icon_lbl)
 
         # Event Title & Time
+        now = datetime.now()
+        is_tomorrow = bool(m.get("start_time") and m["start_time"].date() > now.date())
+        
         s_time = m["start_time"].strftime("%H:%M") if m.get("start_time") else "--:--"
         e_time = m["end_time"].strftime("%H:%M") if m.get("end_time") else ""
         time_str = f"{s_time} - {e_time}" if e_time else s_time
         m_title = (m.get("title") or "Untitled Event").strip()
+        
+        day_tag = "🌅 Tomorrow, " if is_tomorrow else ""
 
         title_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(62, 38, w - 275, 24))
-        title_lbl.setStringValue_(f"{time_str}  •  {m_title}")
+        title_lbl.setStringValue_(f"{day_tag}{time_str}  •  {m_title}")
         title_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(14))
-        title_lbl.setTextColor_(AppKit.NSColor.whiteColor())
+        title_lbl.setTextColor_(AppKit.NSColor.whiteColor() if not is_tomorrow else AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.92, 0.75, 1.0))
         title_lbl.setBezeled_(False)
         title_lbl.setDrawsBackground_(False)
         title_lbl.setEditable_(False)
@@ -387,15 +446,16 @@ class DashboardWindowController(AppKit.NSObject):
         elif m.get("action_url") and "meet.google.com" in m["action_url"]:
             sub_str += "  •  🌐 Google Meet"
 
-        # Dedicated Travel Time Display
+        # Dedicated Travel Time Display with clean hour/minute formatting
         if m.get("travel_time_minutes"):
+            dur_str = format_duration(m["travel_time_minutes"])
             t_mode = m.get("transport_mode", config.get("transport_mode", "transit"))
             icon = MODE_ICONS.get(t_mode, "🚗")
             dep_dt = m.get("departure_time")
             if isinstance(dep_dt, datetime):
-                sub_str += f"  •  ⏱️ {icon} ~{m['travel_time_minutes']} min (Leave at {dep_dt.strftime('%H:%M')})"
+                sub_str += f"  •  ⏱️ {icon} ~{dur_str} (Leave at {dep_dt.strftime('%H:%M')})"
             else:
-                sub_str += f"  •  ⏱️ {icon} ~{m['travel_time_minutes']} min travel"
+                sub_str += f"  •  ⏱️ {icon} ~{dur_str} travel"
 
         sub_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(62, 16, w - 275, 20))
         sub_lbl.setStringValue_(sub_str)
@@ -417,7 +477,7 @@ class DashboardWindowController(AppKit.NSObject):
             btn_title = m.get("action_btn_text", "🚀 JOIN")
             travel_min = m.get("travel_time_minutes")
             if "MAPS" in btn_title or "MAPPE" in btn_title or "maps.apple.com" in action_url:
-                btn_short = f"🗺️ Maps (~{travel_min}m)" if travel_min else "🗺️ Maps"
+                btn_short = f"🗺️ Maps (~{format_duration(travel_min)})" if travel_min else "🗺️ Maps"
             elif "ZOOM" in btn_title or "zoom.us" in action_url:
                 btn_short = "🔷 Zoom"
             elif "TEAMS" in btn_title or "teams.microsoft" in action_url:

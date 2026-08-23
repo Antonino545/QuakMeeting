@@ -95,6 +95,11 @@ class ReminderEngine:
             target_time = m.departure_time if is_departure_mode else m.start_time
             
             diff_min = (target_time - now).total_seconds() / 60.0
+            
+            # If event is on a future date and more than 3 hours away, do not trigger reminders today
+            if m.start_time.date() > now.date() and diff_min > 180:
+                continue
+
             start_str = m.start_time.strftime("%H:%M")
             dep_str = m.departure_time.strftime("%H:%M") if m.departure_time else ""
             stages = self.get_stages_for_meeting(m)

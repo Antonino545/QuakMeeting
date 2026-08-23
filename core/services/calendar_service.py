@@ -11,7 +11,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 
-from core.domain.models import Meeting
+from core.domain.models import Meeting, format_duration
 from core.domain.classifier import EventClassifier
 from core.services.config_service import config_service, ConfigService
 from core.services.event_bus import event_bus, EventBus
@@ -73,26 +73,28 @@ class CalendarService:
             if m.is_travel and m.start_time:
                 dest = m.location if (m.location and m.location != "missing value") else m.title
                 
+                dur_str = format_duration(m.travel_time_minutes)
+                
                 # 1. Native EventKit travel time already extracted from Apple Calendar
                 if m.travel_time_minutes and m.travel_time_minutes > 0:
                     m.departure_time = eta_service.get_departure_time(m.start_time, m.travel_time_minutes, buffer_minutes)
                     icon = MODE_ICONS.get(m.transport_mode or transport_mode, "🚗")
                     dep_str = m.departure_time.strftime("%H:%M")
-                    m.eta_text = f"{icon} ~{m.travel_time_minutes}m • Leave at {dep_str}"
+                    m.eta_text = f"{icon} ~{dur_str} • Leave at {dep_str}"
                     if not m.action_url or "maps.apple.com" not in m.action_url:
                         m.action_url = eta_service.build_apple_maps_url(home_address or None, dest, m.transport_mode or transport_mode)
                     
                     mode = m.transport_mode or transport_mode
                     if mode == "transit":
-                        m.action_btn_text = f"🗺️ PUBLIC TRANSIT (~{m.travel_time_minutes}m)"
+                        m.action_btn_text = f"🗺️ PUBLIC TRANSIT (~{dur_str})"
                     elif mode == "automobile":
-                        m.action_btn_text = f"🗺️ DRIVE WITH MAPS (~{m.travel_time_minutes}m)"
+                        m.action_btn_text = f"🗺️ DRIVE WITH MAPS (~{dur_str})"
                     elif mode == "walking":
-                        m.action_btn_text = f"🗺️ WALKING ROUTE (~{m.travel_time_minutes}m)"
+                        m.action_btn_text = f"🗺️ WALKING ROUTE (~{dur_str})"
                     elif mode == "bicycling":
-                        m.action_btn_text = f"🗺️ CYCLING ROUTE (~{m.travel_time_minutes}m)"
+                        m.action_btn_text = f"🗺️ CYCLING ROUTE (~{dur_str})"
                     else:
-                        m.action_btn_text = f"🗺️ MAPS ROUTE (~{m.travel_time_minutes}m)"
+                        m.action_btn_text = f"🗺️ MAPS ROUTE (~{dur_str})"
 
                 # 2. Fallback: calculate ETA via ETAService if home_address is configured
                 elif home_address and dest:
@@ -104,19 +106,20 @@ class CalendarService:
                         m.origin_address = home_address
                         m.departure_time = eta_service.get_departure_time(m.start_time, m.travel_time_minutes, buffer_minutes)
                         
+                        dur_str = format_duration(m.travel_time_minutes)
                         icon = MODE_ICONS.get(transport_mode, "🚆")
                         dep_str = m.departure_time.strftime("%H:%M")
-                        m.eta_text = f"{icon} ~{m.travel_time_minutes}m • Leave at {dep_str}"
+                        m.eta_text = f"{icon} ~{dur_str} • Leave at {dep_str}"
                         m.action_url = eta_res["maps_url"]
                         
                         if transport_mode == "transit":
-                            m.action_btn_text = f"🗺️ PUBLIC TRANSIT (~{m.travel_time_minutes}m)"
+                            m.action_btn_text = f"🗺️ PUBLIC TRANSIT (~{dur_str})"
                         elif transport_mode == "automobile":
-                            m.action_btn_text = f"🗺️ DRIVE WITH MAPS (~{m.travel_time_minutes}m)"
+                            m.action_btn_text = f"🗺️ DRIVE WITH MAPS (~{dur_str})"
                         elif transport_mode == "walking":
-                            m.action_btn_text = f"🗺️ WALKING ROUTE (~{m.travel_time_minutes}m)"
+                            m.action_btn_text = f"🗺️ WALKING ROUTE (~{dur_str})"
                         elif transport_mode == "bicycling":
-                            m.action_btn_text = f"🗺️ CYCLING ROUTE (~{m.travel_time_minutes}m)"
+                            m.action_btn_text = f"🗺️ CYCLING ROUTE (~{dur_str})"
 
     def _save_cache_to_disk(self, meetings: List[Meeting]) -> None:
         try:

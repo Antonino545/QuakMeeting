@@ -12,7 +12,7 @@ import logging
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 
-from core.domain.models import Meeting
+from core.domain.models import Meeting, format_duration
 from core.services.calendar_service import calendar_service
 from core.services.reminder_engine import reminder_engine
 from core.services.event_bus import event_bus
@@ -254,13 +254,19 @@ class QuakMeetingMenuBar(AppKit.NSObject):
 
         if mode == "event_time":
             if travel_min:
-                return f"{icon_prefix} {start_str} {title_short} (~{travel_min}m)"
+                dur_str = format_duration(travel_min)
+                return f"{icon_prefix} {start_str} {title_short} (~{dur_str})"
             return f"{icon_prefix} {start_str} {title_short}"
             
         elif mode == "time_only":
             if isinstance(start_dt, datetime):
                 diff_m = int(round((start_dt - now).total_seconds() / 60.0))
                 if 0 < diff_m <= max_lookahead_min:
+                    if diff_m >= 60:
+                        hrs = diff_m // 60
+                        mins = diff_m % 60
+                        t_part = f"{hrs}h" if mins == 0 else f"{hrs}h{mins:02d}m"
+                        return f"{icon_prefix} {start_str} (in {t_part})"
                     return f"{icon_prefix} {start_str} (in {diff_m}m)"
                 elif diff_m == 0:
                     return f"{icon_prefix} {start_str} (Now!)"
@@ -273,10 +279,11 @@ class QuakMeetingMenuBar(AppKit.NSObject):
             if dep_dt and isinstance(dep_dt, datetime):
                 diff_dep = int(round((dep_dt - now).total_seconds() / 60.0))
                 if 0 < diff_dep <= max_lookahead_min:
-                    if diff_dep > 60:
+                    if diff_dep >= 60:
                         hrs = diff_dep // 60
                         mins = diff_dep % 60
-                        return f"{icon_prefix} Leave in {hrs}h{mins:02d}m ({title_short})"
+                        t_part = f"{hrs}h" if mins == 0 else f"{hrs}h{mins:02d}m"
+                        return f"{icon_prefix} Leave in {t_part} ({title_short})"
                     return f"{icon_prefix} Leave in {diff_dep}m ({title_short})"
                 elif -10 <= diff_dep <= 0:
                     return f"🚨 {icon_prefix} Leave NOW! ({title_short})"
@@ -288,10 +295,11 @@ class QuakMeetingMenuBar(AppKit.NSObject):
             if isinstance(start_dt, datetime):
                 diff_start = int(round((start_dt - now).total_seconds() / 60.0))
                 if 0 < diff_start <= max_lookahead_min:
-                    if diff_start > 60:
+                    if diff_start >= 60:
                         hrs = diff_start // 60
                         mins = diff_start % 60
-                        return f"{icon_prefix} in {hrs}h{mins:02d}m: {title_short}"
+                        t_part = f"{hrs}h" if mins == 0 else f"{hrs}h{mins:02d}m"
+                        return f"{icon_prefix} in {t_part}: {title_short}"
                     return f"{icon_prefix} in {diff_start}m: {title_short}"
                 elif diff_start == 0:
                     return f"🔔 {icon_prefix} Starting NOW: {title_short}"
@@ -306,13 +314,21 @@ class QuakMeetingMenuBar(AppKit.NSObject):
 
     def build_menu(self):
         now = datetime.now()
-        upcoming = [m for m in self.meetings if (m.get("end_time") and m["end_time"] > now) or (m.get("start_time") and m["start_time"] > now)]
+        today_upcoming = [
+            m for m in self.meetings 
+            if m.get("start_time") and m["start_time"].date() == now.date() 
+            and ((m.get("end_time") and m["end_time"] > now) or m["start_time"] > now)
+        ]
+        tomorrow_upcoming = [
+            m for m in self.meetings 
+            if m.get("start_time") and m["start_time"].date() > now.date()
+        ]
         status_mode = config.get("menubar_status_mode", "countdown")
         
         # State signature diffing to avoid unnecessary menu rebuilding
-        m_sigs = tuple((m.get("title"), str(m.get("start_time")), m.get("pilot_type")) for m in upcoming[:6])
+        m_sigs = tuple((m.get("title"), str(m.get("start_time")), m.get("pilot_type")) for m in today_upcoming[:6])
         minute_str = now.strftime("%H:%M")
-        new_signature = (minute_str, len(upcoming), status_mode, m_sigs)
+        new_signature = (minute_str, len(today_upcoming), len(tomorrow_upcoming), status_mode, m_sigs)
         
         if self._last_menu_signature == new_signature:
             return
@@ -328,11 +344,11 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         self.menu.addItem_(item_dash)
         self.menu.addItem_(AppKit.NSMenuItem.separatorItem())
         
-        # 2. Next Event & Quick Join
+        # 2. Next Event & Quick Join (Only for today!)
         icon_map = {"chef": "🍕", "captain": "✈️", "owl": "🎓", "driver": "🚗", "zen_duck": "🛋️", "duck": "🦆"}
         
-        if upcoming:
-            next_m = upcoming[0]
+        if today_upcoming:
+            next_m = today_upcoming[0]
             start_str = next_m["start_time"].strftime("%H:%M") if next_m.get("start_time") else "--:--"
             m_title = (next_m.get("title") or "Event").strip()
             
@@ -346,9 +362,11 @@ class QuakMeetingMenuBar(AppKit.NSObject):
                 self.status_item.button().setTitle_(self._format_status_title(next_m, now))
             
             if travel_min and isinstance(dep_dt, datetime):
-                next_label = f"{icon_prefix} Next: {start_str} — {m_title} (🚗 ~{travel_min}m • Leave at {dep_dt.strftime('%H:%M')})"
+                dur_str = format_duration(travel_min)
+                next_label = f"{icon_prefix} Next: {start_str} — {m_title} (🚗 ~{dur_str} • Leave at {dep_dt.strftime('%H:%M')})"
             elif travel_min:
-                next_label = f"{icon_prefix} Next: {start_str} — {m_title} (🚗 ~{travel_min}m)"
+                dur_str = format_duration(travel_min)
+                next_label = f"{icon_prefix} Next: {start_str} — {m_title} (🚗 ~{dur_str})"
             else:
                 next_label = f"{icon_prefix} Next: {start_str} — {m_title}"
                 
@@ -373,19 +391,19 @@ class QuakMeetingMenuBar(AppKit.NSObject):
                 self.status_item.button().setTitle_(self._format_status_title(None, now))
             
             item_none = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-                "No further events today", None, ""
+                "✨ No remaining events today", None, ""
             )
             item_none.setEnabled_(False)
             self.menu.addItem_(item_none)
             self.menu.addItem_(AppKit.NSMenuItem.separatorItem())
 
         # 3. Upcoming Today List
-        if len(upcoming) > 1:
-            item_header = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("Today's Events:", None, "")
+        if len(today_upcoming) > 1:
+            item_header = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("📅 Today's Events:", None, "")
             item_header.setEnabled_(False)
             self.menu.addItem_(item_header)
             
-            for idx, m in enumerate(upcoming[1:6], start=1):
+            for idx, m in enumerate(today_upcoming[1:6], start=1):
                 start_str = m["start_time"].strftime("%H:%M") if m.get("start_time") else "--:--"
                 p_type = m.get("pilot_type", "duck")
                 icon = icon_map.get(p_type, "🦆")
@@ -395,7 +413,7 @@ class QuakMeetingMenuBar(AppKit.NSObject):
                 tr_min = m.get("travel_time_minutes")
                 sub_text = f"  {icon} {start_str} - {title_short}"
                 if tr_min:
-                    sub_text += f" (~{tr_min}m)"
+                    sub_text += f" (~{format_duration(tr_min)})"
                 
                 sub_item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
                     sub_text, "openMeetingItem:", ""
@@ -403,6 +421,31 @@ class QuakMeetingMenuBar(AppKit.NSObject):
                 sub_item.setTarget_(self)
                 sub_item.setTag_(idx)
                 self.menu.addItem_(sub_item)
+                
+            self.menu.addItem_(AppKit.NSMenuItem.separatorItem())
+
+        # 4. Tomorrow's Preview (if any)
+        if tomorrow_upcoming:
+            item_tom_header = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("🌅 Tomorrow's Schedule:", None, "")
+            item_tom_header.setEnabled_(False)
+            self.menu.addItem_(item_tom_header)
+            
+            for t_idx, tm in enumerate(tomorrow_upcoming[:4]):
+                t_start = tm["start_time"].strftime("%H:%M") if tm.get("start_time") else "--:--"
+                t_p_type = tm.get("pilot_type", "duck")
+                t_icon = icon_map.get(t_p_type, "🦆")
+                t_title = (tm.get("title") or "Event").strip()
+                t_title_short = t_title[:22] + "…" if len(t_title) > 22 else t_title
+                t_tr_min = tm.get("travel_time_minutes")
+                t_sub_text = f"  {t_icon} {t_start} - {t_title_short}"
+                if t_tr_min:
+                    t_sub_text += f" (~{format_duration(t_tr_min)})"
+                
+                t_item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+                    t_sub_text, None, ""
+                )
+                t_item.setEnabled_(False)
+                self.menu.addItem_(t_item)
                 
             self.menu.addItem_(AppKit.NSMenuItem.separatorItem())
 

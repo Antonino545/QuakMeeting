@@ -15,6 +15,7 @@ from typing import Dict, Any, Optional
 
 from core.services.config_service import config
 from core.services.eta_service import MODE_ICONS, MODE_LABELS
+from core.domain.models import format_duration
 from .renderers import get_pilot_renderer
 
 class QuakPitBannerView(AppKit.NSView):
@@ -139,7 +140,8 @@ class QuakPitBannerView(AppKit.NSView):
             detail_text += f"  •  📍 {loc_short}"
             if self.travel_time_minutes:
                 mode_icon = MODE_ICONS.get(self.transport_mode, "🚆")
-                detail_text += f" ({mode_icon} ~{self.travel_time_minutes}m)"
+                dur_str = format_duration(self.travel_time_minutes)
+                detail_text += f" ({mode_icon} ~{dur_str})"
         elif self.action_url and ("meet.google.com" in self.action_url or "zoom" in self.action_url):
             detail_text += "  •  🌐 Online Meeting"
             
@@ -202,6 +204,7 @@ class QuakPitBannerView(AppKit.NSView):
                 dep_diff = (self.departure_time - now).total_seconds()
                 dep_mins = int(dep_diff // 60)
                 dep_time_str = self.departure_time.strftime("%H:%M")
+                dur_str = format_duration(self.travel_time_minutes or 20)
                 
                 if dep_diff <= 0:
                     late_min = abs(int(dep_diff // 60))
@@ -211,7 +214,7 @@ class QuakPitBannerView(AppKit.NSView):
                     countdown_text = f"⏳ {mode_icon} Leave in {dep_mins}m ({dep_time_str})"
                     is_urgent = True
                 else:
-                    countdown_text = f"{mode_icon} Leave at {dep_time_str} (~{self.travel_time_minutes or 20}m)"
+                    countdown_text = f"{mode_icon} Leave at {dep_time_str} (~{dur_str})"
             elif diff > 0:
                 mins = int(diff // 60)
                 secs = int(diff % 60)
