@@ -13,7 +13,7 @@ def generate_icns():
     print("🎨 Generating ICNS icon from assets/icon.png...")
     icon_src = os.path.join(PROJECT_DIR, "assets", "icon.png")
     if not os.path.exists(icon_src):
-        from generate_app_icon import create_app_icon
+        from scripts.generate_app_icon import create_app_icon
         create_app_icon(icon_src, 1024)
         
     iconset_dir = os.path.join(PROJECT_DIR, "assets", "AppIcon.iconset")
@@ -41,7 +41,7 @@ def check_python_code():
     
     py_files = []
     for root, _, files in os.walk(PROJECT_DIR):
-        if ".git" in root or "QuakMeeting.app" in root or "__pycache__" in root:
+        if any(x in root for x in [".git", "QuakMeeting.app", "__pycache__", "deb_dist", "dmg_temp"]):
             continue
         for file in files:
             if file.endswith(".py"):

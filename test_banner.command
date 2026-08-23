@@ -29,15 +29,16 @@ echo " 1) 🦆 Classic Aviator Duck (Google Meet / Zoom)"
 echo " 2) 🍕 Chef Duck (Dinner / Restaurant & Food)"
 echo " 3) ✈️  Jet Captain (Flights, Trains & Travel)"
 echo " 4) 🎓 Academic Owl (University & Lectures)"
-echo " 5) 🚗 Speed Racer (Driving / Real-Time Navigation)"
-echo " 6) 🛋️  Zen Duck (Serenis & Wellness)"
-echo " 7) ⏱️  Quick Full Screen Test (with 4-second delay)"
-echo " 8) 🚪 Exit"
+echo " 5) 🏋️‍♂️ Athlete Duck (Palestra / Gym & Sport)"
+echo " 6) 🚗 Speed Racer (Driving / Real-Time Navigation)"
+echo " 7) 🛋️  Zen Duck (Serenis & Wellness)"
+echo " 8) ⏱️  Quick Full Screen Test (with 4-second delay)"
+echo " 9) 🚪 Exit"
 echo ""
-read -p "Enter your choice [1-8] (default: 7): " CHOICE
+read -p "Enter your choice [1-9] (default: 8): " CHOICE
 
 if [ -z "$CHOICE" ]; then
-    CHOICE="7"
+    CHOICE="8"
 fi
 
 PILOT="duck"
@@ -61,29 +62,34 @@ case "$CHOICE" in
         DELAY=1
         ;;
     5)
-        PILOT="driver"
+        PILOT="gym"
         DELAY=1
         ;;
     6)
-        PILOT="zen_duck"
+        PILOT="driver"
         DELAY=1
         ;;
     7)
+        PILOT="zen_duck"
+        DELAY=1
+        ;;
+    8)
         echo ""
         echo "Choose the pilot character for the full-screen test:"
-        echo " 1) Aviator Duck  2) Chef  3) Jet Captain  4) Academic Owl  5) Speed Racer  6) Zen Duck"
-        read -p "Choice [1-6] (default: 1): " P_CHOICE
+        echo " 1) Aviator Duck  2) Chef  3) Jet Captain  4) Academic Owl  5) Athlete Duck  6) Speed Racer  7) Zen Duck"
+        read -p "Choice [1-7] (default: 1): " P_CHOICE
         case "$P_CHOICE" in
             2) PILOT="chef" ;;
             3) PILOT="captain" ;;
             4) PILOT="owl" ;;
-            5) PILOT="driver" ;;
-            6) PILOT="zen_duck" ;;
+            5) PILOT="gym" ;;
+            6) PILOT="driver" ;;
+            7) PILOT="zen_duck" ;;
             *) PILOT="duck" ;;
         esac
         DELAY=4
         ;;
-    8)
+    9)
         echo "Exiting..."
         exit 0
         ;;
