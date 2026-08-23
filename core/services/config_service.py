@@ -22,6 +22,7 @@ DEFAULT_CONFIG = {
     "flight_speed": 3.2,
     "banner_position": "top", # "top" or "bottom"
     "menubar_status_mode": "countdown", # "countdown", "event_time", "time_only", "icon_only"
+    "max_countdown_lookahead_hours": 3, # Maximum hours ahead to show live countdown (caps at 3h instead of 24h)
     "sound_enabled": True,
     "sound_name": "Glass",    # "Glass", "Hero", "Ping", "Pop", "Submarine"
     "ignored_calendars": [

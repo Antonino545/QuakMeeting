@@ -250,6 +250,8 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         
         start_str = start_dt.strftime("%H:%M") if isinstance(start_dt, datetime) else "--:--"
         
+        max_lookahead_min = int(config.get("max_countdown_lookahead_hours", 3)) * 60
+
         if mode == "event_time":
             if travel_min:
                 return f"{icon_prefix} {start_str} {title_short} (~{travel_min}m)"
@@ -258,7 +260,7 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         elif mode == "time_only":
             if isinstance(start_dt, datetime):
                 diff_m = int(round((start_dt - now).total_seconds() / 60.0))
-                if diff_m > 0:
+                if 0 < diff_m <= max_lookahead_min:
                     return f"{icon_prefix} {start_str} (in {diff_m}m)"
                 elif diff_m == 0:
                     return f"{icon_prefix} {start_str} (Now!)"
@@ -267,26 +269,38 @@ class QuakMeetingMenuBar(AppKit.NSObject):
             return f"{icon_prefix} {start_str}"
             
         else: # "countdown" (Default & Most Informative)
+            # 1. Check Departure / Leave Time for travel events
             if dep_dt and isinstance(dep_dt, datetime):
                 diff_dep = int(round((dep_dt - now).total_seconds() / 60.0))
-                if diff_dep > 0:
+                if 0 < diff_dep <= max_lookahead_min:
+                    if diff_dep > 60:
+                        hrs = diff_dep // 60
+                        mins = diff_dep % 60
+                        return f"{icon_prefix} Leave in {hrs}h{mins:02d}m ({title_short})"
                     return f"{icon_prefix} Leave in {diff_dep}m ({title_short})"
-                elif diff_dep >= -10:
+                elif -10 <= diff_dep <= 0:
                     return f"🚨 {icon_prefix} Leave NOW! ({title_short})"
-            
+                elif diff_dep > max_lookahead_min:
+                    # Beyond maximum lookahead (e.g. > 3 hours away), display clean start time
+                    return f"{icon_prefix} {start_str} {title_short}"
+
+            # 2. Check Event Start Time
             if isinstance(start_dt, datetime):
                 diff_start = int(round((start_dt - now).total_seconds() / 60.0))
-                if diff_start > 60:
-                    hrs = diff_start // 60
-                    mins = diff_start % 60
-                    return f"{icon_prefix} in {hrs}h{mins:02d}m: {title_short}"
-                elif diff_start > 0:
+                if 0 < diff_start <= max_lookahead_min:
+                    if diff_start > 60:
+                        hrs = diff_start // 60
+                        mins = diff_start % 60
+                        return f"{icon_prefix} in {hrs}h{mins:02d}m: {title_short}"
                     return f"{icon_prefix} in {diff_start}m: {title_short}"
                 elif diff_start == 0:
                     return f"🔔 {icon_prefix} Starting NOW: {title_short}"
                 elif end_dt and isinstance(end_dt, datetime) and now < end_dt:
                     diff_end = int(round((end_dt - now).total_seconds() / 60.0))
                     return f"🟢 {icon_prefix} {title_short} ({diff_end}m left)"
+                elif diff_start > max_lookahead_min:
+                    # Beyond maximum lookahead (e.g. > 3 hours away), display clean start time
+                    return f"{icon_prefix} {start_str} {title_short}"
                     
             return f"{icon_prefix} {start_str} {title_short}"
 
