@@ -10,21 +10,18 @@ from core.logger import setup_logging, log_system_diagnostics, logger
 setup_logging()
 log_system_diagnostics()
 
-from ui import QuakMeetingMenuBar, show_banner_async, show_dashboard, _run_banner
 from core import config, get_upcoming_meetings
 from datetime import datetime
 
 def main():
     print("=" * 60)
-    print(" 🦆 QuakMeeting - macOS Meeting Reminders & Flight Deck")
+    print(" 🦆 QuakMeeting - Smart Meeting Reminders & Flight Deck")
     print(" Inspired by QuakPit (https://github.com/Ooble-Studio/QuakPit)")
     print("=" * 60)
 
     try:
         if "--test" in sys.argv:
             import time
-            import AppKit
-            from ui.banner_window import _run_banner
             
             delay_sec = 0
             if "--delay" in sys.argv:
@@ -51,9 +48,6 @@ def main():
             else:
                 print("\n🚀 Running Notification Banner Test...")
                 
-            app = AppKit.NSApplication.sharedApplication()
-            app.setActivationPolicy_(AppKit.NSApplicationActivationPolicyAccessory)
-            
             pilot_presets = {
                 "chef": {
                     "title": "Dinner with Friends at Pizzeria",
@@ -126,14 +120,30 @@ def main():
             }
             
             test_m = pilot_presets.get(pilot_type, pilot_presets["duck"])
-            _run_banner(test_m)
-            app.run()
+            
+            if sys.platform == "darwin":
+                import AppKit
+                from ui.banner_window import _run_banner
+                app = AppKit.NSApplication.sharedApplication()
+                app.setActivationPolicy_(AppKit.NSApplicationActivationPolicyAccessory)
+                _run_banner(test_m)
+                app.run()
+            else:
+                from ui.banner.wayland_banner import show_wayland_banner
+                show_wayland_banner(test_m)
+                import gi
+                gi.require_version('Gtk', '3.0')
+                from gi.repository import Gtk
+                Gtk.main()
             return
 
         logger.info("Initializing QuakMeeting Menu Bar and Flight Deck UI...")
         print(" Launching Menu Bar icon and Flight Deck...")
 
         if sys.platform == "darwin":
+            from ui.menu_bar_app import QuakMeetingMenuBar
+            from ui.dashboard_window import show_dashboard
+
             print("\n 📌 PERMISSION NOTICE:")
             print(" If macOS prompts for Calendar access, select 'ALLOW'.\n")
 
