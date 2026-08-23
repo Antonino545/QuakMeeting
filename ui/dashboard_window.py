@@ -671,14 +671,22 @@ class DashboardWindowController(AppKit.NSObject):
         card_w = w - 16.0
         gap = 14.0
         
-        c1_h = 195.0 # Notification Lead Times
-        c_eta_h = 185.0 # Home / Departure Address & Apple Maps ETA
-        c2_h = 185.0 # Screen Banner & Menu Bar Live Display Dynamics
-        c3_h = 140.0 # Sound Chimes
-        c4_h = 135.0 # Included Calendars
-        c5_h = 125.0 # System & JSON Config
+        c1_h = 216.0 # Notification Lead Times
+        c_eta_h = 216.0 # Home / Departure Address & Apple Maps ETA
+        c2_h = 216.0 # Screen Banner & Menu Bar Live Display Dynamics
+        c3_h = 164.0 # Sound Chimes
         
-        content_h = c1_h + c_eta_h + c2_h + c3_h + c4_h + c5_h + gap * 7 + 20.0
+        # Calculate calendar section height dynamically
+        cals = self.cached_calendars if self.cached_calendars else get_available_calendars()
+        if not self.cached_calendars and cals:
+            self.cached_calendars = cals
+        cal_count = len(cals) if cals else 1
+        cal_rows = (cal_count + 1) // 2
+        c4_h = max(118.0, 76.0 + cal_rows * 36.0) # Dynamic Calendars height
+        
+        c5_h = 142.0 # System & JSON Config
+        
+        content_h = c1_h + c_eta_h + c2_h + c3_h + c4_h + c5_h + gap * 7 + 24.0
         doc_view = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 0, w, content_h))
 
         curr_y = content_h - gap
@@ -710,7 +718,7 @@ class DashboardWindowController(AppKit.NSObject):
         # SECTION 5: INCLUDED MACOS CALENDARS
         curr_y -= (c4_h + gap)
         card4 = self._create_card_container(0, curr_y, card_w, c4_h)
-        self._build_calendars_section(card4, card_w, c4_h)
+        self._build_calendars_section(card4, card_w, c4_h, cals)
         doc_view.addSubview_(card4)
 
         # SECTION 6: SYSTEM & JSON RULES
@@ -725,57 +733,113 @@ class DashboardWindowController(AppKit.NSObject):
         self.content_container.addSubview_(scroll_view)
 
     def _create_card_container(self, x, y, w, h):
-        """Creates a modern lightweight card container with zero blur overhead."""
+        """Creates a modern lightweight card container with deep frosted slate styling."""
         card = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(x, y, w, h))
         card.setWantsLayer_(True)
-        card.layer().setBackgroundColor_(AppKit.NSColor.colorWithRed_green_blue_alpha_(0.14, 0.16, 0.22, 0.85).CGColor())
-        card.layer().setCornerRadius_(14.0)
+        card.layer().setBackgroundColor_(AppKit.NSColor.colorWithRed_green_blue_alpha_(0.13, 0.15, 0.21, 0.90).CGColor())
+        card.layer().setCornerRadius_(13.0)
         card.layer().setMasksToBounds_(True)
         card.layer().setBorderWidth_(1.0)
-        card.layer().setBorderColor_(AppKit.NSColor.colorWithWhite_alpha_(1.0, 0.10).CGColor())
+        card.layer().setBorderColor_(AppKit.NSColor.colorWithWhite_alpha_(1.0, 0.08).CGColor())
         return card
 
-    def _add_section_header(self, parent, title, subtitle, y, w):
-        """Section header with bold title and explanatory subtitle."""
-        t_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, y, w - 36, 22))
+    def _add_section_header(self, parent, title, subtitle, y, w, icon_emoji="⚙️", badge_rgba=(0.2, 0.5, 1.0, 0.18), border_rgba=(0.2, 0.5, 1.0, 0.35)):
+        """Section header with colored icon badge, bold title, subtitle, and bottom hairline."""
+        # Icon Badge (28x28 with 7px radius)
+        badge = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(18, y - 36, 28, 28))
+        badge.setWantsLayer_(True)
+        badge.layer().setBackgroundColor_(AppKit.NSColor.colorWithRed_green_blue_alpha_(*badge_rgba).CGColor())
+        badge.layer().setCornerRadius_(7.0)
+        badge.layer().setMasksToBounds_(True)
+        badge.layer().setBorderWidth_(1.0)
+        badge.layer().setBorderColor_(AppKit.NSColor.colorWithRed_green_blue_alpha_(*border_rgba).CGColor())
+
+        icon_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(0, 2, 28, 24))
+        icon_lbl.setStringValue_(icon_emoji)
+        icon_lbl.setFont_(AppKit.NSFont.systemFontOfSize_(14.5))
+        icon_lbl.setAlignment_(AppKit.NSTextAlignmentCenter)
+        icon_lbl.setBezeled_(False)
+        icon_lbl.setDrawsBackground_(False)
+        icon_lbl.setEditable_(False)
+        badge.addSubview_(icon_lbl)
+        parent.addSubview_(badge)
+
+        # Title
+        t_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(56, y - 28, w - 74, 20))
         t_lbl.setStringValue_(title)
-        t_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(14))
+        t_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(13.5))
         t_lbl.setTextColor_(AppKit.NSColor.whiteColor())
         t_lbl.setBezeled_(False)
         t_lbl.setDrawsBackground_(False)
         t_lbl.setEditable_(False)
         parent.addSubview_(t_lbl)
 
-        s_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, y - 18, w - 36, 18))
+        # Subtitle
+        s_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(56, y - 46, w - 74, 16))
         s_lbl.setStringValue_(subtitle)
-        s_lbl.setFont_(AppKit.NSFont.systemFontOfSize_(11.5))
-        s_lbl.setTextColor_(AppKit.NSColor.colorWithRed_green_blue_alpha_(0.68, 0.72, 0.85, 1.0))
+        s_lbl.setFont_(AppKit.NSFont.systemFontOfSize_(11.0))
+        s_lbl.setTextColor_(AppKit.NSColor.colorWithRed_green_blue_alpha_(0.68, 0.73, 0.88, 1.0))
         s_lbl.setBezeled_(False)
         s_lbl.setDrawsBackground_(False)
         s_lbl.setEditable_(False)
         parent.addSubview_(s_lbl)
 
+        # Header bottom hairline divider (strictly separated with zero overlap)
+        div = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(18, y - 54, w - 36, 1))
+        div.setWantsLayer_(True)
+        div.layer().setBackgroundColor_(AppKit.NSColor.colorWithWhite_alpha_(1.0, 0.06).CGColor())
+        parent.addSubview_(div)
+
+    def _add_row_divider(self, parent, y, w):
+        """Adds a subtle inner hairline divider between preference rows."""
+        div = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(18, y, w - 36, 1))
+        div.setWantsLayer_(True)
+        div.layer().setBackgroundColor_(AppKit.NSColor.colorWithWhite_alpha_(1.0, 0.04).CGColor())
+        parent.addSubview_(div)
+
+    def _add_row_label(self, parent, title, desc, y_center, w_label=220):
+        """Creates a left-side setting label with bold title and description."""
+        t_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, y_center + 2, w_label, 18))
+        t_lbl.setStringValue_(title)
+        t_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.5))
+        t_lbl.setTextColor_(AppKit.NSColor.whiteColor())
+        t_lbl.setBezeled_(False)
+        t_lbl.setDrawsBackground_(False)
+        t_lbl.setEditable_(False)
+        parent.addSubview_(t_lbl)
+
+        if desc:
+            d_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, y_center - 14, w_label, 15))
+            d_lbl.setStringValue_(desc)
+            d_lbl.setFont_(AppKit.NSFont.systemFontOfSize_(10.5))
+            d_lbl.setTextColor_(AppKit.NSColor.colorWithRed_green_blue_alpha_(0.62, 0.68, 0.82, 1.0))
+            d_lbl.setBezeled_(False)
+            d_lbl.setDrawsBackground_(False)
+            d_lbl.setEditable_(False)
+            parent.addSubview_(d_lbl)
+
     def _build_timing_section(self, card, w, h):
-        self._add_section_header(card, "⏱️ Notification Lead Times & Staged Reminders", "Select reminder alert windows to receive progressive notifications ahead of time.", h - 28, w)
+        self._add_section_header(
+            card,
+            "Notification Lead Times & Staged Reminders",
+            "Select reminder alert windows to receive progressive notifications ahead of time.",
+            h, w,
+            icon_emoji="⏱️",
+            badge_rgba=(1.0, 0.6, 0.1, 0.20),
+            border_rgba=(1.0, 0.6, 0.1, 0.38)
+        )
         
-        y = h - 68.0
         # 1. Video Meeting Stages
-        lbl1 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, y + 2, 230, 20))
-        lbl1.setStringValue_("📹 Video Calls & Meetings:")
-        lbl1.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.5))
-        lbl1.setTextColor_(AppKit.NSColor.whiteColor())
-        lbl1.setBezeled_(False)
-        lbl1.setDrawsBackground_(False)
-        lbl1.setEditable_(False)
-        card.addSubview_(lbl1)
+        r1_y = h - 84.0
+        self._add_row_label(card, "📹 Video Meetings", "Alert ahead of meeting start time", r1_y, 220)
         
         curr_meeting_stages = set(config.get("meeting_reminder_stages", [20, 10, 5, 2, 0]))
-        meeting_opts = [(30, "30m"), (20, "20m"), (15, "15m"), (10, "10m"), (5, "5m"), (2, "2m"), (0, "At start (0m)")]
+        meeting_opts = [(30, "30m"), (20, "20m"), (15, "15m"), (10, "10m"), (5, "5m"), (2, "2m"), (0, "0m Start")]
         
-        x_btn = 250.0
+        x_btn = 245.0
         for val, label in meeting_opts:
-            btn_w = 64.0 if val != 0 else 102.0
-            chk = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(x_btn, y, btn_w, 24))
+            btn_w = 60.0 if val != 0 else 92.0
+            chk = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(x_btn, r1_y - 10, btn_w, 24))
             chk.setButtonType_(AppKit.NSButtonTypeSwitch)
             chk.setTitle_(label)
             chk.setFont_(AppKit.NSFont.systemFontOfSize_(11.5))
@@ -785,25 +849,20 @@ class DashboardWindowController(AppKit.NSObject):
             chk.setAction_("onToggleMeetingStage:")
             card.addSubview_(chk)
             x_btn += (btn_w + 6.0)
-            
-        y -= 44.0
+
+        self._add_row_divider(card, h - 108.0, w)
+
         # 2. Travel Stages (Before Departure Time)
-        lbl2 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, y + 2, 230, 20))
-        lbl2.setStringValue_("🚗 Travel (Before Leave Time):")
-        lbl2.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.5))
-        lbl2.setTextColor_(AppKit.NSColor.whiteColor())
-        lbl2.setBezeled_(False)
-        lbl2.setDrawsBackground_(False)
-        lbl2.setEditable_(False)
-        card.addSubview_(lbl2)
+        r2_y = h - 136.0
+        self._add_row_label(card, "🚗 Travel & Trips", "Alert ahead of leave / departure time", r2_y, 220)
         
         curr_travel_stages = set(config.get("travel_reminder_stages", [45, 30, 15, 5, 2, 0]))
-        travel_opts = [(60, "60m"), (45, "45m"), (30, "30m"), (15, "15m"), (5, "5m"), (2, "2m"), (0, "At leave (0m)")]
+        travel_opts = [(60, "60m"), (45, "45m"), (30, "30m"), (15, "15m"), (5, "5m"), (2, "2m"), (0, "0m Leave")]
         
-        x_btn = 250.0
+        x_btn = 245.0
         for val, label in travel_opts:
-            btn_w = 64.0 if val != 0 else 102.0
-            chk = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(x_btn, y, btn_w, 24))
+            btn_w = 60.0 if val != 0 else 92.0
+            chk = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(x_btn, r2_y - 10, btn_w, 24))
             chk.setButtonType_(AppKit.NSButtonTypeSwitch)
             chk.setTitle_(label)
             chk.setFont_(AppKit.NSFont.systemFontOfSize_(11.5))
@@ -814,60 +873,70 @@ class DashboardWindowController(AppKit.NSObject):
             card.addSubview_(chk)
             x_btn += (btn_w + 6.0)
 
-        y -= 44.0
+        self._add_row_divider(card, h - 160.0, w)
+
         # 3. Snooze
+        r3_y = h - 188.0
         snooze_val = config.get("default_snooze_seconds", 120) // 60
-        self._add_popup_row(card, "💤 Snooze Duration:", "Interval delay when clicking the Snooze button on a banner", [
+        self._add_row_label(card, "💤 Snooze Duration", "Interval delay when clicking Snooze on a banner", r3_y, 220)
+
+        snooze_popup = AppKit.NSPopUpButton.alloc().initWithFrame_pullsDown_(AppKit.NSMakeRect(245, r3_y - 12, 260, 28), False)
+        snooze_popup.setFont_(AppKit.NSFont.systemFontOfSize_(12.5))
+        snooze_popup.setTarget_(self)
+        snooze_popup.setAction_("onSelectSnoozeDuration:")
+        for opt_title, opt_val in [
             ("1 minute", 1), ("2 minutes (Default)", 2), ("5 minutes", 5), ("10 minutes", 10), ("15 minutes", 15)
-        ], snooze_val, "onSelectSnoozeDuration:", y, w)
+        ]:
+            item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(opt_title, None, "")
+            item.setRepresentedObject_(opt_val)
+            snooze_popup.menu().addItem_(item)
+            if opt_val == snooze_val:
+                snooze_popup.selectItem_(item)
+        card.addSubview_(snooze_popup)
 
     def _build_eta_section(self, card, w, h):
-        self._add_section_header(card, "📍 Home / Departure Address & Route Estimation (Apple Maps ETA)", "Calculate real-time travel duration for Public Transit, Driving, Walking, or Cycling.", h - 28, w)
+        self._add_section_header(
+            card,
+            "Home / Departure Address & Route Estimation (Apple Maps ETA)",
+            "Calculate real-time travel duration for Public Transit, Driving, Walking, or Cycling.",
+            h, w,
+            icon_emoji="📍",
+            badge_rgba=(0.0, 0.48, 1.0, 0.20),
+            border_rgba=(0.0, 0.48, 1.0, 0.38)
+        )
 
-        y = h - 68.0
         # 1. Home / Departure Address
-        lbl1 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, y + 2, 275, 20))
-        lbl1.setStringValue_("🏠 Home / Starting Address:")
-        lbl1.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.5))
-        lbl1.setTextColor_(AppKit.NSColor.whiteColor())
-        lbl1.setBezeled_(False)
-        lbl1.setDrawsBackground_(False)
-        lbl1.setEditable_(False)
-        card.addSubview_(lbl1)
+        r1_y = h - 84.0
+        self._add_row_label(card, "🏠 Starting Address", "Home / origin for automated Apple Maps ETA", r1_y, 220)
 
         curr_addr = str(config.get("home_address", "") or "")
-        self.home_addr_field = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(300, y, 260, 26))
+        self.home_addr_field = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(245, r1_y - 10, 390, 26))
         self.home_addr_field.setStringValue_(curr_addr)
-        self.home_addr_field.setPlaceholderString_("e.g. 24 Oxford Street, London")
+        self.home_addr_field.setPlaceholderString_("e.g. 24 Oxford Street, London or Piazza Castello, Torino")
         self.home_addr_field.setFont_(AppKit.NSFont.systemFontOfSize_(12))
         self.home_addr_field.setTarget_(self)
         self.home_addr_field.setAction_("onSaveHomeAddress:")
         card.addSubview_(self.home_addr_field)
 
-        save_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(570, y - 2, 90, 30))
-        save_btn.setTitle_("💾 Save")
-        save_btn.setBezelStyle_(AppKit.NSBezelStyleRounded)
-        save_btn.setFont_(AppKit.NSFont.boldSystemFontOfSize_(11.5))
-        save_btn.setTarget_(self)
-        save_btn.setAction_("onSaveHomeAddress:")
-        card.addSubview_(save_btn)
+        self.home_save_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(645, r1_y - 12, 85, 30))
+        self.home_save_btn.setTitle_("💾 Save")
+        self.home_save_btn.setBezelStyle_(AppKit.NSBezelStyleRounded)
+        self.home_save_btn.setFont_(AppKit.NSFont.boldSystemFontOfSize_(11.5))
+        self.home_save_btn.setTarget_(self)
+        self.home_save_btn.setAction_("onSaveHomeAddress:")
+        card.addSubview_(self.home_save_btn)
 
-        y -= 44.0
+        self._add_row_divider(card, h - 108.0, w)
+
         # 2. Preferred Transport Mode
-        lbl2 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, y + 2, 275, 20))
-        lbl2.setStringValue_("🚦 Default Transport Mode:")
-        lbl2.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.5))
-        lbl2.setTextColor_(AppKit.NSColor.whiteColor())
-        lbl2.setBezeled_(False)
-        lbl2.setDrawsBackground_(False)
-        lbl2.setEditable_(False)
-        card.addSubview_(lbl2)
+        r2_y = h - 136.0
+        self._add_row_label(card, "🚦 Transport Mode", "Default vehicle mode for route calculation", r2_y, 220)
 
         modes = ["transit", "automobile", "walking", "bicycling"]
         curr_mode = config.get("transport_mode", "transit")
         sel_idx = modes.index(curr_mode) if curr_mode in modes else 0
 
-        self.mode_segmented = AppKit.NSSegmentedControl.alloc().initWithFrame_(AppKit.NSMakeRect(300, y - 2, 360, 28))
+        self.mode_segmented = AppKit.NSSegmentedControl.alloc().initWithFrame_(AppKit.NSMakeRect(245, r2_y - 12, 485, 28))
         self.mode_segmented.setSegmentCount_(4)
         self.mode_segmented.setLabel_forSegment_("🚆 Transit", 0)
         self.mode_segmented.setLabel_forSegment_("🚗 Driving", 1)
@@ -878,32 +947,47 @@ class DashboardWindowController(AppKit.NSObject):
         self.mode_segmented.setAction_("onSelectTransportMode:")
         card.addSubview_(self.mode_segmented)
 
-        y -= 44.0
+        self._add_row_divider(card, h - 160.0, w)
+
         # 3. Departure Buffer
+        r3_y = h - 188.0
         buf_val = config.get("eta_buffer_minutes", 10)
-        self._add_popup_row(card, "⏳ Departure Buffer:", "Extra buffer time to reach the station/stop or find parking", [
+        self._add_row_label(card, "⏳ Departure Buffer", "Extra margin to reach station or find parking", r3_y, 220)
+
+        buf_popup = AppKit.NSPopUpButton.alloc().initWithFrame_pullsDown_(AppKit.NSMakeRect(245, r3_y - 12, 260, 28), False)
+        buf_popup.setFont_(AppKit.NSFont.systemFontOfSize_(12.5))
+        buf_popup.setTarget_(self)
+        buf_popup.setAction_("onSelectETABuffer:")
+        for opt_title, opt_val in [
             ("5 minutes", 5), ("10 minutes (Default)", 10), ("15 minutes", 15), ("20 minutes", 20), ("30 minutes", 30)
-        ], buf_val, "onSelectETABuffer:", y, w)
+        ]:
+            item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(opt_title, None, "")
+            item.setRepresentedObject_(opt_val)
+            buf_popup.menu().addItem_(item)
+            if opt_val == buf_val:
+                buf_popup.selectItem_(item)
+        card.addSubview_(buf_popup)
 
     def _build_flight_section(self, card, w, h):
-        self._add_section_header(card, "✈️ Display & Menu Bar Live Status Modes", "Personalize menu bar status display style, screen position, and flight speed.", h - 28, w)
+        self._add_section_header(
+            card,
+            "Display & Menu Bar Live Status Modes",
+            "Personalize menu bar status display style, screen position, and flight speed.",
+            h, w,
+            icon_emoji="✈️",
+            badge_rgba=(0.6, 0.25, 1.0, 0.20),
+            border_rgba=(0.6, 0.25, 1.0, 0.38)
+        )
 
-        y = h - 68.0
         # 1. Menu Bar Display Mode
-        lbl0 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, y + 2, 280, 20))
-        lbl0.setStringValue_("🦆 Menu Bar Live Status Mode:")
-        lbl0.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.5))
-        lbl0.setTextColor_(AppKit.NSColor.whiteColor())
-        lbl0.setBezeled_(False)
-        lbl0.setDrawsBackground_(False)
-        lbl0.setEditable_(False)
-        card.addSubview_(lbl0)
+        r1_y = h - 84.0
+        self._add_row_label(card, "🦆 Menu Bar Style", "Format shown in the macOS status bar", r1_y, 220)
 
         modes = ["countdown", "event_time", "time_only", "icon_only"]
         curr_mb_mode = config.get("menubar_status_mode", "countdown")
         sel_mb_idx = modes.index(curr_mb_mode) if curr_mb_mode in modes else 0
 
-        mb_segmented = AppKit.NSSegmentedControl.alloc().initWithFrame_(AppKit.NSMakeRect(300, y - 2, 440, 28))
+        mb_segmented = AppKit.NSSegmentedControl.alloc().initWithFrame_(AppKit.NSMakeRect(245, r1_y - 12, 485, 28))
         mb_segmented.setSegmentCount_(4)
         mb_segmented.setLabel_forSegment_("⏳ Countdown", 0)
         mb_segmented.setLabel_forSegment_("🕐 Start Time", 1)
@@ -914,20 +998,15 @@ class DashboardWindowController(AppKit.NSObject):
         mb_segmented.setAction_("onSelectMenuBarMode:")
         card.addSubview_(mb_segmented)
 
-        y -= 44.0
-        # 2. Banner Position
-        lbl1 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, y + 2, 280, 20))
-        lbl1.setStringValue_("📍 Banner Screen Position:")
-        lbl1.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.5))
-        lbl1.setTextColor_(AppKit.NSColor.whiteColor())
-        lbl1.setBezeled_(False)
-        lbl1.setDrawsBackground_(False)
-        lbl1.setEditable_(False)
-        card.addSubview_(lbl1)
+        self._add_row_divider(card, h - 108.0, w)
 
-        pos_segmented = AppKit.NSSegmentedControl.alloc().initWithFrame_(AppKit.NSMakeRect(300, y - 2, 250, 28))
+        # 2. Banner Position
+        r2_y = h - 136.0
+        self._add_row_label(card, "📍 Banner Position", "HUD screen location for taking off banner", r2_y, 220)
+
+        pos_segmented = AppKit.NSSegmentedControl.alloc().initWithFrame_(AppKit.NSMakeRect(245, r2_y - 12, 260, 28))
         pos_segmented.setSegmentCount_(2)
-        pos_segmented.setLabel_forSegment_("⬆️ Top", 0)
+        pos_segmented.setLabel_forSegment_("⬆️ Top (HUD)", 0)
         pos_segmented.setLabel_forSegment_("⬇️ Bottom", 1)
         curr_pos = config.get("banner_position", "top")
         pos_segmented.setSelectedSegment_(0 if curr_pos == "top" else 1)
@@ -935,20 +1014,42 @@ class DashboardWindowController(AppKit.NSObject):
         pos_segmented.setAction_("onSelectBannerPosition:")
         card.addSubview_(pos_segmented)
 
-        y -= 44.0
+        self._add_row_divider(card, h - 160.0, w)
+
         # 3. Flight Speed
+        r3_y = h - 188.0
         curr_spd = int(float(config.get("flight_speed", 3.2)) * 10)
-        self._add_popup_row(card, "🚀 Flight Animation Speed:", "Adjust the horizontal crossing velocity of the notification banner", [
+        self._add_row_label(card, "🚀 Flight Speed", "Horizontal glide velocity across the display", r3_y, 220)
+
+        spd_popup = AppKit.NSPopUpButton.alloc().initWithFrame_pullsDown_(AppKit.NSMakeRect(245, r3_y - 12, 260, 28), False)
+        spd_popup.setFont_(AppKit.NSFont.systemFontOfSize_(12.5))
+        spd_popup.setTarget_(self)
+        spd_popup.setAction_("onSelectFlightSpeed:")
+        for opt_title, opt_val in [
             ("🐢 Relaxed (2.0x)", 20), ("✈️ Standard (3.2x - Default)", 32), ("🚀 Turbo (4.8x)", 48), ("⚡ Supersonic (6.0x)", 60)
-        ], curr_spd, "onSelectFlightSpeed:", y, w)
+        ]:
+            item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(opt_title, None, "")
+            item.setRepresentedObject_(opt_val)
+            spd_popup.menu().addItem_(item)
+            if opt_val == curr_spd:
+                spd_popup.selectItem_(item)
+        card.addSubview_(spd_popup)
 
     def _build_audio_section(self, card, w, h):
-        self._add_section_header(card, "🔔 Sound Effects & Audio Chimes", "Enable or customize the chime sound played when a reminder takes off.", h - 28, w)
+        self._add_section_header(
+            card,
+            "Sound Effects & Audio Chimes",
+            "Enable or customize the chime sound played when a reminder takes off.",
+            h, w,
+            icon_emoji="🔔",
+            badge_rgba=(1.0, 0.2, 0.4, 0.20),
+            border_rgba=(1.0, 0.2, 0.4, 0.38)
+        )
 
-        y = h - 68.0
         # 1. Enable Sound Switch
+        r1_y = h - 84.0
         sound_on = config.get("sound_enabled", True)
-        self.sound_switch = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(18, y, 260, 24))
+        self.sound_switch = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(18, r1_y - 10, 320, 24))
         self.sound_switch.setButtonType_(AppKit.NSButtonTypeSwitch)
         self.sound_switch.setTitle_("🔊 Play Sound on Notification")
         self.sound_switch.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.5))
@@ -957,16 +1058,11 @@ class DashboardWindowController(AppKit.NSObject):
         self.sound_switch.setAction_("onToggleSoundEnabled:")
         card.addSubview_(self.sound_switch)
 
-        y -= 44.0
+        self._add_row_divider(card, h - 108.0, w)
+
         # 2. Sound Tone Selection + Preview
-        lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, y + 2, 280, 20))
-        lbl.setStringValue_("🎵 macOS Chime Tone:")
-        lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.5))
-        lbl.setTextColor_(AppKit.NSColor.whiteColor())
-        lbl.setBezeled_(False)
-        lbl.setDrawsBackground_(False)
-        lbl.setEditable_(False)
-        card.addSubview_(lbl)
+        r2_y = h - 136.0
+        self._add_row_label(card, "🎵 macOS Tone", "Select sound chime & test playback", r2_y, 220)
 
         sounds = [
             ("Glass (Default)", "Glass"), ("Hero", "Hero"), ("Ping", "Ping"), ("Pop", "Pop"),
@@ -975,7 +1071,7 @@ class DashboardWindowController(AppKit.NSObject):
         ]
         curr_snd = config.get("sound_name", "Glass")
         
-        self.sound_popup = AppKit.NSPopUpButton.alloc().initWithFrame_pullsDown_(AppKit.NSMakeRect(300, y - 2, 220, 28), False)
+        self.sound_popup = AppKit.NSPopUpButton.alloc().initWithFrame_pullsDown_(AppKit.NSMakeRect(245, r2_y - 12, 230, 28), False)
         self.sound_popup.setFont_(AppKit.NSFont.systemFontOfSize_(12.5))
         self.sound_popup.setTarget_(self)
         self.sound_popup.setAction_("onSelectSound:")
@@ -987,23 +1083,30 @@ class DashboardWindowController(AppKit.NSObject):
                 self.sound_popup.selectItem_(item)
         card.addSubview_(self.sound_popup)
 
-        play_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(530, y - 2, 130, 28))
-        play_btn.setTitle_("▶ Listen")
+        play_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(485, r2_y - 12, 120, 28))
+        play_btn.setTitle_("▶ Play Tone")
         play_btn.setBezelStyle_(AppKit.NSBezelStyleRounded)
-        play_btn.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12))
+        play_btn.setFont_(AppKit.NSFont.boldSystemFontOfSize_(11.5))
         play_btn.setTarget_(self)
         play_btn.setAction_("onPlaySoundPreview:")
         card.addSubview_(play_btn)
 
-    def _build_calendars_section(self, card, w, h):
-        self._add_section_header(card, "📅 Included macOS Calendars", "Select which calendars to actively monitor for reminders.", h - 28, w)
+    def _build_calendars_section(self, card, w, h, cals=None):
+        self._add_section_header(
+            card,
+            "Included macOS Calendars",
+            "Select which calendars to actively monitor for reminders.",
+            h, w,
+            icon_emoji="📅",
+            badge_rgba=(0.2, 0.78, 0.4, 0.20),
+            border_rgba=(0.2, 0.78, 0.4, 0.38)
+        )
         
-        cals = self.cached_calendars if self.cached_calendars else get_available_calendars()
-        if not self.cached_calendars and cals:
-            self.cached_calendars = cals
+        if cals is None:
+            cals = self.cached_calendars if self.cached_calendars else get_available_calendars()
 
         if not cals:
-            lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 68, w - 36, 22))
+            lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 86, w - 36, 22))
             lbl.setStringValue_("All Apple Calendar accounts are currently monitored.")
             lbl.setFont_(AppKit.NSFont.systemFontOfSize_(12))
             lbl.setTextColor_(AppKit.NSColor.colorWithRed_green_blue_alpha_(0.7, 0.75, 0.88, 1.0))
@@ -1013,10 +1116,10 @@ class DashboardWindowController(AppKit.NSObject):
             card.addSubview_(lbl)
             return
 
-        y = h - 68.0
+        y = h - 88.0
         x_offset = 18.0
         for cal in cals:
-            chk = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(x_offset, y, 220, 24))
+            chk = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(x_offset, y, 340, 24))
             chk.setButtonType_(AppKit.NSButtonTypeSwitch)
             chk.setTitle_(f"📅 {cal['name']}")
             chk.setFont_(AppKit.NSFont.systemFontOfSize_(12))
@@ -1026,25 +1129,35 @@ class DashboardWindowController(AppKit.NSObject):
             chk.setToolTip_(cal['name'])
             card.addSubview_(chk)
             
-            x_offset += 240.0
-            if x_offset + 220.0 > w:
+            x_offset += 360.0
+            if x_offset + 340.0 > w:
                 x_offset = 18.0
-                y -= 30.0
+                y -= 36.0
 
     def _build_system_section(self, card, w, h):
-        self._add_section_header(card, "🛠️ System Diagnostics & JSON Rules", "Customize classification rules and view diagnostic crash logs.", h - 28, w)
+        self._add_section_header(
+            card,
+            "System Diagnostics & JSON Rules",
+            "Customize classification rules and inspect real-time diagnostic logs.",
+            h, w,
+            icon_emoji="🛠️",
+            badge_rgba=(0.1, 0.72, 0.85, 0.20),
+            border_rgba=(0.1, 0.72, 0.85, 0.38)
+        )
 
-        y = h - 68.0
-        # Config JSON & Log Diagnostic Buttons
-        open_json_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(18, y - 2, 210, 32))
-        open_json_btn.setTitle_("📝 Edit Rules (config.json)...")
+        y = h - 94.0
+        btn_w = 170.0
+
+        # 4 Sleek Action Buttons
+        open_json_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(18, y, btn_w, 32))
+        open_json_btn.setTitle_("📝 Edit Rules")
         open_json_btn.setBezelStyle_(AppKit.NSBezelStyleRounded)
         open_json_btn.setFont_(AppKit.NSFont.systemFontOfSize_(12.0))
         open_json_btn.setTarget_(self)
         open_json_btn.setAction_("onOpenConfigEditor:")
         card.addSubview_(open_json_btn)
 
-        reload_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(236, y - 2, 140, 32))
+        reload_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(18 + (btn_w + 12.0) * 1, y, btn_w, 32))
         reload_btn.setTitle_("🔄 Reload Rules")
         reload_btn.setBezelStyle_(AppKit.NSBezelStyleRounded)
         reload_btn.setFont_(AppKit.NSFont.systemFontOfSize_(12.0))
@@ -1052,7 +1165,7 @@ class DashboardWindowController(AppKit.NSObject):
         reload_btn.setAction_("onReloadConfig:")
         card.addSubview_(reload_btn)
 
-        view_logs_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(384, y - 2, 160, 32))
+        view_logs_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(18 + (btn_w + 12.0) * 2, y, btn_w, 32))
         view_logs_btn.setTitle_("📄 View Logs")
         view_logs_btn.setBezelStyle_(AppKit.NSBezelStyleRounded)
         view_logs_btn.setFont_(AppKit.NSFont.systemFontOfSize_(12.0))
@@ -1060,7 +1173,7 @@ class DashboardWindowController(AppKit.NSObject):
         view_logs_btn.setAction_("onOpenLogs:")
         card.addSubview_(view_logs_btn)
 
-        folder_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(552, y - 2, 140, 32))
+        folder_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(18 + (btn_w + 12.0) * 3, y, btn_w, 32))
         folder_btn.setTitle_("📂 Log Folder")
         folder_btn.setBezelStyle_(AppKit.NSBezelStyleRounded)
         folder_btn.setFont_(AppKit.NSFont.systemFontOfSize_(12.0))
@@ -1068,30 +1181,15 @@ class DashboardWindowController(AppKit.NSObject):
         folder_btn.setAction_("onOpenLogFolder:")
         card.addSubview_(folder_btn)
 
-    def _add_popup_row(self, parent, label_text, sub_text, options, current_val, action_name, y, w):
-        lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, y + 2, 280, 20))
-        lbl.setStringValue_(label_text)
-        lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.5))
-        lbl.setTextColor_(AppKit.NSColor.whiteColor())
-        lbl.setBezeled_(False)
-        lbl.setDrawsBackground_(False)
-        lbl.setEditable_(False)
-        parent.addSubview_(lbl)
-
-        popup = AppKit.NSPopUpButton.alloc().initWithFrame_pullsDown_(AppKit.NSMakeRect(300, y - 2, 360, 28), False)
-        popup.setFont_(AppKit.NSFont.systemFontOfSize_(12.5))
-        popup.setTarget_(self)
-        popup.setAction_(action_name)
-
-        for opt_title, opt_val in options:
-            item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(opt_title, None, "")
-            item.setRepresentedObject_(opt_val)
-            popup.menu().addItem_(item)
-            if opt_val == current_val:
-                popup.selectItem_(item)
-
-        parent.addSubview_(popup)
-        return y - 44.0
+        # File path info tag
+        info_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, 12, w - 36, 16))
+        info_lbl.setStringValue_("📁 Path: ~/.quakmeeting/config.json  •  Log: ~/.quakmeeting/quakmeeting.log")
+        info_lbl.setFont_(AppKit.NSFont.monospacedSystemFontOfSize_weight_(10.5, AppKit.NSFontWeightRegular))
+        info_lbl.setTextColor_(AppKit.NSColor.colorWithRed_green_blue_alpha_(0.50, 0.55, 0.70, 1.0))
+        info_lbl.setBezeled_(False)
+        info_lbl.setDrawsBackground_(False)
+        info_lbl.setEditable_(False)
+        card.addSubview_(info_lbl)
 
     # Setting Handlers
     def onToggleMeetingStage_(self, sender):
@@ -1116,6 +1214,12 @@ class DashboardWindowController(AppKit.NSObject):
         if hasattr(self, 'home_addr_field') and self.home_addr_field:
             addr = str(self.home_addr_field.stringValue() or "").strip()
             config.set("home_address", addr)
+            if hasattr(self, 'home_save_btn') and self.home_save_btn:
+                self.home_save_btn.setTitle_("✓ Saved")
+                def reset_btn():
+                    time.sleep(1.5)
+                    AppKit.NSOperationQueue.mainQueue().addOperationWithBlock_(lambda: self.home_save_btn.setTitle_("💾 Save"))
+                threading.Thread(target=reset_btn, daemon=True).start()
             self.refresh_data(force=True)
 
     def onSelectTransportMode_(self, sender):

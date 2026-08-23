@@ -1,11 +1,11 @@
 # 🦆 QuakMeeting — Developer & Agent Guide
 
 > **IMPORTANT FOR AI AGENTS & DEVELOPERS:**
-> Read this document first before making changes. It contains the project architecture, operational rules, and the **mandatory 5-step workflow** to follow after every code modification.
+> Read this document first before making changes. It contains the project architecture, operational rules, and the **mandatory 4-step development workflow** to follow after every code modification.
 
 ---
 
-## ⚡ Mandatory 5-Step Workflow (Execute on Every Change)
+## ⚡ Mandatory 4-Step Development Workflow (Execute on Every Change)
 
 Whenever you make any change to code or configuration in this project, **always execute this complete workflow**:
 
@@ -21,10 +21,10 @@ pkill -f "QuakMeeting" 2>/dev/null; sleep 1; open /Applications/QuakMeeting.app
 
 # 4. Verify running process and inspect live logs
 sleep 2 && ps aux | grep -i "[Q]uakMeeting" && echo "---" && tail -15 ~/.quakmeeting/quakmeeting.log
-
-# 5. Stage and commit changes cleanly
-git add <modified_files> && git commit -m "<descriptive message>"
 ```
+
+> ⚠️ **IMPORTANT COMMIT RULE**:
+> **DO NOT automatically commit changes.** Only commit to Git when explicitly requested by the user.
 
 ---
 
