@@ -1,6 +1,10 @@
 import sys
 import os
 
+if sys.platform.startswith("linux"):
+    if "WAYLAND_DISPLAY" in os.environ or os.environ.get("XDG_SESSION_TYPE") == "wayland":
+        os.environ.setdefault("QT_QPA_PLATFORM", "xcb")
+
 # Ensure current project directory is in import path
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 if PROJECT_ROOT not in sys.path:
@@ -75,78 +79,8 @@ def main():
             else:
                 print("\n🚀 Running Notification Banner Test...")
                 
-            pilot_presets = {
-                "chef": {
-                    "title": "Dinner with Friends at Pizzeria",
-                    "provider": "Dinner / Food 🍕🍽️",
-                    "pilot_type": "chef",
-                    "action_btn_text": "🗺️ RESTAURANT DIRECTIONS (MAPS)",
-                    "action_url": "https://maps.apple.com/?q=Pizzeria+Napoli",
-                    "location": "Pizzeria Da Michele, London",
-                    "start_time": datetime.now(),
-                    "is_travel": True
-                },
-                "captain": {
-                    "title": "Flight to London (BA 257)",
-                    "provider": "Flight / Travel ✈️",
-                    "pilot_type": "captain",
-                    "action_btn_text": "🗺️ AIRPORT DIRECTIONS (MAPS)",
-                    "action_url": "https://maps.apple.com/?q=Heathrow+Airport",
-                    "location": "Terminal 5 - Gate B12",
-                    "start_time": datetime.now(),
-                    "is_travel": True
-                },
-                "owl": {
-                    "title": "SmartGrid & Neural Networks Lecture",
-                    "provider": "Study / University 🎓",
-                    "pilot_type": "owl",
-                    "action_btn_text": "📚 CLASSROOM & NOTES",
-                    "action_url": "https://calendar.apple.com",
-                    "location": "Room 3B - Campus",
-                    "start_time": datetime.now(),
-                    "is_travel": False
-                },
-                "gym": {
-                    "title": "CrossFit Training & Palestra Workout",
-                    "provider": "Gym & Sport 🏋️‍♂️💪",
-                    "pilot_type": "gym",
-                    "action_btn_text": "🗺️ GYM DIRECTIONS (MAPS)",
-                    "action_url": "https://maps.apple.com/?daddr=Gym+Fitness",
-                    "location": "Downtown Gym Club",
-                    "start_time": datetime.now(),
-                    "is_travel": True
-                },
-                "driver": {
-                    "title": "Architecture Studio Meeting",
-                    "provider": "In Person 📍 Travel Time!",
-                    "pilot_type": "driver",
-                    "action_btn_text": "🗺️ NAVIGATE WITH MAPS",
-                    "action_url": "https://maps.apple.com/?daddr=City+Center",
-                    "location": "Victoria Street, London",
-                    "start_time": datetime.now(),
-                    "is_travel": True
-                },
-                "zen_duck": {
-                    "title": "Serenis Online Therapy Session",
-                    "provider": "Serenis 🛋️",
-                    "pilot_type": "zen_duck",
-                    "action_btn_text": "🚀 JOIN SESSION",
-                    "action_url": "https://app.serenis.it/join/test",
-                    "start_time": datetime.now(),
-                    "is_travel": False
-                },
-                "duck": {
-                    "title": "Weekly Team Sync (Google Meet)",
-                    "provider": "Google Meet 🟢",
-                    "pilot_type": "duck",
-                    "action_btn_text": "🚀 JOIN GOOGLE MEET",
-                    "action_url": "https://meet.google.com/test-quak-pit",
-                    "start_time": datetime.now(),
-                    "is_travel": False
-                }
-            }
-            
-            test_m = pilot_presets.get(pilot_type, pilot_presets["duck"])
+            from ui.banner.qt_banner import get_test_preset
+            test_m = get_test_preset(pilot_type)
             
             if sys.platform == "darwin":
                 import AppKit

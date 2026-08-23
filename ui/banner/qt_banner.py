@@ -50,6 +50,81 @@ PROVIDER_DOTS = {
     "meet":        QColor(52, 211, 153),
 }
 
+
+def get_test_preset(pilot_type: str) -> Dict[str, Any]:
+    presets = {
+        "duck": {
+            "title": "Weekly Team Sync (Google Meet)",
+            "provider": "Google Meet 🟢",
+            "pilot_type": "duck",
+            "action_btn_text": "🚀 JOIN GOOGLE MEET",
+            "action_url": "https://meet.google.com/test-quak-pit",
+            "start_time": datetime.now(),
+            "is_travel": False
+        },
+        "chef": {
+            "title": "Dinner with Friends at Pizzeria",
+            "provider": "Dinner / Food 🍕🍽️",
+            "pilot_type": "chef",
+            "action_btn_text": "🗺️ RESTAURANT DIRECTIONS",
+            "action_url": "https://maps.apple.com/?q=Pizzeria+Napoli",
+            "location": "Pizzeria Da Michele",
+            "start_time": datetime.now(),
+            "is_travel": True
+        },
+        "captain": {
+            "title": "Flight to London (BA 257)",
+            "provider": "Flight / Travel ✈️",
+            "pilot_type": "captain",
+            "action_btn_text": "🗺️ AIRPORT DIRECTIONS",
+            "action_url": "https://maps.apple.com/?q=Heathrow+Airport",
+            "location": "Terminal 5 - Gate B12",
+            "start_time": datetime.now(),
+            "is_travel": True
+        },
+        "owl": {
+            "title": "SmartGrid & Neural Networks Lecture",
+            "provider": "Study / University 🎓",
+            "pilot_type": "owl",
+            "action_btn_text": "📚 CLASSROOM & NOTES",
+            "action_url": "https://calendar.apple.com",
+            "location": "Room 3B - Campus",
+            "start_time": datetime.now(),
+            "is_travel": False
+        },
+        "gym": {
+            "title": "CrossFit Training & Palestra Workout",
+            "provider": "Gym & Sport 🏋️‍♂️💪",
+            "pilot_type": "gym",
+            "action_btn_text": "🗺️ GYM DIRECTIONS",
+            "action_url": "https://maps.apple.com/?daddr=Gym+Fitness",
+            "location": "Downtown Gym Club",
+            "start_time": datetime.now(),
+            "is_travel": True
+        },
+        "driver": {
+            "title": "Architecture Studio Meeting",
+            "provider": "In Person 📍 Travel Time!",
+            "pilot_type": "driver",
+            "action_btn_text": "🗺️ NAVIGATE WITH MAPS",
+            "action_url": "https://maps.apple.com/?daddr=City+Center",
+            "location": "Victoria Street, London",
+            "start_time": datetime.now(),
+            "is_travel": True
+        },
+        "zen_duck": {
+            "title": "Serenis Online Therapy Session",
+            "provider": "Serenis 🛋️",
+            "pilot_type": "zen_duck",
+            "action_btn_text": "🚀 JOIN SESSION",
+            "action_url": "https://app.serenis.it/join/test",
+            "start_time": datetime.now(),
+            "is_travel": False
+        }
+    }
+    return presets.get(pilot_type, presets["duck"])
+
+
 # ── Layout constants ──────────────────────────────────────────────────────────
 
 CARD_W    = 500
@@ -656,6 +731,13 @@ _active_banners = []
 
 def show_qt_banner(event_data: Dict[str, Any]) -> None:
     """Launch flying banner. Forces XCB so self.move() works on Wayland."""
+    # Close any existing active banner to prevent overlapping duplicates
+    for old_b in list(_active_banners):
+        try:
+            old_b._dismiss()
+        except Exception:
+            pass
+
     # Wayland blocks window positioning — use XWayland instead
     if "WAYLAND_DISPLAY" in os.environ or os.environ.get("XDG_SESSION_TYPE") == "wayland":
         os.environ.setdefault("QT_QPA_PLATFORM", "xcb")
@@ -671,4 +753,5 @@ def show_qt_banner(event_data: Dict[str, Any]) -> None:
 
     if standalone or "--test" in sys.argv:
         app.exec()
+
 
