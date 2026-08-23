@@ -1,9 +1,11 @@
 """
 Wayland-Native Animated HUD Floating Banner for Ubuntu Linux.
-Uses gtk-layer-shell (zwlr_layer_shell_v1) on LAYER_OVERLAY with Cairo rendering.
+Uses gtk-layer-shell (zwlr_layer_shell_v1) on LAYER_OVERLAY with Cairo rendering
+for all 7 pilot mascots and airplanes.
 """
 import sys
 import os
+import math
 import threading
 import logging
 from datetime import datetime
@@ -12,7 +14,7 @@ from typing import Dict, Any, Optional
 logger = logging.getLogger("QuakMeeting.WaylandBanner")
 
 def show_wayland_banner(event_data: Dict[str, Any]) -> None:
-    """Spawns an animated floating HUD banner on Ubuntu Wayland."""
+    """Spawns an animated floating HUD banner with Cairo pilot rendering on Ubuntu Wayland."""
     try:
         import gi
         gi.require_version('Gtk', '3.0')
@@ -25,8 +27,9 @@ def show_wayland_banner(event_data: Dict[str, Any]) -> None:
 
         from gi.repository import Gtk, Gdk, GLib, Pango
         import cairo
+        from ui.banner.cairo_renderers import CairoPilotRenderer
     except Exception as e:
-        logger.warning(f"PyGObject / GTK not available on this environment: {e}")
+        logger.warning(f"PyGObject / GTK / Cairo not available on this host: {e}")
         return
 
     def _run():
@@ -47,7 +50,7 @@ def show_wayland_banner(event_data: Dict[str, Any]) -> None:
             GtkLayerShell.set_margin(win, GtkLayerShell.Edge.TOP, 16)
             GtkLayerShell.set_keyboard_mode(win, GtkLayerShell.KeyboardMode.NONE)
 
-        width, height = 480, 84
+        width, height = 540, 92
         win.set_default_size(width, height)
 
         title = event_data.get("title", "Upcoming Event")
@@ -56,43 +59,68 @@ def show_wayland_banner(event_data: Dict[str, Any]) -> None:
         action_btn_text = event_data.get("action_btn_text", "🚀 JOIN")
         action_url = event_data.get("action_url")
 
-        icon_map = {"chef": "🍕", "captain": "✈️", "owl": "🎓", "driver": "🚗", "zen_duck": "🛋️", "duck": "🦆"}
-        icon_str = icon_map.get(pilot_type, "🦆")
+        tick = [0]
 
-        def draw_bg(widget, ctx):
-            ctx.set_source_rgba(0.12, 0.14, 0.20, 0.92)
-            # Rounded rectangle
+        def draw_canvas(widget, ctx):
+            w = widget.get_allocated_width()
+            h = widget.get_allocated_height()
+
+            # 1. Clear background
+            ctx.set_source_rgba(0, 0, 0, 0)
+            ctx.paint()
+
+            # 2. Draw Translucent Frosted Glass Card (Banner)
+            card_x = 90.0
+            card_y = 6.0
+            card_w = w - 100.0
+            card_h = h - 12.0
             r = 14.0
-            w, h = widget.get_allocated_width(), widget.get_allocated_height()
+
             ctx.new_sub_path()
-            ctx.arc(w - r, r, r, -1.570796, 0)
-            ctx.arc(w - r, h - r, r, 0, 1.570796)
-            ctx.arc(r, h - r, r, 1.570796, 3.141592)
-            ctx.arc(r, r, r, 3.141592, 4.712388)
+            ctx.arc(card_x + card_w - r, card_y + r, r, -1.570796, 0)
+            ctx.arc(card_x + card_w - r, card_y + card_h - r, r, 0, 1.570796)
+            ctx.arc(card_x + r, card_y + card_h - r, r, 1.570796, 3.141592)
+            ctx.arc(card_x + r, card_y + r, r, 3.141592, 4.712388)
             ctx.close_path()
+
+            # Slate Dark Glass Fill
+            ctx.set_source_rgba(0.12, 0.14, 0.20, 0.92)
             ctx.fill_preserve()
-            ctx.set_source_rgba(1.0, 1.0, 1.0, 0.12)
-            ctx.set_line_width(1.5)
+
+            # Border Highlight
+            ctx.set_source_rgba(1.0, 1.0, 1.0, 0.15)
+            ctx.set_line_width(1.2)
             ctx.stroke()
+
+            # 3. Draw Towing Cable
+            ctx.set_source_rgba(0.9, 0.9, 0.95, 0.6)
+            ctx.set_line_width(1.5)
+            ctx.move_to(55.0, h * 0.5)
+            ctx.line_to(card_x, h * 0.5)
+            ctx.stroke()
+
+            # 4. Draw Mascot Airplane & Pilot via CairoPilotRenderer
+            CairoPilotRenderer.draw_pilot(ctx, pilot_type, 44.0, h * 0.5, tick[0])
             return False
 
-        win.connect("draw", draw_bg)
+        darea = Gtk.DrawingArea()
+        darea.connect("draw", draw_canvas)
 
+        overlay = Gtk.Overlay()
+        overlay.add(darea)
+
+        # Content Box positioned over the glass card
         box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
-        box.set_margin_start(16)
+        box.set_margin_start(106)
         box.set_margin_end(16)
         box.set_margin_top(12)
         box.set_margin_bottom(12)
-
-        icon_lbl = Gtk.Label(label=icon_str)
-        icon_lbl.modify_font(Pango.FontDescription("24"))
-        box.pack_start(icon_lbl, False, False, 0)
 
         vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
         vbox.set_valign(Gtk.Align.CENTER)
         
         t_lbl = Gtk.Label()
-        t_lbl.set_markup(f"<b>{GLib.markup_escape_text(title[:40])}</b>")
+        t_lbl.set_markup(f"<b>{GLib.markup_escape_text(title[:36])}</b>")
         t_lbl.set_xalign(0.0)
         vbox.pack_start(t_lbl, False, False, 0)
 
@@ -112,11 +140,24 @@ def show_wayland_banner(event_data: Dict[str, Any]) -> None:
         close_btn.connect("clicked", lambda b: win.destroy())
         box.pack_end(close_btn, False, False, 0)
 
-        win.add(box)
+        overlay.add_overlay(box)
+        win.add(overlay)
         win.show_all()
 
+        # Animate propeller and wave
+        def _step():
+            tick[0] += 1
+            darea.queue_draw()
+            return True
+
+        timer_id = GLib.timeout_add(40, _step) # ~25 FPS
+
+        def _cleanup():
+            GLib.source_remove(timer_id)
+            win.destroy()
+
         # Auto-dismiss after 12 seconds
-        GLib.timeout_add_seconds(12, win.destroy)
+        GLib.timeout_add_seconds(12, _cleanup)
 
     def import_webbrowser():
         import webbrowser

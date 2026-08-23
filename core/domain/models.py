@@ -16,6 +16,7 @@ class PilotType(str, Enum):
     OWL = "owl"
     DRIVER = "driver"
     ZEN_DUCK = "zen_duck"
+    GYM = "gym"
 
 class EventCategory(str, Enum):
     VIDEO_MEETING = "video_meeting"
@@ -24,7 +25,9 @@ class EventCategory(str, Enum):
     STUDY = "study"
     HEALTH = "health"
     IN_PERSON = "in_person"
+    SPORT = "sport"
     GENERAL = "general"
+
 
 class TransportMode(str, Enum):
     TRANSIT = "transit"           # Public Transit (Bus, Tram, Subway, Train) 🚆🚌

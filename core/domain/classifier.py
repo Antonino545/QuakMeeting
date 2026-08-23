@@ -20,9 +20,11 @@ DEFAULT_KEYWORDS = {
     "chef": ["dinner", "lunch", "cena", "pranzo", "restaurant", "ristorante", "pizza", "pizzeria", "sushi", "aperitivo", "apericena", "osteria", "trattoria", "food", "cibo", "eat", "mangiare", "pub", "burger", "barbecue", "bbq", "cocktail"],
     "captain": ["flight", "volo", "airport", "aeroporto", "bus", "navetta", "shuttle", "pullman", "ryanair", "easyjet", "wizz", "ita airways", "train", "treno", "frecciarossa", "italo", "station", "stazione", "travel", "viaggio", "trip", "departure", "partenza", "gate", "terminal", "boarding", "imbarco", "taxi", "uber"],
     "owl": ["university", "universit", "uni", "exam", "esame", "esami", "lecture", "lezione", "lezioni", "study", "studio", "politecnico", "thesis", "tesi", "smartgrid", "building", "ict", "satellite", "operations research", "ricerca operativa", "course", "corso", "classroom", "aula"],
-    "driver": ["gym", "palestra", "workout", "allenamento", "dentist", "dentista", "doctor", "dottore", "visit", "visita", "medical", "medico", "therapy", "terapia", "yoga", "office", "ufficio", "drive", "driving"],
+    "gym": ["gym", "palestra", "workout", "allenamento", "crossfit", "fitness", "sport", "padel", "tennis", "calcio", "calcetto", "partita", "match", "nuoto", "swimming", "running", "corsa", "boxe", "boxing", "basket", "pallavolo", "pesi", "cardio", "training", "maratona", "pilates", "atletica"],
+    "driver": ["dentist", "dentista", "doctor", "dottore", "visit", "visita", "medical", "medico", "office", "ufficio", "drive", "driving", "appuntamento", "studio"],
     "zen_duck": ["serenis", "therapy", "terapia", "yoga", "meditation", "meditazione", "mindfulness", "wellness", "benessere", "relax", "spa", "chill"]
 }
+
 
 class EventClassifier:
     """Classifies raw calendar events into enriched domain Meeting objects."""
@@ -183,7 +185,29 @@ class EventClassifier:
                 teacher=teacher
             )
 
-        # 5. Check Gym / Fitness / Driver
+        # 5. Check Gym / Palestra / Sport / Workout
+        for kw in keywords_dict.get("gym", []):
+            if kw in search_blob:
+                maps_dest = location if (location and location != "missing value") else title
+                maps_url = f"https://maps.apple.com/?daddr={urllib.parse.quote(maps_dest)}"
+                return Meeting(
+                    title=title,
+                    start_time=start_time or datetime.now(),
+                    end_time=end_time,
+                    location=location,
+                    description=description,
+                    event_type=EventCategory.SPORT.value,
+                    pilot_type=PilotType.GYM.value,
+                    provider="Gym & Sport 🏋️‍♂️💪",
+                    action_btn_text="🗺️ GYM DIRECTIONS (MAPS)",
+                    action_url=maps_url,
+                    theme_name="Athletic Crimson",
+                    is_travel=True,
+                    classroom=classroom,
+                    teacher=teacher
+                )
+
+        # 6. Check In-Person Appointments / Driver
         for kw in keywords_dict.get("driver", []):
             if kw in search_blob:
                 maps_dest = location if (location and location != "missing value") else title

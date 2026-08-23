@@ -79,3 +79,18 @@ class TestEventClassifier(unittest.TestCase):
         self.assertEqual(meeting.pilot_type, PilotType.ZEN_DUCK.value)
         self.assertEqual(meeting.provider, "Serenis 🛋️")
 
+    def test_classify_gym_sport(self):
+        # 1. Palestra / Workout
+        m1 = self.classifier.classify(title="Allenamento in Palestra con Pesi", location="Gold Gym")
+        self.assertEqual(m1.pilot_type, PilotType.GYM.value)
+        self.assertEqual(m1.event_type, EventCategory.SPORT.value)
+        self.assertTrue(m1.is_travel)
+        self.assertIn("Gym & Sport", m1.provider)
+
+        # 2. Padel / Calcio Match
+        m2 = self.classifier.classify(title="Partita di Padel con amici", location="Padel Club Torino")
+        self.assertEqual(m2.pilot_type, PilotType.GYM.value)
+        self.assertEqual(m2.event_type, EventCategory.SPORT.value)
+        self.assertTrue(m2.is_travel)
+
+

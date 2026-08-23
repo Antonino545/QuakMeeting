@@ -6,6 +6,7 @@ from .chef_renderer import ChefPilotRenderer
 from .owl_renderer import OwlPilotRenderer
 from .driver_renderer import DriverPilotRenderer
 from .zen_duck_renderer import ZenDuckRenderer
+from .gym_renderer import GymPilotRenderer
 
 RENDERER_MAP: Dict[str, Type[BasePilotRenderer]] = {
     "duck": DuckPilotRenderer,
@@ -13,7 +14,8 @@ RENDERER_MAP: Dict[str, Type[BasePilotRenderer]] = {
     "chef": ChefPilotRenderer,
     "owl": OwlPilotRenderer,
     "driver": DriverPilotRenderer,
-    "zen_duck": ZenDuckRenderer
+    "zen_duck": ZenDuckRenderer,
+    "gym": GymPilotRenderer
 }
 
 def get_pilot_renderer(pilot_type: str) -> BasePilotRenderer:
@@ -29,6 +31,8 @@ __all__ = [
     "OwlPilotRenderer",
     "DriverPilotRenderer",
     "ZenDuckRenderer",
+    "GymPilotRenderer",
     "get_pilot_renderer",
     "RENDERER_MAP"
 ]
+

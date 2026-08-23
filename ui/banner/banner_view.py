@@ -171,6 +171,8 @@ class QuakPitBannerView(AppKit.NSView):
                 return "⚠️ LAST CALL FOR BOARDING! SPRINT TO GATE!"
             elif self.pilot_type == "driver":
                 return "🔥 FLOOR THE GAS! WE ARE LATE!"
+            elif self.pilot_type == "gym":
+                return "🔥 DON'T SKIP WORKOUT! TIME FOR GAINS! 🏋️‍♂️"
             elif self.pilot_type == "zen_duck":
                 return "🚨 BREATHE IN... AND SPRINT! 🏃💨"
             else:
@@ -186,6 +188,8 @@ class QuakPitBannerView(AppKit.NSView):
                 return "Cabin crew, prepare for takeoff ✈️"
             elif self.pilot_type == "driver":
                 return "Engines running, ready to roll! 🏎️"
+            elif self.pilot_type == "gym":
+                return "Time to train & crush workout! 🏋️‍♂️💪"
             elif self.pilot_type == "zen_duck":
                 return "Time for wellness & calm 🌸"
             else:
@@ -484,6 +488,12 @@ class QuakPitBannerView(AppKit.NSView):
             btn_gradient_top = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.28, 0.88, 0.82, 1.0)
             btn_gradient_bot = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.12, 0.68, 0.62, 1.0)
             card_tint = (0.06, 0.11, 0.12)
+        elif self.pilot_type == "gym":
+            accent = AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.38, 0.18, 1.0)
+            accent_bright = AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.58, 0.28, 1.0)
+            btn_gradient_top = AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.40, 0.16, 1.0)
+            btn_gradient_bot = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.85, 0.20, 0.08, 1.0)
+            card_tint = (0.14, 0.07, 0.06)
         else:
             accent = AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.76, 0.28, 1.0)
             accent_bright = AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.88, 0.45, 1.0)

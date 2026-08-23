@@ -85,6 +85,16 @@ def main():
                     "start_time": datetime.now(),
                     "is_travel": False
                 },
+                "gym": {
+                    "title": "CrossFit Training & Palestra Workout",
+                    "provider": "Gym & Sport 🏋️‍♂️💪",
+                    "pilot_type": "gym",
+                    "action_btn_text": "🗺️ GYM DIRECTIONS (MAPS)",
+                    "action_url": "https://maps.apple.com/?daddr=Gym+Fitness",
+                    "location": "Downtown Gym Club",
+                    "start_time": datetime.now(),
+                    "is_travel": True
+                },
                 "driver": {
                     "title": "Architecture Studio Meeting",
                     "provider": "In Person 📍 Travel Time!",

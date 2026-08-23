@@ -94,7 +94,8 @@ def show_linux_dashboard(tab_index: int = 0):
         ("chef", "👨‍🍳 Chef Duck (Dinner / Restaurant)", "https://maps.google.com/?q=Pizzeria"),
         ("captain", "🧑‍✈️ Jet Captain (Flight / Transit)", "https://maps.google.com/?q=Airport"),
         ("owl", "🦉 Academic Owl (University / Study)", "https://calendar.google.com"),
-        ("driver", "🏎️ Speed Racer Driver (In Person)", "https://maps.google.com/?daddr=Gym"),
+        ("gym", "🏋️‍♂️ Athlete Duck (Palestra / Gym / Sport)", "https://maps.google.com/?daddr=Gym"),
+        ("driver", "🏎️ Speed Racer Driver (In Person)", "https://maps.google.com/?daddr=Office"),
         ("zen_duck", "🦆🌸 Zen Duck (Therapy / Wellness)", "https://app.serenis.it")
     ]
 

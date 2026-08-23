@@ -363,7 +363,7 @@ class DashboardWindowController(AppKit.NSObject):
 
         # Pilot Icon
         p_type = m.get("pilot_type", "duck")
-        icon_map = {"chef": "🍕", "captain": "✈️", "owl": "🎓", "driver": "🚗", "zen_duck": "🛋️", "duck": "🦆"}
+        icon_map = {"chef": "🍕", "captain": "✈️", "owl": "🎓", "gym": "🏋️‍♂️", "driver": "🚗", "zen_duck": "🛋️", "duck": "🦆"}
         icon_str = icon_map.get(p_type, "🦆")
 
         icon_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(14, 18, 40, 40))
@@ -492,7 +492,8 @@ class DashboardWindowController(AppKit.NSObject):
             ("chef", "👨‍🍳 Chef Duck & Food", "Dinners, Lunches, Restaurants, Pizzerias & Apple Maps food routes.", "Coral Food", self.testChefDuck_),
             ("captain", "🧑‍✈️ Jet Airliner Captain", "Airline Flights, Airports, High-speed trains, Buses & Travel Routes.", "Sky Blue", self.testCaptainJet_),
             ("owl", "🦉 Academic Owl", "University Lectures, Exams, Campus courses & Study sessions.", "Amethyst Academic", self.testAcademicOwl_),
-            ("driver", "🏎️ Speed Racer Driver", "In-person meetings, Gym workouts, Doctor visits & Real-Time Navigation.", "Emerald Speed", self.testSpeedRacer_),
+            ("gym", "🏋️‍♂️ Athlete Duck & Palestra", "Palestra, Gym workouts, CrossFit, Padel, Tennis, Calcio & Sport training.", "Athletic Crimson", self.testGymDuck_),
+            ("driver", "🏎️ Speed Racer Driver", "In-person appointments, Doctor visits, Office & Real-Time Navigation.", "Emerald Speed", self.testSpeedRacer_),
             ("zen_duck", "🦆🌸 Zen Duck", "Serenis sessions, Psychological Therapy, Yoga, Wellness & Meditation.", "Teal Zen", self.testZenDuck_)
         ]
 
@@ -617,14 +618,27 @@ class DashboardWindowController(AppKit.NSObject):
         })
 
     @objc.IBAction
+    def testGymDuck_(self, sender):
+        _run_banner({
+            "title": "CrossFit & Palestra Workout Session",
+            "provider": "Gym & Sport 🏋️‍♂️💪",
+            "pilot_type": "gym",
+            "action_btn_text": "🗺️ GYM DIRECTIONS (MAPS)",
+            "action_url": "https://maps.apple.com/?daddr=CrossFit+Gym",
+            "location": "Downtown Gym & Fitness Club",
+            "start_time": datetime.now(),
+            "is_travel": True
+        })
+
+    @objc.IBAction
     def testSpeedRacer_(self, sender):
         _run_banner({
-            "title": "CrossFit Training & Workout",
+            "title": "Studio Architecture Meeting",
             "provider": "In Person 📍 Travel Time!",
             "pilot_type": "driver",
             "action_btn_text": "🗺️ NAVIGATE WITH MAPS",
-            "action_url": "https://maps.apple.com/?daddr=CrossFit+Gym",
-            "location": "Downtown Gym",
+            "action_url": "https://maps.apple.com/?daddr=Studio+Design",
+            "location": "Via Roma 10, Downtown",
             "start_time": datetime.now(),
             "is_travel": True
         })

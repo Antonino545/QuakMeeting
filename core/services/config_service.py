@@ -41,7 +41,8 @@ DEFAULT_CONFIG = {
         "chef": ["cena", "pranzo", "dinner", "lunch", "ristorante", "pizza", "pizzeria", "sushi", "aperitivo", "apericena", "osteria", "trattoria", "cibo", "food", "mangiare", "pub", "burger"],
         "captain": ["flight", "volo", "airport", "aeroporto", "bus", "navetta", "shuttle", "pullman", "ryanair", "easyjet", "wizz", "ita airways", "treno", "frecciarossa", "italo", "stazione", "viaggio", "partenza", "gate", "terminal", "imbarco", "boarding", "taxi", "uber"],
         "owl": ["universit", "uni", "esame", "esami", "lezione", "lezioni", "politecnico", "tesi", "smartgrid", "building", "ict", "satellite", "ricerca operativa", "corso", "aula"],
-        "driver": ["palestra", "dentista", "dottore", "visita", "medico", "allenamento", "terapia", "yoga", "studio", "ufficio"],
+        "gym": ["palestra", "gym", "workout", "allenamento", "crossfit", "fitness", "sport", "padel", "tennis", "calcio", "calcetto", "partita", "match", "nuoto", "swimming", "running", "corsa", "boxe", "boxing", "basket", "pallavolo", "pesi", "cardio", "training", "maratona", "pilates", "atletica"],
+        "driver": ["dentista", "dottore", "visita", "medico", "studio", "ufficio", "appuntamento"],
         "zen_duck": ["serenis", "terapia", "yoga", "meditazione", "benessere", "relax"]
     }
 }
