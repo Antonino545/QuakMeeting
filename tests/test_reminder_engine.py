@@ -98,5 +98,9 @@ class TestReminderEngine(unittest.TestCase):
         results = self.engine.evaluate_meetings([meeting], current_time=now)
         self.assertEqual(len(results), 0)
 
+    def test_check_and_notify_convenience_method(self):
+        res = self.engine.check_and_notify()
+        self.assertIsInstance(res, list)
+
 if __name__ == "__main__":
     unittest.main()

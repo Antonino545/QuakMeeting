@@ -36,6 +36,14 @@ class ReminderEngine:
         """Clear fired notifications cache (useful for testing or daily reset)."""
         self.notified_stage_keys.clear()
 
+    def check_and_notify(self, current_time: Optional[datetime] = None) -> List[Tuple[Meeting, int]]:
+        """
+        Convenience method that fetches upcoming meetings from calendar_service and evaluates them.
+        """
+        from core.services.calendar_service import calendar_service
+        meetings = calendar_service.get_upcoming_meetings()
+        return self.evaluate_meetings(meetings, current_time=current_time)
+
     def get_stages_for_meeting(self, meeting: Meeting) -> List[int]:
         """Retrieve configured stage intervals (minutes before start) for a given meeting type."""
         if meeting.is_travel:

@@ -13,7 +13,34 @@ log_system_diagnostics()
 from core import config, get_upcoming_meetings
 from datetime import datetime
 
+def _ensure_gui_python_environment():
+    """If running on Linux in an environment missing PyQt6/gi, auto-relaunch using system python3."""
+    if sys.platform.startswith("linux"):
+        try:
+            import PyQt6
+            return
+        except ImportError:
+            pass
+
+        try:
+            import gi
+            return
+        except ImportError:
+            pass
+
+        system_python = "/usr/bin/python3"
+        if sys.executable != system_python and os.path.exists(system_python):
+            try:
+                import subprocess
+                res = subprocess.run([system_python, "-c", "import PyQt6"], capture_output=True)
+                if res.returncode == 0:
+                    logger.info(f"Relaunching QuakMeeting using system python GUI runtime ({system_python})...")
+                    os.execv(system_python, [system_python] + sys.argv)
+            except Exception as err:
+                logger.warning(f"Auto-switch to system python failed: {err}")
+
 def main():
+    _ensure_gui_python_environment()
     print("=" * 60)
     print(" 🦆 QuakMeeting - Smart Meeting Reminders & Flight Deck")
     print(" Inspired by QuakPit (https://github.com/Ooble-Studio/QuakPit)")
@@ -131,10 +158,6 @@ def main():
             else:
                 from ui.banner.wayland_banner import show_wayland_banner
                 show_wayland_banner(test_m)
-                import gi
-                gi.require_version('Gtk', '3.0')
-                from gi.repository import Gtk
-                Gtk.main()
             return
 
         logger.info("Initializing QuakMeeting Menu Bar and Flight Deck UI...")

@@ -78,6 +78,17 @@ def run_linux_app():
 
         from gi.repository import Gtk, GLib
     except (ImportError, ValueError, ModuleNotFoundError) as e:
+        system_python = "/usr/bin/python3"
+        if sys.executable != system_python and os.path.exists(system_python):
+            try:
+                import subprocess
+                chk = subprocess.run([system_python, "-c", "import gi; gi.require_version('Gtk', '3.0'); from gi.repository import Gtk"], capture_output=True)
+                if chk.returncode == 0:
+                    logger.info(f"Relaunching QuakMeeting using system python GTK runtime ({system_python})...")
+                    os.execv(system_python, [system_python] + sys.argv)
+            except Exception as re_err:
+                logger.warning(f"Failed to auto-switch to system python: {re_err}")
+
         logger.warning(f"PyGObject / AppIndicator3 not found ({e}). Falling back to daemon mode.")
         _run_headless_fallback()
         return
