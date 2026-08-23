@@ -1,6 +1,7 @@
 """
 Linux Top Bar Indicator for Ubuntu (Wayland / X11).
 Integrates with GNOME Shell AppIndicator / StatusNotifierItem DBus.
+Includes graceful fallback and installation guidance when PyGObject is missing.
 """
 import os
 import sys
@@ -19,6 +20,50 @@ from core.domain.models import format_duration, __version__
 
 logger = logging.getLogger("QuakMeeting.LinuxAppIndicator")
 
+def _print_missing_gi_help():
+    print("\n" + "=" * 65)
+    print(" 🐧 QuakMeeting - Missing Linux Dependencies (PyGObject / GTK3)")
+    print("=" * 65)
+    print(" To enable the Top Bar menu and Wayland HUD banners on Ubuntu,")
+    print(" install the required system libraries by running:\n")
+    print("   sudo apt update")
+    print("   sudo apt install -y python3-gi python3-gi-cairo gir1.2-gtk-3.0 \\")
+    print("                       gir1.2-appindicator3-0.1 gir1.2-gtklayershell-0.1\n")
+    print(" 💡 If you are running inside a Python Virtual Environment (venv):")
+    print("   1) Recreate venv with system packages:")
+    print("      python3 -m venv --system-site-packages venv && source venv/bin/activate")
+    print("   OR")
+    print("   2) Install PyGObject via pip:")
+    print("      sudo apt install -y libgirepository1.0-dev libcairo2-dev pkg-config python3-dev")
+    print("      pip install PyGObject pycairo\n")
+    print(" ⚡ Running in Background Daemon Mode (Monitoring Meetings)...")
+    print("=" * 65 + "\n")
+
+def _run_headless_fallback():
+    """Runs reminder engine loop in terminal if GTK/PyGObject is not installed."""
+    _print_missing_gi_help()
+    print("🦆 QuakMeeting active in terminal daemon mode. Press Ctrl+C to stop.")
+    
+    def on_banner(event_dict, **kwargs):
+        title = event_dict.get("title", "Event")
+        prov = event_dict.get("provider", "Calendar")
+        url = event_dict.get("action_url")
+        print(f"\n🔔 [REMINDER] >>> {title} ({prov})")
+        if url:
+            print(f"   🚀 Meeting Link: {url}")
+            import webbrowser
+            webbrowser.open(url)
+
+    event_bus.subscribe("TRIGGER_BANNER", on_banner)
+    calendar_service.sync_now()
+
+    try:
+        while True:
+            reminder_engine.check_and_notify()
+            time.sleep(15)
+    except KeyboardInterrupt:
+        print("\n👋 QuakMeeting stopped.")
+
 def run_linux_app():
     """Main application runner for Linux Ubuntu."""
     try:
@@ -32,12 +77,13 @@ def run_linux_app():
             from gi.repository import AppIndicator3
 
         from gi.repository import Gtk, GLib
-    except Exception as e:
-        logger.error(f"Failed to load GTK/AppIndicator: {e}")
+    except (ImportError, ValueError, ModuleNotFoundError) as e:
+        logger.warning(f"PyGObject / AppIndicator3 not found ({e}). Falling back to daemon mode.")
+        _run_headless_fallback()
         return
 
     APPINDICATOR_ID = 'quakmeeting_indicator'
-    icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "icon.png")
+    icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "assets", "icon.png")
 
     indicator = AppIndicator3.Indicator.new(
         APPINDICATOR_ID,
@@ -49,7 +95,6 @@ def run_linux_app():
     def build_menu():
         menu = Gtk.Menu()
 
-        # 1. Header next event item
         now = datetime.now()
         meetings = calendar_service.get_upcoming_meetings()
         today_up = [m for m in meetings if m.start_time and m.start_time.date() == now.date() and ((m.end_time and m.end_time > now) or m.start_time > now)]
@@ -66,22 +111,18 @@ def run_linux_app():
 
         menu.append(Gtk.SeparatorMenuItem())
 
-        # 2. Flight Deck HUD
         deck_item = Gtk.MenuItem(label="📊 Flight Deck HUD...")
         deck_item.connect("activate", lambda w: show_linux_flight_deck(0))
         menu.append(deck_item)
 
-        # 3. Sync Calendar Now
         sync_item = Gtk.MenuItem(label="🔄 Sync Calendar Now")
         sync_item.connect("activate", lambda w: threading.Thread(target=calendar_service.sync_now, daemon=True).start())
         menu.append(sync_item)
 
-        # 4. Settings & Preferences
         pref_item = Gtk.MenuItem(label="⚙️ Settings & Preferences...")
         pref_item.connect("activate", lambda w: show_linux_flight_deck(2))
         menu.append(pref_item)
 
-        # 5. Check for Updates
         update_info = updater_service.latest_release_info
         if update_info and update_info.get("has_update"):
             up_lbl = f"🚀 Update Available: {update_info['tag_name']}"
@@ -95,7 +136,6 @@ def run_linux_app():
 
         menu.append(Gtk.SeparatorMenuItem())
 
-        # 6. Quit
         quit_item = Gtk.MenuItem(label="Quit QuakMeeting")
         quit_item.connect("activate", lambda w: Gtk.main_quit())
         menu.append(quit_item)
@@ -128,7 +168,6 @@ def run_linux_app():
     build_menu()
     GLib.timeout_add_seconds(15, update_tick)
 
-    # Subscribe to Wayland banner triggers
     def on_banner_trigger(event_dict, **kwargs):
         try:
             from ui.banner.wayland_banner import show_wayland_banner
