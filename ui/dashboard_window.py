@@ -203,7 +203,6 @@ class DashboardWindowController(AppKit.NSObject):
         now = datetime.now()
         
         today_meetings = [m for m in self.meetings if m.get("start_time") and m["start_time"].date() == now.date()]
-        tomorrow_meetings = [m for m in self.meetings if m.get("start_time") and m["start_time"].date() > now.date()]
         today_upcoming = [m for m in today_meetings if (m.get("end_time") and m["end_time"] > now) or (m.get("start_time") and m["start_time"] > now)]
         
         if today_upcoming:
@@ -220,10 +219,6 @@ class DashboardWindowController(AppKit.NSObject):
                 else:
                     travel_info = f"  •  ⏱️ {icon} ~{dur_str} travel"
             self.status_lbl.setStringValue_(f"🟢 Scanner Active  •  {len(today_meetings)} events today  •  Next: {s_str}{travel_info}")
-        elif tomorrow_meetings:
-            next_tom = tomorrow_meetings[0]
-            tom_s = next_tom["start_time"].strftime("%H:%M") if next_tom.get("start_time") else "--:--"
-            self.status_lbl.setStringValue_(f"🟢 Scanner Active  •  No remaining events today  •  Tomorrow: {tom_s} ({next_tom.get('title')[:20]})")
         else:
             self.status_lbl.setStringValue_("🟢 Scanner Active  •  No upcoming events for today")
             
@@ -246,7 +241,6 @@ class DashboardWindowController(AppKit.NSObject):
                     self.meetings = meetings
                     n = datetime.now()
                     t_meets = [m for m in self.meetings if m.get("start_time") and m["start_time"].date() == n.date()]
-                    tom_meets = [m for m in self.meetings if m.get("start_time") and m["start_time"].date() > n.date()]
                     t_up = [m for m in t_meets if (m.get("end_time") and m["end_time"] > n) or (m.get("start_time") and m["start_time"] > n)]
                     
                     if t_up:
@@ -263,12 +257,8 @@ class DashboardWindowController(AppKit.NSObject):
                             else:
                                 tr_info = f"  •  ⏱️ {ic} ~{dur_s} travel"
                         self.status_lbl.setStringValue_(f"🟢 Scanner Active  •  {len(t_meets)} events today  •  Next: {st}{tr_info}")
-                    elif tom_meets:
-                        nxt = tom_meets[0]
-                        t_s = nxt["start_time"].strftime("%H:%M") if nxt.get("start_time") else "--:--"
-                        self.status_lbl.setStringValue_(f"🟢 Scanner Active  •  No remaining events today  •  Tomorrow: {t_s} ({nxt.get('title')[:20]})")
                     else:
-                        self.status_lbl.setStringValue_("🟢 Scanner Active  •  No remaining events for today")
+                        self.status_lbl.setStringValue_("🟢 Scanner Active  •  No upcoming events for today")
                     self._render_current_tab()
 
                 AppKit.NSOperationQueue.mainQueue().addOperationWithBlock_(on_complete)
@@ -332,19 +322,16 @@ class DashboardWindowController(AppKit.NSObject):
 
         card_h = 76.0
         gap = 12.0
-        header_h = 32.0
         
         now = datetime.now()
         today_list = [m for m in self.meetings if m.get("start_time") and m["start_time"].date() == now.date()]
-        tomorrow_list = [m for m in self.meetings if m.get("start_time") and m["start_time"].date() > now.date()]
         
-        total_items = len(today_list) + len(tomorrow_list)
-        section_count = (1 if today_list else 0) + (1 if tomorrow_list else 0)
-        content_h = max(h, total_items * (card_h + gap) + section_count * header_h + 30.0)
+        total_items = max(1, len(today_list))
+        content_h = max(h, total_items * (card_h + gap) + 20.0)
         
         doc_view = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 0, w, content_h))
         
-        if not self.meetings:
+        if not today_list:
             empty_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(20, content_h - 100, w - 40, 50))
             empty_lbl.setStringValue_("🧘‍♂️ No events scheduled for today in enabled calendars.\nRelax or add an event in Apple Calendar!")
             empty_lbl.setFont_(AppKit.NSFont.systemFontOfSize_(14))
@@ -355,41 +342,10 @@ class DashboardWindowController(AppKit.NSObject):
             empty_lbl.setEditable_(False)
             doc_view.addSubview_(empty_lbl)
         else:
-            curr_y = content_h - 10.0
-            
-            # 1. Render Today Section
-            if today_list:
-                curr_y -= header_h
-                hdr_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(16, curr_y + 4, w - 32, 22))
-                hdr_lbl.setStringValue_(f"📅 TODAY'S AGENDA ({len(today_list)} event{'s' if len(today_list) > 1 else ''})")
-                hdr_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(13))
-                hdr_lbl.setTextColor_(AppKit.NSColor.colorWithRed_green_blue_alpha_(0.50, 0.78, 1.0, 1.0))
-                hdr_lbl.setBezeled_(False)
-                hdr_lbl.setDrawsBackground_(False)
-                hdr_lbl.setEditable_(False)
-                doc_view.addSubview_(hdr_lbl)
-                
-                for idx, m in enumerate(today_list):
-                    curr_y -= (card_h + gap)
-                    card = self._create_meeting_card(m, idx, 0, curr_y, w - 16, card_h)
-                    doc_view.addSubview_(card)
-                    
-            # 2. Render Tomorrow Section
-            if tomorrow_list:
-                curr_y -= header_h
-                tom_hdr = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(16, curr_y + 4, w - 32, 22))
-                tom_hdr.setStringValue_(f"🌅 TOMORROW'S PREVIEW ({len(tomorrow_list)} event{'s' if len(tomorrow_list) > 1 else ''})")
-                tom_hdr.setFont_(AppKit.NSFont.boldSystemFontOfSize_(13))
-                tom_hdr.setTextColor_(AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.82, 0.45, 1.0))
-                tom_hdr.setBezeled_(False)
-                tom_hdr.setDrawsBackground_(False)
-                tom_hdr.setEditable_(False)
-                doc_view.addSubview_(tom_hdr)
-                
-                for idx, m in enumerate(tomorrow_list, start=len(today_list)):
-                    curr_y -= (card_h + gap)
-                    card = self._create_meeting_card(m, idx, 0, curr_y, w - 16, card_h)
-                    doc_view.addSubview_(card)
+            for idx, m in enumerate(today_list):
+                y_item = content_h - (idx + 1) * (card_h + gap)
+                card = self._create_meeting_card(m, idx, 0, y_item, w - 16, card_h)
+                doc_view.addSubview_(card)
 
         scroll_view.setDocumentView_(doc_view)
         if scroll_view.contentView():
@@ -419,20 +375,15 @@ class DashboardWindowController(AppKit.NSObject):
         card.addSubview_(icon_lbl)
 
         # Event Title & Time
-        now = datetime.now()
-        is_tomorrow = bool(m.get("start_time") and m["start_time"].date() > now.date())
-        
         s_time = m["start_time"].strftime("%H:%M") if m.get("start_time") else "--:--"
         e_time = m["end_time"].strftime("%H:%M") if m.get("end_time") else ""
         time_str = f"{s_time} - {e_time}" if e_time else s_time
         m_title = (m.get("title") or "Untitled Event").strip()
-        
-        day_tag = "🌅 Tomorrow, " if is_tomorrow else ""
 
         title_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(62, 38, w - 275, 24))
-        title_lbl.setStringValue_(f"{day_tag}{time_str}  •  {m_title}")
+        title_lbl.setStringValue_(f"{time_str}  •  {m_title}")
         title_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(14))
-        title_lbl.setTextColor_(AppKit.NSColor.whiteColor() if not is_tomorrow else AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.92, 0.75, 1.0))
+        title_lbl.setTextColor_(AppKit.NSColor.whiteColor())
         title_lbl.setBezeled_(False)
         title_lbl.setDrawsBackground_(False)
         title_lbl.setEditable_(False)

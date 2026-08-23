@@ -130,15 +130,15 @@ class CalendarService:
         except Exception as e:
             logger.warning(f"Error saving calendar cache to disk: {e}")
 
-    def _filter_today_and_tomorrow(self, meetings: List[Meeting]) -> List[Meeting]:
-        """Filters events so only events starting between today (00:00) and tomorrow (23:59:59) are kept."""
+    def _filter_today_only(self, meetings: List[Meeting]) -> List[Meeting]:
+        """Filters events so only events starting today (00:00 to 23:59:59) are kept."""
         now = datetime.now()
         start_of_today = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(hours=2)
-        end_of_tomorrow = (now + timedelta(days=1)).replace(hour=23, minute=59, second=59, microsecond=999999)
+        end_of_today = now.replace(hour=23, minute=59, second=59, microsecond=999999)
 
         filtered = [
             m for m in meetings 
-            if m.start_time and start_of_today <= m.start_time <= end_of_tomorrow
+            if m.start_time and start_of_today <= m.start_time <= end_of_today
         ]
         filtered.sort(key=lambda m: m.start_time)
         return filtered
@@ -149,7 +149,7 @@ class CalendarService:
                 with open(CACHE_FILE, "r", encoding="utf-8") as f:
                     data = json.load(f)
                 loaded = [Meeting.from_dict(item) for item in data]
-                filtered = self._filter_today_and_tomorrow(loaded)
+                filtered = self._filter_today_only(loaded)
                 self._in_memory_cache = filtered
                 self._last_fetch_time = os.path.getmtime(CACHE_FILE)
                 return filtered
@@ -163,12 +163,12 @@ class CalendarService:
             self._is_fetching = True
             try:
                 raw_meetings = self._provider.fetch_events()
-                filtered = self._filter_today_and_tomorrow(raw_meetings)
+                filtered = self._filter_today_only(raw_meetings)
                 self._enrich_with_eta(filtered)
                 self._in_memory_cache = filtered
                 self._last_fetch_time = time.time()
                 self._save_cache_to_disk(filtered)
-                logger.info(f"Synchronized {len(filtered)} events scheduled for today and tomorrow.")
+                logger.info(f"Synchronized {len(filtered)} events scheduled for today.")
                 self.bus.publish("CALENDAR_SYNCED", meetings=filtered)
                 return filtered
             except Exception as e:

@@ -319,16 +319,12 @@ class QuakMeetingMenuBar(AppKit.NSObject):
             if m.get("start_time") and m["start_time"].date() == now.date() 
             and ((m.get("end_time") and m["end_time"] > now) or m["start_time"] > now)
         ]
-        tomorrow_upcoming = [
-            m for m in self.meetings 
-            if m.get("start_time") and m["start_time"].date() > now.date()
-        ]
         status_mode = config.get("menubar_status_mode", "countdown")
         
         # State signature diffing to avoid unnecessary menu rebuilding
         m_sigs = tuple((m.get("title"), str(m.get("start_time")), m.get("pilot_type")) for m in today_upcoming[:6])
         minute_str = now.strftime("%H:%M")
-        new_signature = (minute_str, len(today_upcoming), len(tomorrow_upcoming), status_mode, m_sigs)
+        new_signature = (minute_str, len(today_upcoming), status_mode, m_sigs)
         
         if self._last_menu_signature == new_signature:
             return
@@ -421,31 +417,6 @@ class QuakMeetingMenuBar(AppKit.NSObject):
                 sub_item.setTarget_(self)
                 sub_item.setTag_(idx)
                 self.menu.addItem_(sub_item)
-                
-            self.menu.addItem_(AppKit.NSMenuItem.separatorItem())
-
-        # 4. Tomorrow's Preview (if any)
-        if tomorrow_upcoming:
-            item_tom_header = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("🌅 Tomorrow's Schedule:", None, "")
-            item_tom_header.setEnabled_(False)
-            self.menu.addItem_(item_tom_header)
-            
-            for t_idx, tm in enumerate(tomorrow_upcoming[:4]):
-                t_start = tm["start_time"].strftime("%H:%M") if tm.get("start_time") else "--:--"
-                t_p_type = tm.get("pilot_type", "duck")
-                t_icon = icon_map.get(t_p_type, "🦆")
-                t_title = (tm.get("title") or "Event").strip()
-                t_title_short = t_title[:22] + "…" if len(t_title) > 22 else t_title
-                t_tr_min = tm.get("travel_time_minutes")
-                t_sub_text = f"  {t_icon} {t_start} - {t_title_short}"
-                if t_tr_min:
-                    t_sub_text += f" (~{format_duration(t_tr_min)})"
-                
-                t_item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-                    t_sub_text, None, ""
-                )
-                t_item.setEnabled_(False)
-                self.menu.addItem_(t_item)
                 
             self.menu.addItem_(AppKit.NSMenuItem.separatorItem())
 
