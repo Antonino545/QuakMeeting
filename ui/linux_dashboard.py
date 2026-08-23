@@ -351,18 +351,27 @@ class QtFlightDeckWindow(QMainWindow):
             p_box.addWidget(d_l)
             c_layout.addLayout(p_box, stretch=1)
 
+            def _trigger_test_flight(p_id_val, p_url_val, p_name_val):
+                evt = {
+                    "title": f"{p_name_val} Demonstration",
+                    "provider": "Manual Test Flight 🚀",
+                    "pilot_type": p_id_val,
+                    "action_btn_text": "🚀 OPEN LINK",
+                    "action_url": p_url_val,
+                    "start_time": datetime.now(),
+                    "is_travel": False
+                }
+                event_bus.publish("TRIGGER_BANNER", event_dict=evt)
+                try:
+                    from ui.banner.qt_banner import show_qt_banner
+                    show_qt_banner(evt)
+                except Exception as ex:
+                    logger.error(f"Error triggering test flight banner: {ex}")
+
             t_btn = QPushButton("🚀 Test Flight", card)
             t_btn.setObjectName("PrimaryBtn")
             t_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            t_btn.clicked.connect(lambda chk, i=p_id, u=p_url, n=p_name: event_bus.publish("TRIGGER_BANNER", event_dict={
-                "title": f"{n} Demonstration",
-                "provider": "Manual Test Flight 🚀",
-                "pilot_type": i,
-                "action_btn_text": "🚀 OPEN LINK",
-                "action_url": u,
-                "start_time": datetime.now(),
-                "is_travel": False
-            }))
+            t_btn.clicked.connect(lambda chk, i=p_id, u=p_url, n=p_name: _trigger_test_flight(i, u, n))
             c_layout.addWidget(t_btn)
             h_layout.addWidget(card)
 

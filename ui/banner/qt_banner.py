@@ -642,9 +642,14 @@ class QtQuakPitFlyingBanner(QWidget):
     def _dismiss(self):
         self._timer.stop()
         self.close()
+        if self in _active_banners:
+            _active_banners.remove(self)
         app = QApplication.instance()
         if app and "--test" in sys.argv:
             app.quit()
+
+
+_active_banners = []
 
 
 # ── Public entry point ────────────────────────────────────────────────────────
@@ -661,7 +666,9 @@ def show_qt_banner(event_data: Dict[str, Any]) -> None:
         app = QApplication(sys.argv)
 
     banner = QtQuakPitFlyingBanner(event_data)
+    _active_banners.append(banner)
     banner.show()
 
     if standalone or "--test" in sys.argv:
         app.exec()
+
