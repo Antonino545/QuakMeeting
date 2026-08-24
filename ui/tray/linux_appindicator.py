@@ -17,6 +17,7 @@ from core.services.reminder_engine import reminder_engine
 from core.services.updater_service import updater_service
 from core.services.event_bus import event_bus
 from core.domain.models import format_duration, __version__
+from core.logger import open_log_file
 
 logger = logging.getLogger("QuakMeeting.LinuxAppIndicator")
 
@@ -103,36 +104,206 @@ def run_linux_app():
     )
     indicator.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
 
+    def _format_status_title(next_m, now: datetime) -> str:
+        mode = config.get("menubar_status_mode", "countdown")
+        if not next_m:
+            return "🦆" if mode == "icon_only" else "🦆 QuakMeeting"
+            
+        icon_map = {"chef": "🍕", "captain": "✈️", "owl": "🎓", "driver": "🚗", "zen_duck": "🛋️", "duck": "🦆"}
+        p_type = getattr(next_m, "pilot_type", "duck")
+        icon_prefix = icon_map.get(p_type, "🦆")
+        
+        if mode == "icon_only":
+            return icon_prefix
+            
+        start_dt = getattr(next_m, "start_time", None)
+        end_dt = getattr(next_m, "end_time", None)
+        dep_dt = getattr(next_m, "departure_time", None)
+        travel_min = getattr(next_m, "travel_time_minutes", 0)
+        m_title = (getattr(next_m, "title", "Event") or "Event").strip()
+        title_short = m_title[:14] + "…" if len(m_title) > 14 else m_title
+        
+        start_str = start_dt.strftime("%H:%M") if isinstance(start_dt, datetime) else "--:--"
+        max_lookahead_min = int(config.get("max_countdown_lookahead_hours", 3)) * 60
+
+        if mode == "event_time":
+            if travel_min:
+                dur_str = format_duration(travel_min)
+                return f"{icon_prefix} {start_str} {title_short} (~{dur_str})"
+            return f"{icon_prefix} {start_str} {title_short}"
+            
+        elif mode == "time_only":
+            if isinstance(start_dt, datetime):
+                diff_m = int(round((start_dt - now).total_seconds() / 60.0))
+                if 0 < diff_m <= max_lookahead_min:
+                    if diff_m >= 60:
+                        hrs = diff_m // 60
+                        mins = diff_m % 60
+                        t_part = f"{hrs}h" if mins == 0 else f"{hrs}h{mins:02d}m"
+                        return f"{icon_prefix} {start_str} (in {t_part})"
+                    return f"{icon_prefix} {start_str} (in {diff_m}m)"
+                elif diff_m == 0:
+                    return f"{icon_prefix} {start_str} (Now!)"
+                elif end_dt and isinstance(end_dt, datetime) and now < end_dt:
+                    return f"{icon_prefix} {start_str} (Active)"
+            return f"{icon_prefix} {start_str}"
+            
+        else: # "countdown" (Default & Most Informative)
+            if dep_dt and isinstance(dep_dt, datetime):
+                diff_dep = int(round((dep_dt - now).total_seconds() / 60.0))
+                if 0 < diff_dep <= max_lookahead_min:
+                    if diff_dep >= 60:
+                        hrs = diff_dep // 60
+                        mins = diff_dep % 60
+                        t_part = f"{hrs}h" if mins == 0 else f"{hrs}h{mins:02d}m"
+                        return f"{icon_prefix} Leave in {t_part} ({title_short})"
+                    return f"{icon_prefix} Leave in {diff_dep}m ({title_short})"
+                elif -10 <= diff_dep <= 0:
+                    return f"🚨 {icon_prefix} Leave NOW! ({title_short})"
+                elif diff_dep > max_lookahead_min:
+                    return f"{icon_prefix} {start_str} {title_short}"
+
+            if isinstance(start_dt, datetime):
+                diff_start = int(round((start_dt - now).total_seconds() / 60.0))
+                if 0 < diff_start <= max_lookahead_min:
+                    if diff_start >= 60:
+                        hrs = diff_start // 60
+                        mins = diff_start % 60
+                        t_part = f"{hrs}h" if mins == 0 else f"{hrs}h{mins:02d}m"
+                        return f"{icon_prefix} in {t_part}: {title_short}"
+                    return f"{icon_prefix} in {diff_start}m: {title_short}"
+                elif diff_start == 0:
+                    return f"🔔 {icon_prefix} Starting NOW: {title_short}"
+                elif end_dt and isinstance(end_dt, datetime) and now < end_dt:
+                    diff_end = int(round((end_dt - now).total_seconds() / 60.0))
+                    return f"🟢 {icon_prefix} {title_short} ({diff_end}m left)"
+                elif diff_start > max_lookahead_min:
+                    return f"{icon_prefix} {start_str} {title_short}"
+                    
+            return f"{icon_prefix} {start_str} {title_short}"
+
     def build_menu():
         menu = Gtk.Menu()
-
         now = datetime.now()
         meetings = calendar_service.get_upcoming_meetings()
         today_up = [m for m in meetings if m.start_time and m.start_time.date() == now.date() and ((m.end_time and m.end_time > now) or m.start_time > now)]
 
-        if today_up:
-            nx = today_up[0]
-            st = nx.start_time.strftime("%H:%M")
-            header_item = Gtk.MenuItem(label=f"🦆 Next: {st} — {nx.title[:25]}")
-            if nx.action_url:
-                header_item.connect("activate", lambda w, u=nx.action_url: import_webbrowser().open(u))
-            menu.append(header_item)
-        else:
-            menu.append(Gtk.MenuItem(label="🦆 QuakMeeting: No upcoming events"))
+        icon_map = {"chef": "🍕", "captain": "✈️", "owl": "🎓", "driver": "🚗", "zen_duck": "🛋️", "duck": "🦆"}
 
-        menu.append(Gtk.SeparatorMenuItem())
-
-        deck_item = Gtk.MenuItem(label="📊 Flight Deck HUD...")
+        # 1. Open Flight Deck
+        deck_item = Gtk.MenuItem(label="🦆 Open Flight Deck")
         deck_item.connect("activate", lambda w: show_linux_flight_deck(0))
         menu.append(deck_item)
+        menu.append(Gtk.SeparatorMenuItem())
 
-        sync_item = Gtk.MenuItem(label="🔄 Sync Calendar Now")
+        # 2. Next Event & Quick Join
+        if today_up:
+            nx = today_up[0]
+            st = nx.start_time.strftime("%H:%M") if nx.start_time else "--:--"
+            m_title = (nx.title or "Event").strip()
+            p_type = getattr(nx, "pilot_type", "duck")
+            icon_prefix = icon_map.get(p_type, "🦆")
+            
+            travel_min = getattr(nx, "travel_time_minutes", 0)
+            dep_dt = getattr(nx, "departure_time", None)
+            
+            if travel_min and isinstance(dep_dt, datetime):
+                dur_str = format_duration(travel_min)
+                next_label = f"{icon_prefix} Next: {st} — {m_title} (🚗 ~{dur_str} • Leave at {dep_dt.strftime('%H:%M')})"
+            elif travel_min:
+                dur_str = format_duration(travel_min)
+                next_label = f"{icon_prefix} Next: {st} — {m_title} (🚗 ~{dur_str})"
+            else:
+                next_label = f"{icon_prefix} Next: {st} — {m_title}"
+                
+            header_item = Gtk.MenuItem(label=next_label)
+            header_item.set_sensitive(False)
+            menu.append(header_item)
+            
+            action_url = getattr(nx, "action_url", None) or getattr(nx, "meeting_url", None)
+            if action_url:
+                btn_title = f"   {getattr(nx, 'action_btn_text', '🚀 Join Now')}"
+                join_item = Gtk.MenuItem(label=btn_title)
+                join_item.connect("activate", lambda w, u=action_url: import_webbrowser().open(u))
+                menu.append(join_item)
+                
+            menu.append(Gtk.SeparatorMenuItem())
+        else:
+            none_item = Gtk.MenuItem(label="✨ No remaining events today")
+            none_item.set_sensitive(False)
+            menu.append(none_item)
+            menu.append(Gtk.SeparatorMenuItem())
+
+        # 3. Upcoming Today List
+        if len(today_up) > 1:
+            list_header = Gtk.MenuItem(label="📅 Today's Events:")
+            list_header.set_sensitive(False)
+            menu.append(list_header)
+            
+            for m in today_up[1:6]:
+                start_str = m.start_time.strftime("%H:%M") if m.start_time else "--:--"
+                p_type = getattr(m, "pilot_type", "duck")
+                icon = icon_map.get(p_type, "🦆")
+                m_title = (m.title or "Event").strip()
+                title_short = m_title[:24] + "…" if len(m_title) > 24 else m_title
+                
+                tr_min = getattr(m, "travel_time_minutes", 0)
+                sub_text = f"  {icon} {start_str} - {title_short}"
+                if tr_min:
+                    sub_text += f" (~{format_duration(tr_min)})"
+                
+                sub_item = Gtk.MenuItem(label=sub_text)
+                sub_item.set_sensitive(False)
+                url = getattr(m, "action_url", None) or getattr(m, "meeting_url", None)
+                if url:
+                    sub_item.set_sensitive(True)
+                    sub_item.connect("activate", lambda w, u=url: import_webbrowser().open(u))
+                menu.append(sub_item)
+                
+            menu.append(Gtk.SeparatorMenuItem())
+
+        # 4. Utilities
+        sync_item = Gtk.MenuItem(label="🔄 Sync Calendars")
         sync_item.connect("activate", lambda w: threading.Thread(target=calendar_service.sync_now, daemon=True).start())
         menu.append(sync_item)
+        
+        test_item = Gtk.MenuItem(label="🧪 Test Flight Banner...")
+        test_item.connect("activate", lambda w: _trigger_tray_test_flight())
+        menu.append(test_item)
 
         pref_item = Gtk.MenuItem(label="⚙️ Settings & Preferences...")
         pref_item.connect("activate", lambda w: show_linux_flight_deck(2))
         menu.append(pref_item)
+
+        # Status Bar Mode
+        def set_status_mode(widget, mode):
+            config.set("menubar_status_mode", mode)
+            build_menu()
+            update_tick()
+            
+        mode_menu = Gtk.Menu()
+        curr_mode = config.get("menubar_status_mode", "countdown")
+        modes_def = [
+            ("countdown", "⏳ Live Countdown"),
+            ("event_time", "🕐 Start Time & Title"),
+            ("time_only", "⏱️ Time & Countdown"),
+            ("icon_only", "🦆 Icon Only")
+        ]
+        for mode_key, mode_label in modes_def:
+            m_item = Gtk.CheckMenuItem(label=mode_label)
+            if mode_key == curr_mode:
+                m_item.set_active(True)
+            m_item.connect("activate", lambda w, m=mode_key: set_status_mode(w, m))
+            mode_menu.append(m_item)
+            
+        item_display_mode = Gtk.MenuItem(label="📊 Status Bar Mode")
+        item_display_mode.set_submenu(mode_menu)
+        menu.append(item_display_mode)
+        
+        item_logs = Gtk.MenuItem(label="📄 View Logs & Diagnostics...")
+        item_logs.connect("activate", lambda w: open_log_file())
+        menu.append(item_logs)
+        menu.append(Gtk.SeparatorMenuItem())
 
         update_info = updater_service.latest_release_info
         if update_info and update_info.get("has_update"):
@@ -166,11 +337,11 @@ def run_linux_app():
             today_up = [m for m in meetings if m.start_time and m.start_time.date() == now.date() and ((m.end_time and m.end_time > now) or m.start_time > now)]
             
             if today_up:
-                nx = today_up[0]
-                diff_m = max(0, int((nx.start_time - now).total_seconds() // 60))
-                indicator.set_label(f"in {diff_m}m: {nx.title[:15]}", "")
+                title = _format_status_title(today_up[0], now)
+                indicator.set_label(title, "")
             else:
-                indicator.set_label("🦆", "")
+                title = _format_status_title(None, now)
+                indicator.set_label(title, "")
             build_menu()
         except Exception as e:
             logger.warning(f"Error in Linux tick: {e}")
@@ -185,6 +356,14 @@ def run_linux_app():
             show_wayland_banner(event_dict)
         except Exception as e:
             logger.error(f"Error showing banner: {e}")
+
+    def _trigger_tray_test_flight():
+        try:
+            from ui.banner.qt_banner import get_test_preset
+            evt = get_test_preset("duck")
+            on_banner_trigger(evt)
+        except Exception as e:
+            logger.error(f"Error triggering tray test flight: {e}")
 
     event_bus.subscribe("TRIGGER_BANNER", on_banner_trigger)
     updater_service.check_for_updates(background=True)
