@@ -85,8 +85,8 @@ class CalendarService:
                     icon = MODE_ICONS.get(m.transport_mode or transport_mode, "🚗")
                     dep_str = m.departure_time.astimezone().strftime("%H:%M")
                     m.eta_text = f"{icon} ~{dur_str} • Leave at {dep_str}"
-                    if not m.action_url or "maps.apple.com" not in m.action_url:
-                        m.action_url = eta_service.build_apple_maps_url(home_address or None, dest, m.transport_mode or transport_mode)
+                    if not m.action_url or ("maps.apple.com" not in m.action_url and "maps.google.com" not in m.action_url):
+                        m.action_url = eta_service.build_maps_url(home_address or None, dest, m.transport_mode or transport_mode)
                     
                     mode = m.transport_mode or transport_mode
                     if mode == "transit":

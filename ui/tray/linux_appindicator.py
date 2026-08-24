@@ -194,7 +194,7 @@ def run_linux_app():
 
         # 1. Open Flight Deck
         deck_item = Gtk.MenuItem(label="🦆 Open Flight Deck")
-        deck_item.connect("activate", lambda w: show_linux_flight_deck(0))
+        deck_item.connect("activate", lambda w: show_qt_flight_deck(0))
         menu.append(deck_item)
         menu.append(Gtk.SeparatorMenuItem())
 
@@ -274,7 +274,7 @@ def run_linux_app():
         menu.append(test_item)
 
         pref_item = Gtk.MenuItem(label="⚙️ Settings & Preferences...")
-        pref_item.connect("activate", lambda w: show_linux_flight_deck(2))
+        pref_item.connect("activate", lambda w: show_qt_flight_deck(2))
         menu.append(pref_item)
 
         # Status Bar Mode
@@ -376,9 +376,9 @@ def run_linux_app():
 
     Gtk.main()
 
-def show_linux_flight_deck(tab_index: int = 0):
+def show_qt_flight_deck(tab_index: int = 0):
     try:
-        from ui.linux_dashboard import show_linux_dashboard
-        show_linux_dashboard(tab_index)
+        from ui.qt_dashboard import show_qt_dashboard
+        show_qt_dashboard(tab_index)
     except Exception as e:
         logger.warning(f"Linux Flight Deck window error: {e}")

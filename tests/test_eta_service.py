@@ -9,21 +9,21 @@ class TestETAService(unittest.TestCase):
 
     def test_apple_maps_url_generation_all_modes(self):
         # 1. Transit (Mezzi Pubblici) -> dirflg=r
-        url_transit = self.eta_service.build_apple_maps_url("Corso Francia 10, Torino", "Politecnico di Torino", mode="transit")
+        url_transit = self.eta_service._build_apple_maps_url("Corso Francia 10, Torino", "Politecnico di Torino", mode="transit")
         self.assertIn("dirflg=r", url_transit)
         self.assertIn("saddr=", url_transit)
         self.assertIn("daddr=", url_transit)
 
         # 2. Automobile (Driving) -> dirflg=d
-        url_auto = self.eta_service.build_apple_maps_url("Corso Francia 10, Torino", "Politecnico di Torino", mode="automobile")
+        url_auto = self.eta_service._build_apple_maps_url("Corso Francia 10, Torino", "Politecnico di Torino", mode="automobile")
         self.assertIn("dirflg=d", url_auto)
 
         # 3. Walking (A Piedi) -> dirflg=w
-        url_walk = self.eta_service.build_apple_maps_url("Piazza Castello, Torino", "Mole Antonelliana", mode="walking")
+        url_walk = self.eta_service._build_apple_maps_url("Piazza Castello, Torino", "Mole Antonelliana", mode="walking")
         self.assertIn("dirflg=w", url_walk)
 
         # 4. Bicycling (In Bici) -> dirflg=b
-        url_bike = self.eta_service.build_apple_maps_url("Piazza Castello, Torino", "Parco del Valentino", mode="bicycling")
+        url_bike = self.eta_service._build_apple_maps_url("Piazza Castello, Torino", "Parco del Valentino", mode="bicycling")
         self.assertIn("dirflg=b", url_bike)
 
     def test_departure_time_calculation(self):

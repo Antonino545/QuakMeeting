@@ -451,8 +451,8 @@ class QtFlightDeckWindow(QMainWindow):
         self.tabs.setCurrentIndex(tab_index)
         main_layout.addWidget(self.tabs)
 
-def show_linux_dashboard(tab_index: int = 0):
-    """Launches the PyQt6 Flight Deck Control Center on Ubuntu Linux."""
+def show_qt_dashboard(tab_index: int = 0):
+    """Launches the PyQt6 Flight Deck Control Center."""
     app = QApplication.instance()
     is_standalone = False
     if app is None:

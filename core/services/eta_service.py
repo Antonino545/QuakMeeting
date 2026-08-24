@@ -76,8 +76,15 @@ class ETAService:
         except Exception as e:
             logger.warning(f"Error saving ETA cache: {e}")
 
-    def build_apple_maps_url(self, origin: Optional[str], destination: str, mode: str = "transit") -> str:
-        """Builds an Apple Maps deep link with start address, destination, and transport mode."""
+    def build_maps_url(self, origin: Optional[str], destination: str, mode: str = "transit") -> str:
+        """Builds a routing map deep link (Apple Maps on macOS, Google Maps otherwise)."""
+        import sys
+        if sys.platform == "darwin":
+            return self._build_apple_maps_url(origin, destination, mode)
+        else:
+            return self._build_google_maps_url(origin, destination, mode)
+
+    def _build_apple_maps_url(self, origin: Optional[str], destination: str, mode: str) -> str:
         encoded_dest = urllib.parse.quote(destination or "")
         dir_flag = APPLE_MAPS_FLAGS.get(mode, "r")
         
@@ -86,6 +93,19 @@ class ETAService:
             return f"https://maps.apple.com/?saddr={encoded_orig}&daddr={encoded_dest}&dirflg={dir_flag}"
         else:
             return f"https://maps.apple.com/?daddr={encoded_dest}&dirflg={dir_flag}"
+
+    def _build_google_maps_url(self, origin: Optional[str], destination: str, mode: str) -> str:
+        g_mode = "transit"
+        if mode == "automobile": g_mode = "driving"
+        elif mode == "walking": g_mode = "walking"
+        elif mode == "bicycling": g_mode = "bicycling"
+
+        encoded_dest = urllib.parse.quote(destination or "")
+        if origin and origin.strip():
+            encoded_orig = urllib.parse.quote(origin.strip())
+            return f"https://www.google.com/maps/dir/?api=1&origin={encoded_orig}&destination={encoded_dest}&travelmode={g_mode}"
+        else:
+            return f"https://www.google.com/maps/dir/?api=1&destination={encoded_dest}&travelmode={g_mode}"
 
     def _geocode_address(self, address: str) -> Optional[Tuple[float, float]]:
         """Geocodes an address string to (latitude, longitude) coordinates."""
@@ -175,7 +195,7 @@ class ETAService:
                 elif selected_mode == "bicycling":
                     duration_minutes = max(2, round((distance_km / 15.0) * 60.0))
 
-        maps_url = self.build_apple_maps_url(origin, destination, selected_mode)
+        maps_url = self.build_maps_url(origin, destination, selected_mode)
         mode_icon = MODE_ICONS.get(selected_mode, "🚆")
         mode_label = MODE_LABELS.get(selected_mode, "Mezzi Pubblici")
 

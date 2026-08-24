@@ -59,6 +59,7 @@ class TestReminderEngine(unittest.TestCase):
             start_time=now + timedelta(minutes=45),
             is_travel=True
         )
+        self.engine.config.set("travel_reminder_stages", [45, 30, 15, 5, 0])
 
         stages = self.engine.get_stages_for_meeting(meeting_travel)
         self.assertEqual(stages, [45, 30, 15, 5, 0])

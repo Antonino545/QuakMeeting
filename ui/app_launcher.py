@@ -15,6 +15,9 @@ def launch_application():
     elif sys.platform.startswith("linux"):
         from ui.tray.linux_appindicator import run_linux_app
         run_linux_app()
+    elif sys.platform == "win32":
+        from ui.tray.qt_tray_app import run_qt_tray_app
+        run_qt_tray_app()
     else:
         logger.error(f"Unsupported operating system: {sys.platform}")
         sys.exit(1)
