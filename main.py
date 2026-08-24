@@ -70,6 +70,14 @@ def main():
                 except Exception:
                     pilot_type = "duck"
                     
+            stage_val = None
+            if "--stage" in sys.argv:
+                try:
+                    idx = sys.argv.index("--stage")
+                    stage_val = int(sys.argv[idx + 1])
+                except Exception:
+                    stage_val = None
+                    
             if delay_sec > 0:
                 print(f"\n⏳ Waiting {delay_sec} seconds to allow switching to a Full Screen app...")
                 for i in range(delay_sec, 0, -1):
@@ -80,14 +88,19 @@ def main():
                 print("\n🚀 Running Notification Banner Test...")
                 
             from ui.banner.qt_banner import get_test_preset
-            test_m = get_test_preset(pilot_type)
+            test_m = dict(get_test_preset(pilot_type))
+            if stage_val is not None:
+                test_m["reminder_stage"] = stage_val
             
             if sys.platform == "darwin":
                 import AppKit
-                from ui.banner_window import _run_banner
+                from ui.banner.banner_controller import QuakPitFlyingBanner
                 app = AppKit.NSApplication.sharedApplication()
                 app.setActivationPolicy_(AppKit.NSApplicationActivationPolicyAccessory)
-                _run_banner(test_m)
+                def _on_test_done():
+                    app.terminate_(None)
+                controller = QuakPitFlyingBanner(test_m, on_close_callback=_on_test_done)
+                controller.show()
                 app.run()
             else:
                 from ui.banner.wayland_banner import show_wayland_banner

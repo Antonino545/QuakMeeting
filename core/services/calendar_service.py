@@ -83,7 +83,7 @@ class CalendarService:
                 if m.travel_time_minutes and m.travel_time_minutes > 0:
                     m.departure_time = eta_service.get_departure_time(m.start_time, m.travel_time_minutes, buffer_minutes)
                     icon = MODE_ICONS.get(m.transport_mode or transport_mode, "🚗")
-                    dep_str = m.departure_time.strftime("%H:%M")
+                    dep_str = m.departure_time.astimezone().strftime("%H:%M")
                     m.eta_text = f"{icon} ~{dur_str} • Leave at {dep_str}"
                     if not m.action_url or "maps.apple.com" not in m.action_url:
                         m.action_url = eta_service.build_apple_maps_url(home_address or None, dest, m.transport_mode or transport_mode)
@@ -112,7 +112,7 @@ class CalendarService:
                         
                         dur_str = format_duration(m.travel_time_minutes)
                         icon = MODE_ICONS.get(transport_mode, "🚆")
-                        dep_str = m.departure_time.strftime("%H:%M")
+                        dep_str = m.departure_time.astimezone().strftime("%H:%M")
                         m.eta_text = f"{icon} ~{dur_str} • Leave at {dep_str}"
                         m.action_url = eta_res["maps_url"]
                         
@@ -134,15 +134,19 @@ class CalendarService:
         except Exception as e:
             logger.warning(f"Error saving calendar cache to disk: {e}")
 
-    def _filter_today_only(self, meetings: List[Meeting]) -> List[Meeting]:
-        """Filters events so only events starting today (00:00 to 23:59:59) are kept."""
-        now = datetime.now()
-        start_of_today = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(hours=2)
-        end_of_today = now.replace(hour=23, minute=59, second=59, microsecond=999999)
+    def _filter_within_window(self, meetings: List[Meeting]) -> List[Meeting]:
+        """Filters events within a rolling window to support early morning / next day events."""
+        from datetime import timezone
+        now = datetime.now(timezone.utc)
+        
+        window_hours = float(self.config.get("lookahead_hours", 48))
+        cutoff = now + timedelta(hours=window_hours)
 
         filtered = [
             m for m in meetings 
-            if m.start_time and start_of_today <= m.start_time <= end_of_today
+            if (m.start_time and now <= m.start_time <= cutoff) or 
+               (m.departure_time and now <= m.departure_time <= cutoff) or
+               (m.end_time and m.start_time and m.start_time <= now <= m.end_time)
         ]
         filtered.sort(key=lambda m: m.start_time)
         return filtered
@@ -153,7 +157,7 @@ class CalendarService:
                 with open(CACHE_FILE, "r", encoding="utf-8") as f:
                     data = json.load(f)
                 loaded = [Meeting.from_dict(item) for item in data]
-                filtered = self._filter_today_only(loaded)
+                filtered = self._filter_within_window(loaded)
                 self._in_memory_cache = filtered
                 self._last_fetch_time = os.path.getmtime(CACHE_FILE)
                 return filtered
@@ -167,7 +171,7 @@ class CalendarService:
             self._is_fetching = True
             try:
                 raw_meetings = self._provider.fetch_events()
-                filtered = self._filter_today_only(raw_meetings)
+                filtered = self._filter_within_window(raw_meetings)
                 self._enrich_with_eta(filtered)
                 self._in_memory_cache = filtered
                 self._last_fetch_time = time.time()

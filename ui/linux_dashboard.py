@@ -300,7 +300,8 @@ class QtFlightDeckWindow(QMainWindow):
                 info_box.addWidget(s_l)
                 c_layout.addLayout(info_box, stretch=1)
 
-                if m.action_url:
+                has_real_url = bool(m.action_url and m.action_url.strip() and m.action_url != "https://calendar.apple.com")
+                if has_real_url:
                     btn_text = "🚀 JOIN" if not m.is_travel else "🗺️ NAVIGATE"
                     btn = QPushButton(btn_text, card)
                     btn.setObjectName("PrimaryBtn")

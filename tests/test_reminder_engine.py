@@ -98,6 +98,19 @@ class TestReminderEngine(unittest.TestCase):
         results = self.engine.evaluate_meetings([meeting], current_time=now)
         self.assertEqual(len(results), 0)
 
+    def test_event_time_stage_zero_and_pre_event_stages(self):
+        now = datetime(2026, 8, 22, 12, 0, 0)
+        # Event exactly starting at 12:00 (stage 0)
+        meeting_stage_0 = Meeting(
+            title="Now Starting Meeting",
+            start_time=now,
+            pilot_type=PilotType.DUCK.value
+        )
+        results = self.engine.evaluate_meetings([meeting_stage_0], current_time=now)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0][1], 0)
+        self.assertEqual(results[0][0].reminder_stage, 0)
+
     def test_check_and_notify_convenience_method(self):
         res = self.engine.check_and_notify()
         self.assertIsInstance(res, list)

@@ -90,12 +90,23 @@ class Meeting:
     classroom: Optional[str] = None
     teacher: Optional[str] = None
     is_arrived: bool = False
+    is_quiet_reminder: bool = False
 
     def __post_init__(self):
         if self.category and not self.event_type:
             self.event_type = self.category
         elif self.event_type and not self.category:
             self.category = self.event_type
+            
+        from datetime import timezone
+        import logging
+        if self.start_time and self.start_time.tzinfo is None:
+            logging.getLogger("QuakMeeting.Models").warning(f"Meeting '{self.title}' has naive start_time. Forcing UTC.")
+            self.start_time = self.start_time.replace(tzinfo=timezone.utc)
+        if self.end_time and self.end_time.tzinfo is None:
+            self.end_time = self.end_time.replace(tzinfo=timezone.utc)
+        if self.departure_time and self.departure_time.tzinfo is None:
+            self.departure_time = self.departure_time.replace(tzinfo=timezone.utc)
 
     def __getitem__(self, key: str) -> Any:
         if hasattr(self, key):
@@ -111,12 +122,14 @@ class Meeting:
     @property
     def id(self) -> str:
         """Unique deterministic identifier for an event based on title and start time."""
+        # Note: start_time is UTC, so this produces a UTC time string.
         time_str = self.start_time.strftime("%Y%m%d%H%M") if self.start_time else "000000000000"
         return f"{self.title}_{time_str}"
 
     @property
     def is_upcoming(self) -> bool:
-        now = datetime.now()
+        from datetime import timezone
+        now = datetime.now(timezone.utc)
         if self.end_time:
             return self.end_time > now
         if self.start_time:
@@ -153,7 +166,8 @@ class Meeting:
             "eta_text": self.eta_text,
             "classroom": self.classroom,
             "teacher": self.teacher,
-            "is_arrived": self.is_arrived
+            "is_arrived": self.is_arrived,
+            "is_quiet_reminder": self.is_quiet_reminder
         }
 
     def to_serializable_dict(self) -> Dict[str, Any]:
@@ -209,5 +223,6 @@ class Meeting:
             eta_text=d.get("eta_text"),
             classroom=d.get("classroom"),
             teacher=d.get("teacher"),
-            is_arrived=bool(d.get("is_arrived", False))
+            is_arrived=bool(d.get("is_arrived", False)),
+            is_quiet_reminder=bool(d.get("is_quiet_reminder", False))
         )

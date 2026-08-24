@@ -29,8 +29,8 @@ class TestMeetingModel(unittest.TestCase):
         )
 
         d = original.to_serializable_dict()
-        self.assertEqual(d["start_time"], "2026-08-22T10:00:00")
-        self.assertEqual(d["end_time"], "2026-08-22T11:00:00")
+        self.assertEqual(d["start_time"], "2026-08-22T10:00:00+00:00")
+        self.assertEqual(d["end_time"], "2026-08-22T11:00:00+00:00")
         self.assertTrue(d["is_travel"])
 
         reconstituted = Meeting.from_dict(d)

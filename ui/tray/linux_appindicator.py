@@ -45,17 +45,19 @@ def _run_headless_fallback():
     _print_missing_gi_help()
     print("🦆 QuakMeeting active in terminal daemon mode. Press Ctrl+C to stop.")
     
-    def on_banner(event_dict, **kwargs):
-        title = event_dict.get("title", "Event")
-        prov = event_dict.get("provider", "Calendar")
-        url = event_dict.get("action_url")
-        print(f"\n🔔 [REMINDER] >>> {title} ({prov})")
+    def on_banner(event_dict=None, meeting=None, stage=None, **kwargs):
+        data = event_dict or (meeting.to_dict() if hasattr(meeting, "to_dict") else meeting) or {}
+        title = data.get("title", "Event")
+        prov = data.get("provider", "Calendar")
+        url = data.get("action_url") or data.get("meeting_url")
+        print(f"\n🔔 [REMINDER {f'({stage}m)' if stage is not None else ''}] >>> {title} ({prov})")
         if url:
             print(f"   🚀 Meeting Link: {url}")
             import webbrowser
             webbrowser.open(url)
 
     event_bus.subscribe("TRIGGER_BANNER", on_banner)
+    event_bus.subscribe("REMINDER_TRIGGERED", on_banner)
     calendar_service.sync_now()
 
     try:
@@ -350,10 +352,13 @@ def run_linux_app():
     build_menu()
     GLib.timeout_add_seconds(15, update_tick)
 
-    def on_banner_trigger(event_dict, **kwargs):
+    def on_banner_trigger(event_dict=None, meeting=None, stage=None, **kwargs):
         try:
+            data = event_dict or (meeting.to_dict() if hasattr(meeting, "to_dict") else meeting) or {}
+            if stage is not None and "reminder_stage" not in data:
+                data["reminder_stage"] = stage
             from ui.banner.wayland_banner import show_wayland_banner
-            show_wayland_banner(event_dict)
+            show_wayland_banner(data)
         except Exception as e:
             logger.error(f"Error showing banner: {e}")
 
@@ -366,6 +371,7 @@ def run_linux_app():
             logger.error(f"Error triggering tray test flight: {e}")
 
     event_bus.subscribe("TRIGGER_BANNER", on_banner_trigger)
+    event_bus.subscribe("REMINDER_TRIGGERED", on_banner_trigger)
     updater_service.check_for_updates(background=True)
 
     Gtk.main()

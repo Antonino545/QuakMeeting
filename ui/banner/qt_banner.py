@@ -6,6 +6,8 @@ Matches macOS QuakPit design:
   - Small window moved each frame via self.move() + QT_QPA_PLATFORM=xcb (XWayland)
   - Zero child widgets — everything drawn in paintEvent
 """
+from __future__ import annotations
+
 import sys
 import os
 import math
@@ -13,12 +15,33 @@ import webbrowser
 from datetime import datetime
 from typing import Dict, Any
 
-from PyQt6.QtWidgets import QApplication, QWidget
-from PyQt6.QtCore import Qt, QTimer, QRect, QRectF, QPointF
-from PyQt6.QtGui import (
-    QColor, QPainter, QBrush, QPen, QFont, QPainterPath,
-    QLinearGradient, QRadialGradient, QFontMetrics
-)
+try:
+    from PyQt6.QtWidgets import QApplication, QWidget
+    from PyQt6.QtCore import Qt, QTimer, QRect, QRectF, QPointF
+    from PyQt6.QtGui import (
+        QColor, QPainter, QBrush, QPen, QFont, QPainterPath,
+        QLinearGradient, QRadialGradient, QFontMetrics
+    )
+    _HAS_PYQT6 = True
+except (ImportError, ModuleNotFoundError):
+    _HAS_PYQT6 = False
+    QApplication = object
+    QWidget = object
+    Qt = object
+    QTimer = object
+    QRect = object
+    QRectF = object
+    QPointF = object
+    QPainter = object
+    QBrush = object
+    QPen = object
+    QFont = object
+    QPainterPath = object
+    QLinearGradient = object
+    QRadialGradient = object
+    QFontMetrics = object
+    def QColor(*args):
+        return args
 
 # ── Pilot data ────────────────────────────────────────────────────────────────
 
@@ -167,6 +190,13 @@ class QtQuakPitFlyingBanner(QWidget):
         st = event_data.get("start_time")
         self.time_str = st.strftime("At %H:%M") if hasattr(st, "strftime") else ""
         self.classroom = str(event_data.get("classroom") or "")
+        self.reminder_stage = event_data.get("reminder_stage")
+        
+        self.has_real_url = bool(
+            self.action_url and 
+            self.action_url.strip() and 
+            self.action_url != "https://calendar.apple.com"
+        )
 
         # ── Screen ──
         screen = QApplication.primaryScreen()
@@ -210,7 +240,10 @@ class QtQuakPitFlyingBanner(QWidget):
         bob = math.sin(self.tick * 0.035) * 5
         self.move(int(self.win_x), int(self.win_y + bob))
         if self.win_x > self.screen_x + self.screen_w + 20:
-            self._dismiss()
+            if self.reminder_stage is not None and self.reminder_stage > 0:
+                self._dismiss()
+            else:
+                self.win_x = float(self.screen_x - WIN_W - 20)
         else:
             self.update()
 
@@ -220,10 +253,14 @@ class QtQuakPitFlyingBanner(QWidget):
         return QRectF(BTN_X0, BTN_Y, BTN_JOIN_W, BTN_H)
 
     def _arrive_rect(self) -> QRectF:
-        return QRectF(BTN_ARRIVE_X, BTN_Y, BTN_SMALL_W, BTN_H)
+        if self.has_maps_url:
+            return QRectF(BTN_ARRIVE_X, BTN_Y, BTN_SMALL_W, BTN_H)
+        return QRectF(0, 0, 0, 0)
 
     def _snooze_rect(self) -> QRectF:
-        return QRectF(BTN_SNOOZE_X, BTN_Y, BTN_SMALL_W, BTN_H)
+        if self.has_maps_url:
+            return QRectF(BTN_SNOOZE_X, BTN_Y, BTN_SMALL_W, BTN_H)
+        return QRectF(BTN_ARRIVE_X, BTN_Y, BTN_SMALL_W, BTN_H)
 
     def _close_rect(self)  -> QRectF:
         s = 22
@@ -253,8 +290,9 @@ class QtQuakPitFlyingBanner(QWidget):
         p = ev.position()
         if self._close_rect().contains(p):
             self._dismiss()
-        elif self._join_rect().contains(p) and self.action_url:
-            webbrowser.open(self.action_url)
+        elif self._join_rect().contains(p):
+            if self.has_real_url:
+                webbrowser.open(self.action_url)
             self._dismiss()
         elif self._arrive_rect().contains(p):
             self._dismiss()
@@ -374,46 +412,76 @@ class QtQuakPitFlyingBanner(QWidget):
                    Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft, sub_text)
 
         # ── Row 4: Action Buttons ──
-        # JOIN (yellow/amber gradient, black text)
+        # JOIN / Got it
         jr = self._join_rect()
         hover_join = self._hover == "join"
-        g = QLinearGradient(jr.topLeft(), jr.topRight())
-        if hover_join:
-            g.setColorAt(0, QColor(253, 230, 70))
-            g.setColorAt(1, QColor(251, 146, 60))
+        
+        if not self.has_real_url:
+            # Got it styling (blue tint)
+            g = QLinearGradient(jr.topLeft(), jr.topRight())
+            if hover_join:
+                g.setColorAt(0, QColor(56, 189, 248, 255))
+                g.setColorAt(1, QColor(14, 116, 144, 255))
+            else:
+                g.setColorAt(0, QColor(14, 116, 144, 255))
+                g.setColorAt(1, QColor(8, 47, 73, 255))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(g)
+            p.drawRoundedRect(jr, 10, 10)
+            p.setPen(QColor(255, 255, 255, 255))
+            display_text = "✅ Got it"
         else:
-            g.setColorAt(0, QColor(234, 179, 8))
-            g.setColorAt(1, QColor(245, 158, 11))
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(g)
-        p.drawRoundedRect(jr, 10, 10)
-        p.setPen(QColor(15, 15, 15))
+            # JOIN styling (yellow/amber gradient, black text)
+            g = QLinearGradient(jr.topLeft(), jr.topRight())
+            if hover_join:
+                g.setColorAt(0, QColor(253, 230, 70))
+                g.setColorAt(1, QColor(251, 146, 60))
+            else:
+                g.setColorAt(0, QColor(234, 179, 8))
+                g.setColorAt(1, QColor(245, 158, 11))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(g)
+            p.drawRoundedRect(jr, 10, 10)
+            p.setPen(QColor(15, 15, 15))
+            display_text = self.btn_text
+
         bf = QFont("Inter, Arial", 11)
         bf.setWeight(QFont.Weight.ExtraBold)
         p.setFont(bf)
-        p.drawText(jr, Qt.AlignmentFlag.AlignCenter, self.btn_text)
+        p.drawText(jr, Qt.AlignmentFlag.AlignCenter, display_text)
 
         # I'm Here (dark pill, greenish tint on hover)
-        ar = self._arrive_rect()
-        hover_arr = self._hover == "arrive"
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(QColor(34, 197, 94, 180) if hover_arr else QColor(30, 34, 50, 255))
-        p.drawRoundedRect(ar, 10, 10)
-        p.setPen(QColor(255, 255, 255, 220) if hover_arr else QColor(180, 200, 230))
-        mf = QFont("Inter, Arial", 10)
-        mf.setWeight(QFont.Weight.Bold)
-        p.setFont(mf)
-        p.drawText(ar, Qt.AlignmentFlag.AlignCenter, "📍 I'm Here")
+        if self.has_maps_url:
+            ar = self._arrive_rect()
+            hover_arr = self._hover == "arrive"
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor(34, 197, 94, 180) if hover_arr else QColor(30, 34, 50, 255))
+            p.drawRoundedRect(ar, 10, 10)
+            p.setPen(QColor(255, 255, 255, 220) if hover_arr else QColor(180, 200, 230))
+            mf = QFont("Inter, Arial", 10)
+            mf.setWeight(QFont.Weight.Bold)
+            p.setFont(mf)
+            p.drawText(ar, Qt.AlignmentFlag.AlignCenter, "📍 I'm Here")
+        else:
+            mf = QFont("Inter, Arial", 10)
+            mf.setWeight(QFont.Weight.Bold)
 
-        # Snooze (dark pill, blue tint on hover)
+        # Snooze / Got it button
         sr = self._snooze_rect()
         hover_snz = self._hover == "snooze"
         p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(QColor(99, 102, 241, 180) if hover_snz else QColor(30, 34, 50, 255))
-        p.drawRoundedRect(sr, 10, 10)
-        p.setPen(QColor(255, 255, 255, 220) if hover_snz else QColor(180, 200, 230))
-        p.setFont(mf)
-        p.drawText(sr, Qt.AlignmentFlag.AlignCenter, "💤 Snooze 2m")
+        if self.reminder_stage == 0:
+            p.setBrush(QColor(14, 116, 144, 220) if hover_snz else QColor(15, 23, 42, 255))
+            p.drawRoundedRect(sr, 10, 10)
+            p.setPen(QColor(255, 255, 255, 240) if hover_snz else QColor(56, 189, 248))
+            p.setFont(mf)
+            p.drawText(sr, Qt.AlignmentFlag.AlignCenter, "✅ Got it")
+        else:
+            p.setBrush(QColor(99, 102, 241, 180) if hover_snz else QColor(30, 34, 50, 255))
+            p.drawRoundedRect(sr, 10, 10)
+            p.setPen(QColor(255, 255, 255, 220) if hover_snz else QColor(180, 200, 230))
+            p.setFont(mf)
+            p.drawText(sr, Qt.AlignmentFlag.AlignCenter, "💤 Snooze 2m")
 
     # ── Tow cable ─────────────────────────────────────────────────────────────
 

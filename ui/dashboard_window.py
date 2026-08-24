@@ -200,9 +200,9 @@ class DashboardWindowController(AppKit.NSObject):
     def refresh_data(self, force=False):
         """Loads events from cache immediately and syncs in background."""
         self.meetings = get_upcoming_meetings(force_refresh=False)
-        now = datetime.now()
+        now = datetime.now().astimezone()
         
-        today_meetings = [m for m in self.meetings if m.get("start_time") and m["start_time"].date() == now.date()]
+        today_meetings = [m for m in self.meetings if m.get("start_time") and m["start_time"].astimezone().date() == now.date()]
         today_upcoming = [m for m in today_meetings if (m.get("end_time") and m["end_time"] > now) or (m.get("start_time") and m["start_time"] > now)]
         
         if today_upcoming:
@@ -239,8 +239,8 @@ class DashboardWindowController(AppKit.NSObject):
                 def on_complete():
                     self.is_loading = False
                     self.meetings = meetings
-                    n = datetime.now()
-                    t_meets = [m for m in self.meetings if m.get("start_time") and m["start_time"].date() == n.date()]
+                    n = datetime.now().astimezone()
+                    t_meets = [m for m in self.meetings if m.get("start_time") and m["start_time"].astimezone().date() == n.date()]
                     t_up = [m for m in t_meets if (m.get("end_time") and m["end_time"] > n) or (m.get("start_time") and m["start_time"] > n)]
                     
                     if t_up:
@@ -323,8 +323,8 @@ class DashboardWindowController(AppKit.NSObject):
         card_h = 76.0
         gap = 12.0
         
-        now = datetime.now()
-        today_list = [m for m in self.meetings if m.get("start_time") and m["start_time"].date() == now.date()]
+        now = datetime.now().astimezone()
+        today_list = [m for m in self.meetings if m.get("start_time") and m["start_time"].astimezone().date() == now.date()]
         
         total_items = max(1, len(today_list))
         content_h = max(h, total_items * (card_h + gap) + 20.0)
@@ -424,7 +424,9 @@ class DashboardWindowController(AppKit.NSObject):
             action_url = f"https://maps.apple.com/?q={urllib.parse.quote(loc)}"
             m["action_url"] = action_url
 
-        if action_url:
+        has_real_url = bool(action_url and action_url.strip() and action_url != "https://calendar.apple.com")
+
+        if has_real_url:
             btn_title = m.get("action_btn_text", "🚀 JOIN")
             travel_min = m.get("travel_time_minutes")
             if "MAPS" in btn_title or "MAPPE" in btn_title or "maps.apple.com" in action_url:
@@ -572,7 +574,7 @@ class DashboardWindowController(AppKit.NSObject):
             "pilot_type": "duck",
             "action_btn_text": "🚀 JOIN GOOGLE MEET",
             "action_url": "https://meet.google.com/test-quak",
-            "start_time": datetime.now(),
+            "start_time": datetime.now().astimezone(),
             "is_travel": False
         })
 
@@ -585,7 +587,7 @@ class DashboardWindowController(AppKit.NSObject):
             "action_btn_text": "🗺️ RESTAURANT DIRECTIONS (MAPS)",
             "action_url": "https://maps.apple.com/?q=Pizzeria+Napoli",
             "location": "Pizzeria Da Michele, London",
-            "start_time": datetime.now(),
+            "start_time": datetime.now().astimezone(),
             "is_travel": True
         })
 
@@ -598,7 +600,7 @@ class DashboardWindowController(AppKit.NSObject):
             "action_btn_text": "🗺️ AIRPORT DIRECTIONS (MAPS)",
             "action_url": "https://maps.apple.com/?q=Heathrow+Airport",
             "location": "Terminal 5 - Gate B12",
-            "start_time": datetime.now(),
+            "start_time": datetime.now().astimezone(),
             "is_travel": True
         })
 
@@ -613,7 +615,7 @@ class DashboardWindowController(AppKit.NSObject):
             "action_btn_text": "📚 CLASSROOM & NOTES",
             "action_url": "https://calendar.apple.com",
             "location": "Politecnico - Aula 5M",
-            "start_time": datetime.now(),
+            "start_time": datetime.now().astimezone(),
             "is_travel": False
         })
 
@@ -626,7 +628,7 @@ class DashboardWindowController(AppKit.NSObject):
             "action_btn_text": "🗺️ GYM DIRECTIONS (MAPS)",
             "action_url": "https://maps.apple.com/?daddr=CrossFit+Gym",
             "location": "Downtown Gym & Fitness Club",
-            "start_time": datetime.now(),
+            "start_time": datetime.now().astimezone(),
             "is_travel": True
         })
 
@@ -639,7 +641,7 @@ class DashboardWindowController(AppKit.NSObject):
             "action_btn_text": "🗺️ NAVIGATE WITH MAPS",
             "action_url": "https://maps.apple.com/?daddr=Studio+Design",
             "location": "Via Roma 10, Downtown",
-            "start_time": datetime.now(),
+            "start_time": datetime.now().astimezone(),
             "is_travel": True
         })
 
@@ -651,7 +653,7 @@ class DashboardWindowController(AppKit.NSObject):
             "pilot_type": "zen_duck",
             "action_btn_text": "🚀 JOIN SESSION",
             "action_url": "https://app.serenis.it/join/test",
-            "start_time": datetime.now(),
+            "start_time": datetime.now().astimezone(),
             "is_travel": False
         })
 

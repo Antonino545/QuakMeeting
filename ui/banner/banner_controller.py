@@ -62,8 +62,8 @@ class QuakPitFlyingBanner:
         self.window.setOpaque_(False)
         self.window.setBackgroundColor_(AppKit.NSColor.clearColor())
         
-        # NSScreenSaverWindowLevel (1000) guarantees floating above full-screen spaces & menu bar
-        self.window.setLevel_(AppKit.NSScreenSaverWindowLevel)
+        # NSStatusWindowLevel guarantees floating above full-screen spaces & menu bar
+        self.window.setLevel_(AppKit.NSStatusWindowLevel)
         
         self.window.setIgnoresMouseEvents_(False)
         self.window.setAcceptsMouseMovedEvents_(True)
@@ -139,16 +139,22 @@ class QuakPitFlyingBanner:
             logger.error(f"Error marking arrived: {e}")
         self.dismiss()
 
-    def trigger_snooze(self) -> None:
-        snooze_sec = int(config.get("default_snooze_seconds", 120))
+    def trigger_snooze(self, duration_seconds: int = None) -> None:
+        snooze_sec = duration_seconds if duration_seconds else int(config.get("default_snooze_seconds", 120))
         m_copy = dict(self.meeting_data)
         self.dismiss()
         
         def _re_notify():
             time.sleep(snooze_sec)
-            _run_banner(m_copy)
+            show_banner_async(m_copy)
             
         threading.Thread(target=_re_notify, daemon=True).start()
+
+    def trigger_acknowledge(self) -> None:
+        """User explicitly acknowledged the event-time reminder."""
+        title = self.meeting_data.get("title", "Event") if isinstance(self.meeting_data, dict) else getattr(self.meeting_data, "title", "Event")
+        logger.info(f"User acknowledged reminder for: '{title}'")
+        self.dismiss()
 
     def dismiss(self) -> None:
         if self.timer:
@@ -162,19 +168,28 @@ class QuakPitFlyingBanner:
 
 _current_banner_controller = None
 
-def _run_banner(meeting_data: Dict[str, Any]) -> None:
+def _maybe_show_next_banner() -> None:
     global _current_banner_controller
-    if _current_banner_controller:
-        _current_banner_controller.dismiss()
-        _current_banner_controller = None
+    if _current_banner_controller is not None:
+        return
         
-    def _on_close():
-        global _current_banner_controller
-        _current_banner_controller = None
-        
-    controller = QuakPitFlyingBanner(meeting_data, on_close_callback=_on_close)
-    _current_banner_controller = controller
-    controller.show()
+    from .banner_queue import banner_queue
+    next_item = banner_queue.pop_next()
+    if next_item:
+        def _on_close():
+            global _current_banner_controller
+            _current_banner_controller = None
+            _maybe_show_next_banner()
+            
+        controller = QuakPitFlyingBanner(next_item.meeting_data, on_close_callback=_on_close)
+        _current_banner_controller = controller
+        controller.show()
+
+def _run_banner(meeting_data: Dict[str, Any]) -> None:
+    from .banner_queue import banner_queue, BannerQueueItem
+    item = BannerQueueItem(meeting_data)
+    banner_queue.push(item)
+    _maybe_show_next_banner()
 
 def show_banner_async(meeting_data: Dict[str, Any]) -> None:
     """Safely dispatches banner display onto the AppKit main UI thread."""

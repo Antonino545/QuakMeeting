@@ -5,12 +5,13 @@ handles snooze timers, immediate first-time triggers for soon-starting events,
 departure time triggers for travel/transit events, and publishes REMINDER_TRIGGERED events via EventBus.
 """
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Set, Dict, Optional, Tuple
 from core.domain.models import Meeting
 from core.services.event_bus import event_bus, EventBus
 from core.services.config_service import config_service, ConfigService
 from core.services.arrival_service import arrival_service, ArrivalService
+from core.services.state_store import NotifiedStateStore
 from core.logger import setup_logging
 
 logger = logging.getLogger("QuakMeeting.ReminderEngine")
@@ -21,20 +22,27 @@ class ReminderEngine:
     def __init__(self, config: Optional[ConfigService] = None, bus: Optional[EventBus] = None):
         self.config = config or config_service
         self.bus = bus or event_bus
-        self.notified_stage_keys: Set[str] = set()
+        self._state_store = NotifiedStateStore()
+        self.notified_stage_keys: Set[str] = self._state_store.load()
+
+    def _add_notified_key(self, key: str) -> None:
+        self.notified_stage_keys.add(key)
+        self._state_store.add(key)
 
     def mark_arrived(self, meeting_id: str) -> None:
         """Marks meeting as arrived, suppressing all remaining reminder stages for it."""
         arrival_service.mark_arrived(meeting_id)
         # Suppress all future keys for this meeting
         for s in range(0, 60):
-            self.notified_stage_keys.add(f"{meeting_id}_stage_{s}")
-        self.notified_stage_keys.add(f"{meeting_id}_departure_alert")
+            self._add_notified_key(f"{meeting_id}_stage_{s}")
+        self._add_notified_key(f"{meeting_id}_departure_alert")
         logger.info(f"Suppressed future reminders for arrived event: {meeting_id}")
 
     def reset_state(self) -> None:
         """Clear fired notifications cache (useful for testing or daily reset)."""
         self.notified_stage_keys.clear()
+        self._state_store._state.clear()
+        self._state_store.force_save()
 
     def check_and_notify(self, current_time: Optional[datetime] = None) -> List[Tuple[Meeting, int]]:
         """
@@ -43,6 +51,24 @@ class ReminderEngine:
         from core.services.calendar_service import calendar_service
         meetings = calendar_service.get_upcoming_meetings()
         return self.evaluate_meetings(meetings, current_time=current_time)
+
+    def is_meeting_active(self, m: Meeting, now: datetime) -> bool:
+        """Determines if the meeting is currently active and taking user's attention."""
+        if now.tzinfo is None:
+            from datetime import timezone
+            now = now.replace(tzinfo=timezone.utc)
+        if m.is_travel and m.departure_time:
+            end = m.end_time or m.start_time or (m.departure_time + timedelta(minutes=60))
+            if m.departure_time <= now <= end:
+                return True
+        if m.start_time and m.end_time:
+            if m.start_time <= now <= m.end_time:
+                return True
+        elif m.start_time:
+            diff = (now - m.start_time).total_seconds() / 60.0
+            if 0 <= diff <= 45:
+                return True
+        return False
 
     def get_stages_for_meeting(self, meeting: Meeting) -> List[int]:
         """Retrieve configured stage intervals (minutes before start) for a given meeting type."""
@@ -78,14 +104,20 @@ class ReminderEngine:
         Evaluate all upcoming meetings against notification windows and departure times.
         Returns a list of (meeting, triggered_stage) tuples and publishes REMINDER_TRIGGERED events.
         """
-        now = current_time or datetime.now()
+        from datetime import timezone
+        if current_time and current_time.tzinfo is None:
+            current_time = current_time.replace(tzinfo=timezone.utc)
+        now = current_time or datetime.now(timezone.utc)
         triggered_events = []
 
         if not meetings:
             logger.debug(f"[{now.strftime('%H:%M:%S')}] No events to evaluate.")
             return []
 
-        logger.info(f"📊 [Scanner] Evaluating {len(meetings)} events at {now.strftime('%H:%M:%S')}...")
+        # Determine if there are currently active meetings taking user's attention
+        has_active_meeting = any(self.is_meeting_active(m, now) for m in meetings)
+
+        logger.info(f"📊 [Scanner] Evaluating {len(meetings)} events at {now.strftime('%H:%M:%S')} (Busy: {has_active_meeting})...")
 
         for m in meetings:
             if not m.start_time:
@@ -108,8 +140,8 @@ class ReminderEngine:
             if m.start_time.date() > now.date() and diff_min > 180:
                 continue
 
-            start_str = m.start_time.strftime("%H:%M")
-            dep_str = m.departure_time.strftime("%H:%M") if m.departure_time else ""
+            start_str = m.start_time.astimezone().strftime("%H:%M")
+            dep_str = m.departure_time.astimezone().strftime("%H:%M") if m.departure_time else ""
             stages = self.get_stages_for_meeting(m)
 
             matched_stage = None
@@ -120,9 +152,21 @@ class ReminderEngine:
                 if self.is_within_stage_window(diff_min, stage):
                     if stage_key not in self.notified_stage_keys:
                         matched_stage = stage
-                        self.notified_stage_keys.add(stage_key)
+                        self._add_notified_key(stage_key)
+                        
+                        # Apply busy mode logic
+                        if has_active_meeting and not self.is_meeting_active(m, now):
+                            if stage > 10:
+                                logger.info(f"🔇 Suppressed stage {stage} reminder for '{m.title}' (User is busy).")
+                                continue
+                                
                         m_triggered = Meeting.from_dict(m.to_dict())
                         m_triggered.reminder_stage = stage
+                        
+                        if has_active_meeting and not self.is_meeting_active(m, now) and stage > 0:
+                            m_triggered.is_quiet_reminder = True
+                            logger.info(f"🤫 Downgrading to quiet reminder for '{m.title}' at stage {stage} (User is busy).")
+                            
                         triggered_events.append((m_triggered, stage))
                         
                         if is_departure_mode:
@@ -140,9 +184,15 @@ class ReminderEngine:
                 if -3.5 <= diff_min <= 5.0:
                     fallback_stage = max(0, round(diff_min))
                     stage_key = f"{m.id}_dep_stage_{fallback_stage}" if is_departure_mode else f"{m.id}_stage_{fallback_stage}"
-                    self.notified_stage_keys.add(stage_key)
+                    self._add_notified_key(stage_key)
+                    
                     m_triggered = Meeting.from_dict(m.to_dict())
                     m_triggered.reminder_stage = fallback_stage
+                    
+                    if has_active_meeting and not self.is_meeting_active(m, now) and fallback_stage > 0:
+                        m_triggered.is_quiet_reminder = True
+                        logger.info(f"🤫 Downgrading fallback to quiet reminder for '{m.title}' at stage {fallback_stage} (User is busy).")
+                        
                     triggered_events.append((m_triggered, fallback_stage))
                     
                     if is_departure_mode:

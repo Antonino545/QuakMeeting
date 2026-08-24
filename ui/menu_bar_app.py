@@ -206,7 +206,32 @@ class QuakMeetingMenuBar(AppKit.NSObject):
 
     def _on_reminder_triggered(self, meeting: Meeting, stage: int) -> None:
         m_dict = meeting.to_dict() if isinstance(meeting, Meeting) else meeting
-        show_banner_async(m_dict)
+        is_quiet = getattr(meeting, "is_quiet_reminder", False) or m_dict.get("is_quiet_reminder", False)
+        
+        if is_quiet:
+            self._show_macos_notification(m_dict, stage)
+        else:
+            show_banner_async(m_dict)
+
+    def _show_macos_notification(self, m_dict: dict, stage: int) -> None:
+        title = m_dict.get("title", "Upcoming Meeting")
+        start_time = m_dict.get("start_time")
+        if start_time and hasattr(start_time, "astimezone"):
+            time_str = start_time.astimezone().strftime("%H:%M")
+        else:
+            time_str = ""
+            
+        if stage == 0:
+            subtitle = f"Starts NOW at {time_str}"
+        else:
+            subtitle = f"Starts in {stage}m (at {time_str})"
+            
+        import subprocess
+        script = f'display notification "{subtitle}" with title "QuakMeeting" subtitle "{title}"'
+        try:
+            subprocess.run(["osascript", "-e", script], capture_output=True)
+        except Exception as e:
+            logger.error(f"Failed to show macOS notification: {e}")
 
     def _on_calendar_synced(self, meetings: List[Any]) -> None:
         self.meetings = [m.to_dict() if isinstance(m, Meeting) else m for m in meetings]
@@ -248,7 +273,7 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         m_title = (next_m.get("title") or "Event").strip()
         title_short = m_title[:14] + "…" if len(m_title) > 14 else m_title
         
-        start_str = start_dt.strftime("%H:%M") if isinstance(start_dt, datetime) else "--:--"
+        start_str = start_dt.astimezone().strftime("%H:%M") if isinstance(start_dt, datetime) else "--:--"
         
         max_lookahead_min = int(config.get("max_countdown_lookahead_hours", 3)) * 60
 
@@ -313,18 +338,26 @@ class QuakMeetingMenuBar(AppKit.NSObject):
             return f"{icon_prefix} {start_str} {title_short}"
 
     def build_menu(self):
-        now = datetime.now()
+        now = datetime.now().astimezone()
+        from datetime import timedelta
         today_upcoming = [
             m for m in self.meetings 
-            if m.get("start_time") and m["start_time"].date() == now.date() 
+            if m.get("start_time") and m["start_time"].astimezone().date() == now.date() 
             and ((m.get("end_time") and m["end_time"] > now) or m["start_time"] > now)
         ]
+        
+        tomorrow_date = now.date() + timedelta(days=1)
+        tomorrow_upcoming = [
+            m for m in self.meetings 
+            if m.get("start_time") and m["start_time"].astimezone().date() == tomorrow_date
+        ]
+        
         status_mode = config.get("menubar_status_mode", "countdown")
         
         # State signature diffing to avoid unnecessary menu rebuilding
-        m_sigs = tuple((m.get("title"), str(m.get("start_time")), m.get("pilot_type")) for m in today_upcoming[:6])
+        m_sigs = tuple((m.get("title"), str(m.get("start_time")), m.get("pilot_type")) for m in today_upcoming[:6] + tomorrow_upcoming[:6])
         minute_str = now.strftime("%H:%M")
-        new_signature = (minute_str, len(today_upcoming), status_mode, m_sigs)
+        new_signature = (minute_str, len(today_upcoming), len(tomorrow_upcoming), status_mode, m_sigs)
         
         if self._last_menu_signature == new_signature:
             return
@@ -345,7 +378,7 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         
         if today_upcoming:
             next_m = today_upcoming[0]
-            start_str = next_m["start_time"].strftime("%H:%M") if next_m.get("start_time") else "--:--"
+            start_str = next_m["start_time"].astimezone().strftime("%H:%M") if next_m.get("start_time") else "--:--"
             m_title = (next_m.get("title") or "Event").strip()
             
             p_type = next_m.get("pilot_type", "duck")
@@ -354,12 +387,16 @@ class QuakMeetingMenuBar(AppKit.NSObject):
             travel_min = next_m.get("travel_time_minutes")
             dep_dt = next_m.get("departure_time")
             
+            # Find the next strictly future event for the menu bar title
+            future_events = [m for m in today_upcoming if m.get("start_time") and m["start_time"] > now]
+            next_future_m = future_events[0] if future_events else None
+            
             if self.status_item.button():
-                self.status_item.button().setTitle_(self._format_status_title(next_m, now))
+                self.status_item.button().setTitle_(self._format_status_title(next_future_m, now))
             
             if travel_min and isinstance(dep_dt, datetime):
                 dur_str = format_duration(travel_min)
-                next_label = f"{icon_prefix} Next: {start_str} — {m_title} (🚗 ~{dur_str} • Leave at {dep_dt.strftime('%H:%M')})"
+                next_label = f"{icon_prefix} Next: {start_str} — {m_title} (🚗 ~{dur_str} • Leave at {dep_dt.astimezone().strftime('%H:%M')})"
             elif travel_min:
                 dur_str = format_duration(travel_min)
                 next_label = f"{icon_prefix} Next: {start_str} — {m_title} (🚗 ~{dur_str})"
@@ -393,14 +430,50 @@ class QuakMeetingMenuBar(AppKit.NSObject):
             self.menu.addItem_(item_none)
             self.menu.addItem_(AppKit.NSMenuItem.separatorItem())
 
+        all_upcoming = [m for m in self.meetings if (m.get("end_time") and m["end_time"] > now) or (m.get("start_time") and m["start_time"] > now)]
+        
         # 3. Upcoming Today List
         if len(today_upcoming) > 1:
             item_header = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("📅 Today's Events:", None, "")
             item_header.setEnabled_(False)
             self.menu.addItem_(item_header)
             
-            for idx, m in enumerate(today_upcoming[1:6], start=1):
-                start_str = m["start_time"].strftime("%H:%M") if m.get("start_time") else "--:--"
+            for m in today_upcoming[1:6]:
+                try:
+                    idx = all_upcoming.index(m)
+                except ValueError:
+                    continue
+                start_str = m["start_time"].astimezone().strftime("%H:%M") if m.get("start_time") else "--:--"
+                p_type = m.get("pilot_type", "duck")
+                icon = icon_map.get(p_type, "🦆")
+                m_title = (m.get("title") or "Event").strip()
+                title_short = m_title[:24] + "…" if len(m_title) > 24 else m_title
+                
+                tr_min = m.get("travel_time_minutes")
+                sub_text = f"  {icon} {start_str} - {title_short}"
+                if tr_min:
+                    sub_text += f" (~{format_duration(tr_min)})"
+                
+                sub_item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+                    sub_text, "openMeetingItem:", ""
+                )
+                sub_item.setTarget_(self)
+                sub_item.setTag_(idx)
+                self.menu.addItem_(sub_item)
+                
+            self.menu.addItem_(AppKit.NSMenuItem.separatorItem())
+            
+        if tomorrow_upcoming:
+            item_header_tmrw = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("🗓️ Tomorrow:", None, "")
+            item_header_tmrw.setEnabled_(False)
+            self.menu.addItem_(item_header_tmrw)
+            
+            for m in tomorrow_upcoming[:5]:
+                try:
+                    idx = all_upcoming.index(m)
+                except ValueError:
+                    continue
+                start_str = m["start_time"].astimezone().strftime("%H:%M") if m.get("start_time") else "--:--"
                 p_type = m.get("pilot_type", "duck")
                 icon = icon_map.get(p_type, "🦆")
                 m_title = (m.get("title") or "Event").strip()
@@ -512,13 +585,13 @@ class QuakMeetingMenuBar(AppKit.NSObject):
             "pilot_type": "duck",
             "action_btn_text": "🚀 OPEN GOOGLE MEET",
             "action_url": "https://meet.google.com/test",
-            "start_time": datetime.now(),
+            "start_time": datetime.now().astimezone(),
             "is_travel": False
         })
 
     @objc.IBAction
     def openNextMeeting_(self, sender):
-        now = datetime.now()
+        now = datetime.now().astimezone()
         upcoming = [m for m in self.meetings if (m.get("end_time") and m["end_time"] > now) or (m.get("start_time") and m["start_time"] > now)]
         if upcoming:
             url = upcoming[0].get("action_url") or upcoming[0].get("meeting_url")
@@ -528,7 +601,7 @@ class QuakMeetingMenuBar(AppKit.NSObject):
     @objc.IBAction
     def openMeetingItem_(self, sender):
         idx = sender.tag()
-        now = datetime.now()
+        now = datetime.now().astimezone()
         upcoming = [m for m in self.meetings if (m.get("end_time") and m["end_time"] > now) or (m.get("start_time") and m["start_time"] > now)]
         if 0 <= idx < len(upcoming):
             m = upcoming[idx]

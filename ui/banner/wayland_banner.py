@@ -254,8 +254,10 @@ def show_wayland_banner(event_data: Dict[str, Any]) -> None:
 
         timer_id = GLib.timeout_add(40, _step) # ~25 FPS
 
-        # Auto-dismiss after 12 seconds
-        GLib.timeout_add_seconds(12, _close_and_quit)
+        # Auto-dismiss pre-event banners after 12 seconds (stage 0 remains persistent until acknowledged)
+        reminder_stage = event_data.get("reminder_stage")
+        if reminder_stage is None or reminder_stage > 0:
+            GLib.timeout_add_seconds(12, _close_and_quit)
 
     def import_webbrowser():
         import webbrowser

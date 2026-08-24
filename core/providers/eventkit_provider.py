@@ -57,7 +57,8 @@ class EventKitCalendarProvider(BaseCalendarProvider):
         import EventKit
         import Foundation
 
-        now = datetime.now()
+        from datetime import timezone
+        now = datetime.now().astimezone() # Local time to determine 'today' and 'tomorrow' properly
         start_of_today = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(hours=start_offset_hours)
         end_of_tomorrow = (now + timedelta(days=1)).replace(hour=23, minute=59, second=59, microsecond=999999)
 
@@ -86,14 +87,15 @@ class EventKitCalendarProvider(BaseCalendarProvider):
                 EventClassifier.extract_meeting_url(desc)
             )
 
+            from datetime import timezone
             # Convert NSDate to python datetime
             start_ts = ev.startDate().timeIntervalSince1970()
-            start_dt = datetime.fromtimestamp(start_ts)
+            start_dt = datetime.fromtimestamp(start_ts, tz=timezone.utc)
 
             end_dt = None
             if ev.endDate():
                 end_ts = ev.endDate().timeIntervalSince1970()
-                end_dt = datetime.fromtimestamp(end_ts)
+                end_dt = datetime.fromtimestamp(end_ts, tz=timezone.utc)
 
             meeting = EventClassifier.classify(
                 title=title,
