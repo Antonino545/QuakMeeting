@@ -595,7 +595,7 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         upcoming = [m for m in self.meetings if (m.get("end_time") and m["end_time"] > now) or (m.get("start_time") and m["start_time"] > now)]
         if upcoming:
             url = upcoming[0].get("action_url") or upcoming[0].get("meeting_url")
-            if url:
+            if url and url != "https://calendar.apple.com":
                 webbrowser.open(url)
 
     @objc.IBAction
@@ -606,7 +606,7 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         if 0 <= idx < len(upcoming):
             m = upcoming[idx]
             url = m.get("action_url") or m.get("meeting_url")
-            if url:
+            if url and url != "https://calendar.apple.com":
                 webbrowser.open(url)
 
     @objc.IBAction
