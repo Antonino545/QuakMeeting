@@ -7,7 +7,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional, Dict, Any
 
-__version__ = "1.0.0"
+__version__ = "1.0.5"
 
 class PilotType(str, Enum):
     DUCK = "duck"
