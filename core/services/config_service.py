@@ -15,6 +15,7 @@ CONFIG_PATH = os.path.join(CONFIG_DIR, "config.json")
 
 DEFAULT_CONFIG = {
     "meeting_reminder_stages": [20, 10, 5, 2, 0],
+    "general_reminder_stages": [20, 10, 5, 2, 0],
     "travel_reminder_stages": [45, 30, 15, 5, 0],
     "lead_time_meeting_minutes": 6,
     "lead_time_travel_minutes": 35,

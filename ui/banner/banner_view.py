@@ -415,7 +415,7 @@ class QuakPitBannerView(AppKit.NSView):
                 if self.reminder_stage == 0:
                     self.controller.trigger_acknowledge()
                 else:
-                    self.controller.trigger_snooze(900) # 15 minutes
+                    self.controller.trigger_arrived() # Skip event
         elif clicked == "card" and AppKit.NSPointInRect(loc, rects["card"]):
             if self.controller:
                 if self.has_real_url:
@@ -947,7 +947,7 @@ class QuakPitBannerView(AppKit.NSView):
             _draw_snooze_btn("snooze1", rects["snooze1"], "✅ Got it")
         else:
             _draw_snooze_btn("snooze1", rects["snooze1"], "💤 5m")
-            _draw_snooze_btn("snooze2", rects["snooze2"], "💤 15m")
+            _draw_snooze_btn("snooze2", rects["snooze2"], "⏭️ Skip")
 
     def _draw_pilot_speech_bubble(self, px, py):
         """Draws an animated floating speech bubble pointing directly at the pilot."""

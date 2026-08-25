@@ -411,6 +411,72 @@ class QtFlightDeckWindow(QMainWindow):
         pref_layout.setContentsMargins(20, 16, 20, 16)
         pref_layout.setSpacing(14)
 
+
+        # --- Timing & Stages Card ---
+        timing_card = QFrame(pref_widget)
+        timing_card.setObjectName("Card")
+        tc_layout = QVBoxLayout(timing_card)
+        tc_layout.setContentsMargins(18, 14, 18, 14)
+        tc_layout.setSpacing(10)
+
+        tc_title = QLabel("⏱️ Notification Lead Times & Staged Reminders", timing_card)
+        tc_title.setObjectName("CardTitle")
+        tc_sub = QLabel("Select reminder alert windows to receive progressive notifications ahead of time.", timing_card)
+        tc_sub.setObjectName("CardSub")
+        tc_layout.addWidget(tc_title)
+        tc_layout.addWidget(tc_sub)
+
+        def create_stage_row(title, desc, config_key, opts):
+            row_layout = QVBoxLayout()
+            row_layout.setSpacing(4)
+            lbl = QLabel(f"<b>{title}</b>", timing_card)
+            lbl.setStyleSheet("color: #e2e8f0; font-size: 12px;")
+            desc_lbl = QLabel(desc, timing_card)
+            desc_lbl.setStyleSheet("color: #94a3b8; font-size: 11px;")
+            row_layout.addWidget(lbl)
+            row_layout.addWidget(desc_lbl)
+            
+            btn_layout = QHBoxLayout()
+            btn_layout.setSpacing(8)
+            curr_stages = set(config.get(config_key, [20, 10, 5, 2, 0]))
+            
+            for val, label in opts:
+                chk = QCheckBox(label, timing_card)
+                chk.setStyleSheet("QCheckBox { color: #cbd5e1; font-size: 12px; } QCheckBox::indicator { width: 14px; height: 14px; }")
+                chk.setChecked(val in curr_stages)
+                def _toggled(checked, v=val, k=config_key):
+                    c = set(config.get(k, []))
+                    if checked: c.add(v)
+                    else: c.discard(v)
+                    config.set(k, sorted(list(c), reverse=True))
+                chk.toggled.connect(_toggled)
+                btn_layout.addWidget(chk)
+            
+            btn_layout.addStretch()
+            row_layout.addLayout(btn_layout)
+            return row_layout
+
+        meeting_opts = [(30, "30m"), (20, "20m"), (15, "15m"), (10, "10m"), (5, "5m"), (2, "2m"), (0, "0m Start")]
+        travel_opts = [(60, "60m"), (45, "45m"), (30, "30m"), (15, "15m"), (5, "5m"), (2, "2m"), (0, "0m Leave")]
+
+        tc_layout.addLayout(create_stage_row("📹 Video Meetings", "Alert ahead of meeting start time", "meeting_reminder_stages", meeting_opts))
+        
+        tc_div1 = QFrame(timing_card)
+        tc_div1.setFixedHeight(1)
+        tc_div1.setStyleSheet("background-color: rgba(255,255,255,0.05);")
+        tc_layout.addWidget(tc_div1)
+        
+        tc_layout.addLayout(create_stage_row("📅 General Events", "Alert ahead of start time (non-travel)", "general_reminder_stages", meeting_opts))
+
+        tc_div2 = QFrame(timing_card)
+        tc_div2.setFixedHeight(1)
+        tc_div2.setStyleSheet("background-color: rgba(255,255,255,0.05);")
+        tc_layout.addWidget(tc_div2)
+
+        tc_layout.addLayout(create_stage_row("🚗 Travel & Trips", "Alert ahead of leave / departure time", "travel_reminder_stages", travel_opts))
+
+        pref_layout.addWidget(timing_card)
+
         # --- Multi-Modal Travel & Route Estimation Card ---
         addr_card = QFrame(pref_widget)
         addr_card.setObjectName("Card")
@@ -840,7 +906,14 @@ class QtFlightDeckWindow(QMainWindow):
         pref_layout.addWidget(util_card)
 
         pref_layout.addStretch()
-        self.tabs.addTab(pref_widget, "⚙️ Preferences")
+        
+        pref_scroll = QScrollArea()
+        pref_scroll.setWidgetResizable(True)
+        pref_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        pref_scroll.setStyleSheet("QScrollArea { background: transparent; }")
+        pref_scroll.setWidget(pref_widget)
+        
+        self.tabs.addTab(pref_scroll, "⚙️ Preferences")
 
         self.tabs.setCurrentIndex(tab_index)
         main_layout.addWidget(self.tabs)

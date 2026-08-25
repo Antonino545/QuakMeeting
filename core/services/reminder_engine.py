@@ -73,8 +73,10 @@ class ReminderEngine:
         """Retrieve configured stage intervals (minutes before start) for a given meeting type."""
         if meeting.is_travel:
             stages = list(self.config.get("travel_reminder_stages", [45, 30, 15, 5, 2, 0]))
-        else:
+        elif meeting.event_type == "video_meeting":
             stages = list(self.config.get("meeting_reminder_stages", [20, 10, 5, 2, 0]))
+        else:
+            stages = list(self.config.get("general_reminder_stages", [20, 10, 5, 2, 0]))
 
         # Ensure 0 (start time) is always checked unless empty
         if 0 not in stages:

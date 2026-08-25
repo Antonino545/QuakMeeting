@@ -35,7 +35,7 @@ class SettingsTabController(AppKit.NSObject):
         card_w = w - 16.0
         gap = 14.0
 
-        c1_h = 216.0 # Notification Lead Times
+        c1_h = 268.0 # Notification Lead Times
         c_eta_h = 216.0 # Home / Departure Address & Apple Maps ETA
         c2_h = 216.0 # Screen Banner & Menu Bar Live Display Dynamics
         c3_h = 164.0 # Sound Chimes
@@ -205,9 +205,9 @@ class SettingsTabController(AppKit.NSObject):
             border_rgba=(1.0, 0.6, 0.1, 0.38)
         )
 
-        # 1. Video Meeting & General Stages
+        # 1. Video Meeting Stages
         r1_y = h - 84.0
-        self._add_row_label(card, "📹 Meetings & General", "Alert ahead of start time (non-travel events)", r1_y, 220)
+        self._add_row_label(card, "📹 Video Meetings", "Alert ahead of meeting start time", r1_y, 220)
 
         curr_meeting_stages = set(self.config.get("meeting_reminder_stages", [20, 10, 5, 2, 0]))
         meeting_opts = [(30, "30m"), (20, "20m"), (15, "15m"), (10, "10m"), (5, "5m"), (2, "2m"), (0, "0m Start")]
@@ -228,9 +228,31 @@ class SettingsTabController(AppKit.NSObject):
 
         self._add_row_divider(card, h - 108.0, w)
 
-        # 2. Travel Stages (Before Departure Time)
+        # 2. General Event Stages
         r2_y = h - 136.0
-        self._add_row_label(card, "🚗 Travel & Trips", "Alert ahead of leave / departure time", r2_y, 220)
+        self._add_row_label(card, "📅 General Events", "Alert ahead of start time (non-travel)", r2_y, 220)
+
+        curr_general_stages = set(self.config.get("general_reminder_stages", [20, 10, 5, 2, 0]))
+        
+        x_btn = 245.0
+        for val, label in meeting_opts:
+            btn_w = 60.0 if val != 0 else 92.0
+            chk = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(x_btn, r2_y - 10, btn_w, 24))
+            chk.setButtonType_(AppKit.NSButtonTypeSwitch)
+            chk.setTitle_(label)
+            chk.setFont_(AppKit.NSFont.systemFontOfSize_(11.5))
+            chk.setState_(AppKit.NSControlStateValueOn if val in curr_general_stages else AppKit.NSControlStateValueOff)
+            chk.setTag_(val)
+            chk.setTarget_(self)
+            chk.setAction_("onToggleGeneralStage:")
+            card.addSubview_(chk)
+            x_btn += (btn_w + 6.0)
+
+        self._add_row_divider(card, h - 160.0, w)
+
+        # 3. Travel Stages (Before Departure Time)
+        r3_y = h - 188.0
+        self._add_row_label(card, "🚗 Travel & Trips", "Alert ahead of leave / departure time", r3_y, 220)
 
         curr_travel_stages = set(self.config.get("travel_reminder_stages", [45, 30, 15, 5, 2, 0]))
         travel_opts = [(60, "60m"), (45, "45m"), (30, "30m"), (15, "15m"), (5, "5m"), (2, "2m"), (0, "0m Leave")]
@@ -238,7 +260,7 @@ class SettingsTabController(AppKit.NSObject):
         x_btn = 245.0
         for val, label in travel_opts:
             btn_w = 60.0 if val != 0 else 92.0
-            chk = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(x_btn, r2_y - 10, btn_w, 24))
+            chk = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(x_btn, r3_y - 10, btn_w, 24))
             chk.setButtonType_(AppKit.NSButtonTypeSwitch)
             chk.setTitle_(label)
             chk.setFont_(AppKit.NSFont.systemFontOfSize_(11.5))
@@ -249,14 +271,14 @@ class SettingsTabController(AppKit.NSObject):
             card.addSubview_(chk)
             x_btn += (btn_w + 6.0)
 
-        self._add_row_divider(card, h - 160.0, w)
+        self._add_row_divider(card, h - 212.0, w)
 
-        # 3. Snooze
-        r3_y = h - 188.0
+        # 4. Snooze
+        r4_y = h - 240.0
         snooze_val = self.config.get("default_snooze_seconds", 120) // 60
-        self._add_row_label(card, "💤 Snooze Duration", "Interval delay when clicking Snooze on a banner", r3_y, 220)
+        self._add_row_label(card, "💤 Snooze Duration", "Interval delay when clicking Snooze on a banner", r4_y, 220)
 
-        snooze_popup = AppKit.NSPopUpButton.alloc().initWithFrame_pullsDown_(AppKit.NSMakeRect(245, r3_y - 12, 260, 28), False)
+        snooze_popup = AppKit.NSPopUpButton.alloc().initWithFrame_pullsDown_(AppKit.NSMakeRect(245, r4_y - 12, 260, 28), False)
         snooze_popup.setFont_(AppKit.NSFont.systemFontOfSize_(12.5))
         snooze_popup.setTarget_(self)
         snooze_popup.setAction_("onSelectSnoozeDuration:")
@@ -718,6 +740,16 @@ class SettingsTabController(AppKit.NSObject):
         else:
             curr.discard(val)
         self.config.set("meeting_reminder_stages", sorted(list(curr), reverse=True))
+
+    @objc.IBAction
+    def onToggleGeneralStage_(self, sender):
+        val = sender.tag()
+        curr = set(self.config.get("general_reminder_stages", [20, 10, 5, 2, 0]))
+        if sender.state() == AppKit.NSControlStateValueOn:
+            curr.add(val)
+        else:
+            curr.discard(val)
+        self.config.set("general_reminder_stages", sorted(list(curr), reverse=True))
 
     @objc.IBAction
     def onToggleTravelStage_(self, sender):
