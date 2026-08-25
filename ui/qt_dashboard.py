@@ -500,11 +500,30 @@ class QtFlightDeckWindow(QMainWindow):
 
         # Action Buttons Row
         act_row = QHBoxLayout()
+        act_row.setContentsMargins(0, 4, 0, 0)
         install_btn = QPushButton("⚡ Download & Install Update", update_status_box)
-        install_btn.setObjectName("PrimaryBtn")
         install_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        install_btn.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0284c7, stop:1 #2563eb);
+                color: #ffffff;
+                font-weight: bold;
+                font-size: 12px;
+                border-radius: 8px;
+                padding: 8px 16px;
+                border: none;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #38bdf8, stop:1 #3b82f6);
+            }
+            QPushButton:disabled {
+                background: rgba(255, 255, 255, 0.08);
+                color: #64748b;
+            }
+        """)
         install_btn.setVisible(False)
         act_row.addWidget(install_btn)
+        usb_layout.addLayout(act_row)
 
         uc_layout.addWidget(update_status_box)
 
