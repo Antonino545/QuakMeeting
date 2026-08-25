@@ -205,9 +205,9 @@ class SettingsTabController(AppKit.NSObject):
             border_rgba=(1.0, 0.6, 0.1, 0.38)
         )
 
-        # 1. Video Meeting Stages
+        # 1. Video Meeting & General Stages
         r1_y = h - 84.0
-        self._add_row_label(card, "📹 Video Meetings", "Alert ahead of meeting start time", r1_y, 220)
+        self._add_row_label(card, "📹 Meetings & General", "Alert ahead of start time (non-travel events)", r1_y, 220)
 
         curr_meeting_stages = set(self.config.get("meeting_reminder_stages", [20, 10, 5, 2, 0]))
         meeting_opts = [(30, "30m"), (20, "20m"), (15, "15m"), (10, "10m"), (5, "5m"), (2, "2m"), (0, "0m Start")]
