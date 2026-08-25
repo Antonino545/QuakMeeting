@@ -387,16 +387,8 @@ class QtFlightDeckWindow(QMainWindow):
                         from ui.banner.qt_banner import get_test_preset
                         evt = dict(get_test_preset(p_id_val))
 
-                    if sys.platform.startswith("linux"):
-                        try:
-                            from ui.banner.wayland_banner import show_wayland_banner
-                            show_wayland_banner(evt)
-                        except Exception:
-                            from ui.banner.qt_banner import show_qt_banner
-                            show_qt_banner(evt)
-                    else:
-                        from ui.banner.qt_banner import show_qt_banner
-                        show_qt_banner(evt)
+                    from ui.banner.qt_banner import show_qt_banner
+                    show_qt_banner(evt)
                 except Exception as ex:
                     logger.error(f"Error triggering test flight banner: {ex}")
 
@@ -585,16 +577,8 @@ class QtFlightDeckWindow(QMainWindow):
                     "maps_url": maps_url
                 }
 
-                if sys.platform.startswith("linux"):
-                    try:
-                        from ui.banner.wayland_banner import show_wayland_banner
-                        show_wayland_banner(evt)
-                    except Exception:
-                        from ui.banner.qt_banner import show_qt_banner
-                        show_qt_banner(evt)
-                else:
-                    from ui.banner.qt_banner import show_qt_banner
-                    show_qt_banner(evt)
+                from ui.banner.qt_banner import show_qt_banner
+                show_qt_banner(evt)
             except Exception as e:
                 logger.error(f"Error testing live departure banner: {e}")
 

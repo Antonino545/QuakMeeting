@@ -281,10 +281,10 @@ def run_linux_app():
             data = event_dict or (meeting.to_dict() if hasattr(meeting, "to_dict") else meeting) or {}
             if stage is not None and "reminder_stage" not in data:
                 data["reminder_stage"] = stage
-            from ui.banner.wayland_banner import show_wayland_banner
-            show_wayland_banner(data)
+            from ui.banner.qt_banner import show_qt_banner
+            show_qt_banner(data)
         except Exception as e:
-            logger.error(f"Error showing banner: {e}")
+            logger.error(f"Error showing Qt banner: {e}")
 
     def on_update_state_changed(**kwargs):
         GLib.idle_add(build_menu)

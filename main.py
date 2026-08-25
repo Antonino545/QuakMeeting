@@ -102,9 +102,6 @@ def main():
                 controller = QuakPitFlyingBanner(test_m, on_close_callback=_on_test_done)
                 controller.show()
                 app.run()
-            elif sys.platform.startswith("linux"):
-                from ui.banner.wayland_banner import show_wayland_banner
-                show_wayland_banner(test_m)
             else:
                 from ui.banner.qt_banner import show_qt_banner
                 show_qt_banner(test_m)
