@@ -21,6 +21,8 @@ from core.providers.base import BaseCalendarProvider
 from core.providers.eventkit_provider import EventKitCalendarProvider
 from core.providers.caldav_provider import CalDAVCalendarProvider
 
+from core.repositories.meeting_repository import MeetingRepository
+
 logger = logging.getLogger("QuakMeeting.CalendarService")
 
 CACHE_DIR = os.path.expanduser("~/.quakmeeting")
@@ -44,6 +46,7 @@ class CalendarService:
             return
         self.config = config or config_service
         self.bus = bus or event_bus
+        self.repository = MeetingRepository(CACHE_FILE)
         
         # Select best available provider based on platform (EventKit on macOS, CalDAV on Linux)
         if provider:
@@ -126,43 +129,41 @@ class CalendarService:
                             m.action_btn_text = f"🗺️ CYCLING ROUTE (~{dur_str})"
 
     def _save_cache_to_disk(self, meetings: List[Meeting]) -> None:
-        try:
-            os.makedirs(CACHE_DIR, exist_ok=True)
-            serializable = [m.to_serializable_dict() for m in meetings]
-            with open(CACHE_FILE, "w", encoding="utf-8") as f:
-                json.dump(serializable, f, ensure_ascii=False, indent=2)
-        except Exception as e:
-            logger.warning(f"Error saving calendar cache to disk: {e}")
+        self.repository.save(meetings)
 
     def _filter_within_window(self, meetings: List[Meeting]) -> List[Meeting]:
-        """Filters events within a rolling window to support early morning / next day events."""
+        """Filters events to only include those happening Today (00:00 to 23:59:59)."""
         from datetime import timezone
-        now = datetime.now(timezone.utc)
-        
-        window_hours = float(self.config.get("lookahead_hours", 48))
-        cutoff = now + timedelta(hours=window_hours)
+        now = datetime.now().astimezone() # Local time to determine 'today' properly
+        start_of_today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_of_today = now.replace(hour=23, minute=59, second=59, microsecond=999999)
 
         filtered = [
             m for m in meetings 
-            if (m.start_time and now <= m.start_time <= cutoff) or 
-               (m.departure_time and now <= m.departure_time <= cutoff) or
-               (m.end_time and m.start_time and m.start_time <= now <= m.end_time)
+            if (m.start_time and start_of_today <= m.start_time.astimezone() <= end_of_today) or 
+               (m.departure_time and start_of_today <= m.departure_time.astimezone() <= end_of_today) or
+               (m.end_time and m.start_time and m.start_time.astimezone() <= now <= m.end_time.astimezone())
         ]
-        filtered.sort(key=lambda m: m.start_time)
-        return filtered
+        
+        # Deduplicate events based on title and start time to prevent sync duplication
+        seen = set()
+        deduped = []
+        for m in filtered:
+            key = (m.title, m.start_time.timestamp() if m.start_time else 0)
+            if key not in seen:
+                seen.add(key)
+                deduped.append(m)
+
+        deduped.sort(key=lambda m: m.start_time)
+        return deduped
 
     def _load_cache_from_disk(self) -> List[Meeting]:
-        if os.path.exists(CACHE_FILE):
-            try:
-                with open(CACHE_FILE, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                loaded = [Meeting.from_dict(item) for item in data]
-                filtered = self._filter_within_window(loaded)
-                self._in_memory_cache = filtered
-                self._last_fetch_time = os.path.getmtime(CACHE_FILE)
-                return filtered
-            except Exception as e:
-                logger.warning(f"Error loading calendar cache from disk: {e}")
+        loaded = self.repository.load()
+        if loaded:
+            filtered = self._filter_within_window(loaded)
+            self._in_memory_cache = filtered
+            self._last_fetch_time = self.repository.get_last_modified_time()
+            return filtered
         return []
 
     def sync_now(self) -> List[Meeting]:

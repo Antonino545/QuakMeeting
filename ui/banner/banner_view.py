@@ -283,7 +283,10 @@ class QuakPitBannerView(AppKit.NSView):
         if self.has_maps_url:
             btn_arrived_rect = AppKit.NSMakeRect(banner_x + 246, banner_y + 12, 100, 33)
             if is_stage_zero:
-                btn_snooze1_rect = AppKit.NSMakeRect(banner_x + 354, banner_y + 12, 163, 33)
+                if not self.has_real_url:
+                    btn_snooze1_rect = AppKit.NSMakeRect(0, 0, 0, 0)
+                else:
+                    btn_snooze1_rect = AppKit.NSMakeRect(banner_x + 354, banner_y + 12, 163, 33)
                 btn_snooze2_rect = AppKit.NSMakeRect(0, 0, 0, 0)
             else:
                 btn_snooze1_rect = AppKit.NSMakeRect(banner_x + 354, banner_y + 12, 85, 33)
@@ -291,7 +294,10 @@ class QuakPitBannerView(AppKit.NSView):
         else:
             btn_arrived_rect = AppKit.NSMakeRect(0, 0, 0, 0)
             if is_stage_zero:
-                btn_snooze1_rect = AppKit.NSMakeRect(banner_x + 246, banner_y + 12, 208, 33)
+                if not self.has_real_url:
+                    btn_snooze1_rect = AppKit.NSMakeRect(0, 0, 0, 0)
+                else:
+                    btn_snooze1_rect = AppKit.NSMakeRect(banner_x + 246, banner_y + 12, 208, 33)
                 btn_snooze2_rect = AppKit.NSMakeRect(0, 0, 0, 0)
             else:
                 btn_snooze1_rect = AppKit.NSMakeRect(banner_x + 246, banner_y + 12, 100, 33)

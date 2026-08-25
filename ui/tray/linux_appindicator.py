@@ -105,84 +105,7 @@ def run_linux_app():
         AppIndicator3.IndicatorCategory.APPLICATION_STATUS
     )
     indicator.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
-
-    def _format_status_title(next_m, now: datetime) -> str:
-        mode = config.get("menubar_status_mode", "countdown")
-        if not next_m:
-            return "🦆" if mode == "icon_only" else "🦆 QuakMeeting"
-            
-        icon_map = {"chef": "🍕", "captain": "✈️", "owl": "🎓", "driver": "🚗", "zen_duck": "🛋️", "duck": "🦆"}
-        p_type = getattr(next_m, "pilot_type", "duck")
-        icon_prefix = icon_map.get(p_type, "🦆")
-        
-        if mode == "icon_only":
-            return icon_prefix
-            
-        start_dt = getattr(next_m, "start_time", None)
-        end_dt = getattr(next_m, "end_time", None)
-        dep_dt = getattr(next_m, "departure_time", None)
-        travel_min = getattr(next_m, "travel_time_minutes", 0)
-        m_title = (getattr(next_m, "title", "Event") or "Event").strip()
-        title_short = m_title[:14] + "…" if len(m_title) > 14 else m_title
-        
-        start_str = start_dt.strftime("%H:%M") if isinstance(start_dt, datetime) else "--:--"
-        max_lookahead_min = int(config.get("max_countdown_lookahead_hours", 3)) * 60
-
-        if mode == "event_time":
-            if travel_min:
-                dur_str = format_duration(travel_min)
-                return f"{icon_prefix} {start_str} {title_short} (~{dur_str})"
-            return f"{icon_prefix} {start_str} {title_short}"
-            
-        elif mode == "time_only":
-            if isinstance(start_dt, datetime):
-                diff_m = int(round((start_dt - now).total_seconds() / 60.0))
-                if 0 < diff_m <= max_lookahead_min:
-                    if diff_m >= 60:
-                        hrs = diff_m // 60
-                        mins = diff_m % 60
-                        t_part = f"{hrs}h" if mins == 0 else f"{hrs}h{mins:02d}m"
-                        return f"{icon_prefix} {start_str} (in {t_part})"
-                    return f"{icon_prefix} {start_str} (in {diff_m}m)"
-                elif diff_m == 0:
-                    return f"{icon_prefix} {start_str} (Now!)"
-                elif end_dt and isinstance(end_dt, datetime) and now < end_dt:
-                    return f"{icon_prefix} {start_str} (Active)"
-            return f"{icon_prefix} {start_str}"
-            
-        else: # "countdown" (Default & Most Informative)
-            if dep_dt and isinstance(dep_dt, datetime):
-                diff_dep = int(round((dep_dt - now).total_seconds() / 60.0))
-                if 0 < diff_dep <= max_lookahead_min:
-                    if diff_dep >= 60:
-                        hrs = diff_dep // 60
-                        mins = diff_dep % 60
-                        t_part = f"{hrs}h" if mins == 0 else f"{hrs}h{mins:02d}m"
-                        return f"{icon_prefix} Leave in {t_part} ({title_short})"
-                    return f"{icon_prefix} Leave in {diff_dep}m ({title_short})"
-                elif -10 <= diff_dep <= 0:
-                    return f"🚨 {icon_prefix} Leave NOW! ({title_short})"
-                elif diff_dep > max_lookahead_min:
-                    return f"{icon_prefix} {start_str} {title_short}"
-
-            if isinstance(start_dt, datetime):
-                diff_start = int(round((start_dt - now).total_seconds() / 60.0))
-                if 0 < diff_start <= max_lookahead_min:
-                    if diff_start >= 60:
-                        hrs = diff_start // 60
-                        mins = diff_start % 60
-                        t_part = f"{hrs}h" if mins == 0 else f"{hrs}h{mins:02d}m"
-                        return f"{icon_prefix} in {t_part}: {title_short}"
-                    return f"{icon_prefix} in {diff_start}m: {title_short}"
-                elif diff_start == 0:
-                    return f"🔔 {icon_prefix} Starting NOW: {title_short}"
-                elif end_dt and isinstance(end_dt, datetime) and now < end_dt:
-                    diff_end = int(round((end_dt - now).total_seconds() / 60.0))
-                    return f"🟢 {icon_prefix} {title_short} ({diff_end}m left)"
-                elif diff_start > max_lookahead_min:
-                    return f"{icon_prefix} {start_str} {title_short}"
-                    
-            return f"{icon_prefix} {start_str} {title_short}"
+    from ui.viewmodels.tray_viewmodel import TrayViewModel
 
     def build_menu():
         menu = Gtk.Menu()
@@ -331,26 +254,25 @@ def run_linux_app():
         import webbrowser
         return webbrowser
 
-    def update_tick():
+    def on_agenda_updated(meeting_objects=None, **kwargs):
+        if meeting_objects is None: return
         try:
-            reminder_engine.check_and_notify()
             now = datetime.now()
-            meetings = calendar_service.get_upcoming_meetings()
-            today_up = [m for m in meetings if m.start_time and m.start_time.date() == now.date() and ((m.end_time and m.end_time > now) or m.start_time > now)]
+            today_up = [m for m in meeting_objects if m.start_time and m.start_time.date() == now.date() and ((m.end_time and m.end_time > now) or m.start_time > now)]
             
-            if today_up:
-                title = _format_status_title(today_up[0], now)
-                indicator.set_label(title, "")
-            else:
-                title = _format_status_title(None, now)
-                indicator.set_label(title, "")
-            build_menu()
+            primary_m = today_up[0] if today_up else None
+            max_lookahead_min = int(config.get("max_countdown_lookahead_hours", 3)) * 60
+            status_mode = config.get("menubar_status_mode", "countdown")
+            title_str = TrayViewModel.get_status_bar_title(primary_m, now, status_mode, max_lookahead_min)
+            
+            # GLib.idle_add ensures GTK operations run on the main thread
+            GLib.idle_add(indicator.set_label, title_str, "QuakMeeting")
+            GLib.idle_add(build_menu)
         except Exception as e:
-            logger.warning(f"Error in Linux tick: {e}")
-        return True
+            logger.warning(f"Error updating Linux tray: {e}")
 
+    event_bus.subscribe("AGENDA_UPDATED", on_agenda_updated)
     build_menu()
-    GLib.timeout_add_seconds(15, update_tick)
 
     def on_banner_trigger(event_dict=None, meeting=None, stage=None, **kwargs):
         try:

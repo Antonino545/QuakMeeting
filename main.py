@@ -112,6 +112,9 @@ def main():
 
         logger.info("Initializing QuakMeeting Menu Bar and Flight Deck UI...")
         print(" Launching Menu Bar icon and Flight Deck...")
+        
+        from core.app_controller import app_controller
+        app_controller.start_background_loop()
 
         if sys.platform == "darwin":
             from ui.menu_bar_app import QuakMeetingMenuBar

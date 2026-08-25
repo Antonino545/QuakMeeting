@@ -14,16 +14,21 @@ from typing import Dict, Any, Optional, Callable
 
 from core.services.config_service import config
 from .banner_view import QuakPitBannerView
+from .quiet_banner_view import QuietReminderView
 
 logger = logging.getLogger("QuakMeeting.BannerController")
 
-class QuakPitFlyingBanner:
-    def __init__(self, meeting_data: Dict[str, Any], on_close_callback: Optional[Callable] = None):
+class QuakPitFlyingBanner(AppKit.NSObject):
+    def initWithMeetingData_callback_(self, meeting_data: Dict[str, Any], on_close_callback: Optional[Callable] = None):
+        self = objc.super(QuakPitFlyingBanner, self).init()
+        if self is None:
+            return None
         self.meeting_data = meeting_data
         self.on_close_callback = on_close_callback
         self.window = None
         self.timer = None
         self.action_url = meeting_data.get("action_url") or meeting_data.get("meeting_url")
+        return self
         
     def show(self) -> None:
         mouse_loc = AppKit.NSEvent.mouseLocation()
@@ -37,16 +42,25 @@ class QuakPitFlyingBanner:
             
         screen_rect = target_screen.frame() if target_screen else AppKit.NSMakeRect(0, 0, 1440, 900)
         
-        window_w = screen_rect.size.width
-        window_h = 220.0
+        is_quiet = self.meeting_data.get("is_quiet_reminder", False)
         
-        banner_pos = config.get("banner_position", "top")
-        if banner_pos == "bottom":
-            y_pos = screen_rect.origin.y + 40.0
+        if is_quiet:
+            window_w = 320.0
+            window_h = 80.0
+            x_pos = screen_rect.origin.x + (screen_rect.size.width - window_w) / 2.0
+            y_pos = screen_rect.origin.y + (screen_rect.size.height - window_h) / 2.0
+            frame = AppKit.NSMakeRect(x_pos, y_pos, window_w, window_h)
         else:
-            y_pos = screen_rect.origin.y + screen_rect.size.height - window_h - 20.0
+            window_w = screen_rect.size.width
+            window_h = 220.0
             
-        frame = AppKit.NSMakeRect(screen_rect.origin.x, y_pos, window_w, window_h)
+            banner_pos = config.get("banner_position", "top")
+            if banner_pos == "bottom":
+                y_pos = screen_rect.origin.y + 40.0
+            else:
+                y_pos = screen_rect.origin.y + screen_rect.size.height - window_h - 20.0
+                
+            frame = AppKit.NSMakeRect(screen_rect.origin.x, y_pos, window_w, window_h)
         
         style_mask = AppKit.NSWindowStyleMaskBorderless
         
@@ -78,11 +92,26 @@ class QuakPitFlyingBanner:
         )
         self.window.setCollectionBehavior_(behavior)
         
-        self.banner_view = QuakPitBannerView.alloc().initWithFrame_meetingData_controller_(
-            AppKit.NSMakeRect(0, 0, window_w, window_h),
-            self.meeting_data,
-            self
-        )
+        if is_quiet:
+            self.banner_view = QuietReminderView.alloc().initWithFrame_meetingData_controller_(
+                AppKit.NSMakeRect(0, 0, window_w, window_h),
+                self.meeting_data,
+                self
+            )
+            # Auto dismiss after 6 seconds on main thread
+            AppKit.NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
+                6.0,
+                self,
+                objc.selector(self.dismissAction_, signature=b"v@:@"),
+                None,
+                False
+            )
+        else:
+            self.banner_view = QuakPitBannerView.alloc().initWithFrame_meetingData_controller_(
+                AppKit.NSMakeRect(0, 0, window_w, window_h),
+                self.meeting_data,
+                self
+            )
         self.window.setContentView_(self.banner_view)
         
         # Display above everything on the active space
@@ -156,6 +185,10 @@ class QuakPitFlyingBanner:
         logger.info(f"User acknowledged reminder for: '{title}'")
         self.dismiss()
 
+    @objc.IBAction
+    def dismissAction_(self, sender):
+        self.dismiss()
+
     def dismiss(self) -> None:
         if self.timer:
             self.timer.invalidate()
@@ -181,7 +214,7 @@ def _maybe_show_next_banner() -> None:
             _current_banner_controller = None
             _maybe_show_next_banner()
             
-        controller = QuakPitFlyingBanner(next_item.meeting_data, on_close_callback=_on_close)
+        controller = QuakPitFlyingBanner.alloc().initWithMeetingData_callback_(next_item.meeting_data, _on_close)
         _current_banner_controller = controller
         controller.show()
 

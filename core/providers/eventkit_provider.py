@@ -50,6 +50,8 @@ class EventKitCalendarProvider(BaseCalendarProvider):
         return self._get_store() is not None
 
     def fetch_events(self, start_offset_hours: int = 2, end_offset_hours: int = 24) -> List[Meeting]:
+        # Always recreate the store to guarantee absolutely fresh data and drop all internal caches
+        self._store = None
         store = self._get_store()
         if not store:
             return []

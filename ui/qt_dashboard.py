@@ -280,8 +280,8 @@ class QtFlightDeckWindow(QMainWindow):
                 info_box = QVBoxLayout()
                 info_box.setSpacing(2)
 
-                st = m.start_time.strftime("%H:%M") if m.start_time else "--:--"
-                et = m.end_time.strftime("%H:%M") if m.end_time else ""
+                st = m.start_time.astimezone().strftime("%H:%M") if m.start_time else "--:--"
+                et = m.end_time.astimezone().strftime("%H:%M") if m.end_time else ""
                 dur_str = f" ({format_duration(m.duration_minutes)})" if m.duration_minutes else ""
 
                 t_l = QLabel(m.title, card)
@@ -289,7 +289,7 @@ class QtFlightDeckWindow(QMainWindow):
 
                 sub_txt = f"<b style='color:#38bdf8;'>{st} - {et}{dur_str}</b>  •  {m.provider}"
                 if m.is_travel and m.departure_time:
-                    sub_txt += f"  •  <span style='color:#fbbf24;'>🚗 Leave at {m.departure_time.strftime('%H:%M')}</span>"
+                    sub_txt += f"  •  <span style='color:#fbbf24;'>🚗 Leave at {m.departure_time.astimezone().strftime('%H:%M')}</span>"
                 if m.classroom:
                     sub_txt += f"  •  <span style='color:#c084fc;'>🏫 {m.classroom}</span>"
 

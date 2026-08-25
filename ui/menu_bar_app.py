@@ -20,6 +20,7 @@ from core.services.config_service import config
 from core.logger import setup_logging, logger, open_log_file, open_log_folder
 from ui.banner import show_banner_async, _run_banner
 from ui.dashboard_window import show_dashboard
+from ui.viewmodels.tray_viewmodel import TrayViewModel
 
 class QuakMeetingAppDelegate(AppKit.NSObject):
     def applicationDidFinishLaunching_(self, notification):
@@ -87,11 +88,7 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         event_bus.subscribe("REMINDER_TRIGGERED", self._on_reminder_triggered)
         event_bus.subscribe("CALENDAR_SYNCED", self._on_calendar_synced)
         event_bus.subscribe("CONFIG_CHANGED", self._on_config_changed)
-        
-        # Periodic background scanner loop
-        self.is_scanning = True
-        self.scanner_thread = threading.Thread(target=self._background_scanner_loop, daemon=True)
-        self.scanner_thread.start()
+        event_bus.subscribe("AGENDA_UPDATED", self._on_agenda_updated)
         
         self.build_menu()
         return self
@@ -206,32 +203,7 @@ class QuakMeetingMenuBar(AppKit.NSObject):
 
     def _on_reminder_triggered(self, meeting: Meeting, stage: int) -> None:
         m_dict = meeting.to_dict() if isinstance(meeting, Meeting) else meeting
-        is_quiet = getattr(meeting, "is_quiet_reminder", False) or m_dict.get("is_quiet_reminder", False)
-        
-        if is_quiet:
-            self._show_macos_notification(m_dict, stage)
-        else:
-            show_banner_async(m_dict)
-
-    def _show_macos_notification(self, m_dict: dict, stage: int) -> None:
-        title = m_dict.get("title", "Upcoming Meeting")
-        start_time = m_dict.get("start_time")
-        if start_time and hasattr(start_time, "astimezone"):
-            time_str = start_time.astimezone().strftime("%H:%M")
-        else:
-            time_str = ""
-            
-        if stage == 0:
-            subtitle = f"Starts NOW at {time_str}"
-        else:
-            subtitle = f"Starts in {stage}m (at {time_str})"
-            
-        import subprocess
-        script = f'display notification "{subtitle}" with title "QuakMeeting" subtitle "{title}"'
-        try:
-            subprocess.run(["osascript", "-e", script], capture_output=True)
-        except Exception as e:
-            logger.error(f"Failed to show macOS notification: {e}")
+        show_banner_async(m_dict)
 
     def _on_calendar_synced(self, meetings: List[Any]) -> None:
         self.meetings = [m.to_dict() if isinstance(m, Meeting) else m for m in meetings]
@@ -253,89 +225,7 @@ class QuakMeetingMenuBar(AppKit.NSObject):
     def refreshMenuOnMainThread_(self, sender):
         self.build_menu()
 
-    def _format_status_title(self, next_m: Optional[Dict[str, Any]], now: datetime) -> str:
-        """Formats the macOS status bar tray title according to the chosen live status mode."""
-        mode = config.get("menubar_status_mode", "countdown")
-        if not next_m:
-            return "🦆" if mode == "icon_only" else "🦆 QuakMeeting"
-            
-        icon_map = {"chef": "🍕", "captain": "✈️", "owl": "🎓", "driver": "🚗", "zen_duck": "🛋️", "duck": "🦆"}
-        p_type = next_m.get("pilot_type", "duck")
-        icon_prefix = icon_map.get(p_type, "🦆")
-        
-        if mode == "icon_only":
-            return icon_prefix
-            
-        start_dt = next_m.get("start_time")
-        end_dt = next_m.get("end_time")
-        dep_dt = next_m.get("departure_time")
-        travel_min = next_m.get("travel_time_minutes")
-        m_title = (next_m.get("title") or "Event").strip()
-        title_short = m_title[:14] + "…" if len(m_title) > 14 else m_title
-        
-        start_str = start_dt.astimezone().strftime("%H:%M") if isinstance(start_dt, datetime) else "--:--"
-        
-        max_lookahead_min = int(config.get("max_countdown_lookahead_hours", 3)) * 60
-
-        if mode == "event_time":
-            if travel_min:
-                dur_str = format_duration(travel_min)
-                return f"{icon_prefix} {start_str} {title_short} (~{dur_str})"
-            return f"{icon_prefix} {start_str} {title_short}"
-            
-        elif mode == "time_only":
-            if isinstance(start_dt, datetime):
-                diff_m = int(round((start_dt - now).total_seconds() / 60.0))
-                if 0 < diff_m <= max_lookahead_min:
-                    if diff_m >= 60:
-                        hrs = diff_m // 60
-                        mins = diff_m % 60
-                        t_part = f"{hrs}h" if mins == 0 else f"{hrs}h{mins:02d}m"
-                        return f"{icon_prefix} {start_str} (in {t_part})"
-                    return f"{icon_prefix} {start_str} (in {diff_m}m)"
-                elif diff_m == 0:
-                    return f"{icon_prefix} {start_str} (Now!)"
-                elif end_dt and isinstance(end_dt, datetime) and now < end_dt:
-                    return f"{icon_prefix} {start_str} (Active)"
-            return f"{icon_prefix} {start_str}"
-            
-        else: # "countdown" (Default & Most Informative)
-            # 1. Check Departure / Leave Time for travel events
-            if dep_dt and isinstance(dep_dt, datetime):
-                diff_dep = int(round((dep_dt - now).total_seconds() / 60.0))
-                if 0 < diff_dep <= max_lookahead_min:
-                    if diff_dep >= 60:
-                        hrs = diff_dep // 60
-                        mins = diff_dep % 60
-                        t_part = f"{hrs}h" if mins == 0 else f"{hrs}h{mins:02d}m"
-                        return f"{icon_prefix} Leave in {t_part} ({title_short})"
-                    return f"{icon_prefix} Leave in {diff_dep}m ({title_short})"
-                elif -10 <= diff_dep <= 0:
-                    return f"🚨 {icon_prefix} Leave NOW! ({title_short})"
-                elif diff_dep > max_lookahead_min:
-                    # Beyond maximum lookahead (e.g. > 3 hours away), display clean start time
-                    return f"{icon_prefix} {start_str} {title_short}"
-
-            # 2. Check Event Start Time
-            if isinstance(start_dt, datetime):
-                diff_start = int(round((start_dt - now).total_seconds() / 60.0))
-                if 0 < diff_start <= max_lookahead_min:
-                    if diff_start >= 60:
-                        hrs = diff_start // 60
-                        mins = diff_start % 60
-                        t_part = f"{hrs}h" if mins == 0 else f"{hrs}h{mins:02d}m"
-                        return f"{icon_prefix} in {t_part}: {title_short}"
-                    return f"{icon_prefix} in {diff_start}m: {title_short}"
-                elif diff_start == 0:
-                    return f"🔔 {icon_prefix} Starting NOW: {title_short}"
-                elif end_dt and isinstance(end_dt, datetime) and now < end_dt:
-                    diff_end = int(round((end_dt - now).total_seconds() / 60.0))
-                    return f"🟢 {icon_prefix} {title_short} ({diff_end}m left)"
-                elif diff_start > max_lookahead_min:
-                    # Beyond maximum lookahead (e.g. > 3 hours away), display clean start time
-                    return f"{icon_prefix} {start_str} {title_short}"
-                    
-            return f"{icon_prefix} {start_str} {title_short}"
+    # _format_status_title is now handled by TrayViewModel
 
     def build_menu(self):
         now = datetime.now().astimezone()
@@ -353,6 +243,7 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         ]
         
         status_mode = config.get("menubar_status_mode", "countdown")
+        max_lookahead_min = int(config.get("max_countdown_lookahead_hours", 3)) * 60
         
         # State signature diffing to avoid unnecessary menu rebuilding
         m_sigs = tuple((m.get("title"), str(m.get("start_time")), m.get("pilot_type")) for m in today_upcoming[:6] + tomorrow_upcoming[:6])
@@ -362,6 +253,15 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         if self._last_menu_signature == new_signature:
             return
         self._last_menu_signature = new_signature
+        
+        primary_m = today_upcoming[0] if today_upcoming else None
+        title_str = TrayViewModel.get_status_bar_title(primary_m, now, status_mode, max_lookahead_min)
+        
+        # Must execute AppKit UI updates on Main Thread
+        def _update_ui():
+            self.status_item.button().setTitle_(title_str)
+        if self.status_item.button():
+            self.status_item.button().performSelectorOnMainThread_withObject_waitUntilDone_("setTitle:", title_str, False)
 
         self.menu.removeAllItems()
 
@@ -387,12 +287,11 @@ class QuakMeetingMenuBar(AppKit.NSObject):
             travel_min = next_m.get("travel_time_minutes")
             dep_dt = next_m.get("departure_time")
             
-            # Find the next strictly future event for the menu bar title
-            future_events = [m for m in today_upcoming if m.get("start_time") and m["start_time"] > now]
-            next_future_m = future_events[0] if future_events else None
+            # Track the most immediate relevant event (could be currently active or next future)
+            primary_m = today_upcoming[0] if today_upcoming else None
             
             if self.status_item.button():
-                self.status_item.button().setTitle_(self._format_status_title(next_future_m, now))
+                self.status_item.button().setTitle_(self._format_status_title(primary_m, now))
             
             if travel_min and isinstance(dep_dt, datetime):
                 dur_str = format_duration(travel_min)
@@ -421,7 +320,8 @@ class QuakMeetingMenuBar(AppKit.NSObject):
             self.menu.addItem_(AppKit.NSMenuItem.separatorItem())
         else:
             if self.status_item.button():
-                self.status_item.button().setTitle_(self._format_status_title(None, now))
+                fallback_title = TrayViewModel.get_status_bar_title(None, now, status_mode, max_lookahead_min)
+                self.status_item.button().setTitle_(fallback_title)
             
             item_none = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
                 "✨ No remaining events today", None, ""
@@ -621,25 +521,12 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         self.is_scanning = False
         AppKit.NSApplication.sharedApplication().terminate_(self)
 
-    def _background_scanner_loop(self):
-        """Scans upcoming meetings and triggers multi-stage reminders via ReminderEngine."""
-        while self.is_scanning:
-            try:
-                meeting_objects = calendar_service.get_upcoming_meetings()
-                self.meetings = [m.to_dict() if isinstance(m, Meeting) else m for m in meeting_objects]
-                
-                # Evaluate multi-stage reminders cleanly in domain service
-                reminder_engine.evaluate_meetings(meeting_objects)
-                
-                self.performSelectorOnMainThread_withObject_waitUntilDone_(
-                    "refreshMenuOnMainThread:",
-                    None,
-                    False
-                )
-            except Exception as e:
-                logger.error(f"Error in background scanner loop: {e}", exc_info=True)
-                
-            time.sleep(15)
+    def _on_agenda_updated(self, meeting_objects=None, **kwargs):
+        if meeting_objects is None:
+            return
+        from core.domain.models import Meeting
+        self.meetings = [m.to_dict() if isinstance(m, Meeting) else m for m in meeting_objects]
+        self.performSelectorOnMainThread_withObject_waitUntilDone_("refreshMenuOnMainThread:", None, False)
 
     @objc.IBAction
     def triggerBannerOnMainThread_(self, meeting_data):

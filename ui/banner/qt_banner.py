@@ -258,6 +258,8 @@ class QtQuakPitFlyingBanner(QWidget):
         return QRectF(0, 0, 0, 0)
 
     def _snooze_rect(self) -> QRectF:
+        if self.reminder_stage == 0 and not self.has_real_url:
+            return QRectF(0, 0, 0, 0)
         if self.has_maps_url:
             return QRectF(BTN_SNOOZE_X, BTN_Y, BTN_SMALL_W, BTN_H)
         return QRectF(BTN_ARRIVE_X, BTN_Y, BTN_SMALL_W, BTN_H)

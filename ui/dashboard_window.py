@@ -207,7 +207,7 @@ class DashboardWindowController(AppKit.NSObject):
         
         if today_upcoming:
             next_m = today_upcoming[0]
-            s_str = next_m["start_time"].strftime("%H:%M") if next_m.get("start_time") else "--:--"
+            s_str = next_m["start_time"].astimezone().strftime("%H:%M") if next_m.get("start_time") else "--:--"
             travel_info = ""
             if next_m.get("travel_time_minutes"):
                 dur_str = format_duration(next_m["travel_time_minutes"])
@@ -215,7 +215,7 @@ class DashboardWindowController(AppKit.NSObject):
                 icon = MODE_ICONS.get(t_mode, "🚗")
                 dep_dt = next_m.get("departure_time")
                 if isinstance(dep_dt, datetime):
-                    travel_info = f"  •  ⏱️ {icon} ~{dur_str} (Leave at {dep_dt.strftime('%H:%M')})"
+                    travel_info = f"  •  ⏱️ {icon} ~{dur_str} (Leave at {dep_dt.astimezone().strftime('%H:%M')})"
                 else:
                     travel_info = f"  •  ⏱️ {icon} ~{dur_str} travel"
             self.status_lbl.setStringValue_(f"🟢 Scanner Active  •  {len(today_meetings)} events today  •  Next: {s_str}{travel_info}")
@@ -245,7 +245,7 @@ class DashboardWindowController(AppKit.NSObject):
                     
                     if t_up:
                         nx = t_up[0]
-                        st = nx["start_time"].strftime("%H:%M") if nx.get("start_time") else "--:--"
+                        st = nx["start_time"].astimezone().strftime("%H:%M") if nx.get("start_time") else "--:--"
                         tr_info = ""
                         if nx.get("travel_time_minutes"):
                             dur_s = format_duration(nx["travel_time_minutes"])
@@ -253,7 +253,7 @@ class DashboardWindowController(AppKit.NSObject):
                             ic = MODE_ICONS.get(tm, "🚗")
                             dp = nx.get("departure_time")
                             if isinstance(dp, datetime):
-                                tr_info = f"  •  ⏱️ {ic} ~{dur_s} (Leave at {dp.strftime('%H:%M')})"
+                                tr_info = f"  •  ⏱️ {ic} ~{dur_s} (Leave at {dp.astimezone().strftime('%H:%M')})"
                             else:
                                 tr_info = f"  •  ⏱️ {ic} ~{dur_s} travel"
                         self.status_lbl.setStringValue_(f"🟢 Scanner Active  •  {len(t_meets)} events today  •  Next: {st}{tr_info}")
@@ -375,8 +375,8 @@ class DashboardWindowController(AppKit.NSObject):
         card.addSubview_(icon_lbl)
 
         # Event Title & Time
-        s_time = m["start_time"].strftime("%H:%M") if m.get("start_time") else "--:--"
-        e_time = m["end_time"].strftime("%H:%M") if m.get("end_time") else ""
+        s_time = m["start_time"].astimezone().strftime("%H:%M") if m.get("start_time") else "--:--"
+        e_time = m["end_time"].astimezone().strftime("%H:%M") if m.get("end_time") else ""
         time_str = f"{s_time} - {e_time}" if e_time else s_time
         m_title = (m.get("title") or "Untitled Event").strip()
 
@@ -404,7 +404,7 @@ class DashboardWindowController(AppKit.NSObject):
             icon = MODE_ICONS.get(t_mode, "🚗")
             dep_dt = m.get("departure_time")
             if isinstance(dep_dt, datetime):
-                sub_str += f"  •  ⏱️ {icon} ~{dur_str} (Leave at {dep_dt.strftime('%H:%M')})"
+                sub_str += f"  •  ⏱️ {icon} ~{dur_str} (Leave at {dep_dt.astimezone().strftime('%H:%M')})"
             else:
                 sub_str += f"  •  ⏱️ {icon} ~{dur_str} travel"
 
