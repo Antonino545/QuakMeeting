@@ -37,11 +37,53 @@ class UpdaterService:
         if self._initialized:
             return
         self.repo = repo
-        self.current_version = __version__
         self.latest_release_info: Optional[Dict[str, Any]] = None
         self.is_checking = False
         self.is_downloading = False
         self._initialized = True
+
+    @property
+    def current_version(self) -> str:
+        """Dynamically detects the installed package version from local files, dpkg, or models.py."""
+        try:
+            # 1. Check local VERSION file in application bundle or root
+            app_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            ver_file = os.path.join(app_dir, "VERSION")
+            if os.path.exists(ver_file):
+                with open(ver_file, "r") as f:
+                    v = f.read().strip()
+                    if v:
+                        return v
+        except Exception:
+            pass
+
+        # 2. Check dpkg on Linux
+        if sys.platform.startswith("linux"):
+            try:
+                res = subprocess.run(["dpkg-query", "-W", "-f=${Version}", "quakmeeting"], capture_output=True, text=True, timeout=1.5)
+                if res.returncode == 0 and res.stdout.strip():
+                    return res.stdout.strip()
+            except Exception:
+                pass
+
+        # 3. Check Info.plist on macOS
+        if sys.platform == "darwin":
+            plist_path = "/Applications/QuakMeeting.app/Contents/Info.plist"
+            if os.path.exists(plist_path):
+                try:
+                    import plistlib
+                    with open(plist_path, "rb") as f:
+                        pl = plistlib.load(f)
+                        if "CFBundleShortVersionString" in pl and pl["CFBundleShortVersionString"]:
+                            return pl["CFBundleShortVersionString"]
+                except Exception:
+                    pass
+
+        return __version__
+
+    @current_version.setter
+    def current_version(self, val: str):
+        pass
 
     def parse_semver(self, v_str: str) -> Tuple[int, int, int]:
         """Parses 'v1.2.3' or '1.2.3' into (1, 2, 3) tuple."""

@@ -105,9 +105,19 @@ def build_bundle():
     shutil.copytree(os.path.join(PROJECT_DIR, "core"), os.path.join(RESOURCES_DIR, "core"), dirs_exist_ok=True)
     shutil.copytree(os.path.join(PROJECT_DIR, "ui"), os.path.join(RESOURCES_DIR, "ui"), dirs_exist_ok=True)
     shutil.copy2(os.path.join(PROJECT_DIR, "main.py"), os.path.join(RESOURCES_DIR, "main.py"))
+    
+    # Resolve dynamic version
+    raw_ver = os.environ.get("RELEASE_TAG") or os.environ.get("VERSION") or (sys.argv[1] if len(sys.argv) > 1 else None)
+    if not raw_ver:
+        from core.domain.models import __version__
+        raw_ver = __version__
+    app_version = raw_ver.lstrip("v")
+    
+    with open(os.path.join(RESOURCES_DIR, "VERSION"), "w") as f:
+        f.write(app_version)
             
     # 4. Create Info.plist with LSUIElement (Menu Bar Accessory Agent)
-    info_plist_content = """<?xml version="1.0" encoding="UTF-8"?>
+    info_plist_content = f"""<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
@@ -124,7 +134,7 @@ def build_bundle():
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0.0</string>
+    <string>{app_version}</string>
     <key>CFBundleVersion</key>
     <string>1</string>
     <key>LSMinimumSystemVersion</key>

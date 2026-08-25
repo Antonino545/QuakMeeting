@@ -30,6 +30,10 @@ cp -R "$ROOT_DIR/ui" "$BUILD_ROOT/opt/quakmeeting/"
 cp -R "$ROOT_DIR/assets" "$BUILD_ROOT/opt/quakmeeting/"
 cp "$ROOT_DIR/main.py" "$BUILD_ROOT/opt/quakmeeting/"
 
+# Stamp dynamic package version into payload
+echo "$VERSION" > "$BUILD_ROOT/opt/quakmeeting/VERSION"
+sed -i "s/__version__ = .*/__version__ = \"$VERSION\"/" "$BUILD_ROOT/opt/quakmeeting/core/domain/models.py" 2>/dev/null || true
+
 # 2. Icon & Desktop integration
 if [ -f "$ROOT_DIR/assets/icon.png" ]; then
     cp "$ROOT_DIR/assets/icon.png" "$BUILD_ROOT/usr/share/icons/hicolor/512x512/apps/quakmeeting.png"
