@@ -68,7 +68,7 @@ class ChefPilotRenderer(BasePilotRenderer):
         # 4. Cappello Chef (Toque Blanche) con volume e ombreggiatura
         AppKit.NSColor.whiteColor().set()
         AppKit.NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(AppKit.NSMakeRect(px - 6, py + 14, 16, 6), 2, 2).fill()
-        
+
         # Puffy Crown Toque
         AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 12, py + 17, 14, 15)).fill()
         AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 3, py + 19, 15, 16)).fill()
@@ -99,7 +99,7 @@ class ChefPilotRenderer(BasePilotRenderer):
         pizza.closePath()
         AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.82, 0.20, 1.0).set()
         pizza.fill()
-        
+
         # Salame / Pepperoni
         AppKit.NSColor.colorWithRed_green_blue_alpha_(0.90, 0.20, 0.15, 1.0).set()
         AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 21, py - 15, 4.5, 4.5)).fill()

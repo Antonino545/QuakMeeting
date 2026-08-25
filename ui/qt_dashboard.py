@@ -14,7 +14,8 @@ if sys.platform.startswith("linux"):
 
 import threading
 import logging
-from datetime import datetime
+import webbrowser
+from datetime import datetime, timedelta
 from typing import Optional, List
 
 from PyQt6.QtWidgets import (
@@ -164,7 +165,7 @@ class QtFlightDeckWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("QuakMeeting — Flight Deck Control Center")
         self.resize(840, 620)
-        
+
         # Center on screen
         screen = QApplication.primaryScreen()
         if screen:
@@ -202,12 +203,12 @@ class QtFlightDeckWindow(QMainWindow):
         # Title / Subtitle
         title_box = QVBoxLayout()
         title_box.setSpacing(2)
-        
+
         t_lbl = QLabel("QuakMeeting — Flight Deck", header)
         t_lbl.setObjectName("HeaderTitle")
         s_lbl = QLabel("Smart Calendar Reminders & Mascot Alert Companion", header)
         s_lbl.setObjectName("HeaderSub")
-        
+
         title_box.addWidget(t_lbl)
         title_box.addWidget(s_lbl)
         header_layout.addLayout(title_box, stretch=1)
@@ -253,7 +254,7 @@ class QtFlightDeckWindow(QMainWindow):
             e_icon = QLabel("🧘‍♂️")
             e_icon.setStyleSheet("font-size: 48px; border: none;")
             e_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            
+
             e_msg = QLabel("No Meetings Scheduled for Today\nEnjoy your clear agenda or add events to your calendar.")
             e_msg.setStyleSheet("font-size: 15px; font-weight: bold; color: #cbd5e1; border: none;")
             e_msg.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -456,7 +457,7 @@ class QtFlightDeckWindow(QMainWindow):
         mode_row = QHBoxLayout()
         mode_row.setSpacing(8)
         current_mode = config.get("transport_mode", "transit")
-        
+
         mode_buttons = {}
         modes_spec = [
             ("transit", "🚆 Public Transit"),
@@ -514,14 +515,14 @@ class QtFlightDeckWindow(QMainWindow):
         buf_row = QHBoxLayout()
         buf_lbl = QLabel("<b>⏳ Departure Buffer Margin</b> (station transit / parking time):", addr_card)
         buf_lbl.setStyleSheet("color: #e2e8f0; font-size: 12px;")
-        
+
         buf_combo = QComboBox(addr_card)
         buf_combo.addItems(["5 minutes", "10 minutes (Recommended)", "15 minutes", "20 minutes"])
         buf_map = {5: 0, 10: 1, 15: 2, 20: 3}
         rev_buf_map = [5, 10, 15, 20]
         cur_buf = config.get("eta_buffer_minutes", 10)
         buf_combo.setCurrentIndex(buf_map.get(cur_buf, 1))
-        
+
         def _on_buf_change(idx):
             val = rev_buf_map[idx]
             config.set("eta_buffer_minutes", val)

@@ -38,7 +38,7 @@ class TestCalDAVProvider(unittest.TestCase):
         now = datetime.now()
         dt_start_str = now.strftime("%Y%m%dT%H%M%S")
         dt_end_str = (now + timedelta(hours=1)).strftime("%Y%m%dT%H%M%S")
-        
+
         dinner_time = now.replace(hour=20, minute=0, second=0)
         dt_start_dinner = dinner_time.strftime("%Y%m%dT%H%M%S")
         dt_end_dinner = (dinner_time + timedelta(hours=2)).strftime("%Y%m%dT%H%M%S")
@@ -52,7 +52,7 @@ class TestCalDAVProvider(unittest.TestCase):
 
         events = self.provider._parse_ics_events(ics_payload)
         self.assertEqual(len(events), 2)
-        
+
         ev1 = events[0]
         self.assertEqual(ev1["title"], "Weekly Engineering Sync (Google Meet)")
         self.assertEqual(ev1["url"], "https://meet.google.com/abc-defg-hij")

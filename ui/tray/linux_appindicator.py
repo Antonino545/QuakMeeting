@@ -44,7 +44,7 @@ def _run_headless_fallback():
     """Runs reminder engine loop in terminal if GTK/PyGObject is not installed."""
     _print_missing_gi_help()
     print("🦆 QuakMeeting active in terminal daemon mode. Press Ctrl+C to stop.")
-    
+
     def on_banner(event_dict=None, meeting=None, stage=None, **kwargs):
         data = event_dict or (meeting.to_dict() if hasattr(meeting, "to_dict") else meeting) or {}
         title = data.get("title", "Event")
@@ -134,10 +134,10 @@ def run_linux_app():
             m_title = (nx.title or "Event").strip()
             p_type = getattr(nx, "pilot_type", "duck")
             icon_prefix = icon_map.get(p_type, "🦆")
-            
+
             travel_min = getattr(nx, "travel_time_minutes", 0)
             dep_dt = getattr(nx, "departure_time", None)
-            
+
             if travel_min and isinstance(dep_dt, datetime):
                 dur_str = format_duration(travel_min)
                 next_label = f"{icon_prefix} Next: {st} — {m_title} (🚗 ~{dur_str} • Leave at {dep_dt.strftime('%H:%M')})"
@@ -146,18 +146,18 @@ def run_linux_app():
                 next_label = f"{icon_prefix} Next: {st} — {m_title} (🚗 ~{dur_str})"
             else:
                 next_label = f"{icon_prefix} Next: {st} — {m_title}"
-                
+
             header_item = Gtk.MenuItem(label=next_label)
             header_item.set_sensitive(False)
             menu.append(header_item)
-            
+
             action_url = getattr(nx, "action_url", None) or getattr(nx, "meeting_url", None)
             if action_url:
                 btn_title = f"   {getattr(nx, 'action_btn_text', '🚀 Join Now')}"
                 join_item = Gtk.MenuItem(label=btn_title)
                 join_item.connect("activate", lambda w, u=action_url: import_webbrowser().open(u))
                 menu.append(join_item)
-                
+
             menu.append(Gtk.SeparatorMenuItem())
         else:
             none_item = Gtk.MenuItem(label="✨ No remaining events today")
@@ -170,19 +170,19 @@ def run_linux_app():
             list_header = Gtk.MenuItem(label="📅 Today's Events:")
             list_header.set_sensitive(False)
             menu.append(list_header)
-            
+
             for m in today_up[1:6]:
                 start_str = m.start_time.strftime("%H:%M") if m.start_time else "--:--"
                 p_type = getattr(m, "pilot_type", "duck")
                 icon = icon_map.get(p_type, "🦆")
                 m_title = (m.title or "Event").strip()
                 title_short = m_title[:24] + "…" if len(m_title) > 24 else m_title
-                
+
                 tr_min = getattr(m, "travel_time_minutes", 0)
                 sub_text = f"  {icon} {start_str} - {title_short}"
                 if tr_min:
                     sub_text += f" (~{format_duration(tr_min)})"
-                
+
                 sub_item = Gtk.MenuItem(label=sub_text)
                 sub_item.set_sensitive(False)
                 url = getattr(m, "action_url", None) or getattr(m, "meeting_url", None)
@@ -190,7 +190,7 @@ def run_linux_app():
                     sub_item.set_sensitive(True)
                     sub_item.connect("activate", lambda w, u=url: import_webbrowser().open(u))
                 menu.append(sub_item)
-                
+
             menu.append(Gtk.SeparatorMenuItem())
 
         # 4. Utilities
@@ -206,8 +206,7 @@ def run_linux_app():
         def set_status_mode(widget, mode):
             config.set("menubar_status_mode", mode)
             build_menu()
-            update_tick()
-            
+
         mode_menu = Gtk.Menu()
         curr_mode = config.get("menubar_status_mode", "countdown")
         modes_def = [
@@ -222,11 +221,11 @@ def run_linux_app():
                 m_item.set_active(True)
             m_item.connect("activate", lambda w, m=mode_key: set_status_mode(w, m))
             mode_menu.append(m_item)
-            
+
         item_display_mode = Gtk.MenuItem(label="📊 Status Bar Mode")
         item_display_mode.set_submenu(mode_menu)
         menu.append(item_display_mode)
-        
+
         item_logs = Gtk.MenuItem(label="📄 View Logs & Diagnostics...")
         item_logs.connect("activate", lambda w: open_log_file())
         menu.append(item_logs)
@@ -261,12 +260,12 @@ def run_linux_app():
         try:
             now = datetime.now().astimezone()
             today_up = [m for m in meeting_objects if m.start_time and m.start_time.astimezone().date() == now.date() and ((m.end_time and m.end_time.astimezone() > now) or m.start_time.astimezone() > now)]
-            
+
             primary_m = today_up[0] if today_up else None
             max_lookahead_min = int(config.get("max_countdown_lookahead_hours", 3)) * 60
             status_mode = config.get("menubar_status_mode", "countdown")
             title_str = TrayViewModel.get_status_bar_title(primary_m, now, status_mode, max_lookahead_min)
-            
+
             # GLib.idle_add ensures GTK operations run on the main thread
             GLib.idle_add(indicator.set_label, title_str, "QuakMeeting")
             GLib.idle_add(build_menu)

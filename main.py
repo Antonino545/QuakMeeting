@@ -53,7 +53,7 @@ def main():
     try:
         if "--test" in sys.argv:
             import time
-            
+
             delay_sec = 0
             if "--delay" in sys.argv:
                 try:
@@ -61,7 +61,7 @@ def main():
                     delay_sec = int(sys.argv[idx + 1])
                 except Exception:
                     delay_sec = 3
-                    
+
             pilot_type = "duck"
             if "--pilot" in sys.argv:
                 try:
@@ -69,7 +69,7 @@ def main():
                     pilot_type = sys.argv[idx + 1]
                 except Exception:
                     pilot_type = "duck"
-                    
+
             stage_val = None
             if "--stage" in sys.argv:
                 try:
@@ -77,7 +77,7 @@ def main():
                     stage_val = int(sys.argv[idx + 1])
                 except Exception:
                     stage_val = None
-                    
+
             if delay_sec > 0:
                 print(f"\n⏳ Waiting {delay_sec} seconds to allow switching to a Full Screen app...")
                 for i in range(delay_sec, 0, -1):
@@ -86,12 +86,12 @@ def main():
                 print("🚀 Launching banner over Full Screen!")
             else:
                 print("\n🚀 Running Notification Banner Test...")
-                
+
             from ui.banner.qt_banner import get_test_preset
             test_m = dict(get_test_preset(pilot_type))
             if stage_val is not None:
                 test_m["reminder_stage"] = stage_val
-            
+
             if sys.platform == "darwin":
                 import AppKit
                 from ui.banner.banner_controller import QuakPitFlyingBanner
@@ -109,7 +109,7 @@ def main():
 
         logger.info("Initializing QuakMeeting Menu Bar and Flight Deck UI...")
         print(" Launching Menu Bar icon and Flight Deck...")
-        
+
         from core.app_controller import app_controller
         app_controller.start_background_loop()
 
@@ -124,10 +124,10 @@ def main():
             if app is None:
                 logger.error("Failed to allocate and initialize QuakMeetingMenuBar!")
                 return
-            
+
             if "--silent" not in sys.argv:
                 show_dashboard()
-                
+
             logger.info("Entering macOS Application Run Loop...")
             app.run()
         else:

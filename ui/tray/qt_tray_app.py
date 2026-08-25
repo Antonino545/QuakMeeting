@@ -24,7 +24,7 @@ from ui.viewmodels.tray_viewmodel import TrayViewModel
 class QuakMeetingTrayApp:
     def __init__(self, app: QApplication):
         self.app = app
-        
+
         icon_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
             "assets", "icon.png"
@@ -33,13 +33,13 @@ class QuakMeetingTrayApp:
             self.icon = QIcon(icon_path)
         else:
             self.icon = QIcon()
-            
+
         self.tray = QSystemTrayIcon(self.icon, self.app)
         self.tray.setToolTip("QuakMeeting")
-        
+
         self.build_menu()
         self.tray.show()
-        
+
         event_bus.subscribe("TRIGGER_BANNER", self.on_banner_trigger)
         event_bus.subscribe("REMINDER_TRIGGERED", self.on_banner_trigger)
         event_bus.subscribe("AGENDA_UPDATED", self.on_agenda_updated)
@@ -67,10 +67,10 @@ class QuakMeetingTrayApp:
             m_title = (nx.title or "Event").strip()
             p_type = getattr(nx, "pilot_type", "duck")
             icon_prefix = icon_map.get(p_type, "🦆")
-            
+
             travel_min = getattr(nx, "travel_time_minutes", 0)
             dep_dt = getattr(nx, "departure_time", None)
-            
+
             if travel_min and isinstance(dep_dt, datetime):
                 dur_str = format_duration(travel_min)
                 next_label = f"{icon_prefix} Next: {st} — {m_title} (🚗 ~{dur_str} • Leave at {dep_dt.strftime('%H:%M')})"
@@ -79,18 +79,18 @@ class QuakMeetingTrayApp:
                 next_label = f"{icon_prefix} Next: {st} — {m_title} (🚗 ~{dur_str})"
             else:
                 next_label = f"{icon_prefix} Next: {st} — {m_title}"
-                
+
             header_act = QAction(next_label, menu)
             header_act.setEnabled(False)
             menu.addAction(header_act)
-            
+
             action_url = getattr(nx, "action_url", None) or getattr(nx, "meeting_url", None)
             if action_url:
                 btn_title = f"   {getattr(nx, 'action_btn_text', '🚀 Join Now')}"
                 join_act = QAction(btn_title, menu)
                 join_act.triggered.connect(lambda chk, u=action_url: webbrowser.open(u))
                 menu.addAction(join_act)
-                
+
             menu.addSeparator()
         else:
             none_act = QAction("✨ No remaining events today", menu)
@@ -101,7 +101,7 @@ class QuakMeetingTrayApp:
         sync_act = QAction("🔄 Sync Calendars", menu)
         sync_act.triggered.connect(lambda: threading.Thread(target=calendar_service.sync_now, daemon=True).start())
         menu.addAction(sync_act)
-        
+
         pref_act = QAction("⚙️ Settings & Preferences...", menu)
         pref_act.triggered.connect(lambda: self.show_flight_deck(2))
         menu.addAction(pref_act)
@@ -120,9 +120,9 @@ class QuakMeetingTrayApp:
                 m_act.setChecked(True)
             m_act.triggered.connect(lambda chk, m=mode_key: self.set_status_mode(m))
             mode_menu.addAction(m_act)
-            
+
         menu.addMenu(mode_menu)
-        
+
         logs_act = QAction("📄 View Logs & Diagnostics...", menu)
         logs_act.triggered.connect(lambda: open_log_file())
         menu.addAction(logs_act)
@@ -157,12 +157,12 @@ class QuakMeetingTrayApp:
         try:
             now = datetime.now().astimezone()
             today_up = [m for m in meeting_objects if m.start_time and m.start_time.astimezone().date() == now.date() and ((m.end_time and m.end_time.astimezone() > now) or m.start_time.astimezone() > now)]
-            
+
             primary_m = today_up[0] if today_up else None
             max_lookahead_min = int(config.get("max_countdown_lookahead_hours", 3)) * 60
             status_mode = config.get("menubar_status_mode", "countdown")
             title = TrayViewModel.get_status_bar_title(primary_m, now, status_mode, max_lookahead_min)
-            
+
             self.tray.setToolTip(title)
             self.build_menu()
         except Exception as e:

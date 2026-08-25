@@ -82,7 +82,7 @@ class DuckPilotRenderer(BasePilotRenderer):
         # 4. Sciarpa Rossa Svolazzante Animata nel Vento 🧣
         scarf_wave1 = math.sin(tick * 0.28) * 5.0
         scarf_wave2 = math.sin(tick * 0.28 + 1.2) * 6.5
-        
+
         scarf_tail = AppKit.NSBezierPath.bezierPath()
         scarf_tail.moveToPoint_(AppKit.NSMakePoint(px - 8, py + 5))
         scarf_tail.curveToPoint_controlPoint1_controlPoint2_(
@@ -225,6 +225,6 @@ class DuckPilotRenderer(BasePilotRenderer):
         AppKit.NSColor.whiteColor().set()
         wing_trim.setLineWidth_(2.0)
         wing_trim.stroke()
-        
+
         # Propeller
         self.draw_propeller(px + 32.0, py + 2.0, tick)

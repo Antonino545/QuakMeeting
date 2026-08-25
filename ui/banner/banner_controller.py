@@ -29,7 +29,7 @@ class QuakPitFlyingBanner(AppKit.NSObject):
         self.timer = None
         self.action_url = meeting_data.get("action_url") or meeting_data.get("meeting_url")
         return self
-        
+
     def show(self) -> None:
         mouse_loc = AppKit.NSEvent.mouseLocation()
         target_screen = None
@@ -39,12 +39,12 @@ class QuakPitFlyingBanner(AppKit.NSObject):
                 break
         if target_screen is None:
             target_screen = AppKit.NSScreen.mainScreen() or (AppKit.NSScreen.screens()[0] if AppKit.NSScreen.screens() else None)
-            
+
         screen_rect = target_screen.frame() if target_screen else AppKit.NSMakeRect(0, 0, 1440, 900)
-        
+
         is_quiet = self.meeting_data.get("is_quiet_reminder", False)
         is_update = self.meeting_data.get("is_update_banner", False)
-        
+
         if is_quiet or is_update:
             window_w = 360.0
             window_h = 84.0
@@ -54,36 +54,36 @@ class QuakPitFlyingBanner(AppKit.NSObject):
         else:
             window_w = screen_rect.size.width
             window_h = 220.0
-            
+
             banner_pos = config.get("banner_position", "top")
             if banner_pos == "bottom":
                 y_pos = screen_rect.origin.y + 40.0
             else:
                 y_pos = screen_rect.origin.y + screen_rect.size.height - window_h - 20.0
-                
+
             frame = AppKit.NSMakeRect(screen_rect.origin.x, y_pos, window_w, window_h)
-        
+
         style_mask = AppKit.NSWindowStyleMaskBorderless
-        
+
         self.window = AppKit.NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(
             frame,
             style_mask,
             AppKit.NSBackingStoreBuffered,
             False
         )
-        
+
         self.window.setReleasedWhenClosed_(False)
         self.window.setHidesOnDeactivate_(False)
         self.window.setOpaque_(False)
         self.window.setBackgroundColor_(AppKit.NSColor.clearColor())
-        
+
         # NSStatusWindowLevel guarantees floating above full-screen spaces & menu bar
         self.window.setLevel_(AppKit.NSStatusWindowLevel)
-        
+
         self.window.setIgnoresMouseEvents_(False)
         self.window.setAcceptsMouseMovedEvents_(True)
         self.window.setMovableByWindowBackground_(False)
-        
+
         # Collection behavior: join all spaces, auxiliary window above full screen apps, stationary
         behavior = (
             AppKit.NSWindowCollectionBehaviorCanJoinAllSpaces |
@@ -92,7 +92,7 @@ class QuakPitFlyingBanner(AppKit.NSObject):
             AppKit.NSWindowCollectionBehaviorIgnoresCycle
         )
         self.window.setCollectionBehavior_(behavior)
-        
+
         if is_quiet or is_update:
             self.banner_view = QuietReminderView.alloc().initWithFrame_meetingData_controller_(
                 AppKit.NSMakeRect(0, 0, window_w, window_h),
@@ -115,13 +115,13 @@ class QuakPitFlyingBanner(AppKit.NSObject):
                 self
             )
         self.window.setContentView_(self.banner_view)
-        
+
         # Display above everything on the active space
         self.window.makeKeyAndOrderFront_(None)
         self.window.orderFrontRegardless()
-        
+
         self.play_chime()
-        
+
         self.timer = AppKit.NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
             1.0 / 60.0,
             self.banner_view,
@@ -134,7 +134,7 @@ class QuakPitFlyingBanner(AppKit.NSObject):
     def play_chime(self) -> None:
         if config.get("sound_enabled", True):
             sound_name = config.get("sound_name", "Glass")
-            
+
             def _play():
                 try:
                     sound_path = f"/System/Library/Sounds/{sound_name}.aiff"
@@ -146,7 +146,7 @@ class QuakPitFlyingBanner(AppKit.NSObject):
                             snd.play()
                     except Exception:
                         pass
-                        
+
             threading.Thread(target=_play, daemon=True).start()
 
     def trigger_action(self) -> None:
@@ -177,11 +177,11 @@ class QuakPitFlyingBanner(AppKit.NSObject):
         snooze_sec = duration_seconds if duration_seconds else int(config.get("default_snooze_seconds", 120))
         m_copy = dict(self.meeting_data)
         self.dismiss()
-        
+
         def _re_notify():
             time.sleep(snooze_sec)
             show_banner_async(m_copy)
-            
+
         threading.Thread(target=_re_notify, daemon=True).start()
 
     def trigger_acknowledge(self) -> None:
@@ -210,7 +210,7 @@ def _maybe_show_next_banner() -> None:
     global _current_banner_controller
     if _current_banner_controller is not None:
         return
-        
+
     from .banner_queue import banner_queue
     next_item = banner_queue.pop_next()
     if next_item:
@@ -218,7 +218,7 @@ def _maybe_show_next_banner() -> None:
             global _current_banner_controller
             _current_banner_controller = None
             _maybe_show_next_banner()
-            
+
         controller = QuakPitFlyingBanner.alloc().initWithMeetingData_callback_(next_item.meeting_data, _on_close)
         _current_banner_controller = controller
         controller.show()
@@ -233,5 +233,5 @@ def show_banner_async(meeting_data: Dict[str, Any]) -> None:
     """Safely dispatches banner display onto the AppKit main UI thread."""
     def _main_show():
         _run_banner(meeting_data)
-        
+
     AppKit.NSOperationQueue.mainQueue().addOperationWithBlock_(_main_show)

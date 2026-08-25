@@ -93,7 +93,7 @@ class ArrivalService:
             return False
 
         current_ssid_lower = current_ssid.lower()
-        
+
         # Campus & University Wi-Fi networks
         campus_ssids = ["eduroam", "polito", "campus", "universit", "studenti", "unito", "polimi"]
         if meeting.pilot_type == "owl" or meeting.classroom:

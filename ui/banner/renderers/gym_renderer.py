@@ -20,7 +20,7 @@ class GymPilotRenderer(BasePilotRenderer):
         # Dumbbell / Barbell Emblem 🏋️ on Fuselage
         AppKit.NSColor.whiteColor().set()
         AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 28, py - 9, 16, 16)).fill()
-        
+
         # Draw Mini Dumbbell (Bar + 2 Weights)
         AppKit.NSColor.colorWithRed_green_blue_alpha_(0.15, 0.15, 0.20, 1.0).set()
         # Left plate

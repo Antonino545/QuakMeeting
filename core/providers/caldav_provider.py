@@ -104,7 +104,7 @@ class CalDAVCalendarProvider(BaseCalendarProvider):
         try:
             if source.startswith("webcal://"):
                 source = "https://" + source[len("webcal://"):]
-            
+
             if source.startswith("http://") or source.startswith("https://"):
                 req = urllib.request.Request(source, headers={"User-Agent": "QuakMeeting/1.0"})
                 with urllib.request.urlopen(req, timeout=10) as resp:
@@ -151,7 +151,7 @@ class CalDAVCalendarProvider(BaseCalendarProvider):
                 if ":" in line:
                     raw_key, val = line.split(":", 1)
                     key = raw_key.split(";")[0].upper()
-                    
+
                     if key == "SUMMARY":
                         current_event["title"] = self._unescape_ics(val)
                     elif key == "LOCATION":

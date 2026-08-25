@@ -27,7 +27,7 @@ class CaptainPilotRenderer(BasePilotRenderer):
         # 3. Fascia Cheatline blu metallizzato e finestrini passeggeri illuminati
         AppKit.NSColor.colorWithRed_green_blue_alpha_(0.12, 0.32, 0.65, 1.0).set()
         AppKit.NSBezierPath.bezierPathWithRect_(AppKit.NSMakeRect(px - 36, py - 2, 62, 4)).fill()
-        
+
         AppKit.NSColor.colorWithRed_green_blue_alpha_(0.85, 0.94, 1.0, 1.0).set()
         for i in range(5):
             AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 28 + i * 8, py - 1, 4.5, 3.5)).fill()
@@ -51,7 +51,7 @@ class CaptainPilotRenderer(BasePilotRenderer):
         AppKit.NSBezierPath.bezierPathWithRect_(AppKit.NSMakeRect(px - 3, py + 14, 18, 6)).fill()
         AppKit.NSColor.whiteColor().set()
         AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 4, py + 16, 20, 7)).fill()
-        
+
         # Stemma ancora oro
         AppKit.NSColor.colorWithRed_green_blue_alpha_(0.98, 0.85, 0.25, 1.0).set()
         AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 2, py + 15, 6, 5)).fill()

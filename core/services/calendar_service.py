@@ -47,7 +47,7 @@ class CalendarService:
         self.config = config or config_service
         self.bus = bus or event_bus
         self.repository = MeetingRepository(CACHE_FILE)
-        
+
         # Select best available provider based on platform
         if provider:
             self._provider = provider
@@ -86,9 +86,9 @@ class CalendarService:
         for m in meetings:
             if m.is_travel and m.start_time:
                 dest = m.location if (m.location and m.location != "missing value") else m.title
-                
+
                 dur_str = format_duration(m.travel_time_minutes)
-                
+
                 # 1. Native EventKit travel time already extracted from Apple Calendar
                 if m.travel_time_minutes and m.travel_time_minutes > 0:
                     m.departure_time = eta_service.get_departure_time(m.start_time, m.travel_time_minutes, buffer_minutes)
@@ -97,7 +97,7 @@ class CalendarService:
                     m.eta_text = f"{icon} ~{dur_str} • Leave at {dep_str}"
                     if not m.action_url or ("maps.apple.com" not in m.action_url and "maps.google.com" not in m.action_url):
                         m.action_url = eta_service.build_maps_url(home_address or None, dest, m.transport_mode or transport_mode)
-                    
+
                     mode = m.transport_mode or transport_mode
                     if mode == "transit":
                         m.action_btn_text = f"🗺️ PUBLIC TRANSIT (~{dur_str})"
@@ -119,13 +119,13 @@ class CalendarService:
                         m.transport_mode = transport_mode
                         m.origin_address = home_address
                         m.departure_time = eta_service.get_departure_time(m.start_time, m.travel_time_minutes, buffer_minutes)
-                        
+
                         dur_str = format_duration(m.travel_time_minutes)
                         icon = MODE_ICONS.get(transport_mode, "🚆")
                         dep_str = m.departure_time.astimezone().strftime("%H:%M")
                         m.eta_text = f"{icon} ~{dur_str} • Leave at {dep_str}"
                         m.action_url = eta_res["maps_url"]
-                        
+
                         if transport_mode == "transit":
                             m.action_btn_text = f"🗺️ PUBLIC TRANSIT (~{dur_str})"
                         elif transport_mode == "automobile":
@@ -146,12 +146,12 @@ class CalendarService:
         end_of_today = now.replace(hour=23, minute=59, second=59, microsecond=999999)
 
         filtered = [
-            m for m in meetings 
-            if (m.start_time and start_of_today <= m.start_time.astimezone() <= end_of_today) or 
+            m for m in meetings
+            if (m.start_time and start_of_today <= m.start_time.astimezone() <= end_of_today) or
                (m.departure_time and start_of_today <= m.departure_time.astimezone() <= end_of_today) or
                (m.end_time and m.start_time and m.start_time.astimezone() <= now <= m.end_time.astimezone())
         ]
-        
+
         # Deduplicate events based on title and start time to prevent sync duplication
         seen = set()
         deduped = []
@@ -210,7 +210,7 @@ class CalendarService:
         """Return list of macOS calendars with 5-minute cache to prevent main-thread UI blocking."""
         if not force_refresh and self._cached_calendars and (time.time() - self._last_calendars_fetch_time < 300.0):
             return list(self._cached_calendars)
-        
+
         try:
             cals = self._provider.get_available_calendars()
             self._cached_calendars = cals

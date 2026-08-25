@@ -203,7 +203,7 @@ def show_wayland_banner(event_data: Dict[str, Any]) -> None:
 
         vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
         vbox.set_valign(Gtk.Align.CENTER)
-        
+
         t_lbl = Gtk.Label()
         t_lbl.get_style_context().add_class("hud-title-lbl")
         t_lbl.set_markup(f"<b>{GLib.markup_escape_text(title[:34])}</b>")

@@ -91,10 +91,10 @@ class TestReminderEngine(unittest.TestCase):
             start_time=now + timedelta(minutes=5),
             classroom="Aula 5M"
         )
-        
+
         # Mark arrived
         self.engine.mark_arrived(meeting.id)
-        
+
         # Should not trigger any reminder
         results = self.engine.evaluate_meetings([meeting], current_time=now)
         self.assertEqual(len(results), 0)

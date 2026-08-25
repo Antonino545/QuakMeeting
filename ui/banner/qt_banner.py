@@ -216,10 +216,10 @@ class QtQuakPitFlyingBanner(QWidget):
         self.time_str = st.strftime("At %H:%M") if hasattr(st, "strftime") else ""
         self.classroom = str(event_data.get("classroom") or "")
         self.reminder_stage = event_data.get("reminder_stage")
-        
+
         self.has_real_url = bool(
-            self.action_url and 
-            self.action_url.strip() and 
+            self.action_url and
+            self.action_url.strip() and
             self.action_url != "https://calendar.apple.com"
         )
         self.has_maps_url = bool(

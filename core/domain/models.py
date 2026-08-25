@@ -47,10 +47,10 @@ def format_duration(minutes: Optional[int], long_form: bool = False) -> str:
     """
     if minutes is None or minutes <= 0:
         return "0m" if not long_form else "0 min"
-    
+
     hours = int(minutes // 60)
     rem_min = int(minutes % 60)
-    
+
     if hours > 0 and rem_min > 0:
         return f"{hours}h {rem_min}m"
     elif hours > 0:
@@ -77,7 +77,7 @@ class Meeting:
     is_travel: bool = False
     reminder_stage: Optional[int] = None
     category: Optional[str] = None
-    
+
     # Travel & ETA Metadata
     travel_time_minutes: Optional[int] = None
     travel_distance_km: Optional[float] = None
@@ -85,7 +85,7 @@ class Meeting:
     departure_time: Optional[datetime] = None
     origin_address: Optional[str] = None
     eta_text: Optional[str] = None
-    
+
     # Academic & Presence Metadata
     classroom: Optional[str] = None
     teacher: Optional[str] = None
@@ -97,7 +97,7 @@ class Meeting:
             self.event_type = self.category
         elif self.event_type and not self.category:
             self.category = self.event_type
-            
+
         from datetime import timezone
         import logging
         if self.start_time and self.start_time.tzinfo is None:

@@ -60,7 +60,7 @@ class ConfigService:
         try:
             if not os.path.exists(CONFIG_DIR):
                 os.makedirs(CONFIG_DIR, exist_ok=True)
-                
+
             if os.path.exists(CONFIG_PATH):
                 with open(CONFIG_PATH, "r", encoding="utf-8") as f:
                     user_cfg = json.load(f)

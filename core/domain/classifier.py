@@ -93,7 +93,7 @@ class EventClassifier:
 
         classroom, teacher = cls.extract_classroom_and_teacher(title, location, description)
         search_blob = f"{title} {location} {description} {meeting_url or ''}".lower()
-        
+
         # 1. Match Video Meeting Patterns
         active_url = meeting_url or cls.extract_meeting_url(search_blob)
         if active_url:

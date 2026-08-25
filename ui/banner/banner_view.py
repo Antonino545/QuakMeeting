@@ -25,7 +25,7 @@ class QuakPitBannerView(AppKit.NSView):
             return None
         self.meeting_data = meeting_data
         self.controller = controller
-        
+
         self.title = str(meeting_data.get("title") or "Event Reminder")
         self.provider = str(meeting_data.get("provider") or "Event")
         self.action_url = meeting_data.get("action_url") or meeting_data.get("meeting_url")
@@ -35,11 +35,11 @@ class QuakPitBannerView(AppKit.NSView):
         self.location = str(meeting_data.get("location") or "")
         self.pilot_type = str(meeting_data.get("pilot_type") or "duck")
         self.is_travel = bool(meeting_data.get("is_travel", False))
-        
+
         # Classroom & Teacher Metadata
         self.classroom = meeting_data.get("classroom")
         self.teacher = meeting_data.get("teacher")
-        
+
         # Multi-modal Travel & ETA metadata
         self.travel_time_minutes = meeting_data.get("travel_time_minutes")
         self.travel_distance_km = meeting_data.get("travel_distance_km")
@@ -47,16 +47,16 @@ class QuakPitBannerView(AppKit.NSView):
         self.departure_time = meeting_data.get("departure_time")
         self.origin_address = meeting_data.get("origin_address")
         self.eta_text = meeting_data.get("eta_text")
-        
+
         # Determine Late Status
         self.is_late = self._compute_is_late()
-        
+
         # Instantiate pilot renderer
         self.renderer = get_pilot_renderer(self.pilot_type)
-        
+
         # Reminder stage metadata (e.g. 20, 10, 5, 2, 0)
         self.reminder_stage = meeting_data.get("reminder_stage")
-        
+
         # Flight dynamics & geometry (Boost speed by 40% when late)
         base_speed = float(config.get("flight_speed", 3.2))
         self.speed = base_speed * 1.40 if self.is_late else base_speed
@@ -64,34 +64,34 @@ class QuakPitBannerView(AppKit.NSView):
         self.base_y = 48.0
         self.tick = 0
         self.is_paused = False
-        
+
         self.has_real_url = bool(
-            self.action_url and 
-            self.action_url.strip() and 
+            self.action_url and
+            self.action_url.strip() and
             self.action_url != "https://calendar.apple.com"
         )
         self.has_maps_url = bool(
-            self.has_real_url and 
+            self.has_real_url and
             "maps.apple.com" in self.action_url.lower()
         )
-        
+
         # Particle emitters (Smoke, Sparkles, Turbo Afterburner Flames)
         self.smoke_particles = []
         self.sparkle_particles = []
         self.flame_particles = []
-        
+
         # Hover & Click Interaction State
         self.pressed_button = None
         self.hovered_button = None
-        
+
         # Card Layout Dimensions
         self.banner_w = 535.0
         self.banner_h = 126.0
-        
+
         # Precompute Theme Palette & Cached Fonts/Colors
         self._palette = self._build_theme_palette()
         self._init_cached_resources()
-        
+
         tracking_options = (
             AppKit.NSTrackingMouseEnteredAndExited |
             AppKit.NSTrackingMouseMoved |
@@ -105,7 +105,7 @@ class QuakPitBannerView(AppKit.NSView):
             None
         )
         self.addTrackingArea_(self.tracking_area)
-        
+
         return self
 
     def _compute_is_late(self) -> bool:
@@ -145,7 +145,7 @@ class QuakPitBannerView(AppKit.NSView):
                 detail_text = f"🕒 {s_time} - {e_time}"
             else:
                 detail_text = f"🕒 At {s_time}"
-                
+
         if self.classroom:
             detail_text += f"  •  🏫 {self.classroom}"
         elif self.location:
@@ -157,10 +157,10 @@ class QuakPitBannerView(AppKit.NSView):
                 detail_text += f" ({mode_icon} ~{dur_str})"
         elif self.action_url and ("meet.google.com" in self.action_url or "zoom" in self.action_url):
             detail_text += "  •  🌐 Online Meeting"
-            
+
         if self.teacher:
             detail_text += f" ({self.teacher})"
-            
+
         self._cached_detail_text = detail_text
 
         # Precompute pilot speech bubble text
@@ -212,17 +212,17 @@ class QuakPitBannerView(AppKit.NSView):
         countdown_text = "⏰ Upcoming Alert"
         is_urgent = False
         mode_icon = MODE_ICONS.get(self.transport_mode, "🚆")
-        
+
         if self.start_time:
             now = datetime.now().astimezone()
             diff = (self.start_time - now).total_seconds()
-            
+
             if self.is_travel and self.departure_time:
                 dep_diff = (self.departure_time - now).total_seconds()
                 dep_mins = int(dep_diff // 60)
                 dep_time_str = self.departure_time.astimezone().strftime("%H:%M")
                 dur_str = format_duration(self.travel_time_minutes or 20)
-                
+
                 if dep_diff <= 0:
                     late_min = abs(int(dep_diff // 60))
                     countdown_text = f"🚨 {mode_icon} LATE BY {late_min}m • LEAVE NOW!" if late_min > 0 else f"🚨 {mode_icon} DEPART NOW!"
@@ -267,7 +267,7 @@ class QuakPitBannerView(AppKit.NSView):
                 late_mins = abs(int(diff // 60))
                 countdown_text = f"🔴 LATE BY {late_mins}m • IN PROGRESS" if late_mins > 0 else "🔴 IN PROGRESS NOW"
                 is_urgent = True
-                
+
         self._cached_countdown_text = countdown_text
         self._cached_is_urgent = is_urgent
 
@@ -275,11 +275,11 @@ class QuakPitBannerView(AppKit.NSView):
         """Returns accurate bounding rects for all interactive elements."""
         btn_close_rect = AppKit.NSMakeRect(banner_x + self.banner_w - 36, banner_y + self.banner_h - 34, 24, 24)
         btn_close_hit_rect = AppKit.NSMakeRect(banner_x + self.banner_w - 44, banner_y + self.banner_h - 44, 40, 40)
-        
+
         # 4 Button Bar: [Action] [I'm Here] [Snooze 5m] [Snooze 15m]
         btn_action_rect = AppKit.NSMakeRect(banner_x + 18, banner_y + 12, 220, 33)
         is_stage_zero = (self.reminder_stage == 0)
-        
+
         if self.has_maps_url:
             btn_arrived_rect = AppKit.NSMakeRect(banner_x + 246, banner_y + 12, 100, 33)
             if is_stage_zero:
@@ -302,7 +302,7 @@ class QuakPitBannerView(AppKit.NSView):
             else:
                 btn_snooze1_rect = AppKit.NSMakeRect(banner_x + 246, banner_y + 12, 100, 33)
                 btn_snooze2_rect = AppKit.NSMakeRect(banner_x + 354, banner_y + 12, 100, 33)
-        
+
         return {
             "close": btn_close_rect,
             "close_hit": btn_close_hit_rect,
@@ -328,10 +328,10 @@ class QuakPitBannerView(AppKit.NSView):
         banner_x = self.x
         y_wave = self.base_y + math.sin(self.tick * 0.038) * 8.0
         banner_y = y_wave - 10.0
-        
+
         rects = self._get_button_rects(banner_x, banner_y)
         old_hover = self.hovered_button
-        
+
         if AppKit.NSPointInRect(loc, rects["close_hit"]):
             self.hovered_button = "close"
             AppKit.NSCursor.pointingHandCursor().set()
@@ -353,7 +353,7 @@ class QuakPitBannerView(AppKit.NSView):
         else:
             self.hovered_button = None
             AppKit.NSCursor.arrowCursor().set()
-            
+
         if old_hover != self.hovered_button:
             self.setNeedsDisplay_(True)
 
@@ -363,7 +363,7 @@ class QuakPitBannerView(AppKit.NSView):
         y_wave = self.base_y + math.sin(self.tick * 0.038) * 8.0
         banner_y = y_wave - 10.0
         rects = self._get_button_rects(banner_x, banner_y)
-        
+
         if AppKit.NSPointInRect(loc, rects["close_hit"]):
             self.pressed_button = "close"
         elif AppKit.NSPointInRect(loc, rects["action"]):
@@ -378,7 +378,7 @@ class QuakPitBannerView(AppKit.NSView):
             self.pressed_button = "card"
         else:
             self.pressed_button = None
-            
+
         self.setNeedsDisplay_(True)
 
     def mouseUp_(self, event):
@@ -387,11 +387,11 @@ class QuakPitBannerView(AppKit.NSView):
         y_wave = self.base_y + math.sin(self.tick * 0.038) * 8.0
         banner_y = y_wave - 10.0
         rects = self._get_button_rects(banner_x, banner_y)
-        
+
         clicked = self.pressed_button
         self.pressed_button = None
         self.setNeedsDisplay_(True)
-        
+
         if clicked == "close" and AppKit.NSPointInRect(loc, rects["close_hit"]):
             if self.controller:
                 self.controller.dismiss()
@@ -426,7 +426,7 @@ class QuakPitBannerView(AppKit.NSView):
     def stepAnimation_(self, timer):
         self.tick += 1
         screen_w = self.bounds().size.width
-        
+
         if not self.is_paused:
             self.x += self.speed
             if self.x > screen_w + 650:
@@ -438,7 +438,7 @@ class QuakPitBannerView(AppKit.NSView):
                     return
                 else:
                     self.x = -720.0
-                
+
         # Update countdown once every 30 frames (~0.5s) to save CPU
         if self.tick % 30 == 0:
             self._update_countdown_text()
@@ -446,7 +446,7 @@ class QuakPitBannerView(AppKit.NSView):
         plane_x = self.x + 605.0
         y_wave = self.base_y + math.sin(self.tick * 0.038) * 8.0
         plane_y = y_wave + 4.0
-        
+
         # 1. Turbo Flame Emitter (When Late / Emergency Mode)
         if self.is_late and not self.is_paused:
             # Emit dual afterburner fiery particles
@@ -460,7 +460,7 @@ class QuakPitBannerView(AppKit.NSView):
                     "vy": (random.random() - 0.5) * 1.5,
                     "color_stage": 0 # 0=gold/yellow, 1=orange, 2=red
                 })
-        
+
         # 2. Standard Smoke / Sparkles (Active during flight)
         if self.tick % 4 == 0 and not self.is_paused:
             if not self.is_late:
@@ -483,7 +483,7 @@ class QuakPitBannerView(AppKit.NSView):
                         "alpha": 0.75,
                         "drift": math.sin(self.tick * 0.1) * 0.4
                     })
-            
+
         # Update flames
         new_flames = []
         for f in self.flame_particles:
@@ -506,7 +506,7 @@ class QuakPitBannerView(AppKit.NSView):
             if p["alpha"] > 0 and p["r"] < 24:
                 new_particles.append(p)
         self.smoke_particles = new_particles
-        
+
         # Update sparkles
         new_sparkles = []
         for s in self.sparkle_particles:
@@ -517,7 +517,7 @@ class QuakPitBannerView(AppKit.NSView):
             if s["alpha"] > 0:
                 new_sparkles.append(s)
         self.sparkle_particles = new_sparkles
-        
+
         self.setNeedsDisplay_(True)
 
     def _build_theme_palette(self):
@@ -563,7 +563,7 @@ class QuakPitBannerView(AppKit.NSView):
             btn_gradient_top = AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.76, 0.28, 1.0)
             btn_gradient_bot = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.92, 0.56, 0.12, 1.0)
             card_tint = (0.12, 0.10, 0.06)
-            
+
         return {
             "accent": accent,
             "accent_bright": accent_bright,
@@ -575,19 +575,19 @@ class QuakPitBannerView(AppKit.NSView):
     def drawRect_(self, rect):
         AppKit.NSColor.clearColor().set()
         AppKit.NSRectFill(rect)
-        
+
         palette = self._palette
         accent = palette["accent"]
-        
+
         y_wave = self.base_y + math.sin(self.tick * 0.038) * 8.0
         plane_x = self.x + 605.0
         plane_y = y_wave + 4.0
-        
+
         banner_x = self.x
         banner_y = y_wave - 10.0
         banner_w = self.banner_w
         banner_h = self.banner_h
-        
+
         # 1. Turbo Flame Particles (Afterburners)
         for f in self.flame_particles:
             stage = f["color_stage"]
@@ -597,7 +597,7 @@ class QuakPitBannerView(AppKit.NSView):
                 f_col = AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.52, 0.15, f["alpha"])
             else:
                 f_col = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.95, 0.22, 0.18, f["alpha"] * 0.8)
-                
+
             f_col.set()
             f_path = AppKit.NSBezierPath.bezierPathWithOvalInRect_(
                 AppKit.NSMakeRect(f["x"] - f["r"], f["y"] - f["r"], f["r"] * 2, f["r"] * 2)
@@ -612,7 +612,7 @@ class QuakPitBannerView(AppKit.NSView):
                 AppKit.NSMakeRect(p["x"] - p["r"], p["y"] - p["r"], p["r"] * 2, p["r"] * 2)
             )
             smoke_path.fill()
-            
+
         for s in self.sparkle_particles:
             sparkle_col = AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.92, 0.45, s["alpha"])
             sparkle_col.set()
@@ -620,7 +620,7 @@ class QuakPitBannerView(AppKit.NSView):
                 AppKit.NSMakeRect(s["x"] - s["r"], s["y"] - s["r"], s["r"] * 2, s["r"] * 2)
             )
             sparkle_path.fill()
-            
+
         # 3. Towing Cables
         self._draw_towing_cables(banner_x, banner_y, banner_w, banner_h, plane_x, plane_y)
 
@@ -651,7 +651,7 @@ class QuakPitBannerView(AppKit.NSView):
     def _draw_towing_cables(self, bx, by, bw, bh, px, py):
         cable_col = AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.40, 0.35, 0.65) if self.is_late else AppKit.NSColor.colorWithWhite_alpha_(0.85, 0.42)
         cable_col.set()
-        
+
         cable_top = AppKit.NSBezierPath.bezierPath()
         cable_top.setLineWidth_(1.5)
         cable_top.moveToPoint_(AppKit.NSMakePoint(bx + bw, by + bh - 24.0))
@@ -662,7 +662,7 @@ class QuakPitBannerView(AppKit.NSView):
             AppKit.NSMakePoint(px - 32.0, py + 12.0)
         )
         cable_top.stroke()
-        
+
         cable_bot = AppKit.NSBezierPath.bezierPath()
         cable_bot.setLineWidth_(1.5)
         cable_bot.moveToPoint_(AppKit.NSMakePoint(bx + bw, by + 24.0))
@@ -677,13 +677,13 @@ class QuakPitBannerView(AppKit.NSView):
     def _draw_glass_banner_card(self, bx, by, bw, bh, palette):
         card_rect = AppKit.NSMakeRect(bx, by, bw, bh)
         card_path = AppKit.NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(card_rect, 18.0, 18.0)
-        
+
         # Frosted glass dark base
         tint = palette["card_tint"]
         bg_col = AppKit.NSColor.colorWithRed_green_blue_alpha_(tint[0], tint[1], tint[2], 0.95)
         bg_col.set()
         card_path.fill()
-        
+
         # Subtle rim highlight / Emergency red pulse when late
         if self.is_late:
             pulse = math.sin(self.tick * 0.15) * 0.3 + 0.7
@@ -692,7 +692,7 @@ class QuakPitBannerView(AppKit.NSView):
         else:
             border_col = AppKit.NSColor.colorWithWhite_alpha_(1.0, 0.16)
             card_path.setLineWidth_(1.0)
-            
+
         border_col.set()
         card_path.stroke()
 
@@ -701,25 +701,25 @@ class QuakPitBannerView(AppKit.NSView):
             AppKit.NSFontAttributeName: self._font_pill,
             AppKit.NSForegroundColorAttributeName: accent
         }
-        
+
         ns_str = AppKit.NSString.stringWithString_(self.provider.upper())
         str_size = ns_str.sizeWithAttributes_(attrs)
         pill_w = str_size.width + 16.0
         pill_h = 20.0
-        
+
         pill_x = bx + 18.0
         pill_y = by + bh - 32.0
-        
+
         pill_rect = AppKit.NSMakeRect(pill_x, pill_y, pill_w, pill_h)
         pill_path = AppKit.NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(pill_rect, 10.0, 10.0)
-        
+
         accent.colorWithAlphaComponent_(0.14).set()
         pill_path.fill()
-        
+
         accent.colorWithAlphaComponent_(0.38).set()
         pill_path.setLineWidth_(1.0)
         pill_path.stroke()
-        
+
         text_pt = AppKit.NSMakePoint(pill_x + 8.0, pill_y + 3.0)
         ns_str.drawAtPoint_withAttributes_(text_pt, attrs)
 
@@ -734,71 +734,71 @@ class QuakPitBannerView(AppKit.NSView):
             c_pill_x = pill_x + pill_w + 8.0
             c_pill_rect = AppKit.NSMakeRect(c_pill_x, pill_y, c_size.width + 14.0, pill_h)
             c_path = AppKit.NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(c_pill_rect, 10.0, 10.0)
-            
+
             AppKit.NSColor.colorWithRed_green_blue_alpha_(0.35, 0.20, 0.55, 0.65).set()
             c_path.fill()
             AppKit.NSColor.colorWithRed_green_blue_alpha_(0.75, 0.55, 0.95, 0.65).set()
             c_path.setLineWidth_(1.0)
             c_path.stroke()
-            
+
             c_str.drawAtPoint_withAttributes_(AppKit.NSMakePoint(c_pill_x + 7.0, pill_y + 3.0), c_attrs)
 
     def _draw_countdown_pill(self, bx, by, bw, bh, accent):
         countdown_text = self._cached_countdown_text
         is_urgent = self._cached_is_urgent
-        
+
         time_col = self._color_urgent_time if is_urgent else self._color_normal_time
-        
+
         attrs = {
             AppKit.NSFontAttributeName: self._font_pill,
             AppKit.NSForegroundColorAttributeName: time_col
         }
-        
+
         ns_str = AppKit.NSString.stringWithString_(countdown_text)
         str_size = ns_str.sizeWithAttributes_(attrs)
         pill_w = str_size.width + 18.0
         pill_h = 20.0
-        
+
         pill_x = bx + bw - 44.0 - pill_w
         pill_y = by + bh - 32.0
-        
+
         pill_rect = AppKit.NSMakeRect(pill_x, pill_y, pill_w, pill_h)
         pill_path = AppKit.NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(pill_rect, 10.0, 10.0)
-        
+
         bg_col = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.26, 0.08, 0.08, 0.88) if is_urgent else AppKit.NSColor.colorWithRed_green_blue_alpha_(0.15, 0.16, 0.24, 0.85)
         bg_col.set()
         pill_path.fill()
-        
+
         border_col = time_col.colorWithAlphaComponent_(0.55)
         border_col.set()
         pill_path.setLineWidth_(1.0)
         pill_path.stroke()
-        
+
         text_pt = AppKit.NSMakePoint(pill_x + 9.0, pill_y + 3.0)
         ns_str.drawAtPoint_withAttributes_(text_pt, attrs)
 
     def _draw_close_button(self, bx, by, bw, bh):
         is_pressed = (self.pressed_button == "close")
         is_hovered = (self.hovered_button == "close")
-        
+
         btn_rect = AppKit.NSMakeRect(bx + bw - 36.0, by + bh - 34.0, 24.0, 24.0)
         btn_path = AppKit.NSBezierPath.bezierPathWithOvalInRect_(btn_rect)
-        
+
         if is_pressed:
             fill_col = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.42, 0.44, 0.58, 1.0)
         elif is_hovered:
             fill_col = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.30, 0.32, 0.44, 1.0)
         else:
             fill_col = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.18, 0.20, 0.28, 0.85)
-            
+
         fill_col.set()
         btn_path.fill()
-        
+
         border_col = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.50, 0.55, 0.70, 0.65)
         border_col.set()
         btn_path.setLineWidth_(1.0)
         btn_path.stroke()
-        
+
         close_attrs = {
             AppKit.NSFontAttributeName: self._font_btn_sec,
             AppKit.NSForegroundColorAttributeName: self._color_white
@@ -813,10 +813,10 @@ class QuakPitBannerView(AppKit.NSView):
             AppKit.NSFontAttributeName: self._font_title,
             AppKit.NSForegroundColorAttributeName: self._color_white
         }
-        
+
         title_pt = AppKit.NSMakePoint(bx + 18.0, by + bh - 58.0)
         AppKit.NSString.stringWithString_(self._cached_short_title).drawAtPoint_withAttributes_(title_pt, title_attrs)
-        
+
         sub_attrs = {
             AppKit.NSFontAttributeName: self._font_sub,
             AppKit.NSForegroundColorAttributeName: self._color_sub
@@ -828,10 +828,10 @@ class QuakPitBannerView(AppKit.NSView):
         # 1. Main Action Button
         is_pressed_act = (self.pressed_button == "action")
         is_hovered_act = (self.hovered_button == "action")
-        
+
         btn_act_rect = AppKit.NSMakeRect(bx + 18.0, by + 12.0, 220.0, 33.0)
         btn_act_path = AppKit.NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(btn_act_rect, 9.0, 9.0)
-        
+
         if not self.has_real_url:
             # Render as "✅ Got it" acknowledge button (blue tint)
             top_c = AppKit.NSColor.colorWithSRGBRed_green_blue_alpha_(0.1, 0.6, 0.7, 1.0)
@@ -841,7 +841,7 @@ class QuakPitBannerView(AppKit.NSView):
             top_c = palette["btn_gradient_top"]
             bot_c = palette["btn_gradient_bot"]
             btn_text = self.action_btn_text
-            
+
         if is_pressed_act:
             grad = AppKit.NSGradient.alloc().initWithStartingColor_endingColor_(bot_c, top_c)
         elif is_hovered_act:
@@ -849,9 +849,9 @@ class QuakPitBannerView(AppKit.NSView):
             grad = AppKit.NSGradient.alloc().initWithStartingColor_endingColor_(hover_color, bot_c)
         else:
             grad = AppKit.NSGradient.alloc().initWithStartingColor_endingColor_(top_c, bot_c)
-            
+
         grad.drawInBezierPath_angle_(btn_act_path, 270.0)
-        
+
         btn_attrs = {
             AppKit.NSFontAttributeName: self._font_btn,
             AppKit.NSForegroundColorAttributeName: self._color_white
@@ -863,30 +863,30 @@ class QuakPitBannerView(AppKit.NSView):
         ns_btn_str.drawAtPoint_withAttributes_(AppKit.NSMakePoint(text_x, text_y), btn_attrs)
 
         rects = self._get_button_rects(bx, by)
-        
+
         # 2. "📍 I'm Here" Arrival Dismissal Button
         if self.has_maps_url:
             is_pressed_arr = (self.pressed_button == "arrived")
             is_hovered_arr = (self.hovered_button == "arrived")
-            
+
             btn_arr_rect = rects["arrived"]
             btn_arr_path = AppKit.NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(btn_arr_rect, 9.0, 9.0)
-            
+
             if is_pressed_arr:
                 arr_fill = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.15, 0.45, 0.28, 0.95)
             elif is_hovered_arr:
                 arr_fill = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.12, 0.38, 0.22, 0.90)
             else:
                 arr_fill = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.08, 0.25, 0.16, 0.85)
-                
+
             arr_fill.set()
             btn_arr_path.fill()
-            
+
             arr_border = self._color_arrived.colorWithAlphaComponent_(0.45)
             arr_border.set()
             btn_arr_path.setLineWidth_(1.0)
             btn_arr_path.stroke()
-            
+
             arr_attrs = {
                 AppKit.NSFontAttributeName: self._font_btn_sec,
                 AppKit.NSForegroundColorAttributeName: self._color_arrived
@@ -899,13 +899,13 @@ class QuakPitBannerView(AppKit.NSView):
 
         # 3. Snooze / Acknowledge Buttons
         is_stage_zero = (self.reminder_stage == 0)
-        
+
         def _draw_snooze_btn(btn_key, rect, text_str):
             if rect.size.width == 0: return
             is_pressed = (self.pressed_button == btn_key)
             is_hovered = (self.hovered_button == btn_key)
             path = AppKit.NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(rect, 9.0, 9.0)
-            
+
             if is_stage_zero:
                 # "✅ Got it" styling
                 if is_pressed:
@@ -926,13 +926,13 @@ class QuakPitBannerView(AppKit.NSView):
                     fill = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.15, 0.17, 0.25, 0.85)
                 border = AppKit.NSColor.colorWithWhite_alpha_(1.0, 0.16)
                 txt_col = self._color_sub
-                
+
             fill.set()
             path.fill()
             border.set()
             path.setLineWidth_(1.0)
             path.stroke()
-            
+
             s_attrs = {
                 AppKit.NSFontAttributeName: self._font_btn_sec,
                 AppKit.NSForegroundColorAttributeName: txt_col
@@ -954,44 +954,44 @@ class QuakPitBannerView(AppKit.NSView):
         text = self._cached_speech_text
         if not text:
             return
-            
+
         bubble_attrs = {
             AppKit.NSFontAttributeName: self._font_bubble,
             AppKit.NSForegroundColorAttributeName: AppKit.NSColor.whiteColor()
         }
         ns_str = AppKit.NSString.stringWithString_(text)
         text_size = ns_str.sizeWithAttributes_(bubble_attrs)
-        
+
         bw = text_size.width + 20.0
         bh = 26.0
         bx = px - bw * 0.5
         by = py + 36.0 + math.sin(self.tick * 0.08) * 3.0
-        
+
         # Bubble Container Shape with Tail
         bubble_rect = AppKit.NSMakeRect(bx, by, bw, bh)
         bubble_path = AppKit.NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(bubble_rect, 10.0, 10.0)
-        
+
         # Tail pointing to pilot
         tail_path = AppKit.NSBezierPath.bezierPath()
         tail_path.moveToPoint_(AppKit.NSMakePoint(px - 6.0, by))
         tail_path.lineToPoint_(AppKit.NSMakePoint(px, by - 8.0))
         tail_path.lineToPoint_(AppKit.NSMakePoint(px + 6.0, by))
         tail_path.closePath()
-        
+
         if self.is_late:
             bg_col = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.85, 0.16, 0.16, 0.95)
             border_col = AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.45, 0.45, 1.0)
         else:
             bg_col = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.14, 0.16, 0.24, 0.92)
             border_col = AppKit.NSColor.colorWithWhite_alpha_(1.0, 0.25)
-            
+
         bg_col.set()
         bubble_path.fill()
         tail_path.fill()
-        
+
         border_col.set()
         bubble_path.setLineWidth_(1.2)
         bubble_path.stroke()
-        
+
         text_pt = AppKit.NSMakePoint(bx + 10.0, by + 5.0)
         ns_str.drawAtPoint_withAttributes_(text_pt, bubble_attrs)
