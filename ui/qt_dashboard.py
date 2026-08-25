@@ -336,6 +336,7 @@ class QtFlightDeckWindow(QMainWindow):
 
         pilots = [
             ("duck", "🦆 Aviator Duck", "Google Meet / Zoom / Video Meetings", "https://meet.google.com/test"),
+            ("travel_departure", "🚦 Multi-Modal Route ETA", "Transit, Driving & Cycling Departure Countdown", "https://maps.google.com"),
             ("chef", "👨‍🍳 Chef Duck", "Dinner / Lunch / Restaurants / Aperitivo", "https://maps.google.com/?q=Pizzeria"),
             ("captain", "🧑‍✈️ Jet Captain", "Flights / Airports / High-Speed Transit", "https://maps.google.com/?q=Airport"),
             ("owl", "🦉 Academic Owl", "University Lectures / Exams / Campus Study", "https://calendar.google.com"),
@@ -363,9 +364,39 @@ class QtFlightDeckWindow(QMainWindow):
 
             def _trigger_test_flight(p_id_val):
                 try:
-                    from ui.banner.qt_banner import get_test_preset, show_qt_banner
-                    evt = get_test_preset(p_id_val)
-                    show_qt_banner(evt)
+                    if p_id_val == "travel_departure":
+                        from core.services.eta_service import eta_service
+                        t_mode = config.get("transport_mode", "transit")
+                        res = eta_service.calculate_eta("Piazza Castello, Torino", "Politecnico di Torino, Corso Duca degli Abruzzi 24, Torino", mode=t_mode)
+                        dur = res["duration_minutes"] if res else 12
+                        evt = {
+                            "title": "ICT for Smart Mobility (Politecnico di Torino)",
+                            "location": "Corso Duca degli Abruzzi 24, Torino",
+                            "pilot_type": "owl",
+                            "provider": "Politecnico Calendar 📅",
+                            "start_time": datetime.now().astimezone() + timedelta(minutes=dur + 15),
+                            "departure_time": datetime.now().astimezone() + timedelta(minutes=15),
+                            "travel_time_minutes": dur,
+                            "transport_mode": t_mode,
+                            "is_travel": True,
+                            "reminder_stage": 15,
+                            "action_btn_text": f"🗺️ NAVIGATE ({dur}m)",
+                            "maps_url": res["maps_url"] if res else "https://maps.google.com"
+                        }
+                    else:
+                        from ui.banner.qt_banner import get_test_preset
+                        evt = dict(get_test_preset(p_id_val))
+
+                    if sys.platform.startswith("linux"):
+                        try:
+                            from ui.banner.wayland_banner import show_wayland_banner
+                            show_wayland_banner(evt)
+                        except Exception:
+                            from ui.banner.qt_banner import show_qt_banner
+                            show_qt_banner(evt)
+                    else:
+                        from ui.banner.qt_banner import show_qt_banner
+                        show_qt_banner(evt)
                 except Exception as ex:
                     logger.error(f"Error triggering test flight banner: {ex}")
 
@@ -387,33 +418,195 @@ class QtFlightDeckWindow(QMainWindow):
         pref_layout.setContentsMargins(20, 16, 20, 16)
         pref_layout.setSpacing(14)
 
+        # --- Multi-Modal Travel & Route Estimation Card ---
         addr_card = QFrame(pref_widget)
         addr_card.setObjectName("Card")
         ac_layout = QVBoxLayout(addr_card)
         ac_layout.setContentsMargins(18, 14, 18, 14)
-        ac_layout.setSpacing(8)
+        ac_layout.setSpacing(10)
 
-        ac_title = QLabel("🏠 Home / Departure Address", addr_card)
+        ac_title = QLabel("📍 Home / Departure Address & Multi-Modal Route ETA", addr_card)
         ac_title.setObjectName("CardTitle")
-        ac_sub = QLabel("Used to calculate transit & driving departure times via Apple/Google Maps ETA.", addr_card)
+        ac_sub = QLabel("Calculates real-time travel duration and departure times for Public Transit, Driving, Walking, or Cycling.", addr_card)
         ac_sub.setObjectName("CardSub")
+        ac_layout.addWidget(ac_title)
+        ac_layout.addWidget(ac_sub)
+
+        # 1. Starting Address Row
+        addr_row_lbl = QLabel("<b>🏠 Starting Address (Origin)</b>", addr_card)
+        addr_row_lbl.setStyleSheet("color: #e2e8f0; font-size: 12px;")
+        ac_layout.addWidget(addr_row_lbl)
 
         entry_row = QHBoxLayout()
         addr_entry = QLineEdit(addr_card)
         addr_entry.setText(config.get("home_address", "") or "")
-        addr_entry.setPlaceholderText("e.g. Corso Duca degli Abruzzi 24, Torino")
+        addr_entry.setPlaceholderText("e.g. Piazza Castello, Torino or Via Roma, Torino")
 
-        save_btn = QPushButton("💾 Save Location", addr_card)
-        save_btn.setObjectName("PrimaryBtn")
-        save_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        save_btn.clicked.connect(lambda: config.set("home_address", addr_entry.text().strip()))
+        save_addr_btn = QPushButton("💾 Save Location", addr_card)
+        save_addr_btn.setObjectName("PrimaryBtn")
+        save_addr_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        def _save_addr():
+            val = addr_entry.text().strip()
+            config.set("home_address", val)
+            save_addr_btn.setText("✓ Saved")
+            QTimer.singleShot(1500, lambda: save_addr_btn.setText("💾 Save Location"))
+        save_addr_btn.clicked.connect(_save_addr)
 
         entry_row.addWidget(addr_entry, stretch=1)
-        entry_row.addWidget(save_btn)
-
-        ac_layout.addWidget(ac_title)
-        ac_layout.addWidget(ac_sub)
+        entry_row.addWidget(save_addr_btn)
         ac_layout.addLayout(entry_row)
+
+        # 2. Preferred Transport Mode
+        mode_lbl = QLabel("<b>🚦 Transport Mode for Route Calculation</b>", addr_card)
+        mode_lbl.setStyleSheet("color: #e2e8f0; font-size: 12px; margin-top: 4px;")
+        ac_layout.addWidget(mode_lbl)
+
+        mode_row = QHBoxLayout()
+        mode_row.setSpacing(8)
+        current_mode = config.get("transport_mode", "transit")
+        
+        mode_buttons = {}
+        modes_spec = [
+            ("transit", "🚆 Public Transit"),
+            ("automobile", "🚗 Driving"),
+            ("bicycling", "🚲 Cycling"),
+            ("walking", "🚶 Walking")
+        ]
+
+        def _update_mode_styles(active_key):
+            for k, b in mode_buttons.items():
+                if k == active_key:
+                    b.setStyleSheet("""
+                        QPushButton {
+                            background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0284c7, stop:1 #2563eb);
+                            color: #ffffff;
+                            font-weight: bold;
+                            border: 1px solid #38bdf8;
+                            border-radius: 8px;
+                            padding: 8px 12px;
+                        }
+                    """)
+                else:
+                    b.setStyleSheet("""
+                        QPushButton {
+                            background: rgba(255, 255, 255, 0.05);
+                            color: #cbd5e1;
+                            border: 1px solid rgba(255, 255, 255, 0.1);
+                            border-radius: 8px;
+                            padding: 8px 12px;
+                        }
+                        QPushButton:hover {
+                            background: rgba(255, 255, 255, 0.10);
+                            color: #f8fafc;
+                        }
+                    """)
+
+        for m_key, m_name in modes_spec:
+            btn = QPushButton(m_name, addr_card)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            mode_buttons[m_key] = btn
+            def _select_m(k=m_key):
+                config.set("transport_mode", k)
+                _update_mode_styles(k)
+                try:
+                    event_bus.publish("CONFIG_CHANGED", key="transport_mode", value=k)
+                except Exception:
+                    pass
+            btn.clicked.connect(_select_m)
+            mode_row.addWidget(btn)
+
+        _update_mode_styles(current_mode)
+        ac_layout.addLayout(mode_row)
+
+        # 3. Departure Buffer Margin
+        buf_row = QHBoxLayout()
+        buf_lbl = QLabel("<b>⏳ Departure Buffer Margin</b> (station transit / parking time):", addr_card)
+        buf_lbl.setStyleSheet("color: #e2e8f0; font-size: 12px;")
+        
+        buf_combo = QComboBox(addr_card)
+        buf_combo.addItems(["5 minutes", "10 minutes (Recommended)", "15 minutes", "20 minutes"])
+        buf_map = {5: 0, 10: 1, 15: 2, 20: 3}
+        rev_buf_map = [5, 10, 15, 20]
+        cur_buf = config.get("eta_buffer_minutes", 10)
+        buf_combo.setCurrentIndex(buf_map.get(cur_buf, 1))
+        
+        def _on_buf_change(idx):
+            val = rev_buf_map[idx]
+            config.set("eta_buffer_minutes", val)
+            try:
+                event_bus.publish("CONFIG_CHANGED", key="eta_buffer_minutes", value=val)
+            except Exception:
+                pass
+        buf_combo.currentIndexChanged.connect(_on_buf_change)
+
+        buf_row.addWidget(buf_lbl, stretch=1)
+        buf_row.addWidget(buf_combo)
+        ac_layout.addLayout(buf_row)
+
+        # 4. Live Route Simulation & Banner Test Row
+        sim_box = QFrame(addr_card)
+        sim_box.setStyleSheet("background: rgba(56, 189, 248, 0.06); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 10px; padding: 6px;")
+        sim_layout = QVBoxLayout(sim_box)
+        sim_layout.setContentsMargins(10, 8, 10, 8)
+        sim_layout.setSpacing(6)
+
+        sim_title = QLabel("🧪 Live Route & Departure Banner Test (Politecnico di Torino)", sim_box)
+        sim_title.setStyleSheet("color: #38bdf8; font-weight: bold; font-size: 12px; border: none;")
+        sim_layout.addWidget(sim_title)
+
+        sim_act_row = QHBoxLayout()
+        sim_info_lbl = QLabel("Calculate real-time transit & launch a live on-screen flight banner:", sim_box)
+        sim_info_lbl.setStyleSheet("color: #94a3b8; font-size: 11px; border: none;")
+        sim_act_row.addWidget(sim_info_lbl, stretch=1)
+
+        def _test_polito_banner():
+            try:
+                from core.services.eta_service import eta_service
+                orig = addr_entry.text().strip() or "Piazza Castello, Torino"
+                dest = "Politecnico di Torino, Corso Duca degli Abruzzi 24, Torino"
+                t_mode = config.get("transport_mode", "transit")
+                res = eta_service.calculate_eta(orig, dest, mode=t_mode)
+                dur = res["duration_minutes"] if res else 15
+                dist = res["distance_km"] if res else 2.7
+                maps_url = res["maps_url"] if res else "https://maps.google.com"
+
+                evt = {
+                    "title": "ICT for Smart Mobility (Politecnico di Torino) - Aula 5M",
+                    "location": dest,
+                    "pilot_type": "owl",
+                    "provider": "Politecnico Calendar 📅",
+                    "start_time": datetime.now().astimezone() + timedelta(minutes=dur + 15),
+                    "departure_time": datetime.now().astimezone() + timedelta(minutes=15),
+                    "travel_time_minutes": dur,
+                    "transport_mode": t_mode,
+                    "is_travel": True,
+                    "reminder_stage": 15,
+                    "action_btn_text": f"🗺️ NAVIGATE ({dur}m)",
+                    "maps_url": maps_url
+                }
+
+                if sys.platform.startswith("linux"):
+                    try:
+                        from ui.banner.wayland_banner import show_wayland_banner
+                        show_wayland_banner(evt)
+                    except Exception:
+                        from ui.banner.qt_banner import show_qt_banner
+                        show_qt_banner(evt)
+                else:
+                    from ui.banner.qt_banner import show_qt_banner
+                    show_qt_banner(evt)
+            except Exception as e:
+                logger.error(f"Error testing live departure banner: {e}")
+
+        test_dep_btn = QPushButton("🚀 Launch Departure Banner", sim_box)
+        test_dep_btn.setObjectName("PrimaryBtn")
+        test_dep_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        test_dep_btn.clicked.connect(_test_polito_banner)
+        sim_act_row.addWidget(test_dep_btn)
+
+        sim_layout.addLayout(sim_act_row)
+        ac_layout.addWidget(sim_box)
+
         pref_layout.addWidget(addr_card)
 
         # Utilities
