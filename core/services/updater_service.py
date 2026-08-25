@@ -211,9 +211,11 @@ class UpdaterService:
                     shutil.copytree(source_app, app_dest)
 
             event_bus.publish("UPDATE_INSTALLED")
+            time.sleep(1.0)
             # Relaunch newly installed version
-            subprocess.Popen(["open", app_dest])
-            sys.exit(0)
+            relaunch_cmd = "sleep 1.2 && open /Applications/QuakMeeting.app &"
+            subprocess.Popen(["bash", "-c", relaunch_cmd], start_new_session=True)
+            os._exit(0)
             return True
         except Exception as e:
             logger.error(f"macOS update installation failed: {e}")
@@ -221,25 +223,39 @@ class UpdaterService:
             return False
 
     def _install_linux_update(self, package_path: str) -> bool:
-        """Installs .deb package on Ubuntu Linux via pkexec or apt."""
+        """Installs .deb package on Ubuntu Linux via pkexec or apt and automatically relaunches."""
         try:
             if package_path.endswith(".deb"):
-                # Try graphical pkexec
                 try:
-                    cmd = ["pkexec", "dpkg", "-i", package_path]
-                    subprocess.Popen(cmd)
-                    event_bus.publish("UPDATE_INSTALLED")
-                    return True
+                    logger.info(f"Executing: pkexec dpkg -i {package_path}")
+                    res = subprocess.run(["pkexec", "dpkg", "-i", package_path], capture_output=True, text=True)
+                    if res.returncode == 0:
+                        logger.info("✅ Update package installed successfully via dpkg!")
+                        event_bus.publish("UPDATE_INSTALLED")
+                        time.sleep(1.0)
+                        # Gracefully relaunch the newly installed version and exit current process
+                        relaunch_cmd = "sleep 1.2 && /usr/bin/quakmeeting > /dev/null 2>&1 &"
+                        subprocess.Popen(["bash", "-c", relaunch_cmd], start_new_session=True)
+                        os._exit(0)
+                        return True
+                    else:
+                        err_msg = res.stderr.strip() or res.stdout.strip() or f"Process returned code {res.returncode}"
+                        logger.warning(f"pkexec install finished with error: {err_msg}")
+                        event_bus.publish("UPDATE_FAILED", error=err_msg)
+                        return False
                 except Exception as pk_err:
                     logger.warning(f"pkexec install failed ({pk_err}). Opening browser release page.")
+                    event_bus.publish("UPDATE_FAILED", error=str(pk_err))
                     if self.latest_release_info and self.latest_release_info.get("html_url"):
                         import webbrowser
                         webbrowser.open(self.latest_release_info["html_url"])
                     return False
             elif package_path.endswith(".AppImage"):
                 os.chmod(package_path, 0o755)
-                subprocess.Popen([package_path])
-                sys.exit(0)
+                event_bus.publish("UPDATE_INSTALLED")
+                relaunch_cmd = f"sleep 1.2 && '{package_path}' > /dev/null 2>&1 &"
+                subprocess.Popen(["bash", "-c", relaunch_cmd], start_new_session=True)
+                os._exit(0)
                 return True
         except Exception as e:
             logger.error(f"Linux update installation failed: {e}")
