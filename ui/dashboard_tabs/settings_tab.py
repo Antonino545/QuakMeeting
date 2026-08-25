@@ -34,12 +34,12 @@ class SettingsTabController(AppKit.NSObject):
 
         card_w = w - 16.0
         gap = 14.0
-        
+
         c1_h = 216.0 # Notification Lead Times
         c_eta_h = 216.0 # Home / Departure Address & Apple Maps ETA
         c2_h = 216.0 # Screen Banner & Menu Bar Live Display Dynamics
         c3_h = 164.0 # Sound Chimes
-        
+
         # Calculate calendar section height dynamically
         cals = self.cached_calendars if self.cached_calendars else get_available_calendars()
         if not self.cached_calendars and cals:
@@ -47,10 +47,10 @@ class SettingsTabController(AppKit.NSObject):
         cal_count = len(cals) if cals else 1
         cal_rows = (cal_count + 1) // 2
         c4_h = max(118.0, 76.0 + cal_rows * 36.0) # Dynamic Calendars height
-        
+
         c_up_h = 136.0 # Software Updates & Releases
         c5_h = 142.0 # System & JSON Config
-        
+
         content_h = c1_h + c_eta_h + c2_h + c3_h + c4_h + c_up_h + c5_h + gap * 8 + 24.0
         doc_view = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 0, w, content_h))
 
@@ -204,14 +204,14 @@ class SettingsTabController(AppKit.NSObject):
             badge_rgba=(1.0, 0.6, 0.1, 0.20),
             border_rgba=(1.0, 0.6, 0.1, 0.38)
         )
-        
+
         # 1. Video Meeting Stages
         r1_y = h - 84.0
         self._add_row_label(card, "📹 Video Meetings", "Alert ahead of meeting start time", r1_y, 220)
-        
+
         curr_meeting_stages = set(self.config.get("meeting_reminder_stages", [20, 10, 5, 2, 0]))
         meeting_opts = [(30, "30m"), (20, "20m"), (15, "15m"), (10, "10m"), (5, "5m"), (2, "2m"), (0, "0m Start")]
-        
+
         x_btn = 245.0
         for val, label in meeting_opts:
             btn_w = 60.0 if val != 0 else 92.0
@@ -231,10 +231,10 @@ class SettingsTabController(AppKit.NSObject):
         # 2. Travel Stages (Before Departure Time)
         r2_y = h - 136.0
         self._add_row_label(card, "🚗 Travel & Trips", "Alert ahead of leave / departure time", r2_y, 220)
-        
+
         curr_travel_stages = set(self.config.get("travel_reminder_stages", [45, 30, 15, 5, 2, 0]))
         travel_opts = [(60, "60m"), (45, "45m"), (30, "30m"), (15, "15m"), (5, "5m"), (2, "2m"), (0, "0m Leave")]
-        
+
         x_btn = 245.0
         for val, label in travel_opts:
             btn_w = 60.0 if val != 0 else 92.0
@@ -449,7 +449,7 @@ class SettingsTabController(AppKit.NSObject):
             ("Basso", "Basso"), ("Morse", "Morse")
         ]
         curr_snd = self.config.get("sound_name", "Glass")
-        
+
         self.sound_popup = AppKit.NSPopUpButton.alloc().initWithFrame_pullsDown_(AppKit.NSMakeRect(245, r2_y - 12, 230, 28), False)
         self.sound_popup.setFont_(AppKit.NSFont.systemFontOfSize_(12.5))
         self.sound_popup.setTarget_(self)
@@ -481,7 +481,7 @@ class SettingsTabController(AppKit.NSObject):
             badge_rgba=(0.2, 0.78, 0.4, 0.20),
             border_rgba=(0.2, 0.78, 0.4, 0.38)
         )
-        
+
         if cals is None:
             cals = self.cached_calendars if self.cached_calendars else get_available_calendars()
 
@@ -508,7 +508,7 @@ class SettingsTabController(AppKit.NSObject):
             chk.setAction_("onToggleCalendarSource:")
             chk.setToolTip_(cal['name'])
             card.addSubview_(chk)
-            
+
             x_offset += 360.0
             if x_offset + 340.0 > w:
                 x_offset = 18.0

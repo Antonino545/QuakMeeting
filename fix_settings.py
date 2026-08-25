@@ -14,7 +14,7 @@ for idx, line in enumerate(lines):
                 # If we didn't just see @objc.IBAction
                 if not (idx > 0 and "@objc.IBAction" in lines[idx-1]):
                     new_lines.append("    @objc.python_method\n")
-    
+
     # If the line contains @objc.python_method but it's indented with 8 spaces, skip it
     if line.startswith("        @objc.python_method"):
         continue
@@ -22,7 +22,7 @@ for idx, line in enumerate(lines):
     # Fix the indentation of the inner functions if they were accidentally modified to 4 spaces
     if line.startswith("    def _on_mac_"):
         line = "        " + line[4:]
-        
+
     new_lines.append(line)
 
 with open("ui/dashboard_tabs/settings_tab.py", "w") as f:
