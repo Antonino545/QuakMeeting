@@ -5,6 +5,7 @@ and performs in-place upgrades for macOS and Ubuntu Linux.
 """
 import os
 import sys
+import time
 import json
 import shutil
 import urllib.request

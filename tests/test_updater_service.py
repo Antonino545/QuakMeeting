@@ -56,7 +56,23 @@ class TestUpdaterService(unittest.TestCase):
             self.assertIsNotNone(info)
             self.assertTrue(info["has_update"])
             self.assertEqual(info["tag_name"], "v9.9.9")
-            self.assertTrue(len(events_received) >= 1)
+    def test_mocked_install_linux_update(self):
+        from unittest.mock import patch, MagicMock
+        from core.services.event_bus import event_bus
+
+        installed_events = []
+        event_bus.subscribe("UPDATE_INSTALLED", lambda **k: installed_events.append(True))
+
+        mock_run_res = MagicMock(returncode=0, stdout="Installed", stderr="")
+        with patch("subprocess.run", return_value=mock_run_res), \
+             patch("subprocess.Popen") as mock_popen, \
+             patch("os._exit") as mock_exit, \
+             patch("time.sleep"):
+            success = self.updater._install_linux_update("/tmp/mock_package.deb")
+            self.assertTrue(success)
+            self.assertTrue(len(installed_events) >= 1)
+            mock_popen.assert_called_once()
+            mock_exit.assert_called_once_with(0)
 
 if __name__ == "__main__":
     unittest.main()
