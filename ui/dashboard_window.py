@@ -15,6 +15,7 @@ try:
     from core.calendar_scanner import get_upcoming_meetings, sync_calendar_now, get_available_calendars
     from core.services.eta_service import eta_service, MODE_ICONS, MODE_LABELS
     from core.services.event_bus import event_bus
+    from core.services.updater_service import updater_service
     from core.domain.models import format_duration
     from core.logger import open_log_file, open_log_folder
     from ui.banner_window import _run_banner
@@ -700,9 +701,10 @@ class DashboardWindowController(AppKit.NSObject):
         cal_rows = (cal_count + 1) // 2
         c4_h = max(118.0, 76.0 + cal_rows * 36.0) # Dynamic Calendars height
         
+        c_up_h = 136.0 # Software Updates & Releases
         c5_h = 142.0 # System & JSON Config
         
-        content_h = c1_h + c_eta_h + c2_h + c3_h + c4_h + c5_h + gap * 7 + 24.0
+        content_h = c1_h + c_eta_h + c2_h + c3_h + c4_h + c_up_h + c5_h + gap * 8 + 24.0
         doc_view = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 0, w, content_h))
 
         curr_y = content_h - gap
@@ -737,7 +739,13 @@ class DashboardWindowController(AppKit.NSObject):
         self._build_calendars_section(card4, card_w, c4_h, cals)
         doc_view.addSubview_(card4)
 
-        # SECTION 6: SYSTEM & JSON RULES
+        # SECTION 6: SOFTWARE UPDATES & RELEASES
+        curr_y -= (c_up_h + gap)
+        card_up = self._create_card_container(0, curr_y, card_w, c_up_h)
+        self._build_update_section(card_up, card_w, c_up_h)
+        doc_view.addSubview_(card_up)
+
+        # SECTION 7: SYSTEM & JSON RULES
         curr_y -= (c5_h + gap)
         card5 = self._create_card_container(0, curr_y, card_w, c5_h)
         self._build_system_section(card5, card_w, c5_h)
@@ -1206,6 +1214,141 @@ class DashboardWindowController(AppKit.NSObject):
         info_lbl.setDrawsBackground_(False)
         info_lbl.setEditable_(False)
         card.addSubview_(info_lbl)
+
+    def _build_update_section(self, card, w, h):
+        self._add_section_header(
+            card,
+            "Software Updates & Releases",
+            "Keep QuakMeeting up to date with the latest features, mascottes, and security patches.",
+            h, w,
+            icon_emoji="🚀",
+            badge_rgba=(0.02, 0.52, 0.78, 0.20),
+            border_rgba=(0.02, 0.52, 0.78, 0.38)
+        )
+
+        y = h - 94.0
+        btn_w = 180.0
+
+        # Check for updates button
+        check_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(18, y, btn_w, 32))
+        check_btn.setTitle_("🔍 Check for Updates")
+        check_btn.setBezelStyle_(AppKit.NSBezelStyleRounded)
+        check_btn.setFont_(AppKit.NSFont.systemFontOfSize_(12.0))
+        check_btn.setTarget_(self)
+        check_btn.setAction_("onCheckForUpdatesMac:")
+        card.addSubview_(check_btn)
+        self.mac_check_update_btn = check_btn
+
+        # Install update button (hidden by default unless update available)
+        install_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(18 + btn_w + 14.0, y, 220, 32))
+        install_btn.setTitle_("⚡ Install Update Now")
+        install_btn.setBezelStyle_(AppKit.NSBezelStyleRounded)
+        install_btn.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.0))
+        install_btn.setTarget_(self)
+        install_btn.setAction_("onInstallUpdateMac:")
+        install_btn.setHidden_(True)
+        card.addSubview_(install_btn)
+        self.mac_install_update_btn = install_btn
+
+        # Status text field
+        status_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, 14, w - 36, 18))
+        status_lbl.setStringValue_(f"QuakMeeting v{updater_service.current_version}  •  Ready")
+        status_lbl.setFont_(AppKit.NSFont.systemFontOfSize_(11.5))
+        status_lbl.setTextColor_(AppKit.NSColor.colorWithRed_green_blue_alpha_(0.60, 0.65, 0.78, 1.0))
+        status_lbl.setBezeled_(False)
+        status_lbl.setDrawsBackground_(False)
+        status_lbl.setEditable_(False)
+        card.addSubview_(status_lbl)
+        self.mac_update_status_lbl = status_lbl
+
+        # Hook event_bus listeners to update labels/buttons on main thread
+        def _on_mac_update_avail(tag_name=None, version=None, **k):
+            v_name = tag_name or version or "New Version"
+            def update_ui():
+                if hasattr(self, 'mac_update_status_lbl') and self.mac_update_status_lbl:
+                    self.mac_update_status_lbl.setStringValue_(f"🚀 Update Available: {v_name} (Current: v{updater_service.current_version})")
+                    self.mac_update_status_lbl.setTextColor_(AppKit.NSColor.colorWithRed_green_blue_alpha_(0.22, 0.74, 0.97, 1.0))
+                if hasattr(self, 'mac_install_update_btn') and self.mac_install_update_btn:
+                    self.mac_install_update_btn.setTitle_(f"⚡ Install {v_name} Now")
+                    self.mac_install_update_btn.setHidden_(False)
+                if hasattr(self, 'mac_check_update_btn') and self.mac_check_update_btn:
+                    self.mac_check_update_btn.setTitle_("🔍 Check for Updates")
+                    self.mac_check_update_btn.setEnabled_(True)
+            AppKit.NSOperationQueue.mainQueue().addOperationWithBlock_(update_ui)
+
+        def _on_mac_update_check_done(has_update=False, current_version=None, error=None, **k):
+            def update_ui():
+                if hasattr(self, 'mac_check_update_btn') and self.mac_check_update_btn:
+                    self.mac_check_update_btn.setTitle_("🔍 Check for Updates")
+                    self.mac_check_update_btn.setEnabled_(True)
+                if not has_update:
+                    if hasattr(self, 'mac_update_status_lbl') and self.mac_update_status_lbl:
+                        if error:
+                            self.mac_update_status_lbl.setStringValue_(f"⚠️ Update check error: {error[:60]}")
+                        else:
+                            self.mac_update_status_lbl.setStringValue_(f"✨ You are up to date!  v{current_version or updater_service.current_version}")
+                            self.mac_update_status_lbl.setTextColor_(AppKit.NSColor.colorWithRed_green_blue_alpha_(0.30, 0.85, 0.50, 1.0))
+                    if hasattr(self, 'mac_install_update_btn') and self.mac_install_update_btn:
+                        self.mac_install_update_btn.setHidden_(True)
+            AppKit.NSOperationQueue.mainQueue().addOperationWithBlock_(update_ui)
+
+        def _on_mac_downloading(file_name=None, percent=None, **k):
+            def update_ui():
+                if hasattr(self, 'mac_update_status_lbl') and self.mac_update_status_lbl:
+                    p_txt = f" ({percent}%)" if percent is not None else ""
+                    self.mac_update_status_lbl.setStringValue_(f"📥 Downloading update package{p_txt}...")
+                if hasattr(self, 'mac_install_update_btn') and self.mac_install_update_btn:
+                    self.mac_install_update_btn.setEnabled_(False)
+            AppKit.NSOperationQueue.mainQueue().addOperationWithBlock_(update_ui)
+
+        def _on_mac_downloaded(**k):
+            def update_ui():
+                if hasattr(self, 'mac_update_status_lbl') and self.mac_update_status_lbl:
+                    self.mac_update_status_lbl.setStringValue_("⚙️ Installing update package & replacing /Applications/QuakMeeting.app...")
+            AppKit.NSOperationQueue.mainQueue().addOperationWithBlock_(update_ui)
+
+        def _on_mac_installed(**k):
+            def update_ui():
+                if hasattr(self, 'mac_update_status_lbl') and self.mac_update_status_lbl:
+                    self.mac_update_status_lbl.setStringValue_("🎉 Update installed successfully! Relaunching QuakMeeting...")
+                    self.mac_update_status_lbl.setTextColor_(AppKit.NSColor.colorWithRed_green_blue_alpha_(0.30, 0.85, 0.50, 1.0))
+            AppKit.NSOperationQueue.mainQueue().addOperationWithBlock_(update_ui)
+
+        def _on_mac_failed(error=None, **k):
+            def update_ui():
+                if hasattr(self, 'mac_update_status_lbl') and self.mac_update_status_lbl:
+                    self.mac_update_status_lbl.setStringValue_(f"❌ Update failed: {error or 'Unknown error'}")
+                    self.mac_update_status_lbl.setTextColor_(AppKit.NSColor.colorWithRed_green_blue_alpha_(0.97, 0.40, 0.40, 1.0))
+                if hasattr(self, 'mac_install_update_btn') and self.mac_install_update_btn:
+                    self.mac_install_update_btn.setTitle_("🔄 Try Again")
+                    self.mac_install_update_btn.setEnabled_(True)
+            AppKit.NSOperationQueue.mainQueue().addOperationWithBlock_(update_ui)
+
+        event_bus.subscribe("UPDATE_AVAILABLE", _on_mac_update_avail)
+        event_bus.subscribe("UPDATE_CHECK_COMPLETE", _on_mac_update_check_done)
+        event_bus.subscribe("UPDATE_DOWNLOADING", _on_mac_downloading)
+        event_bus.subscribe("UPDATE_DOWNLOAD_PROGRESS", _on_mac_downloading)
+        event_bus.subscribe("UPDATE_DOWNLOADED", _on_mac_downloaded)
+        event_bus.subscribe("UPDATE_INSTALLED", _on_mac_installed)
+        event_bus.subscribe("UPDATE_FAILED", _on_mac_failed)
+
+        # Check if already available on load
+        if updater_service.latest_release_info and updater_service.latest_release_info.get("has_update"):
+            _on_mac_update_avail(**updater_service.latest_release_info)
+
+    def onCheckForUpdatesMac_(self, sender):
+        if hasattr(self, 'mac_check_update_btn') and self.mac_check_update_btn:
+            self.mac_check_update_btn.setTitle_("⏳ Checking...")
+            self.mac_check_update_btn.setEnabled_(False)
+        if hasattr(self, 'mac_update_status_lbl') and self.mac_update_status_lbl:
+            self.mac_update_status_lbl.setStringValue_("Checking for new releases on GitHub...")
+        updater_service.check_for_updates(background=True)
+
+    def onInstallUpdateMac_(self, sender):
+        if hasattr(self, 'mac_install_update_btn') and self.mac_install_update_btn:
+            self.mac_install_update_btn.setTitle_("⏳ Preparing...")
+            self.mac_install_update_btn.setEnabled_(False)
+        updater_service.download_and_install_update(background=True)
 
     # Setting Handlers
     def onToggleMeetingStage_(self, sender):

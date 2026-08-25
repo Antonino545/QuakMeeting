@@ -17,6 +17,7 @@ from core.services.calendar_service import calendar_service
 from core.services.reminder_engine import reminder_engine
 from core.services.event_bus import event_bus
 from core.services.config_service import config
+from core.services.updater_service import updater_service
 from core.logger import setup_logging, logger, open_log_file, open_log_folder
 from ui.banner import show_banner_async, _run_banner
 from ui.dashboard_window import show_dashboard
@@ -89,6 +90,9 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         event_bus.subscribe("CALENDAR_SYNCED", self._on_calendar_synced)
         event_bus.subscribe("CONFIG_CHANGED", self._on_config_changed)
         event_bus.subscribe("AGENDA_UPDATED", self._on_agenda_updated)
+        event_bus.subscribe("UPDATE_AVAILABLE", self._on_update_event)
+        event_bus.subscribe("UPDATE_CHECK_COMPLETE", self._on_update_event)
+        event_bus.subscribe("UPDATE_INSTALLED", self._on_update_event)
         
         self.build_menu()
         return self
@@ -393,24 +397,33 @@ class QuakMeetingMenuBar(AppKit.NSObject):
                 
             self.menu.addItem_(AppKit.NSMenuItem.separatorItem())
 
-        # 4. Utilities (Sync, Preferences, Quit)
+        # 4. Updates & Utilities (Sync, Preferences, Quit)
+        if updater_service.latest_release_info and updater_service.latest_release_info.get("has_update"):
+            v_tag = updater_service.latest_release_info.get("tag_name") or "New Version"
+            item_up = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+                f"🚀 Update Available ({v_tag}) - Install...", "onInstallUpdateAction:", "u"
+            )
+            item_up.setTarget_(self)
+            self.menu.addItem_(item_up)
+            self.menu.addItem_(AppKit.NSMenuItem.separatorItem())
+
         item_sync = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
             "🔄 Sync Calendars", "refreshCalendar:", "r"
         )
         item_sync.setTarget_(self)
         self.menu.addItem_(item_sync)
 
-        item_test = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "🧪 Test Flight Banner...", "testFlightBanner:", "t"
-        )
-        item_test.setTarget_(self)
-        self.menu.addItem_(item_test)
-
         item_settings = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
             "⚙️ Settings & Preferences...", "openSettings:", ","
         )
         item_settings.setTarget_(self)
         self.menu.addItem_(item_settings)
+
+        item_check = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+            "🔍 Check for Updates...", "onCheckUpdatesAction:", ""
+        )
+        item_check.setTarget_(self)
+        self.menu.addItem_(item_check)
 
         # Status Bar Display Mode Quick Switcher
         item_display_mode = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
@@ -474,20 +487,24 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         show_dashboard(2)
 
     @objc.IBAction
+    def onCheckUpdatesAction_(self, sender):
+        show_dashboard(2)
+        updater_service.check_for_updates(background=True)
+
+    @objc.IBAction
+    def onInstallUpdateAction_(self, sender):
+        show_dashboard(2)
+        updater_service.download_and_install_update(background=True)
+
+    @objc.IBAction
     def openLogFileAction_(self, sender):
         open_log_file()
 
-    @objc.IBAction
-    def testFlightBanner_(self, sender):
-        _run_banner({
-            "title": "QuakMeeting Flight Test",
-            "provider": "Manual Test 🚀",
-            "pilot_type": "duck",
-            "action_btn_text": "🚀 OPEN GOOGLE MEET",
-            "action_url": "https://meet.google.com/test",
-            "start_time": datetime.now().astimezone(),
-            "is_travel": False
-        })
+    def _on_update_event(self, **kwargs):
+        def refresh_ui():
+            self._last_menu_signature = None
+            self.build_menu()
+        AppKit.NSOperationQueue.mainQueue().addOperationWithBlock_(refresh_ui)
 
     @objc.IBAction
     def openNextMeeting_(self, sender):
