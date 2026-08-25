@@ -17,7 +17,8 @@ if [ -n "$PYTHON" ]; then
 elif [ -x "/opt/miniconda3/bin/python3" ]; then
     PYTHON_CMD="/opt/miniconda3/bin/python3"
 fi
-"$PYTHON_CMD" build_macos_app.py
+RAW_VER="${1:-${RELEASE_TAG:-${VERSION}}}"
+"$PYTHON_CMD" build_macos_app.py "$RAW_VER"
 
 APP_PATH="$ROOT_DIR/QuakMeeting.app"
 if [ ! -d "$APP_PATH" ]; then

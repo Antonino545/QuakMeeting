@@ -116,8 +116,15 @@ def build_bundle():
     
     with open(os.path.join(RESOURCES_DIR, "VERSION"), "w") as f:
         f.write(app_version)
-            
-    # 4. Create Info.plist with LSUIElement (Menu Bar Accessory Agent)
+
+    models_dest = os.path.join(RESOURCES_DIR, "core", "domain", "models.py")
+    if os.path.exists(models_dest):
+        with open(models_dest, "r") as f:
+            m_code = f.read()
+        import re
+        m_code = re.sub(r'__version__\s*=\s*["\'][^"\']+["\']', f'__version__ = "{app_version}"', m_code)
+        with open(models_dest, "w") as f:
+            f.write(m_code)
     info_plist_content = f"""<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">

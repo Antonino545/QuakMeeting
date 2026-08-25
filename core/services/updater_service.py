@@ -44,20 +44,50 @@ class UpdaterService:
 
     @property
     def current_version(self) -> str:
-        """Dynamically detects the installed package version from local files, dpkg, or models.py."""
+        """Dynamically detects the installed package version from local files, dpkg, NSBundle, or models.py."""
+        # 1. Check native macOS NSBundle if running as AppKit app
+        if sys.platform == "darwin":
+            try:
+                import AppKit
+                bundle = AppKit.NSBundle.mainBundle()
+                if bundle:
+                    b_ver = bundle.objectForInfoDictionaryKey_("CFBundleShortVersionString")
+                    if b_ver and str(b_ver).strip():
+                        return str(b_ver).strip()
+            except Exception:
+                pass
+
+        # 2. Check local VERSION file in application bundle or root
         try:
-            # 1. Check local VERSION file in application bundle or root
-            app_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-            ver_file = os.path.join(app_dir, "VERSION")
-            if os.path.exists(ver_file):
-                with open(ver_file, "r") as f:
-                    v = f.read().strip()
-                    if v:
-                        return v
+            curr_dir = os.path.dirname(os.path.abspath(__file__))
+            for _ in range(4):
+                ver_file = os.path.join(curr_dir, "VERSION")
+                if os.path.exists(ver_file):
+                    with open(ver_file, "r") as f:
+                        v = f.read().strip()
+                        if v:
+                            return v
+                curr_dir = os.path.dirname(curr_dir)
         except Exception:
             pass
 
-        # 2. Check dpkg on Linux
+        # 3. Check Info.plist on macOS
+        if sys.platform == "darwin":
+            try:
+                res_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                plist_candidate = os.path.join(os.path.dirname(res_dir), "Info.plist")
+                if not os.path.exists(plist_candidate):
+                    plist_candidate = "/Applications/QuakMeeting.app/Contents/Info.plist"
+                if os.path.exists(plist_candidate):
+                    import plistlib
+                    with open(plist_candidate, "rb") as f:
+                        pl = plistlib.load(f)
+                        if "CFBundleShortVersionString" in pl and pl["CFBundleShortVersionString"]:
+                            return str(pl["CFBundleShortVersionString"]).strip()
+            except Exception:
+                pass
+
+        # 4. Check dpkg on Linux
         if sys.platform.startswith("linux"):
             try:
                 res = subprocess.run(["dpkg-query", "-W", "-f=${Version}", "quakmeeting"], capture_output=True, text=True, timeout=1.5)
@@ -65,19 +95,6 @@ class UpdaterService:
                     return res.stdout.strip()
             except Exception:
                 pass
-
-        # 3. Check Info.plist on macOS
-        if sys.platform == "darwin":
-            plist_path = "/Applications/QuakMeeting.app/Contents/Info.plist"
-            if os.path.exists(plist_path):
-                try:
-                    import plistlib
-                    with open(plist_path, "rb") as f:
-                        pl = plistlib.load(f)
-                        if "CFBundleShortVersionString" in pl and pl["CFBundleShortVersionString"]:
-                            return pl["CFBundleShortVersionString"]
-                except Exception:
-                    pass
 
         return __version__
 
