@@ -1351,6 +1351,7 @@ class DashboardWindowController(AppKit.NSObject):
         updater_service.download_and_install_update(background=True)
 
     # Setting Handlers
+    @objc.IBAction
     def onToggleMeetingStage_(self, sender):
         val = sender.tag()
         curr = set(config.get("meeting_reminder_stages", [20, 10, 5, 2, 0]))
@@ -1360,6 +1361,7 @@ class DashboardWindowController(AppKit.NSObject):
             curr.discard(val)
         config.set("meeting_reminder_stages", sorted(list(curr), reverse=True))
 
+    @objc.IBAction
     def onToggleTravelStage_(self, sender):
         val = sender.tag()
         curr = set(config.get("travel_reminder_stages", [45, 30, 15, 5, 2, 0]))
@@ -1369,6 +1371,7 @@ class DashboardWindowController(AppKit.NSObject):
             curr.discard(val)
         config.set("travel_reminder_stages", sorted(list(curr), reverse=True))
 
+    @objc.IBAction
     def onSaveHomeAddress_(self, sender):
         if hasattr(self, 'home_addr_field') and self.home_addr_field:
             addr = str(self.home_addr_field.stringValue() or "").strip()
@@ -1381,18 +1384,25 @@ class DashboardWindowController(AppKit.NSObject):
                 threading.Thread(target=reset_btn, daemon=True).start()
             self.refresh_data(force=True)
 
+    @objc.IBAction
     def onSelectTransportMode_(self, sender):
         modes = ["transit", "automobile", "walking", "bicycling"]
         idx = sender.selectedSegment()
         if 0 <= idx < len(modes):
             config.set("transport_mode", modes[idx])
+            try:
+                event_bus.publish("CONFIG_CHANGED", key="transport_mode", value=modes[idx])
+            except Exception:
+                pass
             self.refresh_data(force=True)
 
+    @objc.IBAction
     def onSelectETABuffer_(self, sender):
         val_buf = sender.selectedItem().representedObject()
         config.set("eta_buffer_minutes", int(val_buf))
         self.refresh_data(force=True)
 
+    @objc.IBAction
     def onToggleCalendarSource_(self, sender):
         cal_name = sender.toolTip() or sender.title().replace("📅 ", "")
         is_on = (sender.state() == AppKit.NSControlStateValueOn)
@@ -1407,10 +1417,12 @@ class DashboardWindowController(AppKit.NSObject):
                 cal["enabled"] = is_on
         self.refresh_data(force=True)
 
+    @objc.IBAction
     def onSelectSnoozeDuration_(self, sender):
         val_min = sender.selectedItem().representedObject()
         config.set("default_snooze_seconds", int(val_min) * 60)
 
+    @objc.IBAction
     def onSelectMenuBarMode_(self, sender):
         modes = ["countdown", "event_time", "time_only", "icon_only"]
         sel = sender.selectedSegment()
@@ -1421,18 +1433,22 @@ class DashboardWindowController(AppKit.NSObject):
             except Exception:
                 pass
 
+    @objc.IBAction
     def onSelectBannerPosition_(self, sender):
         pos = "top" if sender.selectedSegment() == 0 else "bottom"
         config.set("banner_position", pos)
 
+    @objc.IBAction
     def onSelectFlightSpeed_(self, sender):
         spd_tag = sender.selectedItem().representedObject()
         config.set("flight_speed", float(spd_tag) / 10.0)
 
+    @objc.IBAction
     def onToggleSoundEnabled_(self, sender):
         is_on = (sender.state() == AppKit.NSControlStateValueOn)
         config.set("sound_enabled", is_on)
 
+    @objc.IBAction
     def onSelectSound_(self, sender):
         snd_name = sender.selectedItem().representedObject()
         config.set("sound_name", str(snd_name))
@@ -1441,6 +1457,7 @@ class DashboardWindowController(AppKit.NSObject):
             self.sound_switch.setState_(AppKit.NSControlStateValueOn)
         self.onPlaySoundPreview_(None)
 
+    @objc.IBAction
     def onPlaySoundPreview_(self, sender):
         snd_name = config.get("sound_name", "Glass")
         try:
@@ -1449,16 +1466,20 @@ class DashboardWindowController(AppKit.NSObject):
         except Exception:
             pass
 
+    @objc.IBAction
     def onOpenConfigEditor_(self, sender):
         config.open_config_in_editor()
 
+    @objc.IBAction
     def onReloadConfig_(self, sender):
         config.reload()
         self.refresh_data(force=True)
 
+    @objc.IBAction
     def onOpenLogs_(self, sender):
         open_log_file()
 
+    @objc.IBAction
     def onOpenLogFolder_(self, sender):
         open_log_folder()
 
