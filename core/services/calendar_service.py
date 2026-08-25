@@ -48,13 +48,20 @@ class CalendarService:
         self.bus = bus or event_bus
         self.repository = MeetingRepository(CACHE_FILE)
         
-        # Select best available provider based on platform (EventKit on macOS, CalDAV on Linux)
+        # Select best available provider based on platform
         if provider:
             self._provider = provider
         elif sys.platform == "darwin":
             self._provider = EventKitCalendarProvider(self.config)
         else:
-            self._provider = CalDAVCalendarProvider(self.config)
+            from core.providers.eds_provider import EDSCalendarProvider
+            eds = EDSCalendarProvider(self.config)
+            if eds.is_available():
+                logger.info("Evolution Data Server detected. Using EDSCalendarProvider.")
+                self._provider = eds
+            else:
+                logger.info("EDS not available. Falling back to CalDAVCalendarProvider.")
+                self._provider = CalDAVCalendarProvider(self.config)
 
         self._in_memory_cache: List[Meeting] = []
         self._last_fetch_time: float = 0.0

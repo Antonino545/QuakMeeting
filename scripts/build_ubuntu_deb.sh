@@ -58,7 +58,7 @@ Section: utils
 Priority: optional
 Architecture: amd64
 Maintainer: QuakMeeting Team <support@quakmeeting.com>
-Depends: python3 (>= 3.8), python3-gi, gir1.2-gtk-3.0, gir1.2-appindicator3-0.1 | gir1.2-ayatanaappindicator3-0.1, gir1.2-gtklayershell-0.1 | libcanberra-gtk3-module
+Depends: python3 (>= 3.8), python3-gi, gir1.2-gtk-3.0, gir1.2-appindicator3-0.1 | gir1.2-ayatanaappindicator3-0.1, gir1.2-gtklayershell-0.1 | libcanberra-gtk3-module, gir1.2-edataserver-1.2, gir1.2-ecal-2.0
 Description: Smart Meeting Reminders & Animated Flight Deck HUD
  QuakMeeting provides progressive multi-stage notifications, real-time Apple/Google
  Maps travel ETAs, and pilot avatars floating smoothly over full-screen workspaces.

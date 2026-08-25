@@ -9,6 +9,7 @@
 
 Whenever you make any change to code or configuration in this project, **always execute this complete workflow**:
 
+### For macOS:
 ```bash
 # 1. Run Unit Test Suite
 /opt/miniconda3/bin/python3 -m unittest discover -s tests -v
@@ -23,6 +24,22 @@ pkill -f "QuakMeeting" 2>/dev/null; sleep 1; open /Applications/QuakMeeting.app
 sleep 2 && ps aux | grep -i "[Q]uakMeeting" && echo "---" && tail -15 ~/.quakmeeting/quakmeeting.log
 ```
 
+### For Linux (Ubuntu/Debian):
+```bash
+# 1. Run Unit Test Suite
+python3 -m unittest discover -s tests -v
+
+# 2. Build the Ubuntu .deb package
+bash scripts/build_ubuntu_deb.sh
+
+# 3. Install and run (if testing installation)
+sudo apt-get install --reinstall ./deb_dist/quakmeeting_*_amd64.deb
+pkill -f "quakmeeting" 2>/dev/null; sleep 1; quakmeeting &
+
+# 4. Verify live logs
+tail -15 ~/.quakmeeting/quakmeeting.log
+```
+
 > ⚠️ **IMPORTANT COMMIT RULE**:
 > **DO NOT automatically commit changes.** Only commit to Git when explicitly requested by the user.
 
@@ -32,8 +49,11 @@ sleep 2 && ps aux | grep -i "[Q]uakMeeting" && echo "---" && tail -15 ~/.quakmee
 
 ```
 QuakMeeting/
-├── main.py                        # App entry point (initializes logging, status bar, and Flight Deck)
-├── build_macos_app.py             # Custom build script compiling C launcher Mach-O & bundling app
+├── main.py                        # App entry point (cross-platform dispatch)
+├── build_macos_app.py             # Custom build script compiling C launcher Mach-O & bundling app (macOS)
+├── scripts/
+│   ├── build_ubuntu_deb.sh        # Debian/Ubuntu .deb package builder for Linux (Wayland/X11)
+│   └── install_linux_deps.sh      # Installs system dependencies for Linux
 ├── assets/                        # App icons (PNG & ICNS), audio files
 ├── core/
 │   ├── domain/
@@ -41,7 +61,8 @@ QuakMeeting/
 │   │   └── classifier.py          # Smart keyword matching & categorization
 │   ├── providers/
 │   │   ├── base.py                # BaseCalendarProvider abstract class
-│   │   └── eventkit_provider.py   # Native Apple EventKit bridge (extracts travelTime & coordinates)
+│   │   ├── eventkit_provider.py   # Native Apple EventKit bridge (macOS)
+│   │   └── caldav_provider.py     # CalDAV calendar provider (Linux)
 │   ├── services/
 │   │   ├── calendar_service.py    # Synchronizes & caches Today-only events (00:00 to 23:59:59)
 │   │   ├── reminder_engine.py     # Multi-stage notification triggers (evaluates leave vs start time)
@@ -51,12 +72,17 @@ QuakMeeting/
 │   │   └── event_bus.py           # Decoupled pub/sub event system
 │   └── logger.py                  # Dual console & file logger (~/.quakmeeting/quakmeeting.log)
 ├── ui/
-│   ├── menu_bar_app.py            # macOS Status Bar Item (NSStatusItem) & top menu bar
-│   ├── dashboard_window.py        # Flight Deck HUD window (Today's Agenda, Pilots, Preferences)
+│   ├── tray/                      # Cross-platform system tray components
+│   │   ├── linux_appindicator.py  # Ubuntu AppIndicator support
+│   │   └── qt_tray_app.py         # Qt-based system tray fallback
+│   ├── menu_bar_app.py            # macOS Status Bar Item (NSStatusItem)
+│   ├── dashboard_window.py        # Flight Deck HUD window (macOS)
+│   ├── qt_dashboard.py            # Qt-based Flight Deck for Linux
 │   └── banner/
-│       ├── banner_view.py         # Quartz 2D animated banner component
-│       ├── banner_controller.py   # NSWindow floating banner controller
-│       └── renderers/             # Specialized pilot themes (Duck, Captain, Chef, Owl, Driver, Zen)
+│       ├── banner_view.py         # Quartz 2D animated banner component (macOS)
+│       ├── wayland_banner.py      # Wayland-native animated banner (Linux)
+│       ├── qt_banner.py           # Qt-based animated banner (Linux fallback)
+│       └── renderers/             # Specialized pilot themes
 └── tests/                         # Full automated unit test suite (27+ tests)
 ```
 
@@ -64,9 +90,10 @@ QuakMeeting/
 
 ## 📌 Critical Design Decisions & Rules
 
-### 1. In-Process Mach-O Python Embedding
-- **Rule**: When building `QuakMeeting.app`, the launcher stub in `build_macos_app.py` compiles a native C Mach-O binary that loads `libpython3.13.dylib` via `dlopen`/`dlsym` and invokes `Py_Main` in-process.
-- **Why**: Calling `execv` to a shell script or external interpreter breaks macOS bundle association and causes the top macOS menu bar (`QuakMeeting`, `Edit`, `Window`, `Help`) to disappear.
+### 1. Cross-Platform Runtime & macOS Mach-O Embedding
+- **Rule**: Code must be cross-platform using `sys.platform` checks. Linux uses standard Python entry points (e.g., Wayland/Qt/AppIndicator) while macOS requires a specialized build.
+- **macOS Exception (Mach-O)**: When building `QuakMeeting.app`, the launcher stub in `build_macos_app.py` compiles a native C Mach-O binary that loads `libpython3.13.dylib` via `dlopen`/`dlsym` and invokes `Py_Main` in-process.
+- **Why (macOS)**: Calling `execv` to a shell script or external interpreter breaks macOS bundle association and causes the top macOS menu bar (`QuakMeeting`, `Edit`, `Window`, `Help`) to disappear.
 
 ### 2. Strict Today-Only Calendar Filter
 - **Rule**: `CalendarService` only fetches and evaluates events scheduled for **Today** (`00:00:00` to `23:59:59`).

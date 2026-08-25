@@ -15,6 +15,7 @@ echo "📦 Step 1: Installing system GTK3, AppIndicator3 & Layer-Shell libraries
 sudo apt update
 sudo apt install -y python3-gi python3-gi-cairo gir1.2-gtk-3.0 \
                     gir1.2-appindicator3-0.1 gir1.2-gtklayershell-0.1 \
+                    gir1.2-edataserver-1.2 gir1.2-ecal-2.0 \
                     libgirepository1.0-dev libcairo2-dev pkg-config python3-dev
 
 echo ""
