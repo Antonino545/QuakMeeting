@@ -1,0 +1,62 @@
+name: CI Test & Build Validation
+
+on:
+  push:
+    branches:
+      - test
+  pull_request:
+    branches:
+      - main
+      - test
+  workflow_dispatch:
+
+jobs:
+  test-ubuntu:
+    name: Test & Build Ubuntu (Linux)
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Wayland & GTK Build Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-gi gir1.2-gtk-3.0 gir1.2-appindicator3-0.1 gir1.2-gtklayershell-0.1 libgtk-3-dev dpkg-dev
+
+      - name: Run Unit Tests
+        run: |
+          python3 -m unittest discover -s tests -v
+
+      - name: Build Debian Package Verification
+        run: |
+          bash scripts/build_ubuntu_deb.sh
+
+  test-macos:
+    name: Test & Build macOS
+    runs-on: macos-14
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install pyobjc-core pyobjc-framework-Cocoa pyobjc-framework-EventKit pyobjc-framework-Quartz
+
+      - name: Run Unit Tests
+        run: |
+          python3 -m unittest discover -s tests -v
+
+      - name: Build macOS App & DMG Verification
+        run: |
+          bash scripts/build_macos_dmg.sh
