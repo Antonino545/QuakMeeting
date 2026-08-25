@@ -277,8 +277,13 @@ class UpdaterService:
 
             event_bus.publish("UPDATE_INSTALLED")
             time.sleep(1.0)
-            # Relaunch newly installed version
-            relaunch_cmd = "sleep 1.2 && open /Applications/QuakMeeting.app &"
+            # Relaunch newly installed version cleanly by killing previous instances
+            relaunch_cmd = (
+                "sleep 1.2; "
+                "pkill -f 'QuakMeeting' 2>/dev/null || true; "
+                "sleep 0.5; "
+                "open /Applications/QuakMeeting.app &"
+            )
             subprocess.Popen(["bash", "-c", relaunch_cmd], start_new_session=True)
             os._exit(0)
             return True
@@ -298,8 +303,14 @@ class UpdaterService:
                         logger.info("✅ Update package installed successfully via dpkg!")
                         event_bus.publish("UPDATE_INSTALLED")
                         time.sleep(1.0)
-                        # Gracefully relaunch the newly installed version and exit current process
-                        relaunch_cmd = "sleep 1.2 && /usr/bin/quakmeeting > /dev/null 2>&1 &"
+                        # Gracefully kill all old running QuakMeeting instances (tray daemon & dashboard) and launch new version
+                        relaunch_cmd = (
+                            "sleep 1.2; "
+                            "pkill -f 'quakmeeting' 2>/dev/null || true; "
+                            "pkill -f 'ui.qt_dashboard' 2>/dev/null || true; "
+                            "sleep 0.6; "
+                            "/usr/bin/quakmeeting > /dev/null 2>&1 &"
+                        )
                         subprocess.Popen(["bash", "-c", relaunch_cmd], start_new_session=True)
                         os._exit(0)
                         return True
@@ -318,7 +329,13 @@ class UpdaterService:
             elif package_path.endswith(".AppImage"):
                 os.chmod(package_path, 0o755)
                 event_bus.publish("UPDATE_INSTALLED")
-                relaunch_cmd = f"sleep 1.2 && '{package_path}' > /dev/null 2>&1 &"
+                relaunch_cmd = (
+                    "sleep 1.2; "
+                    "pkill -f 'quakmeeting' 2>/dev/null || true; "
+                    "pkill -f 'ui.qt_dashboard' 2>/dev/null || true; "
+                    "sleep 0.6; "
+                    f"'{package_path}' > /dev/null 2>&1 &"
+                )
                 subprocess.Popen(["bash", "-c", relaunch_cmd], start_new_session=True)
                 os._exit(0)
                 return True
