@@ -69,6 +69,11 @@ Instead of subtle system notifications that disappear in seconds, QuakMeeting an
 1. Download **`QuakMeeting-macOS.dmg`** from [Latest Releases](https://github.com/Antonino545/QuakMeeting/releases/latest).
 2. Open the DMG and drag **QuakMeeting** into `/Applications`.
 3. Launch `QuakMeeting.app` from Launchpad or Spotlight.
+   > **Note on Gatekeeper**: If macOS reports the app is damaged because it was downloaded from GitHub without an Apple Developer certificate, simply run:
+   > ```bash
+   > xattr -cr /Applications/QuakMeeting.app
+   > ```
+   > *(Or right-click `QuakMeeting.app` in Finder and select **Open**).*
 
 ### 🐧 Ubuntu Linux (`.deb` Package)
 1. Download **`quakmeeting_1.0.0_amd64.deb`** from [Latest Releases](https://github.com/Antonino545/QuakMeeting/releases/latest).

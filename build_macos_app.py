@@ -362,6 +362,14 @@ int main(int argc, char **argv) {
     subprocess.run(["clang", "-O2", "-Wall", c_path, "-o", launcher_path], check=True)
     os.remove(c_path)
     
+    # 5d. Remove quarantine extended attributes and apply ad-hoc codesign
+    try:
+        subprocess.run(["xattr", "-cr", APP_DIR], check=False)
+        subprocess.run(["codesign", "--force", "--deep", "--sign", "-", APP_DIR], check=False)
+        print(f"  ✓ Applied ad-hoc codesign signature to {APP_NAME}")
+    except Exception as cs_err:
+        print(f"  Note on codesign: {cs_err}")
+
     print(f"🚀 QuakMeeting.app successfully created in: {APP_DIR}")
     
     # 6. Install cleanly into /Applications

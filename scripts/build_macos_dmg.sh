@@ -32,6 +32,11 @@ mkdir -p "$TEMP_DMG_DIR"
 cp -R "$APP_PATH" "$TEMP_DMG_DIR/"
 ln -s /Applications "$TEMP_DMG_DIR/Applications"
 
+# Clear quarantine flags and ad-hoc sign the bundle
+echo "✍️ Applying ad-hoc codesign signature..."
+xattr -cr "$TEMP_DMG_DIR/QuakMeeting.app" 2>/dev/null || true
+codesign --force --deep --sign - "$TEMP_DMG_DIR/QuakMeeting.app" 2>/dev/null || true
+
 # 3. Create DMG using hdiutil
 echo "💽 Creating disk image: $OUTPUT_DMG..."
 hdiutil create -volname "QuakMeeting Installer" \
@@ -41,5 +46,8 @@ hdiutil create -volname "QuakMeeting Installer" \
 
 rm -rf "$TEMP_DMG_DIR"
 
-echo "✅ DMG successfully built: $OUTPUT_DMG"
+# Ad-hoc sign the DMG image
+codesign --force --sign - "$OUTPUT_DMG" 2>/dev/null || true
+
+echo "✅ DMG successfully built & signed: $OUTPUT_DMG"
 shasum -a 256 "$OUTPUT_DMG"
