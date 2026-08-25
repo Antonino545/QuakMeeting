@@ -36,7 +36,7 @@ ln -s /Applications "$TEMP_DMG_DIR/Applications"
 # Clear quarantine flags and ad-hoc sign the bundle
 echo "✍️ Applying ad-hoc codesign signature..."
 xattr -cr "$TEMP_DMG_DIR/QuakMeeting.app" 2>/dev/null || true
-codesign --force --deep --sign - "$TEMP_DMG_DIR/QuakMeeting.app" 2>/dev/null || true
+codesign --force --deep -s - -i "com.quakmeeting.app" "$TEMP_DMG_DIR/QuakMeeting.app" 2>/dev/null || true
 
 # 3. Create DMG using hdiutil
 echo "💽 Creating disk image: $OUTPUT_DMG..."

@@ -382,8 +382,8 @@ int main(int argc, char **argv) {
     # 5d. Remove quarantine extended attributes and apply ad-hoc codesign
     try:
         subprocess.run(["xattr", "-cr", APP_DIR], check=False)
-        subprocess.run(["codesign", "--force", "--deep", "--sign", "-", APP_DIR], check=False)
-        print(f"  ✓ Applied ad-hoc codesign signature to {APP_NAME}")
+        subprocess.run(["codesign", "--force", "--deep", "-s", "-", "-i", "com.quakmeeting.app", APP_DIR], check=False)
+        print(f"  ✓ Applied ad-hoc codesign signature (id: com.quakmeeting.app) to {APP_NAME}")
     except Exception as cs_err:
         print(f"  Note on codesign: {cs_err}")
 

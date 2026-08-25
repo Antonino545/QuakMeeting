@@ -26,7 +26,8 @@ class EventKitCalendarProvider(BaseCalendarProvider):
                 import EventKit
                 self._store = EventKit.EKEventStore.alloc().init()
                 status = EventKit.EKEventStore.authorizationStatusForEntityType_(EventKit.EKEntityTypeEvent)
-                if status != 3:  # Not Full Access
+                # status: 0=NotDetermined, 1=Restricted, 2=Denied, 3=Authorized/FullAccess, 4=WriteOnly
+                if status == 0:  # Only prompt user once if Not Determined
                     import threading
                     sem = threading.Semaphore(0)
                     def completion(granted, error):
@@ -40,8 +41,8 @@ class EventKitCalendarProvider(BaseCalendarProvider):
                     sem.acquire()
                     status = EventKit.EKEventStore.authorizationStatusForEntityType_(EventKit.EKEntityTypeEvent)
                 
-                if status != 3:  # Not Authorized
-                    logger.warning(f"EventKit Calendar access not granted! Status: {status}. Check System Settings -> Privacy & Security -> Calendars.")
+                if status not in (3, 4):  # Not Authorized
+                    logger.warning(f"EventKit Calendar access status: {status}. If events are missing, check System Settings -> Privacy & Security -> Calendars -> QuakMeeting.")
             except ImportError:
                 self._store = None
         return self._store
@@ -50,14 +51,16 @@ class EventKitCalendarProvider(BaseCalendarProvider):
         return self._get_store() is not None
 
     def fetch_events(self, start_offset_hours: int = 2, end_offset_hours: int = 24) -> List[Meeting]:
-        # Always recreate the store to guarantee absolutely fresh data and drop all internal caches
-        self._store = None
         store = self._get_store()
         if not store:
             return []
 
         import EventKit
         import Foundation
+        try:
+            store.reset()
+        except Exception:
+            pass
 
         from datetime import timezone
         now = datetime.now().astimezone() # Local time to determine 'today' and 'tomorrow' properly

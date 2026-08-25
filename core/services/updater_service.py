@@ -270,10 +270,10 @@ class UpdaterService:
                         shutil.rmtree(app_dest)
                     shutil.copytree(source_app, app_dest)
 
-            # Clear quarantine and apply ad-hoc codesign to prevent Gatekeeper damage alert
+            # Clear quarantine and apply ad-hoc codesign with bundle ID to preserve TCC permissions
             if os.path.exists(app_dest):
                 subprocess.run(["xattr", "-cr", app_dest], check=False)
-                subprocess.run(["codesign", "--force", "--deep", "--sign", "-", app_dest], check=False)
+                subprocess.run(["codesign", "--force", "--deep", "-s", "-", "-i", "com.quakmeeting.app", app_dest], check=False)
 
             event_bus.publish("UPDATE_INSTALLED")
             time.sleep(1.0)
