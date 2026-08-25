@@ -22,8 +22,11 @@ from PyQt6.QtWidgets import (
     QVBoxLayout, QTabWidget, QScrollArea, QFrame, QLineEdit, QComboBox, QCheckBox,
     QProgressBar
 )
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt, QTimer, QObject, pyqtSignal
 from PyQt6.QtGui import QColor, QFont, QPixmap, QIcon
+
+class QtUpdateBridge(QObject):
+    update_event = pyqtSignal(str, dict)
 
 from core.services.config_service import config
 from core.services.calendar_service import calendar_service
@@ -624,13 +627,33 @@ class QtFlightDeckWindow(QMainWindow):
 
         install_btn.clicked.connect(_on_install_clicked)
 
-        event_bus.subscribe("UPDATE_AVAILABLE", _on_update_avail)
-        event_bus.subscribe("UPDATE_CHECK_COMPLETE", _on_update_complete)
-        event_bus.subscribe("UPDATE_DOWNLOADING", _on_downloading)
-        event_bus.subscribe("UPDATE_DOWNLOAD_PROGRESS", _on_download_progress)
-        event_bus.subscribe("UPDATE_DOWNLOADED", _on_downloaded)
-        event_bus.subscribe("UPDATE_INSTALLED", _on_installed)
-        event_bus.subscribe("UPDATE_FAILED", _on_failed)
+        self.update_bridge = QtUpdateBridge(self)
+
+        def _on_bridge_event(event_name: str, data: dict):
+            if event_name == "UPDATE_AVAILABLE":
+                _on_update_avail(**data)
+            elif event_name == "UPDATE_CHECK_COMPLETE":
+                _on_update_complete(**data)
+            elif event_name == "UPDATE_DOWNLOADING":
+                _on_downloading(**data)
+            elif event_name == "UPDATE_DOWNLOAD_PROGRESS":
+                _on_download_progress(**data)
+            elif event_name == "UPDATE_DOWNLOADED":
+                _on_downloaded(**data)
+            elif event_name == "UPDATE_INSTALLED":
+                _on_installed(**data)
+            elif event_name == "UPDATE_FAILED":
+                _on_failed(**data)
+
+        self.update_bridge.update_event.connect(_on_bridge_event)
+
+        event_bus.subscribe("UPDATE_AVAILABLE", lambda **k: self.update_bridge.update_event.emit("UPDATE_AVAILABLE", k))
+        event_bus.subscribe("UPDATE_CHECK_COMPLETE", lambda **k: self.update_bridge.update_event.emit("UPDATE_CHECK_COMPLETE", k))
+        event_bus.subscribe("UPDATE_DOWNLOADING", lambda **k: self.update_bridge.update_event.emit("UPDATE_DOWNLOADING", k))
+        event_bus.subscribe("UPDATE_DOWNLOAD_PROGRESS", lambda **k: self.update_bridge.update_event.emit("UPDATE_DOWNLOAD_PROGRESS", k))
+        event_bus.subscribe("UPDATE_DOWNLOADED", lambda **k: self.update_bridge.update_event.emit("UPDATE_DOWNLOADED", k))
+        event_bus.subscribe("UPDATE_INSTALLED", lambda **k: self.update_bridge.update_event.emit("UPDATE_INSTALLED", k))
+        event_bus.subscribe("UPDATE_FAILED", lambda **k: self.update_bridge.update_event.emit("UPDATE_FAILED", k))
 
         # Initialize with current release info if already available
         if updater_service.latest_release_info and updater_service.latest_release_info.get("has_update"):
