@@ -87,14 +87,7 @@ def _apply_banner_css():
         pass
 
 def show_wayland_banner(event_data: Dict[str, Any]) -> None:
-    """Spawns an animated floating HUD banner with Qt/Cairo pilot rendering on Ubuntu."""
-    try:
-        from ui.banner.qt_banner import show_qt_banner
-        show_qt_banner(event_data)
-        return
-    except Exception as qt_err:
-        logger.info(f"PyQt6 banner unavailable ({qt_err}), falling back to GTK...")
-
+    """Spawns an animated floating HUD banner with GTK/LayerShell/Cairo on Linux."""
     try:
         import gi
         gi.require_version('Gtk', '3.0')
