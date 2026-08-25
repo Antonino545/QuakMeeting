@@ -1,4 +1,5 @@
 import os
+import sys
 import shutil
 import subprocess
 
@@ -198,7 +199,6 @@ exec "$BUNDLE_PYTHON" "$DIR/main.py" --dashboard "$@" >> "$LOG_FILE" 2>&1
     os.chmod(bash_path, 0o755)
     
     # 5b. Copy Python binary at build time so the C stub can exec it directly
-    import sys
     python_bin = None
     candidates = [sys.executable, "/opt/miniconda3/bin/python3", "/opt/homebrew/bin/python3", "/usr/local/bin/python3"]
     for p in candidates:
