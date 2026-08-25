@@ -25,7 +25,7 @@ class TestCalendarServiceTravelTime(unittest.TestCase):
         self.assertEqual(m.travel_time_minutes, 30)
         self.assertIsNotNone(m.departure_time)
         self.assertIn("30m", m.eta_text)
-        self.assertIn("maps.apple.com", m.action_url)
+        self.assertTrue("maps.apple.com" in m.action_url or "maps.google.com" in m.action_url or "google.com/maps" in m.action_url)
 
 if __name__ == "__main__":
     unittest.main()

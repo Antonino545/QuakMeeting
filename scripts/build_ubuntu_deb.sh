@@ -3,7 +3,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
-VERSION="1.0.0"
+VERSION="1.0.1"
 PACKAGE_NAME="quakmeeting_${VERSION}_amd64"
 BUILD_ROOT="$ROOT_DIR/deb_dist/$PACKAGE_NAME"
 OUTPUT_DEB="$ROOT_DIR/deb_dist/${PACKAGE_NAME}.deb"

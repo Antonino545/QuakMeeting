@@ -70,35 +70,16 @@ class CalDAVCalendarProvider(BaseCalendarProvider):
                 desc = ev.get("description", "")
                 url_val = ev.get("url", "")
 
-                classified = EventClassifier.classify(
+                meeting = EventClassifier.classify(
                     title=title,
                     location=loc,
-                    notes=desc,
-                    url=url_val,
-                    custom_keywords=custom_kw
-                )
-
-                action_url = classified.action_url or url_val or EventClassifier.extract_meeting_url(f"{loc} {desc}")
-                
-                meeting = Meeting(
-                    id=f"{title}_{s_dt.strftime('%Y%m%d%H%M')}",
-                    title=title,
+                    description=desc,
+                    meeting_url=url_val or EventClassifier.extract_meeting_url(f"{loc} {desc}"),
+                    custom_keywords=custom_kw,
                     start_time=s_dt,
-                    end_time=e_dt or (s_dt + timedelta(hours=1)),
-                    location=loc,
-                    notes=desc,
-                    url=url_val,
-                    provider=cal_name,
-                    pilot_type=classified.pilot_type,
-                    category=classified.category,
-                    action_btn_text=classified.action_btn_text,
-                    action_url=action_url,
-                    is_travel=classified.is_travel,
-                    travel_time_minutes=None,
-                    departure_time=None,
-                    classroom=classified.classroom,
-                    teacher=classified.teacher
+                    end_time=e_dt or (s_dt + timedelta(hours=1))
                 )
+                meeting.provider = cal_name
                 meetings.append(meeting)
 
         meetings.sort(key=lambda m: m.start_time)
@@ -191,12 +172,12 @@ class CalDAVCalendarProvider(BaseCalendarProvider):
         try:
             if val.endswith("Z"):
                 dt = datetime.strptime(val, "%Y%m%dT%H%M%SZ")
-                return dt.replace(tzinfo=timezone.utc).astimezone().replace(tzinfo=None)
+                return dt.replace(tzinfo=timezone.utc).astimezone()
             elif "T" in val:
-                return datetime.strptime(val[:15], "%Y%m%dT%H%M%S")
+                return datetime.strptime(val[:15], "%Y%m%dT%H%M%S").astimezone()
             elif len(val) == 8:
                 d = datetime.strptime(val, "%Y%m%d")
-                return d.replace(hour=0, minute=0, second=0)
+                return d.replace(hour=0, minute=0, second=0).astimezone()
         except Exception:
             pass
         return None

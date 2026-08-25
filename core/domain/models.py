@@ -101,12 +101,11 @@ class Meeting:
         from datetime import timezone
         import logging
         if self.start_time and self.start_time.tzinfo is None:
-            logging.getLogger("QuakMeeting.Models").warning(f"Meeting '{self.title}' has naive start_time. Forcing UTC.")
-            self.start_time = self.start_time.replace(tzinfo=timezone.utc)
+            self.start_time = self.start_time.astimezone()
         if self.end_time and self.end_time.tzinfo is None:
-            self.end_time = self.end_time.replace(tzinfo=timezone.utc)
+            self.end_time = self.end_time.astimezone()
         if self.departure_time and self.departure_time.tzinfo is None:
-            self.departure_time = self.departure_time.replace(tzinfo=timezone.utc)
+            self.departure_time = self.departure_time.astimezone()
 
     def __getitem__(self, key: str) -> Any:
         if hasattr(self, key):
@@ -135,6 +134,14 @@ class Meeting:
         if self.start_time:
             return self.start_time > now
         return False
+
+    @property
+    def duration_minutes(self) -> Optional[int]:
+        """Total scheduled duration in minutes."""
+        if self.start_time and self.end_time:
+            diff = (self.end_time.astimezone() - self.start_time.astimezone()).total_seconds() / 60.0
+            return max(0, int(round(diff)))
+        return None
 
     @property
     def is_past(self) -> bool:

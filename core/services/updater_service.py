@@ -91,9 +91,13 @@ class UpdaterService:
                     if has_update:
                         logger.info(f"🚀 New QuakMeeting update found: {tag_name} (Current: {self.current_version})")
                         event_bus.publish("UPDATE_AVAILABLE", **release_info)
+                    else:
+                        logger.info(f"✨ QuakMeeting is up to date (Current: {self.current_version})")
+                        event_bus.publish("UPDATE_CHECK_COMPLETE", has_update=False, current_version=self.current_version)
                     return release_info
             except Exception as e:
                 logger.warning(f"Update check failed: {e}")
+                event_bus.publish("UPDATE_CHECK_COMPLETE", has_update=False, error=str(e), current_version=self.current_version)
                 return None
             finally:
                 self.is_checking = False
@@ -120,38 +124,61 @@ class UpdaterService:
 
         return assets[0] if assets else None
 
-    def download_and_install_update(self, on_progress=None) -> bool:
+    def download_and_install_update(self, background: bool = True, on_progress=None) -> bool:
         """Downloads the matching asset and initiates installer / replacement."""
-        if not self.latest_release_info or not self.latest_release_info.get("assets"):
-            info = self.check_for_updates(background=False)
-            if not info or not info.get("has_update"):
+        if self.is_downloading:
+            return False
+
+        def _worker():
+            if not self.latest_release_info or not self.latest_release_info.get("assets"):
+                info = self.check_for_updates(background=False)
+                if not info or not info.get("has_update"):
+                    return False
+
+            asset = self.get_platform_asset(self.latest_release_info["assets"])
+            if not asset or not asset.get("browser_download_url"):
+                logger.error("No compatible release asset found for current OS.")
+                event_bus.publish("UPDATE_FAILED", error="No compatible release asset found.")
                 return False
 
-        asset = self.get_platform_asset(self.latest_release_info["assets"])
-        if not asset or not asset.get("browser_download_url"):
-            logger.error("No compatible release asset found for current OS.")
-            return False
+            download_url = asset["browser_download_url"]
+            file_name = asset["name"]
+            temp_dir = tempfile.mkdtemp(prefix="quakmeeting_update_")
+            target_path = os.path.join(temp_dir, file_name)
 
-        download_url = asset["browser_download_url"]
-        file_name = asset["name"]
-        temp_dir = tempfile.mkdtemp(prefix="quakmeeting_update_")
-        target_path = os.path.join(temp_dir, file_name)
+            self.is_downloading = True
+            event_bus.publish("UPDATE_DOWNLOADING", file_name=file_name, url=download_url)
+            try:
+                logger.info(f"Downloading update {file_name} from {download_url}...")
 
-        self.is_downloading = True
-        try:
-            logger.info(f"Downloading update {file_name} from {download_url}...")
-            urllib.request.urlretrieve(download_url, target_path)
+                def _reporthook(block_num, block_size, total_size):
+                    if total_size > 0:
+                        downloaded = block_num * block_size
+                        percent = min(100, int((downloaded / total_size) * 100))
+                        if on_progress:
+                            on_progress(percent, downloaded, total_size)
+                        event_bus.publish("UPDATE_DOWNLOAD_PROGRESS", percent=percent, downloaded=downloaded, total=total_size)
 
-            if sys.platform == "darwin":
-                return self._install_macos_update(target_path, temp_dir)
-            elif sys.platform.startswith("linux"):
-                return self._install_linux_update(target_path)
-            return False
-        except Exception as e:
-            logger.error(f"Failed to install update: {e}")
-            return False
-        finally:
-            self.is_downloading = False
+                urllib.request.urlretrieve(download_url, target_path, reporthook=_reporthook)
+                event_bus.publish("UPDATE_DOWNLOADED", target_path=target_path)
+
+                if sys.platform == "darwin":
+                    return self._install_macos_update(target_path, temp_dir)
+                elif sys.platform.startswith("linux"):
+                    return self._install_linux_update(target_path)
+                return False
+            except Exception as e:
+                logger.error(f"Failed to install update: {e}")
+                event_bus.publish("UPDATE_FAILED", error=str(e))
+                return False
+            finally:
+                self.is_downloading = False
+
+        if background:
+            threading.Thread(target=_worker, daemon=True).start()
+            return True
+        else:
+            return _worker()
 
     def _install_macos_update(self, package_path: str, temp_dir: str) -> bool:
         """Mounts DMG or unzips update and replaces /Applications/QuakMeeting.app."""
@@ -178,21 +205,32 @@ class UpdaterService:
                         shutil.rmtree(app_dest)
                     shutil.copytree(source_app, app_dest)
 
+            event_bus.publish("UPDATE_INSTALLED")
             # Relaunch newly installed version
             subprocess.Popen(["open", app_dest])
             sys.exit(0)
             return True
         except Exception as e:
             logger.error(f"macOS update installation failed: {e}")
+            event_bus.publish("UPDATE_FAILED", error=str(e))
             return False
 
     def _install_linux_update(self, package_path: str) -> bool:
         """Installs .deb package on Ubuntu Linux via pkexec or apt."""
         try:
             if package_path.endswith(".deb"):
-                cmd = ["pkexec", "dpkg", "-i", package_path]
-                subprocess.Popen(cmd)
-                return True
+                # Try graphical pkexec
+                try:
+                    cmd = ["pkexec", "dpkg", "-i", package_path]
+                    subprocess.Popen(cmd)
+                    event_bus.publish("UPDATE_INSTALLED")
+                    return True
+                except Exception as pk_err:
+                    logger.warning(f"pkexec install failed ({pk_err}). Opening browser release page.")
+                    if self.latest_release_info and self.latest_release_info.get("html_url"):
+                        import webbrowser
+                        webbrowser.open(self.latest_release_info["html_url"])
+                    return False
             elif package_path.endswith(".AppImage"):
                 os.chmod(package_path, 0o755)
                 subprocess.Popen([package_path])
@@ -200,6 +238,7 @@ class UpdaterService:
                 return True
         except Exception as e:
             logger.error(f"Linux update installation failed: {e}")
+            event_bus.publish("UPDATE_FAILED", error=str(e))
             return False
 
 updater_service = UpdaterService()

@@ -43,13 +43,16 @@ class QuakMeetingTrayApp:
         event_bus.subscribe("TRIGGER_BANNER", self.on_banner_trigger)
         event_bus.subscribe("REMINDER_TRIGGERED", self.on_banner_trigger)
         event_bus.subscribe("AGENDA_UPDATED", self.on_agenda_updated)
+        event_bus.subscribe("UPDATE_AVAILABLE", lambda **k: self.build_menu())
+        event_bus.subscribe("UPDATE_CHECK_COMPLETE", lambda **k: self.build_menu())
+        event_bus.subscribe("UPDATE_INSTALLED", lambda **k: self.build_menu())
         updater_service.check_for_updates(background=True)
 
     def build_menu(self):
         menu = QMenu()
-        now = datetime.now()
+        now = datetime.now().astimezone()
         meetings = calendar_service.get_upcoming_meetings()
-        today_up = [m for m in meetings if m.start_time and m.start_time.date() == now.date() and ((m.end_time and m.end_time > now) or m.start_time > now)]
+        today_up = [m for m in meetings if m.start_time and m.start_time.astimezone().date() == now.date() and ((m.end_time and m.end_time.astimezone() > now) or m.start_time.astimezone() > now)]
 
         icon_map = {"chef": "🍕", "captain": "✈️", "owl": "🎓", "driver": "🚗", "zen_duck": "🛋️", "duck": "🦆"}
 
@@ -125,6 +128,18 @@ class QuakMeetingTrayApp:
         menu.addAction(logs_act)
         menu.addSeparator()
 
+        update_info = updater_service.latest_release_info
+        if update_info and update_info.get("has_update"):
+            up_act = QAction(f"🚀 Update Available: {update_info['tag_name']}", menu)
+            up_act.triggered.connect(lambda: updater_service.download_and_install_update())
+            menu.addAction(up_act)
+        else:
+            chk_act = QAction("🔍 Check for Updates...", menu)
+            chk_act.triggered.connect(lambda: updater_service.check_for_updates(background=True))
+            menu.addAction(chk_act)
+
+        menu.addSeparator()
+
         quit_act = QAction("Quit QuakMeeting", menu)
         quit_act.triggered.connect(self.app.quit)
         menu.addAction(quit_act)
@@ -140,8 +155,8 @@ class QuakMeetingTrayApp:
     def on_agenda_updated(self, meeting_objects=None, **kwargs):
         if meeting_objects is None: return
         try:
-            now = datetime.now()
-            today_up = [m for m in meeting_objects if m.start_time and m.start_time.date() == now.date() and ((m.end_time and m.end_time > now) or m.start_time > now)]
+            now = datetime.now().astimezone()
+            today_up = [m for m in meeting_objects if m.start_time and m.start_time.astimezone().date() == now.date() and ((m.end_time and m.end_time.astimezone() > now) or m.start_time.astimezone() > now)]
             
             primary_m = today_up[0] if today_up else None
             max_lookahead_min = int(config.get("max_countdown_lookahead_hours", 3)) * 60

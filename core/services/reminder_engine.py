@@ -55,17 +55,16 @@ class ReminderEngine:
     def is_meeting_active(self, m: Meeting, now: datetime) -> bool:
         """Determines if the meeting is currently active and taking user's attention."""
         if now.tzinfo is None:
-            from datetime import timezone
-            now = now.replace(tzinfo=timezone.utc)
+            now = now.astimezone()
         if m.is_travel and m.departure_time:
             end = m.end_time or m.start_time or (m.departure_time + timedelta(minutes=60))
-            if m.departure_time <= now <= end:
+            if m.departure_time.astimezone() <= now.astimezone() <= end.astimezone():
                 return True
         if m.start_time and m.end_time:
-            if m.start_time <= now <= m.end_time:
+            if m.start_time.astimezone() <= now.astimezone() <= m.end_time.astimezone():
                 return True
         elif m.start_time:
-            diff = (now - m.start_time).total_seconds() / 60.0
+            diff = (now.astimezone() - m.start_time.astimezone()).total_seconds() / 60.0
             if 0 <= diff <= 45:
                 return True
         return False
@@ -104,10 +103,10 @@ class ReminderEngine:
         Evaluate all upcoming meetings against notification windows and departure times.
         Returns a list of (meeting, triggered_stage) tuples and publishes REMINDER_TRIGGERED events.
         """
-        from datetime import timezone
-        if current_time and current_time.tzinfo is None:
-            current_time = current_time.replace(tzinfo=timezone.utc)
-        now = current_time or datetime.now(timezone.utc)
+        if current_time:
+            now = current_time.astimezone() if current_time.tzinfo is None else current_time
+        else:
+            now = datetime.now().astimezone()
         triggered_events = []
 
         if not meetings:

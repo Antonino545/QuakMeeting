@@ -72,14 +72,20 @@ def run_linux_app():
     try:
         import gi
         gi.require_version('Gtk', '3.0')
+        from gi.repository import Gtk, GLib
+
+        # Suppress harmless upstream C deprecation warning from libayatana-appindicator
+        try:
+            GLib.log_set_handler('libayatana-appindicator', GLib.LogLevelFlags.LEVEL_WARNING, lambda *args: None, None)
+        except Exception:
+            pass
+
         try:
             gi.require_version('AyatanaAppIndicator3', '0.1')
             from gi.repository import AyatanaAppIndicator3 as AppIndicator3
         except (ValueError, ImportError):
             gi.require_version('AppIndicator3', '0.1')
             from gi.repository import AppIndicator3
-
-        from gi.repository import Gtk, GLib
     except (ImportError, ValueError, ModuleNotFoundError) as e:
         system_python = "/usr/bin/python3"
         if sys.executable != system_python and os.path.exists(system_python):
@@ -109,9 +115,9 @@ def run_linux_app():
 
     def build_menu():
         menu = Gtk.Menu()
-        now = datetime.now()
+        now = datetime.now().astimezone()
         meetings = calendar_service.get_upcoming_meetings()
-        today_up = [m for m in meetings if m.start_time and m.start_time.date() == now.date() and ((m.end_time and m.end_time > now) or m.start_time > now)]
+        today_up = [m for m in meetings if m.start_time and m.start_time.astimezone().date() == now.date() and ((m.end_time and m.end_time.astimezone() > now) or m.start_time.astimezone() > now)]
 
         icon_map = {"chef": "🍕", "captain": "✈️", "owl": "🎓", "driver": "🚗", "zen_duck": "🛋️", "duck": "🦆"}
 
@@ -257,8 +263,8 @@ def run_linux_app():
     def on_agenda_updated(meeting_objects=None, **kwargs):
         if meeting_objects is None: return
         try:
-            now = datetime.now()
-            today_up = [m for m in meeting_objects if m.start_time and m.start_time.date() == now.date() and ((m.end_time and m.end_time > now) or m.start_time > now)]
+            now = datetime.now().astimezone()
+            today_up = [m for m in meeting_objects if m.start_time and m.start_time.astimezone().date() == now.date() and ((m.end_time and m.end_time.astimezone() > now) or m.start_time.astimezone() > now)]
             
             primary_m = today_up[0] if today_up else None
             max_lookahead_min = int(config.get("max_countdown_lookahead_hours", 3)) * 60
@@ -291,6 +297,13 @@ def run_linux_app():
             on_banner_trigger(evt)
         except Exception as e:
             logger.error(f"Error triggering tray test flight: {e}")
+
+    def on_update_state_changed(**kwargs):
+        GLib.idle_add(build_menu)
+
+    event_bus.subscribe("UPDATE_AVAILABLE", on_update_state_changed)
+    event_bus.subscribe("UPDATE_CHECK_COMPLETE", on_update_state_changed)
+    event_bus.subscribe("UPDATE_INSTALLED", on_update_state_changed)
 
     event_bus.subscribe("TRIGGER_BANNER", on_banner_trigger)
     event_bus.subscribe("REMINDER_TRIGGERED", on_banner_trigger)

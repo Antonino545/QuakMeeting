@@ -197,6 +197,9 @@ class QtQuakPitFlyingBanner(QWidget):
             self.action_url.strip() and 
             self.action_url != "https://calendar.apple.com"
         )
+        self.has_maps_url = bool(
+            self.action_url and ("maps.apple.com" in self.action_url or "maps.google.com" in self.action_url or "google.com/maps" in self.action_url)
+        ) or self.is_travel
 
         # ── Screen ──
         screen = QApplication.primaryScreen()

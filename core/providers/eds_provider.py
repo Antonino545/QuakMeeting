@@ -68,24 +68,33 @@ class EDSCalendarProvider(BaseCalendarProvider):
 
         for source in sources:
             name = source.get_display_name()
-            if name in ignored:
+            if name in ignored or not source.get_enabled():
                 continue
 
             try:
-                client = ECal.Client.new(source, ECal.ClientSourceType.EVENTS)
-                client.open_sync(None)
+                client = ECal.Client.connect_sync(source, ECal.ClientSourceType.EVENTS, 3, None)
+                if not client:
+                    continue
                 
                 # Query time range
                 query = f'(occur-in-time-range? (make-time "{start_iso}") (make-time "{end_iso}"))'
                 
                 success, events = client.get_object_list_as_comps_sync(query, None)
-                if not success:
+                if not success or not events:
                     continue
                     
-                for icalcomp in events:
+                for comp in events:
                     try:
                         # Extract the raw ICS string and reuse the CalDAV parser logic for robustness
-                        ics_text = icalcomp.as_ical_string()
+                        if hasattr(comp, "get_as_string"):
+                            ics_text = comp.get_as_string()
+                        elif hasattr(comp, "get_icalcomponent"):
+                            ics_text = comp.get_icalcomponent().as_ical_string()
+                        elif hasattr(comp, "as_ical_string"):
+                            ics_text = comp.as_ical_string()
+                        else:
+                            continue
+
                         parsed_events = caldav_parser._parse_ics_events(ics_text)
                         
                         for ev in parsed_events:
@@ -105,35 +114,16 @@ class EDSCalendarProvider(BaseCalendarProvider):
                                 EventClassifier.extract_meeting_url(desc)
                             )
 
-                            classified = EventClassifier.classify(
+                            meeting = EventClassifier.classify(
                                 title=title,
                                 location=loc,
-                                notes=desc,
-                                url=meeting_url,
-                                custom_keywords=custom_kw
-                            )
-                            
-                            action_url = classified.action_url or meeting_url
-
-                            meeting = Meeting(
-                                id=f"{title}_{s_dt.strftime('%Y%m%d%H%M')}",
-                                title=title,
+                                description=desc,
+                                meeting_url=meeting_url,
+                                custom_keywords=custom_kw,
                                 start_time=s_dt,
-                                end_time=e_dt or (s_dt + timedelta(hours=1)),
-                                location=loc,
-                                notes=desc,
-                                url=url_val,
-                                provider=name,
-                                pilot_type=classified.pilot_type,
-                                category=classified.category,
-                                action_btn_text=classified.action_btn_text,
-                                action_url=action_url,
-                                is_travel=classified.is_travel,
-                                travel_time_minutes=None,
-                                departure_time=None,
-                                classroom=classified.classroom,
-                                teacher=classified.teacher
+                                end_time=e_dt or (s_dt + timedelta(hours=1))
                             )
+                            meeting.provider = name
                             meetings.append(meeting)
                     except Exception as parse_e:
                         logger.debug(f"Failed to parse EDS event in '{name}': {parse_e}")
@@ -156,9 +146,10 @@ class EDSCalendarProvider(BaseCalendarProvider):
         cals = []
         for source in sources:
             name = source.get_display_name()
+            is_enabled = source.get_enabled() and (name not in ignored)
             cals.append({
                 "name": name,
-                "enabled": name not in ignored,
+                "enabled": is_enabled,
                 "source": "eds://" + name
             })
         return cals

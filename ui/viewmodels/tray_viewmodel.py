@@ -9,6 +9,9 @@ class TrayViewModel:
         if not next_m:
             return "🦆" if mode == "icon_only" else "🦆 QuakMeeting"
             
+        if now.tzinfo is None:
+            now = now.astimezone()
+
         is_dict = isinstance(next_m, dict)
         get_val = lambda key, default=None: next_m.get(key, default) if is_dict else getattr(next_m, key, default)
             
@@ -20,8 +23,17 @@ class TrayViewModel:
             return icon_prefix
             
         start_dt = get_val("start_time")
+        if isinstance(start_dt, datetime) and start_dt.tzinfo is None:
+            start_dt = start_dt.astimezone()
+
         end_dt = get_val("end_time")
+        if isinstance(end_dt, datetime) and end_dt.tzinfo is None:
+            end_dt = end_dt.astimezone()
+
         dep_dt = get_val("departure_time")
+        if isinstance(dep_dt, datetime) and dep_dt.tzinfo is None:
+            dep_dt = dep_dt.astimezone()
+
         travel_min = get_val("travel_time_minutes")
         m_title = (get_val("title") or "Event").strip()
         title_short = m_title[:14] + "…" if len(m_title) > 14 else m_title

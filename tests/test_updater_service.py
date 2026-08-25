@@ -30,5 +30,33 @@ class TestUpdaterService(unittest.TestCase):
         self.assertIsNotNone(asset)
         self.assertTrue(asset["name"].endswith(".dmg") or asset["name"].endswith(".deb"))
 
+    def test_mocked_check_for_updates(self):
+        from unittest.mock import patch, MagicMock
+        from core.services.event_bus import event_bus
+        import json
+
+        mock_payload = json.dumps({
+            "tag_name": "v9.9.9",
+            "name": "QuakMeeting 9.9.9",
+            "body": "Awesome new release",
+            "html_url": "https://github.com/Antonino545/QuakMeeting/releases/tag/v9.9.9",
+            "assets": [{"name": "quakmeeting_9.9.9_amd64.deb", "browser_download_url": "https://example.com/quak.deb"}],
+            "published_at": "2026-08-25T12:00:00Z"
+        }).encode("utf-8")
+
+        mock_resp = MagicMock()
+        mock_resp.read.return_value = mock_payload
+        mock_resp.__enter__.return_value = mock_resp
+
+        events_received = []
+        event_bus.subscribe("UPDATE_AVAILABLE", lambda **k: events_received.append(k))
+
+        with patch("urllib.request.urlopen", return_value=mock_resp):
+            info = self.updater.check_for_updates(background=False)
+            self.assertIsNotNone(info)
+            self.assertTrue(info["has_update"])
+            self.assertEqual(info["tag_name"], "v9.9.9")
+            self.assertTrue(len(events_received) >= 1)
+
 if __name__ == "__main__":
     unittest.main()

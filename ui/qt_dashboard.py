@@ -239,9 +239,9 @@ class QtFlightDeckWindow(QMainWindow):
         scroll_layout.setContentsMargins(0, 0, 0, 0)
         scroll_layout.setSpacing(12)
 
-        now = datetime.now()
+        now = datetime.now().astimezone()
         meetings = calendar_service.get_upcoming_meetings()
-        today_meets = [m for m in meetings if m.start_time and m.start_time.date() == now.date()]
+        today_meets = [m for m in meetings if m.start_time and m.start_time.astimezone().date() == now.date()]
 
         if not today_meets:
             empty_box = QVBoxLayout()
@@ -437,12 +437,75 @@ class QtFlightDeckWindow(QMainWindow):
         up_btn = QPushButton("🔍 Check for Updates", util_card)
         up_btn.setObjectName("SecondaryBtn")
         up_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        up_btn.clicked.connect(lambda: updater_service.check_for_updates(background=True))
 
         sys_row.addWidget(edit_btn)
         sys_row.addWidget(log_btn)
         sys_row.addWidget(up_btn)
         uc_layout.addLayout(sys_row)
+
+        # Update status box
+        update_status_box = QFrame(util_card)
+        update_status_box.setStyleSheet("background: rgba(255, 255, 255, 0.04); border-radius: 8px; padding: 6px;")
+        usb_layout = QVBoxLayout(update_status_box)
+        usb_layout.setContentsMargins(10, 8, 10, 8)
+        usb_layout.setSpacing(6)
+
+        update_status_lbl = QLabel(f"📦 Current Version: <b>v{updater_service.current_version}</b>", update_status_box)
+        update_status_lbl.setStyleSheet("color: #94a3b8; font-size: 12px; border: none;")
+        usb_layout.addWidget(update_status_lbl)
+
+        install_btn = QPushButton("⚡ Download & Install Update", update_status_box)
+        install_btn.setObjectName("PrimaryBtn")
+        install_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        install_btn.setVisible(False)
+        usb_layout.addWidget(install_btn)
+
+        uc_layout.addWidget(update_status_box)
+
+        def _on_check_clicked():
+            up_btn.setText("⏳ Checking...")
+            up_btn.setEnabled(False)
+            updater_service.check_for_updates(background=True)
+
+        up_btn.clicked.connect(_on_check_clicked)
+
+        def _on_update_avail(version=None, tag_name=None, **k):
+            up_btn.setText("🔍 Check for Updates")
+            up_btn.setEnabled(True)
+            v_name = tag_name or version or "New Version"
+            update_status_lbl.setText(f"🚀 <b>New Version Available: {v_name}</b> (Current: v{updater_service.current_version})")
+            install_btn.setText(f"⚡ Install {v_name}")
+            install_btn.setVisible(True)
+
+        def _on_update_complete(has_update=False, current_version=None, error=None, **k):
+            up_btn.setText("🔍 Check for Updates")
+            up_btn.setEnabled(True)
+            if not has_update:
+                if error:
+                    update_status_lbl.setText(f"⚠️ Check failed: {error}")
+                else:
+                    update_status_lbl.setText(f"✨ QuakMeeting is up to date (<b>v{current_version or updater_service.current_version}</b>)")
+                install_btn.setVisible(False)
+
+        def _on_download_progress(percent=0, **k):
+            install_btn.setText(f"⏳ Downloading update... {percent}%")
+            install_btn.setEnabled(False)
+
+        def _on_install_clicked():
+            install_btn.setText("⏳ Preparing update...")
+            install_btn.setEnabled(False)
+            updater_service.download_and_install_update(background=True)
+
+        install_btn.clicked.connect(_on_install_clicked)
+
+        event_bus.subscribe("UPDATE_AVAILABLE", _on_update_avail)
+        event_bus.subscribe("UPDATE_CHECK_COMPLETE", _on_update_complete)
+        event_bus.subscribe("UPDATE_DOWNLOAD_PROGRESS", _on_download_progress)
+
+        # Initialize with current release info if already available
+        if updater_service.latest_release_info and updater_service.latest_release_info.get("has_update"):
+            _on_update_avail(**updater_service.latest_release_info)
+
         pref_layout.addWidget(util_card)
 
         pref_layout.addStretch()

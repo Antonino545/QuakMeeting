@@ -29,8 +29,8 @@ class TestMeetingModel(unittest.TestCase):
         )
 
         d = original.to_serializable_dict()
-        self.assertEqual(d["start_time"], "2026-08-22T10:00:00+00:00")
-        self.assertEqual(d["end_time"], "2026-08-22T11:00:00+00:00")
+        self.assertEqual(d["start_time"], original.start_time.isoformat())
+        self.assertEqual(d["end_time"], original.end_time.isoformat())
         self.assertTrue(d["is_travel"])
 
         reconstituted = Meeting.from_dict(d)
@@ -55,6 +55,21 @@ class TestMeetingModel(unittest.TestCase):
         )
         self.assertFalse(past_meeting.is_upcoming)
         self.assertTrue(past_meeting.is_past)
+
+    def test_meeting_duration_minutes(self):
+        m1 = Meeting(
+            title="Short Call",
+            start_time=datetime(2026, 8, 25, 10, 0),
+            end_time=datetime(2026, 8, 25, 10, 45)
+        )
+        self.assertEqual(m1.duration_minutes, 45)
+
+        m2 = Meeting(
+            title="Two Hour Sync",
+            start_time=datetime(2026, 8, 25, 14, 0),
+            end_time=datetime(2026, 8, 25, 16, 0)
+        )
+        self.assertEqual(m2.duration_minutes, 120)
 
     def test_format_duration(self):
         from core.domain.models import format_duration
