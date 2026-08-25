@@ -113,7 +113,7 @@ jobs:
 
       - name: Build Debian Package
         run: |
-          bash scripts/build_ubuntu_deb.sh
+          bash scripts/build_ubuntu_deb.sh "${{ needs.prepare-tag.outputs.release_tag }}"
 
       - name: Upload Ubuntu DEB Artifact
         uses: actions/upload-artifact@v4

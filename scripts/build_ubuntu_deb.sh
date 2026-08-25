@@ -3,12 +3,19 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
-VERSION="1.0.1"
+
+# Resolve version dynamically from argument $1, env var RELEASE_TAG/VERSION, or models.py
+RAW_VER="${1:-${RELEASE_TAG:-${VERSION}}}"
+if [ -z "$RAW_VER" ]; then
+    RAW_VER=$(python3 -c "import re; m = re.search(r'__version__\s*=\s*[\"\']([^\"\']+)[\"\']', open('$ROOT_DIR/core/domain/models.py').read()); print(m.group(1) if m else '1.0.0')")
+fi
+# Strip any leading 'v'
+VERSION="${RAW_VER#v}"
 PACKAGE_NAME="quakmeeting_${VERSION}_amd64"
 BUILD_ROOT="$ROOT_DIR/deb_dist/$PACKAGE_NAME"
 OUTPUT_DEB="$ROOT_DIR/deb_dist/${PACKAGE_NAME}.deb"
 
-echo "🐧 Building Debian/Ubuntu .deb package for QuakMeeting (Wayland & X11)..."
+echo "🐧 Building Debian/Ubuntu .deb package for QuakMeeting v${VERSION} (Wayland & X11)..."
 
 rm -rf "$ROOT_DIR/deb_dist"
 mkdir -p "$BUILD_ROOT/DEBIAN"
