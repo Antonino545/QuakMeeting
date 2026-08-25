@@ -87,7 +87,7 @@ class ETAService:
     def _build_apple_maps_url(self, origin: Optional[str], destination: str, mode: str) -> str:
         encoded_dest = urllib.parse.quote(destination or "")
         dir_flag = APPLE_MAPS_FLAGS.get(mode, "r")
-        
+
         if origin and origin.strip():
             encoded_orig = urllib.parse.quote(origin.strip())
             return f"https://maps.apple.com/?saddr={encoded_orig}&daddr={encoded_dest}&dirflg={dir_flag}"
@@ -185,7 +185,7 @@ class ETAService:
                 a = math.sin(dlat / 2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2)**2
                 c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
                 distance_km = round(6371.0 * c * 1.3, 1) # 1.3 road curvature factor
-                
+
                 if selected_mode == "automobile":
                     duration_minutes = max(4, round((distance_km / 35.0) * 60.0))
                 elif selected_mode == "transit":

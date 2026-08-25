@@ -32,7 +32,7 @@ def _global_exception_handler(exc_type, exc_value, exc_traceback):
 
     tb_lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
     tb_text = "".join(tb_lines)
-    
+
     crash_report = (
         f"\n{'='*70}\n"
         f"🚨 CRITICAL UNCAUGHT EXCEPTION — QUAKMEETING CRASH REPORT\n"
@@ -63,7 +63,7 @@ def _global_exception_handler(exc_type, exc_value, exc_traceback):
 
     # Fallback to sys.stderr
     sys.stderr.write(crash_report)
-    
+
     # If starting up or GUI active, alert the user
     short_msg = f"{exc_type.__name__}: {exc_value}\n\nCheck logs at ~/.quakmeeting/quakmeeting.log"
     _show_macos_error_dialog("QuakMeeting Startup Error", short_msg)
@@ -72,7 +72,7 @@ def _threading_exception_handler(args):
     """Intercepts unhandled exceptions in background threads (Python 3.8+)."""
     tb_lines = traceback.format_exception(args.exc_type, args.exc_value, args.exc_traceback)
     tb_text = "".join(tb_lines)
-    
+
     log = logging.getLogger("QuakMeeting")
     log.error(
         f"💥 Unhandled exception in background thread '{args.thread.name}': "

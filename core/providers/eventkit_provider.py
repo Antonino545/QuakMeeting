@@ -32,15 +32,15 @@ class EventKitCalendarProvider(BaseCalendarProvider):
                     sem = threading.Semaphore(0)
                     def completion(granted, error):
                         sem.release()
-                        
+
                     if hasattr(self._store, "requestFullAccessToEventsWithCompletion_"):
                         self._store.requestFullAccessToEventsWithCompletion_(completion)
                     else:
                         self._store.requestAccessToEntityType_completion_(EventKit.EKEntityTypeEvent, completion)
-                        
+
                     sem.acquire()
                     status = EventKit.EKEventStore.authorizationStatusForEntityType_(EventKit.EKEntityTypeEvent)
-                
+
                 if status not in (3, 4):  # Not Authorized
                     logger.warning(f"EventKit Calendar access status: {status}. If events are missing, check System Settings -> Privacy & Security -> Calendars -> QuakMeeting.")
             except ImportError:
@@ -87,12 +87,11 @@ class EventKitCalendarProvider(BaseCalendarProvider):
             url_str = str(ev.URL().absoluteString()) if ev.URL() else ""
 
             meeting_url = (
-                EventClassifier.extract_meeting_url(url_str) or 
-                EventClassifier.extract_meeting_url(loc) or 
+                EventClassifier.extract_meeting_url(url_str) or
+                EventClassifier.extract_meeting_url(loc) or
                 EventClassifier.extract_meeting_url(desc)
             )
 
-            from datetime import timezone
             # Convert NSDate to python datetime
             start_ts = ev.startDate().timeIntervalSince1970()
             start_dt = datetime.fromtimestamp(start_ts, tz=timezone.utc)

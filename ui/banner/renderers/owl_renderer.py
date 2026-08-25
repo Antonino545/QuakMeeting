@@ -62,7 +62,7 @@ class OwlPilotRenderer(BasePilotRenderer):
         tassel_wave = math.sin(tick * 0.2) * 3.0
         AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.85, 0.2, 1.0).set()
         AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 1, py + 20, 3, 3)).fill()
-        
+
         tassel = AppKit.NSBezierPath.bezierPath()
         tassel.setLineWidth_(1.6)
         tassel.moveToPoint_(AppKit.NSMakePoint(px + 2, py + 21))

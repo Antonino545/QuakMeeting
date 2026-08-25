@@ -21,14 +21,14 @@ class NotifiedStateStore:
             except Exception as e:
                 logger.warning(f"Failed to load notified state from {self.path}: {e}")
                 self._state = {}
-        
+
         self.prune()
         return set(self._state.keys())
 
     def add(self, key: str) -> None:
         now_iso = datetime.now(timezone.utc).isoformat()
         self._state[key] = now_iso
-        
+
         # Debounce writes to disk
         now_ts = time.time()
         if now_ts - self._last_write >= 1.0:

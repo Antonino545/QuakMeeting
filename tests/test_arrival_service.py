@@ -14,7 +14,7 @@ class TestArrivalService(unittest.TestCase):
             meeting_url="https://meet.google.com/test"
         )
         self.assertFalse(self.service.is_meeting_arrived(m))
-        
+
         self.service.mark_arrived(m.id)
         self.assertTrue(self.service.is_meeting_arrived(m))
 

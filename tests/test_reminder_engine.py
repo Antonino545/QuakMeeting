@@ -10,6 +10,9 @@ class TestReminderEngine(unittest.TestCase):
         self.bus = EventBus()
         self.bus.clear()
         self.engine = ReminderEngine(bus=self.bus)
+        self.engine.config.set("general_reminder_stages", [20, 10, 5, 2, 0])
+        self.engine.config.set("meeting_reminder_stages", [20, 10, 5, 2, 0])
+        self.engine.config.set("travel_reminder_stages", [45, 30, 15, 5, 2, 0])
         self.engine.reset_state()
 
     def test_reminder_stage_evaluation(self):
@@ -91,10 +94,10 @@ class TestReminderEngine(unittest.TestCase):
             start_time=now + timedelta(minutes=5),
             classroom="Aula 5M"
         )
-        
+
         # Mark arrived
         self.engine.mark_arrived(meeting.id)
-        
+
         # Should not trigger any reminder
         results = self.engine.evaluate_meetings([meeting], current_time=now)
         self.assertEqual(len(results), 0)

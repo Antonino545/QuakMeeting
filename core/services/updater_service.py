@@ -136,7 +136,7 @@ class UpdaterService:
                     data = json.loads(resp.read().decode("utf-8"))
                     tag_name = data.get("tag_name", "")
                     has_update = self.is_newer_version(tag_name, self.current_version)
-                    
+
                     release_info = {
                         "has_update": has_update,
                         "version": tag_name.lstrip("vV"),
@@ -253,7 +253,7 @@ class UpdaterService:
                 mount_point = os.path.join(temp_dir, "mount")
                 os.makedirs(mount_point, exist_ok=True)
                 subprocess.run(["hdiutil", "attach", package_path, "-mountpoint", mount_point, "-nobrowse", "-quiet"], check=True)
-                
+
                 source_app = os.path.join(mount_point, "QuakMeeting.app")
                 if os.path.exists(source_app):
                     if os.path.exists(app_dest):

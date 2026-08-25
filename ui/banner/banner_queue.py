@@ -20,10 +20,10 @@ class BannerQueue:
             title = item.meeting_data.get("title", "")
             start = str(item.meeting_data.get("start_time", ""))
             m_id = f"{title}_{start}"
-            
+
             # Remove any existing item for this meeting
             self._items = [x for x in self._items if f"{x.meeting_data.get('title', '')}_{x.meeting_data.get('start_time', '')}" != m_id]
-            
+
             self._items.append(item)
             # Priority: stage 0 jumps to front (index 0), otherwise FIFO
             self._items.sort(key=lambda x: (x.stage != 0, x.enqueued_at))

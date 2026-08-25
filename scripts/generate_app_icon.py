@@ -5,7 +5,7 @@ import os
 def create_app_icon(output_path="assets/icon.png", size=512):
     image = AppKit.NSImage.alloc().initWithSize_(AppKit.NSMakeSize(size, size))
     image.lockFocus()
-    
+
     # 1. Background Squircle (macOS Big Sur+ Continuous Curve App Icon Shape)
     margin = size * 0.08
     icon_rect = AppKit.NSMakeRect(margin, margin, size - 2 * margin, size - 2 * margin)
@@ -13,40 +13,40 @@ def create_app_icon(output_path="assets/icon.png", size=512):
     bg_path = AppKit.NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(
         icon_rect, corner_radius, corner_radius
     )
-    
+
     # Shadow for Squircle
     shadow = AppKit.NSShadow.alloc().init()
     shadow.setShadowColor_(AppKit.NSColor.colorWithWhite_alpha_(0.0, 0.35))
     shadow.setShadowOffset_(AppKit.NSMakeSize(0.0, -size * 0.04))
     shadow.setShadowBlurRadius_(size * 0.08)
     shadow.set()
-    
+
     # Sky Gradient Background
     c_top = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.15, 0.45, 0.88, 1.0)
     c_bot = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.05, 0.18, 0.42, 1.0)
     grad = AppKit.NSGradient.alloc().initWithStartingColor_endingColor_(c_top, c_bot)
     grad.drawInBezierPath_angle_(bg_path, 270.0)
-    
+
     # Remove shadow for inner graphics
     no_shadow = AppKit.NSShadow.alloc().init()
     no_shadow.set()
-    
+
     # Inner Rim Highlight
     hi_rect = AppKit.NSMakeRect(icon_rect.origin.x + 2, icon_rect.origin.y + icon_rect.size.height - 4, icon_rect.size.width - 4, 3)
     AppKit.NSColor.colorWithWhite_alpha_(1.0, 0.28).set()
     AppKit.NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(hi_rect, 1.5, 1.5).fill()
-    
+
     # 2. Clouds in Background
     cloud_col = AppKit.NSColor.colorWithWhite_alpha_(1.0, 0.15)
     cloud_col.set()
     AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(size * 0.15, size * 0.25, size * 0.35, size * 0.20)).fill()
     AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(size * 0.45, size * 0.30, size * 0.40, size * 0.22)).fill()
-    
+
     # 3. Aviator Duck Mascot (Center)
     center_x = size * 0.50
     center_y = size * 0.48
     s = size / 512.0
-    
+
     # Timone di Coda
     AppKit.NSColor.colorWithRed_green_blue_alpha_(0.92, 0.38, 0.32, 1.0).set()
     tail = AppKit.NSBezierPath.bezierPath()
@@ -108,7 +108,7 @@ def create_app_icon(output_path="assets/icon.png", size=512):
     AppKit.NSBezierPath.bezierPathWithRect_(
         AppKit.NSMakeRect(center_x - 25 * s, center_y + 28 * s, 60 * s, 10 * s)
     ).fill()
-    
+
     AppKit.NSColor.colorWithRed_green_blue_alpha_(0.90, 0.75, 0.35, 1.0).set()
     goggle = AppKit.NSBezierPath.bezierPathWithOvalInRect_(
         AppKit.NSMakeRect(center_x - 5 * s, center_y + 22 * s, 36 * s, 34 * s)
@@ -144,7 +144,7 @@ def create_app_icon(output_path="assets/icon.png", size=512):
     prop.stroke()
 
     image.unlockFocus()
-    
+
     # Save as PNG
     tiff_data = image.TIFFRepresentation()
     bitmap = AppKit.NSBitmapImageRep.imageRepsWithData_(tiff_data)[0]

@@ -58,9 +58,9 @@ class EDSCalendarProvider(BaseCalendarProvider):
 
         ignored = set(self.config.get("ignored_calendars", []))
         custom_kw = self.config.get("custom_keywords", {})
-        
+
         sources = registry.list_sources(EDataServer.SOURCE_EXTENSION_CALENDAR)
-        
+
         meetings: List[Meeting] = []
 
         from core.providers.caldav_provider import CalDAVCalendarProvider
@@ -75,14 +75,14 @@ class EDSCalendarProvider(BaseCalendarProvider):
                 client = ECal.Client.connect_sync(source, ECal.ClientSourceType.EVENTS, 3, None)
                 if not client:
                     continue
-                
+
                 # Query time range
                 query = f'(occur-in-time-range? (make-time "{start_iso}") (make-time "{end_iso}"))'
-                
+
                 success, events = client.get_object_list_as_comps_sync(query, None)
                 if not success or not events:
                     continue
-                    
+
                 for comp in events:
                     try:
                         # Extract the raw ICS string and reuse the CalDAV parser logic for robustness
@@ -96,7 +96,7 @@ class EDSCalendarProvider(BaseCalendarProvider):
                             continue
 
                         parsed_events = caldav_parser._parse_ics_events(ics_text)
-                        
+
                         for ev in parsed_events:
                             s_dt = ev.get("start_time")
                             e_dt = ev.get("end_time")
@@ -109,8 +109,8 @@ class EDSCalendarProvider(BaseCalendarProvider):
                             url_val = ev.get("url", "")
 
                             meeting_url = (
-                                EventClassifier.extract_meeting_url(url_val) or 
-                                EventClassifier.extract_meeting_url(loc) or 
+                                EventClassifier.extract_meeting_url(url_val) or
+                                EventClassifier.extract_meeting_url(loc) or
                                 EventClassifier.extract_meeting_url(desc)
                             )
 
@@ -127,10 +127,10 @@ class EDSCalendarProvider(BaseCalendarProvider):
                             meetings.append(meeting)
                     except Exception as parse_e:
                         logger.debug(f"Failed to parse EDS event in '{name}': {parse_e}")
-                        
+
             except Exception as e:
                 logger.debug(f"Failed to fetch events from EDS source '{name}': {e}")
-                
+
         meetings.sort(key=lambda m: m.start_time if m.start_time else datetime.min)
         return meetings
 
@@ -142,7 +142,7 @@ class EDSCalendarProvider(BaseCalendarProvider):
         from gi.repository import EDataServer
         ignored = set(self.config.get("ignored_calendars", []))
         sources = registry.list_sources(EDataServer.SOURCE_EXTENSION_CALENDAR)
-        
+
         cals = []
         for source in sources:
             name = source.get_display_name()

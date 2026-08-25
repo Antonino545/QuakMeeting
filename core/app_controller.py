@@ -34,10 +34,10 @@ class AppController:
             try:
                 # 1. Fetch upcoming meetings
                 meeting_objects = calendar_service.get_upcoming_meetings()
-                
+
                 # 2. Evaluate reminders cleanly in domain service
                 reminder_engine.evaluate_meetings(meeting_objects)
-                
+
                 # 3. Publish update so UI components can re-render reactively
                 event_bus.publish("AGENDA_UPDATED", meeting_objects=meeting_objects)
 
@@ -45,10 +45,10 @@ class AppController:
                 self._loop_count += 1
                 if self._loop_count % 960 == 0:
                     updater_service.check_for_updates(background=True)
-                
+
             except Exception as e:
                 logger.error(f"Error in background AppController loop: {e}", exc_info=True)
-                
+
             time.sleep(15)
 
 app_controller = AppController()

@@ -19,13 +19,13 @@ class BasePilotRenderer(ABC):
         # Disco di sfocatura di rotazione dell'elica
         AppKit.NSColor.colorWithRed_green_blue_alpha_(0.88, 0.94, 1.0, 0.25).set()
         AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(nose_x - 4, nose_y - 18, 8, 36)).fill()
-        
+
         # Pale rotanti con riflesso lucido
         prop_angle = tick * 0.70
         prop_len = 18.0
         dx = math.cos(prop_angle) * 3.5
         dy = math.sin(prop_angle) * prop_len
-        
+
         AppKit.NSColor.colorWithRed_green_blue_alpha_(0.92, 0.95, 1.0, 0.90).set()
         prop_path = AppKit.NSBezierPath.bezierPath()
         prop_path.setLineWidth_(3.2)

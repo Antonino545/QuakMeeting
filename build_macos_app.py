@@ -16,10 +16,10 @@ def generate_icns():
     if not os.path.exists(icon_src):
         from scripts.generate_app_icon import create_app_icon
         create_app_icon(icon_src, 1024)
-        
+
     iconset_dir = os.path.join(PROJECT_DIR, "assets", "AppIcon.iconset")
     os.makedirs(iconset_dir, exist_ok=True)
-    
+
     sizes = [16, 32, 128, 256, 512]
     for sz in sizes:
         # Standard 1x
@@ -28,7 +28,7 @@ def generate_icns():
         # Retina 2x
         out_2x = os.path.join(iconset_dir, f"icon_{sz}x{sz}@2x.png")
         subprocess.run(["sips", "-z", str(sz * 2), str(sz * 2), icon_src, "--out", out_2x], capture_output=True)
-        
+
     # Generate ICNS
     icns_path = os.path.join(PROJECT_DIR, "assets", "AppIcon.icns")
     subprocess.run(["iconutil", "-c", "icns", iconset_dir, "-o", icns_path], check=True)
@@ -39,7 +39,7 @@ def generate_icns():
 def check_python_code():
     print("🧪 Verifying and validating Python code syntax...")
     import py_compile
-    
+
     py_files = []
     for root, _, files in os.walk(PROJECT_DIR):
         if any(x in root for x in [".git", "QuakMeeting.app", "__pycache__", "deb_dist", "dmg_temp"]):
@@ -47,7 +47,7 @@ def check_python_code():
         for file in files:
             if file.endswith(".py"):
                 py_files.append(os.path.join(root, file))
-    
+
     for py_file in py_files:
         try:
             py_compile.compile(py_file, doraise=True)
@@ -55,7 +55,7 @@ def check_python_code():
         except py_compile.PyCompileError as e:
             print(f"  ❌ SYNTAX ERROR in {py_file}: {e}")
             raise SystemExit(1)
-                
+
     # Verify module imports
     try:
         import sys
@@ -73,7 +73,7 @@ def check_python_code():
     except Exception as e:
         print(f"  ❌ IMPORT ERROR: {e}")
         raise SystemExit(1)
-        
+
     # Run automated test suite
     print("  🧪 Running automated unit test suite...")
     res = subprocess.run([sys.executable, "-m", "unittest", "discover", "-s", "tests", "-v"], cwd=PROJECT_DIR, capture_output=True, text=True)
@@ -88,32 +88,32 @@ def build_bundle():
     print(f"📦 Building macOS Native Bundle: {APP_DIR}...")
     if os.path.exists(APP_DIR):
         shutil.rmtree(APP_DIR)
-        
+
     os.makedirs(MACOS_DIR, exist_ok=True)
     os.makedirs(RESOURCES_DIR, exist_ok=True)
-    
+
     # 1. Copy AppIcon.icns
     icns_path = generate_icns()
     shutil.copy2(icns_path, os.path.join(RESOURCES_DIR, "AppIcon.icns"))
-    
+
     # 2. Copy assets/
     assets_dest = os.path.join(RESOURCES_DIR, "assets")
     os.makedirs(assets_dest, exist_ok=True)
     if os.path.exists(os.path.join(PROJECT_DIR, "assets", "icon.png")):
         shutil.copy2(os.path.join(PROJECT_DIR, "assets", "icon.png"), os.path.join(assets_dest, "icon.png"))
-        
+
     # 3. Copy Python module directories (core/ and ui/) and main.py
     shutil.copytree(os.path.join(PROJECT_DIR, "core"), os.path.join(RESOURCES_DIR, "core"), dirs_exist_ok=True)
     shutil.copytree(os.path.join(PROJECT_DIR, "ui"), os.path.join(RESOURCES_DIR, "ui"), dirs_exist_ok=True)
     shutil.copy2(os.path.join(PROJECT_DIR, "main.py"), os.path.join(RESOURCES_DIR, "main.py"))
-    
+
     # Resolve dynamic version
     raw_ver = os.environ.get("RELEASE_TAG") or os.environ.get("VERSION") or (sys.argv[1] if len(sys.argv) > 1 else None)
     if not raw_ver:
         from core.domain.models import __version__
         raw_ver = __version__
     app_version = raw_ver.lstrip("v")
-    
+
     with open(os.path.join(RESOURCES_DIR, "VERSION"), "w") as f:
         f.write(app_version)
 
@@ -162,7 +162,7 @@ def build_bundle():
 """
     with open(os.path.join(CONTENTS_DIR, "Info.plist"), "w", encoding="utf-8") as f:
         f.write(info_plist_content)
-        
+
     # 5. Create Launcher Bash executable in MacOS/QuakMeeting.sh (debug fallback only)
     launcher_content = """#!/bin/bash
 DIR="$(cd "$(dirname "$0")/../Resources" && pwd)"
@@ -204,7 +204,7 @@ exec "$BUNDLE_PYTHON" "$DIR/main.py" --dashboard "$@" >> "$LOG_FILE" 2>&1
     with open(bash_path, "w", encoding="utf-8") as f:
         f.write(launcher_content)
     os.chmod(bash_path, 0o755)
-    
+
     # 5b. Copy Python binary at build time so the C stub can exec it directly
     python_bin = None
     candidates = [sys.executable, "/opt/miniconda3/bin/python3", "/opt/homebrew/bin/python3", "/usr/local/bin/python3"]
@@ -217,7 +217,7 @@ exec "$BUNDLE_PYTHON" "$DIR/main.py" --dashboard "$@" >> "$LOG_FILE" 2>&1
                     break
             except Exception:
                 continue
-    
+
     if python_bin:
         bundle_python_path = os.path.join(MACOS_DIR, "QuakMeeting_Python")
         shutil.copy2(python_bin, bundle_python_path)
@@ -225,7 +225,7 @@ exec "$BUNDLE_PYTHON" "$DIR/main.py" --dashboard "$@" >> "$LOG_FILE" 2>&1
         print(f"  ✓ Bundled Python binary: {python_bin} → QuakMeeting_Python")
     else:
         print("  ⚠️ Could not find Python with PyObjC at build time; will fall back to shell launcher.")
-    
+
     # 5c. Compile a Mach-O C stub that embeds Python IN-PROCESS via dlopen/Py_Main.
     # This is critical: execv replaces the process image, causing macOS to lose
     # the bundle association and refuse to show the app's menu bar. By running
@@ -361,24 +361,24 @@ int main(int argc, char **argv) {
         if os.path.exists(candidate):
             dylib_path = candidate
             break
-    
+
     if dylib_path:
         c_stub = c_stub.replace("PLACEHOLDER_DYLIB", dylib_path)
         print(f"  ✓ Found libpython dylib: {dylib_path}")
     else:
         c_stub = c_stub.replace("PLACEHOLDER_DYLIB", f"/opt/miniconda3/lib/libpython{py_version}.dylib")
-        print(f"  ⚠️ libpython dylib not found at expected paths, using default")
-    
+        print("  ⚠️ libpython dylib not found at expected paths, using default")
+
     c_path = os.path.join(PROJECT_DIR, "launcher_stub.c")
     with open(c_path, "w") as f:
         f.write(c_stub)
-        
+
     launcher_path = os.path.join(MACOS_DIR, "QuakMeeting")
     # Compile with include path for Python.h (not strictly needed for dlopen approach,
     # but ensures the build environment is clean)
     subprocess.run(["clang", "-O2", "-Wall", c_path, "-o", launcher_path], check=True)
     os.remove(c_path)
-    
+
     # 5d. Remove quarantine extended attributes and apply ad-hoc codesign
     try:
         subprocess.run(["xattr", "-cr", APP_DIR], check=False)
@@ -388,7 +388,7 @@ int main(int argc, char **argv) {
         print(f"  Note on codesign: {cs_err}")
 
     print(f"🚀 QuakMeeting.app successfully created in: {APP_DIR}")
-    
+
     # 6. Install cleanly into /Applications
     apps_target = "/Applications/QuakMeeting.app"
     try:

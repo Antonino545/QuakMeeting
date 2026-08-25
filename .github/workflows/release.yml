@@ -20,6 +20,7 @@ jobs:
   prepare-tag:
     name: Determine Release Tag
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
     outputs:
       release_tag: ${{ steps.tag_calc.outputs.release_tag }}
     steps:
@@ -125,6 +126,7 @@ jobs:
     name: Publish GitHub Release
     needs: [prepare-tag, build-macos, build-ubuntu]
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

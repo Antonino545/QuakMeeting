@@ -8,7 +8,7 @@ logger = logging.getLogger("QuakMeeting.MeetingRepository")
 
 class MeetingRepository:
     """Handles serialization and file I/O for cached meetings."""
-    
+
     def __init__(self, cache_file: str):
         self.cache_file = cache_file
         self.cache_dir = os.path.dirname(cache_file)

@@ -8,20 +8,20 @@ class TrayViewModel:
         """Formats the tray status title dynamically based on current meeting and config."""
         if not next_m:
             return "🦆" if mode == "icon_only" else "🦆 QuakMeeting"
-            
+
         if now.tzinfo is None:
             now = now.astimezone()
 
         is_dict = isinstance(next_m, dict)
         get_val = lambda key, default=None: next_m.get(key, default) if is_dict else getattr(next_m, key, default)
-            
+
         icon_map = {"chef": "🍕", "captain": "✈️", "owl": "🎓", "driver": "🚗", "zen_duck": "🛋️", "duck": "🦆"}
         p_type = get_val("pilot_type", "duck")
         icon_prefix = icon_map.get(p_type, "🦆")
-        
+
         if mode == "icon_only":
             return icon_prefix
-            
+
         start_dt = get_val("start_time")
         if isinstance(start_dt, datetime) and start_dt.tzinfo is None:
             start_dt = start_dt.astimezone()
@@ -37,15 +37,15 @@ class TrayViewModel:
         travel_min = get_val("travel_time_minutes")
         m_title = (get_val("title") or "Event").strip()
         title_short = m_title[:14] + "…" if len(m_title) > 14 else m_title
-        
+
         start_str = start_dt.astimezone().strftime("%H:%M") if isinstance(start_dt, datetime) else "--:--"
-        
+
         if mode == "event_time":
             if travel_min:
                 dur_str = format_duration(travel_min)
                 return f"{icon_prefix} {start_str} {title_short} (~{dur_str})"
             return f"{icon_prefix} {start_str} {title_short}"
-            
+
         elif mode == "time_only":
             if isinstance(start_dt, datetime):
                 diff_m = int(round((start_dt - now).total_seconds() / 60.0))
@@ -61,7 +61,7 @@ class TrayViewModel:
                 elif end_dt and isinstance(end_dt, datetime) and start_dt <= now < end_dt:
                     return f"{icon_prefix} {start_str} (Active)"
             return f"{icon_prefix} {start_str}"
-            
+
         else: # "countdown" (Default & Most Informative)
             # 1. Check Departure / Leave Time for travel events
             if dep_dt and isinstance(dep_dt, datetime):
@@ -85,5 +85,5 @@ class TrayViewModel:
                     return f"🟢 {icon_prefix} {title_short} ({format_duration(diff_end)} left)"
                 elif diff_start > max_lookahead_min:
                     return f"{icon_prefix} {start_str} {title_short}"
-                    
+
             return f"{icon_prefix} {start_str} {title_short}"

@@ -73,13 +73,15 @@ class ReminderEngine:
         """Retrieve configured stage intervals (minutes before start) for a given meeting type."""
         if meeting.is_travel:
             stages = list(self.config.get("travel_reminder_stages", [45, 30, 15, 5, 2, 0]))
-        else:
+        elif meeting.event_type == "video_meeting":
             stages = list(self.config.get("meeting_reminder_stages", [20, 10, 5, 2, 0]))
-            
+        else:
+            stages = list(self.config.get("general_reminder_stages", [20, 10, 5, 2, 0]))
+
         # Ensure 0 (start time) is always checked unless empty
         if 0 not in stages:
             stages.append(0)
-            
+
         return sorted([int(s) for s in stages], reverse=True)
 
     def is_within_stage_window(self, diff_minutes: float, stage: int) -> bool:
@@ -132,9 +134,9 @@ class ReminderEngine:
             # - For video meetings & regular events: stages are relative to START time
             is_departure_mode = bool(m.is_travel and m.departure_time)
             target_time = m.departure_time if is_departure_mode else m.start_time
-            
+
             diff_min = (target_time - now).total_seconds() / 60.0
-            
+
             # If event is on a future date and more than 3 hours away, do not trigger reminders today
             if m.start_time.date() > now.date() and diff_min > 180:
                 continue
@@ -152,29 +154,29 @@ class ReminderEngine:
                     if stage_key not in self.notified_stage_keys:
                         matched_stage = stage
                         self._add_notified_key(stage_key)
-                        
+
                         # Apply busy mode logic
                         if has_active_meeting and not self.is_meeting_active(m, now):
                             if stage > 10:
                                 logger.info(f"🔇 Suppressed stage {stage} reminder for '{m.title}' (User is busy).")
                                 continue
-                                
+
                         m_triggered = Meeting.from_dict(m.to_dict())
                         m_triggered.reminder_stage = stage
-                        
+
                         if has_active_meeting and not self.is_meeting_active(m, now) and stage > 0:
                             m_triggered.is_quiet_reminder = True
                             logger.info(f"🤫 Downgrading to quiet reminder for '{m.title}' at stage {stage} (User is busy).")
-                            
+
                         triggered_events.append((m_triggered, stage))
-                        
+
                         if is_departure_mode:
-                            stage_label = f"LEAVE NOW (0m)" if stage == 0 else f"leave in {stage}m"
+                            stage_label = "LEAVE NOW (0m)" if stage == 0 else f"leave in {stage}m"
                             logger.info(f"🚨 >>> TRIGGER DEPARTURE BANNER [{stage_label}] for \"{m.title}\" (Leave at {dep_str}, Event at {start_str}, diff={diff_min:+.1f}m)")
                         else:
-                            stage_label = f"at start (0m)" if stage == 0 else f"{stage}m ahead"
+                            stage_label = "at start (0m)" if stage == 0 else f"{stage}m ahead"
                             logger.info(f"🔔 >>> TRIGGER BANNER [{stage_label}] for \"{m.title}\" ({m.provider}, at {start_str}, diff={diff_min:+.1f}m)")
-                            
+
                         self.bus.publish("REMINDER_TRIGGERED", meeting=m_triggered, stage=stage)
                         break
 
@@ -184,23 +186,23 @@ class ReminderEngine:
                     fallback_stage = max(0, round(diff_min))
                     stage_key = f"{m.id}_dep_stage_{fallback_stage}" if is_departure_mode else f"{m.id}_stage_{fallback_stage}"
                     self._add_notified_key(stage_key)
-                    
+
                     m_triggered = Meeting.from_dict(m.to_dict())
                     m_triggered.reminder_stage = fallback_stage
-                    
+
                     if has_active_meeting and not self.is_meeting_active(m, now) and fallback_stage > 0:
                         m_triggered.is_quiet_reminder = True
                         logger.info(f"🤫 Downgrading fallback to quiet reminder for '{m.title}' at stage {fallback_stage} (User is busy).")
-                        
+
                     triggered_events.append((m_triggered, fallback_stage))
-                    
+
                     if is_departure_mode:
-                        stage_label = f"DEPART NOW" if fallback_stage == 0 else f"leave imminent ({fallback_stage}m)"
+                        stage_label = "DEPART NOW" if fallback_stage == 0 else f"leave imminent ({fallback_stage}m)"
                         logger.info(f"🚨 >>> TRIGGER IMMEDIATE DEPARTURE BANNER [{stage_label}] for \"{m.title}\" (Leave at {dep_str}, Event at {start_str}, diff={diff_min:+.1f}m)")
                     else:
-                        stage_label = f"at start (0m)" if fallback_stage == 0 else f"imminent ({fallback_stage}m)"
+                        stage_label = "at start (0m)" if fallback_stage == 0 else f"imminent ({fallback_stage}m)"
                         logger.info(f"🔔 >>> TRIGGER IMMEDIATE BANNER [{stage_label}] for \"{m.title}\" ({m.provider}, at {start_str}, diff={diff_min:+.1f}m)")
-                        
+
                     self.bus.publish("REMINDER_TRIGGERED", meeting=m_triggered, stage=fallback_stage)
                     matched_stage = fallback_stage
 
