@@ -91,6 +91,11 @@ class UpdaterService:
                     if has_update:
                         logger.info(f"🚀 New QuakMeeting update found: {tag_name} (Current: {self.current_version})")
                         event_bus.publish("UPDATE_AVAILABLE", **release_info)
+                        try:
+                            from ui.banner.qt_banner import get_update_preset
+                            event_bus.publish("TRIGGER_BANNER", event_dict=get_update_preset(tag_name, release_info.get("html_url", "")))
+                        except Exception as b_err:
+                            logger.debug(f"Banner trigger on update: {b_err}")
                     else:
                         logger.info(f"✨ QuakMeeting is up to date (Current: {self.current_version})")
                         event_bus.publish("UPDATE_CHECK_COMPLETE", has_update=False, current_version=self.current_version)

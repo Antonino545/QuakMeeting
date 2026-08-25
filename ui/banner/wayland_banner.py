@@ -146,7 +146,8 @@ def show_wayland_banner(event_data: Dict[str, Any]) -> None:
         pilot_type = event_data.get("pilot_type", "duck")
         action_btn_text = event_data.get("action_btn_text", "🚀 JOIN")
         action_url = event_data.get("action_url")
-        quote_text = PILOT_QUOTES.get(pilot_type, "🚀 Meeting starting soon!")
+        is_update_banner = bool(event_data.get("is_update_banner", False))
+        quote_text = event_data.get("quote_text") or PILOT_QUOTES.get(pilot_type, "🚀 Meeting starting soon!")
 
         tick = [0]
 
@@ -159,9 +160,9 @@ def show_wayland_banner(event_data: Dict[str, Any]) -> None:
             ctx.paint()
 
             # Glass Card Dimensions
-            card_x = 94.0
+            card_x = 10.0 if is_update_banner else 94.0
             card_y = 6.0
-            card_w = w - 104.0
+            card_w = (w - 20.0) if is_update_banner else (w - 104.0)
             card_h = h - 12.0
             r = 14.0
 
@@ -178,20 +179,21 @@ def show_wayland_banner(event_data: Dict[str, Any]) -> None:
             ctx.fill_preserve()
 
             # Border Glowing Highlight
-            ctx.set_source_rgba(0.22, 0.74, 0.97, 0.35)
+            ctx.set_source_rgba(0.22, 0.74, 0.97, 0.45)
             ctx.set_line_width(1.4)
             ctx.stroke()
 
-            # Towing Cable Line with Dynamic Bounce
-            cable_y = h * 0.5 + math.sin(tick[0] * 0.15) * 1.5
-            ctx.set_source_rgba(0.9, 0.92, 0.98, 0.7)
-            ctx.set_line_width(1.5)
-            ctx.move_to(56.0, cable_y)
-            ctx.line_to(card_x, cable_y)
-            ctx.stroke()
+            if not is_update_banner:
+                # Towing Cable Line with Dynamic Bounce
+                cable_y = h * 0.5 + math.sin(tick[0] * 0.15) * 1.5
+                ctx.set_source_rgba(0.9, 0.92, 0.98, 0.7)
+                ctx.set_line_width(1.5)
+                ctx.move_to(56.0, cable_y)
+                ctx.line_to(card_x, cable_y)
+                ctx.stroke()
 
-            # Draw Mascot Aircraft & Animated Propeller
-            CairoPilotRenderer.draw_pilot(ctx, pilot_type, 44.0, cable_y, tick[0])
+                # Draw Mascot Aircraft & Animated Propeller
+                CairoPilotRenderer.draw_pilot(ctx, pilot_type, 44.0, cable_y, tick[0])
             return False
 
         darea = Gtk.DrawingArea()
@@ -201,7 +203,7 @@ def show_wayland_banner(event_data: Dict[str, Any]) -> None:
         overlay.add(darea)
 
         box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=14)
-        box.set_margin_start(110)
+        box.set_margin_start(24 if is_update_banner else 110)
         box.set_margin_end(18)
         box.set_margin_top(12)
         box.set_margin_bottom(12)
@@ -232,10 +234,17 @@ def show_wayland_banner(event_data: Dict[str, Any]) -> None:
             if "--test" in sys.argv and Gtk.main_level() > 0:
                 Gtk.main_quit()
 
-        if action_url:
+        if action_url or is_update_banner:
             btn = Gtk.Button(label=action_btn_text)
             btn.get_style_context().add_class("hud-btn")
-            btn.connect("clicked", lambda b: (import_webbrowser().open(action_url), _close_and_quit()))
+            if is_update_banner:
+                def _on_up_click(b):
+                    from core.services.updater_service import updater_service
+                    updater_service.download_and_install_update(background=True)
+                    _close_and_quit()
+                btn.connect("clicked", _on_up_click)
+            else:
+                btn.connect("clicked", lambda b: (import_webbrowser().open(action_url), _close_and_quit()))
             box.pack_end(btn, False, False, 0)
 
         close_btn = Gtk.Button(label="✕")

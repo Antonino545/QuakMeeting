@@ -43,12 +43,13 @@ class QuakPitFlyingBanner(AppKit.NSObject):
         screen_rect = target_screen.frame() if target_screen else AppKit.NSMakeRect(0, 0, 1440, 900)
         
         is_quiet = self.meeting_data.get("is_quiet_reminder", False)
+        is_update = self.meeting_data.get("is_update_banner", False)
         
-        if is_quiet:
-            window_w = 320.0
-            window_h = 80.0
-            x_pos = screen_rect.origin.x + (screen_rect.size.width - window_w) / 2.0
-            y_pos = screen_rect.origin.y + (screen_rect.size.height - window_h) / 2.0
+        if is_quiet or is_update:
+            window_w = 360.0
+            window_h = 84.0
+            x_pos = screen_rect.origin.x + screen_rect.size.width - window_w - 24.0
+            y_pos = screen_rect.origin.y + screen_rect.size.height - window_h - 40.0
             frame = AppKit.NSMakeRect(x_pos, y_pos, window_w, window_h)
         else:
             window_w = screen_rect.size.width
@@ -92,15 +93,16 @@ class QuakPitFlyingBanner(AppKit.NSObject):
         )
         self.window.setCollectionBehavior_(behavior)
         
-        if is_quiet:
+        if is_quiet or is_update:
             self.banner_view = QuietReminderView.alloc().initWithFrame_meetingData_controller_(
                 AppKit.NSMakeRect(0, 0, window_w, window_h),
                 self.meeting_data,
                 self
             )
-            # Auto dismiss after 6 seconds on main thread
+            # Auto dismiss after 10 seconds for update, 6 seconds for quiet
+            dismiss_time = 10.0 if is_update else 6.0
             AppKit.NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
-                6.0,
+                dismiss_time,
                 self,
                 objc.selector(self.dismissAction_, signature=b"v@:@"),
                 None,
@@ -148,7 +150,10 @@ class QuakPitFlyingBanner(AppKit.NSObject):
             threading.Thread(target=_play, daemon=True).start()
 
     def trigger_action(self) -> None:
-        if self.action_url:
+        if self.meeting_data.get("is_update_banner"):
+            from core.services.updater_service import updater_service
+            updater_service.download_and_install_update(background=True)
+        elif self.action_url:
             webbrowser.open(self.action_url)
         self.dismiss()
 

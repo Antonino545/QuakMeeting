@@ -147,6 +147,21 @@ def get_test_preset(pilot_type: str) -> Dict[str, Any]:
     }
     return presets.get(pilot_type, presets["duck"])
 
+def get_update_preset(version_str: str = "New Version", release_url: str = "") -> Dict[str, Any]:
+    """Generates banner payload for QuakMeeting software updates."""
+    return {
+        "title": f"QuakMeeting {version_str} Ready!",
+        "provider": "Software Update ✨",
+        "pilot_type": "captain",
+        "action_btn_text": "⚡ UPDATE NOW",
+        "quote_text": f"🚀 {version_str} IS READY!",
+        "action_url": release_url or "https://github.com/Antonino545/QuakMeeting/releases",
+        "start_time": datetime.now(),
+        "is_travel": False,
+        "is_update_banner": True,
+        "location": "Click to download & install update",
+    }
+
 
 # ── Layout constants ──────────────────────────────────────────────────────────
 
@@ -163,19 +178,28 @@ PLANE_CX  = CARD_W + CABLE_LEN + PLANE_SPAN // 2   # plane centre inside window
 PLANE_CY  = CARD_Y + CARD_H // 2
 
 # Button layout
-BTN_H     = 32
+BTN_H       = 32
+BTN_Y       = CARD_Y + CARD_H - BTN_H - 12
+BTN_X0      = CARD_X + 16
 BTN_JOIN_W  = 170
 BTN_SMALL_W = 100
-BTN_Y     = CARD_Y + CARD_H - BTN_H - 12
-BTN_X0    = CARD_X + 14
+BTN_ARR_W   = 100
+BTN_SNOOZE_W= 100
+BTN_GAP     = 8
 BTN_ARRIVE_X = BTN_X0 + BTN_JOIN_W + 8
-BTN_SNOOZE_X = BTN_ARRIVE_X + BTN_SMALL_W + 8
+BTN_SNOOZE_X = BTN_ARRIVE_X + BTN_ARR_W + 8
 
+CLOSE_R     = 10
+CLOSE_CX    = CARD_X + CARD_W - 18
+CLOSE_CY    = CARD_Y + 18
+
+
+# ── Main Banner Widget ────────────────────────────────────────────────────────
 
 class QtQuakPitFlyingBanner(QWidget):
 
-    def __init__(self, event_data: Dict[str, Any]):
-        super().__init__()
+    def __init__(self, event_data: Dict[str, Any], parent=None):
+        super().__init__(parent)
         self.event_data  = event_data
         self.pilot_type  = event_data.get("pilot_type", "duck")
         self.action_url  = event_data.get("action_url") or event_data.get("meeting_url")
@@ -184,7 +208,8 @@ class QtQuakPitFlyingBanner(QWidget):
         self.btn_text    = event_data.get("action_btn_text", "🚀 JOIN MEETING")
         self.is_late     = bool(event_data.get("is_late", False))
         self.is_travel   = bool(event_data.get("is_travel", False))
-        self.quote_text  = PILOT_QUOTES.get(self.pilot_type, "🚀 Meeting starting soon!")
+        self.is_update_banner = bool(event_data.get("is_update_banner", False))
+        self.quote_text  = event_data.get("quote_text") or PILOT_QUOTES.get(self.pilot_type, "🚀 Meeting starting soon!")
 
         # Formatted time string
         st = event_data.get("start_time")
@@ -208,16 +233,30 @@ class QtQuakPitFlyingBanner(QWidget):
         self.screen_x = geo.x()
         self.screen_y = geo.y()
 
-        # ── Animation state — enter from LEFT, fly RIGHT ──
-        self.win_x    = float(self.screen_x - WIN_W - 20)
-        self.win_y    = self.screen_y + 14
-        self.speed    = 3.8
-        self.tick     = 0
+        self.tick      = 0
         self.is_paused = False
-        self._hover   = None   # "join" | "arrive" | "snooze" | "close"
+        self._hover    = None   # "join" | "arrive" | "snooze" | "close"
 
         # ── Window setup ──
-        self.setFixedSize(WIN_W, WIN_H)
+        if self.is_update_banner:
+            self.win_w = CARD_W + 12
+            self.win_h = CARD_H + 12
+            self.setFixedSize(self.win_w, self.win_h)
+            self.final_x = float(self.screen_x + self.screen_w - self.win_w - 24)
+            self.final_y = float(self.screen_y + 24)
+            self.win_x = self.final_x
+            self.win_y = float(self.screen_y - self.win_h - 10)
+            self.speed = 10.0
+            self.stay_ticks = 0
+            self.max_stay_ticks = 600  # 10s auto-dismiss
+        else:
+            self.win_w = WIN_W
+            self.win_h = WIN_H
+            self.setFixedSize(WIN_W, WIN_H)
+            self.win_x = float(self.screen_x - WIN_W - 20)
+            self.win_y = float(self.screen_y + 14)
+            self.speed = 3.8
+
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint |
             Qt.WindowType.WindowStaysOnTopHint |
@@ -228,7 +267,7 @@ class QtQuakPitFlyingBanner(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setMouseTracking(True)
-        self.move(int(self.win_x), self.win_y)
+        self.move(int(self.win_x), int(self.win_y))
 
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._step)
@@ -238,29 +277,52 @@ class QtQuakPitFlyingBanner(QWidget):
 
     def _step(self):
         self.tick += 1
-        if not self.is_paused:
-            self.win_x += self.speed
-        bob = math.sin(self.tick * 0.035) * 5
-        self.move(int(self.win_x), int(self.win_y + bob))
-        if self.win_x > self.screen_x + self.screen_w + 20:
-            if self.reminder_stage is not None and self.reminder_stage > 0:
-                self._dismiss()
+        if self.is_update_banner:
+            # Clean slide-down HUD animation
+            if self.win_y < self.final_y:
+                self.win_y = min(self.final_y, self.win_y + self.speed)
+                self.move(int(self.win_x), int(self.win_y))
             else:
-                self.win_x = float(self.screen_x - WIN_W - 20)
-        else:
+                self.move(int(self.win_x), int(self.final_y))
+                if not self.is_paused:
+                    self.stay_ticks += 1
+                    if self.stay_ticks > self.max_stay_ticks:
+                        self._dismiss()
             self.update()
+        else:
+            if not self.is_paused:
+                self.win_x += self.speed
+            bob = math.sin(self.tick * 0.035) * 5
+            self.move(int(self.win_x), int(self.win_y + bob))
+            if self.win_x > self.screen_x + self.screen_w + 20:
+                if self.reminder_stage is not None and self.reminder_stage > 0:
+                    self._dismiss()
+                else:
+                    self.win_x = float(self.screen_x - WIN_W - 20)
+            else:
+                self.update()
 
     # ── Hit rects (window-local coords) ──────────────────────────────────────
 
     def _join_rect(self)   -> QRectF:
-        return QRectF(BTN_X0, BTN_Y, BTN_JOIN_W, BTN_H)
+        card_y = 6 if self.is_update_banner else CARD_Y
+        card_x = 6 if self.is_update_banner else CARD_X
+        btn_y  = card_y + CARD_H - BTN_H - 12
+        btn_x0 = card_x + 16
+        return QRectF(btn_x0, btn_y, BTN_JOIN_W, BTN_H)
 
     def _arrive_rect(self) -> QRectF:
-        if self.has_maps_url:
+        if self.has_maps_url and not self.is_update_banner:
             return QRectF(BTN_ARRIVE_X, BTN_Y, BTN_SMALL_W, BTN_H)
         return QRectF(0, 0, 0, 0)
 
     def _snooze_rect(self) -> QRectF:
+        if self.is_update_banner:
+            card_y = 6
+            card_x = 6
+            btn_y  = card_y + CARD_H - BTN_H - 12
+            btn_x0 = card_x + 16
+            return QRectF(btn_x0 + BTN_JOIN_W + 8, btn_y, BTN_SMALL_W, BTN_H)
         if self.reminder_stage == 0 and not self.has_real_url:
             return QRectF(0, 0, 0, 0)
         if self.has_maps_url:
@@ -269,7 +331,9 @@ class QtQuakPitFlyingBanner(QWidget):
 
     def _close_rect(self)  -> QRectF:
         s = 22
-        return QRectF(CARD_X + CARD_W - s - 8, CARD_Y + 8, s, s)
+        card_y = 6 if self.is_update_banner else CARD_Y
+        card_x = 6 if self.is_update_banner else CARD_X
+        return QRectF(card_x + CARD_W - s - 8, card_y + 8, s, s)
 
     # ── Mouse ─────────────────────────────────────────────────────────────────
 
@@ -296,7 +360,10 @@ class QtQuakPitFlyingBanner(QWidget):
         if self._close_rect().contains(p):
             self._dismiss()
         elif self._join_rect().contains(p):
-            if self.has_real_url:
+            if self.is_update_banner:
+                from core.services.updater_service import updater_service
+                updater_service.download_and_install_update(background=True)
+            elif self.has_real_url:
                 webbrowser.open(self.action_url)
             self._dismiss()
         elif self._arrive_rect().contains(p):
@@ -315,38 +382,45 @@ class QtQuakPitFlyingBanner(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         p.setRenderHint(QPainter.RenderHint.TextAntialiasing)
-        self._draw_cable(p)
+        if not self.is_update_banner:
+            self._draw_cable(p)
         self._draw_card(p)
-        self._draw_plane(p, PLANE_CX, PLANE_CY)
-        self._draw_bubble(p, PLANE_CX, PLANE_CY)
+        if not self.is_update_banner:
+            self._draw_plane(p, PLANE_CX, PLANE_CY)
+            self._draw_bubble(p, PLANE_CX, PLANE_CY)
         p.end()
 
     # ── Card ──────────────────────────────────────────────────────────────────
 
     def _draw_card(self, p: QPainter):
-        card = QRectF(CARD_X, CARD_Y, CARD_W, CARD_H)
+        cx = 6.0 if self.is_update_banner else float(CARD_X)
+        cy = 6.0 if self.is_update_banner else float(CARD_Y)
+        card = QRectF(cx, cy, CARD_W, CARD_H)
 
-        # ── Background: very dark glass, no shadow, no border ──
+        # ── Background: very dark glass with glowing cyan border for updates ──
         p.setBrush(QColor(16, 18, 28, 245))
-        p.setPen(Qt.PenStyle.NoPen)
+        if self.is_update_banner:
+            p.setPen(QPen(QColor(56, 189, 248, 120), 1.2))
+        else:
+            p.setPen(Qt.PenStyle.NoPen)
         p.drawRoundedRect(card, CARD_R, CARD_R)
 
         # ── Row 1: Provider pill + Status pill + Close ──
-        py = CARD_Y + 12
+        py = cy + 12.0
 
         # Provider pill
         prov_lower = self.provider.lower()
-        dot_color = QColor(100, 200, 100)
+        dot_color = QColor(56, 189, 248) if self.is_update_banner else QColor(100, 200, 100)
         for k, c in PROVIDER_DOTS.items():
             if k in prov_lower:
                 dot_color = c
                 break
-        prov_label = self.provider.upper()[:20]
+        prov_label = self.provider.upper()[:24]
         p.setFont(QFont("Inter, Arial", 9, QFont.Weight.ExtraBold))
         fm = QFontMetrics(p.font())
         pill_text_w = fm.horizontalAdvance(prov_label) + 24 + 12  # dot + text + padding
-        pill_h = 22
-        pill_x = CARD_X + 14
+        pill_h = 22.0
+        pill_x = cx + 14.0
 
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(QColor(30, 34, 50, 255))
@@ -374,7 +448,7 @@ class QtQuakPitFlyingBanner(QWidget):
             p.setFont(QFont("Inter, Arial", 8, QFont.Weight.Bold))
             fm2 = QFontMetrics(p.font())
             sw = fm2.horizontalAdvance(status_text) + 20
-            sx = CARD_X + CARD_W - 36 - sw  # 36 = close btn area
+            sx = cx + CARD_W - 36 - sw  # 36 = close btn area
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(status_bg)
             p.drawRoundedRect(QRectF(sx, py, sw, pill_h), 11, 11)
@@ -396,7 +470,7 @@ class QtQuakPitFlyingBanner(QWidget):
         tf = QFont("Inter, Arial", 15)
         tf.setWeight(QFont.Weight.Bold)
         p.setFont(tf)
-        title_rect = QRectF(CARD_X + 14, CARD_Y + 40, CARD_W - 28, 26)
+        title_rect = QRectF(cx + 14, cy + 40, CARD_W - 28, 26)
         fm_t = QFontMetrics(tf)
         elided = fm_t.elidedText(self.title, Qt.TextElideMode.ElideRight, int(CARD_W - 28))
         p.drawText(title_rect, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft, elided)
@@ -405,7 +479,9 @@ class QtQuakPitFlyingBanner(QWidget):
         sub_parts = []
         if self.time_str:
             sub_parts.append(f"🕙 {self.time_str}")
-        if "meet" in self.provider.lower() or "zoom" in self.provider.lower() or "teams" in self.provider.lower():
+        if self.is_update_banner:
+            sub_parts.append("⚡ Ready to download & install")
+        elif "meet" in self.provider.lower() or "zoom" in self.provider.lower() or "teams" in self.provider.lower():
             sub_parts.append("🌐 Online Meeting")
         elif self.classroom:
             sub_parts.append(f"🏫 {self.classroom}")
@@ -413,15 +489,28 @@ class QtQuakPitFlyingBanner(QWidget):
         p.setPen(QColor(148, 163, 184))
         sf = QFont("Inter, Arial", 10)
         p.setFont(sf)
-        p.drawText(QRectF(CARD_X + 14, CARD_Y + 68, CARD_W - 28, 20),
+        p.drawText(QRectF(cx + 14, cy + 68, CARD_W - 28, 20),
                    Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft, sub_text)
 
         # ── Row 4: Action Buttons ──
-        # JOIN / Got it
         jr = self._join_rect()
         hover_join = self._hover == "join"
-        
-        if not self.has_real_url:
+
+        if self.is_update_banner:
+            # Software update styling (vibrant cyan to electric blue gradient)
+            g = QLinearGradient(jr.topLeft(), jr.topRight())
+            if hover_join:
+                g.setColorAt(0, QColor(56, 189, 248, 255))
+                g.setColorAt(1, QColor(37, 99, 235, 255))
+            else:
+                g.setColorAt(0, QColor(2, 132, 199, 255))
+                g.setColorAt(1, QColor(29, 78, 216, 255))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(g)
+            p.drawRoundedRect(jr, 10, 10)
+            p.setPen(QColor(255, 255, 255))
+            display_text = self.btn_text
+        elif not self.has_real_url:
             # Got it styling (blue tint)
             g = QLinearGradient(jr.topLeft(), jr.topRight())
             if hover_join:
@@ -455,38 +544,46 @@ class QtQuakPitFlyingBanner(QWidget):
         p.setFont(bf)
         p.drawText(jr, Qt.AlignmentFlag.AlignCenter, display_text)
 
-        # I'm Here (dark pill, greenish tint on hover)
-        if self.has_maps_url:
-            ar = self._arrive_rect()
-            hover_arr = self._hover == "arrive"
-            p.setPen(Qt.PenStyle.NoPen)
-            p.setBrush(QColor(34, 197, 94, 180) if hover_arr else QColor(30, 34, 50, 255))
-            p.drawRoundedRect(ar, 10, 10)
-            p.setPen(QColor(255, 255, 255, 220) if hover_arr else QColor(180, 200, 230))
-            mf = QFont("Inter, Arial", 10)
-            mf.setWeight(QFont.Weight.Bold)
-            p.setFont(mf)
-            p.drawText(ar, Qt.AlignmentFlag.AlignCenter, "📍 I'm Here")
-        else:
-            mf = QFont("Inter, Arial", 10)
-            mf.setWeight(QFont.Weight.Bold)
+        mf = QFont("Inter, Arial", 10)
+        mf.setWeight(QFont.Weight.Bold)
 
-        # Snooze / Got it button
-        sr = self._snooze_rect()
-        hover_snz = self._hover == "snooze"
-        p.setPen(Qt.PenStyle.NoPen)
-        if self.reminder_stage == 0:
-            p.setBrush(QColor(14, 116, 144, 220) if hover_snz else QColor(15, 23, 42, 255))
+        if self.is_update_banner:
+            sr = self._snooze_rect()
+            hover_snz = self._hover == "snooze"
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor(255, 255, 255, 30) if hover_snz else QColor(30, 34, 50, 255))
             p.drawRoundedRect(sr, 10, 10)
-            p.setPen(QColor(255, 255, 255, 240) if hover_snz else QColor(56, 189, 248))
+            p.setPen(QColor(255, 255, 255, 220) if hover_snz else QColor(148, 163, 184))
             p.setFont(mf)
-            p.drawText(sr, Qt.AlignmentFlag.AlignCenter, "✅ Got it")
+            p.drawText(sr, Qt.AlignmentFlag.AlignCenter, "✕ Later")
         else:
-            p.setBrush(QColor(99, 102, 241, 180) if hover_snz else QColor(30, 34, 50, 255))
-            p.drawRoundedRect(sr, 10, 10)
-            p.setPen(QColor(255, 255, 255, 220) if hover_snz else QColor(180, 200, 230))
-            p.setFont(mf)
-            p.drawText(sr, Qt.AlignmentFlag.AlignCenter, "💤 Snooze 2m")
+            # I'm Here (dark pill, greenish tint on hover)
+            if self.has_maps_url:
+                ar = self._arrive_rect()
+                hover_arr = self._hover == "arrive"
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(QColor(34, 197, 94, 180) if hover_arr else QColor(30, 34, 50, 255))
+                p.drawRoundedRect(ar, 10, 10)
+                p.setPen(QColor(255, 255, 255, 220) if hover_arr else QColor(180, 200, 230))
+                p.setFont(mf)
+                p.drawText(ar, Qt.AlignmentFlag.AlignCenter, "📍 I'm Here")
+
+            # Snooze / Got it button
+            sr = self._snooze_rect()
+            hover_snz = self._hover == "snooze"
+            p.setPen(Qt.PenStyle.NoPen)
+            if self.reminder_stage == 0:
+                p.setBrush(QColor(14, 116, 144, 220) if hover_snz else QColor(15, 23, 42, 255))
+                p.drawRoundedRect(sr, 10, 10)
+                p.setPen(QColor(255, 255, 255, 240) if hover_snz else QColor(56, 189, 248))
+                p.setFont(mf)
+                p.drawText(sr, Qt.AlignmentFlag.AlignCenter, "✅ Got it")
+            else:
+                p.setBrush(QColor(99, 102, 241, 180) if hover_snz else QColor(30, 34, 50, 255))
+                p.drawRoundedRect(sr, 10, 10)
+                p.setPen(QColor(255, 255, 255, 220) if hover_snz else QColor(180, 200, 230))
+                p.setFont(mf)
+                p.drawText(sr, Qt.AlignmentFlag.AlignCenter, "💤 Snooze 2m")
 
     # ── Tow cable ─────────────────────────────────────────────────────────────
 
@@ -763,8 +860,12 @@ class QtQuakPitFlyingBanner(QWidget):
         is_late_q = self.is_late or "LATE" in self.quote_text or "RUN" in self.quote_text
         bg = QColor(200, 30, 30, 230) if is_late_q else QColor(16, 18, 28, 220)
 
-        bw, bh = 180, 26
-        bx = px - 90
+        f = QFont("Inter, Arial", 8)
+        f.setWeight(QFont.Weight.ExtraBold)
+        fm = QFontMetrics(f)
+        bw = max(180, fm.horizontalAdvance(self.quote_text) + 24)
+        bh = 26
+        bx = px - bw * 0.5
         by = py - 56
 
         p.setPen(Qt.PenStyle.NoPen)
@@ -780,8 +881,6 @@ class QtQuakPitFlyingBanner(QWidget):
         p.drawPath(tail)
 
         p.setPen(QColor(255, 255, 255))
-        f = QFont("Inter, Arial", 8)
-        f.setWeight(QFont.Weight.ExtraBold)
         p.setFont(f)
         p.drawText(QRectF(bx, by, bw, bh), Qt.AlignmentFlag.AlignCenter, self.quote_text)
 

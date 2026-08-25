@@ -19,7 +19,8 @@ from typing import Optional, List
 
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QLabel, QPushButton, QHBoxLayout,
-    QVBoxLayout, QTabWidget, QScrollArea, QFrame, QLineEdit, QComboBox, QCheckBox
+    QVBoxLayout, QTabWidget, QScrollArea, QFrame, QLineEdit, QComboBox, QCheckBox,
+    QProgressBar
 )
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QColor, QFont, QPixmap, QIcon
@@ -443,56 +444,162 @@ class QtFlightDeckWindow(QMainWindow):
         sys_row.addWidget(up_btn)
         uc_layout.addLayout(sys_row)
 
-        # Update status box
+        # Update status card with rich animations and alerts
         update_status_box = QFrame(util_card)
-        update_status_box.setStyleSheet("background: rgba(255, 255, 255, 0.04); border-radius: 8px; padding: 6px;")
+        update_status_box.setStyleSheet("""
+            QFrame {
+                background: rgba(255, 255, 255, 0.04);
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                border-radius: 12px;
+                padding: 8px;
+            }
+        """)
         usb_layout = QVBoxLayout(update_status_box)
-        usb_layout.setContentsMargins(10, 8, 10, 8)
-        usb_layout.setSpacing(6)
+        usb_layout.setContentsMargins(12, 10, 12, 10)
+        usb_layout.setSpacing(8)
 
-        update_status_lbl = QLabel(f"📦 Current Version: <b>v{updater_service.current_version}</b>", update_status_box)
-        update_status_lbl.setStyleSheet("color: #94a3b8; font-size: 12px; border: none;")
-        usb_layout.addWidget(update_status_lbl)
+        status_header_row = QHBoxLayout()
+        update_icon_lbl = QLabel("🦆", update_status_box)
+        update_icon_lbl.setStyleSheet("font-size: 20px; border: none;")
+        status_header_row.addWidget(update_icon_lbl)
 
+        update_status_lbl = QLabel(f"QuakMeeting <b>v{updater_service.current_version}</b>  •  <span style='color:#94a3b8;'>Ready</span>", update_status_box)
+        update_status_lbl.setStyleSheet("color: #f1f5f9; font-size: 13px; border: none;")
+        status_header_row.addWidget(update_status_lbl, stretch=1)
+        usb_layout.addLayout(status_header_row)
+
+        changelog_lbl = QLabel("", update_status_box)
+        changelog_lbl.setWordWrap(True)
+        changelog_lbl.setStyleSheet("color: #cbd5e1; font-size: 11px; border: none; padding-left: 2px;")
+        changelog_lbl.setVisible(False)
+        usb_layout.addWidget(changelog_lbl)
+
+        # Animated Progress Bar
+        progress_bar = QProgressBar(update_status_box)
+        progress_bar.setRange(0, 100)
+        progress_bar.setValue(0)
+        progress_bar.setTextVisible(True)
+        progress_bar.setStyleSheet("""
+            QProgressBar {
+                border: 1px solid rgba(56, 189, 248, 0.3);
+                border-radius: 8px;
+                text-align: center;
+                color: #ffffff;
+                font-size: 11px;
+                font-weight: bold;
+                background: rgba(15, 23, 42, 0.7);
+                height: 20px;
+            }
+            QProgressBar::chunk {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0284c7, stop:0.5 #38bdf8, stop:1 #818cf8);
+                border-radius: 7px;
+            }
+        """)
+        progress_bar.setVisible(False)
+        usb_layout.addWidget(progress_bar)
+
+        # Action Buttons Row
+        act_row = QHBoxLayout()
         install_btn = QPushButton("⚡ Download & Install Update", update_status_box)
         install_btn.setObjectName("PrimaryBtn")
         install_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         install_btn.setVisible(False)
-        usb_layout.addWidget(install_btn)
+        act_row.addWidget(install_btn)
 
         uc_layout.addWidget(update_status_box)
 
+        # Animated spinner timer for checking state
+        spinner_frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+        spin_idx = [0]
+        check_timer = QTimer(self)
+
+        def _on_spin():
+            frame = spinner_frames[spin_idx[0] % len(spinner_frames)]
+            spin_idx[0] += 1
+            up_btn.setText(f"{frame} Checking...")
+            update_status_lbl.setText(f"Checking for new releases {frame}")
+
+        check_timer.timeout.connect(_on_spin)
+
         def _on_check_clicked():
-            up_btn.setText("⏳ Checking...")
             up_btn.setEnabled(False)
+            spin_idx[0] = 0
+            check_timer.start(100)
             updater_service.check_for_updates(background=True)
 
         up_btn.clicked.connect(_on_check_clicked)
 
-        def _on_update_avail(version=None, tag_name=None, **k):
+        def _on_update_avail(version=None, tag_name=None, name=None, body=None, **k):
+            check_timer.stop()
             up_btn.setText("🔍 Check for Updates")
             up_btn.setEnabled(True)
             v_name = tag_name or version or "New Version"
-            update_status_lbl.setText(f"🚀 <b>New Version Available: {v_name}</b> (Current: v{updater_service.current_version})")
-            install_btn.setText(f"⚡ Install {v_name}")
+            update_icon_lbl.setText("🚀")
+            update_status_lbl.setText(f"<b style='color:#38bdf8;'>Update Available: {v_name}</b>  <span style='color:#64748b;'>(Current: v{updater_service.current_version})</span>")
+            if body:
+                summary = body.strip().split("\n")[0][:120]
+                changelog_lbl.setText(f"<i>✨ {summary}</i>")
+                changelog_lbl.setVisible(True)
+            install_btn.setText(f"⚡ Install {v_name} Now")
+            install_btn.setEnabled(True)
             install_btn.setVisible(True)
+            progress_bar.setVisible(False)
 
         def _on_update_complete(has_update=False, current_version=None, error=None, **k):
+            check_timer.stop()
             up_btn.setText("🔍 Check for Updates")
             up_btn.setEnabled(True)
             if not has_update:
                 if error:
-                    update_status_lbl.setText(f"⚠️ Check failed: {error}")
+                    update_icon_lbl.setText("⚠️")
+                    update_status_lbl.setText(f"<span style='color:#f87171;'>Update check error: {error[:60]}</span>")
                 else:
-                    update_status_lbl.setText(f"✨ QuakMeeting is up to date (<b>v{current_version or updater_service.current_version}</b>)")
+                    update_icon_lbl.setText("✨")
+                    update_status_lbl.setText(f"<span style='color:#4ade80;'>You are up to date!</span>  <b>v{current_version or updater_service.current_version}</b>")
                 install_btn.setVisible(False)
+                changelog_lbl.setVisible(False)
+                progress_bar.setVisible(False)
 
-        def _on_download_progress(percent=0, **k):
-            install_btn.setText(f"⏳ Downloading update... {percent}%")
+        def _on_downloading(file_name=None, **k):
+            update_icon_lbl.setText("📥")
+            update_status_lbl.setText(f"<b>Downloading update package...</b> <span style='color:#94a3b8;'>({file_name or ''})</span>")
+            progress_bar.setValue(5)
+            progress_bar.setVisible(True)
+            install_btn.setText("⏳ Downloading...")
             install_btn.setEnabled(False)
 
+        def _on_download_progress(percent=0, downloaded=0, total=0, **k):
+            progress_bar.setValue(percent)
+            progress_bar.setVisible(True)
+            mb_down = downloaded / (1024 * 1024)
+            mb_tot = total / (1024 * 1024) if total > 0 else 0
+            if mb_tot > 0:
+                update_status_lbl.setText(f"<b>Downloading:</b> {mb_down:.1f} MB / {mb_tot:.1f} MB ({percent}%)")
+            else:
+                update_status_lbl.setText(f"<b>Downloading:</b> {percent}%")
+            install_btn.setText(f"⏳ Downloading... {percent}%")
+
+        def _on_downloaded(target_path=None, **k):
+            update_icon_lbl.setText("⚙️")
+            progress_bar.setValue(100)
+            update_status_lbl.setText("<b>Installing update...</b> Please grant system permission if prompted.")
+            install_btn.setText("⚙️ Installing...")
+
+        def _on_installed(**k):
+            update_icon_lbl.setText("🎉")
+            update_status_lbl.setText("<b style='color:#4ade80;'>Update installed successfully!</b> Relaunching QuakMeeting...")
+            install_btn.setVisible(False)
+            progress_bar.setVisible(False)
+
+        def _on_failed(error=None, **k):
+            update_icon_lbl.setText("❌")
+            update_status_lbl.setText(f"<span style='color:#f87171;'>Installation failed: {error or 'Unknown error'}</span>")
+            install_btn.setText("🔄 Try Again")
+            install_btn.setEnabled(True)
+            progress_bar.setVisible(False)
+
         def _on_install_clicked():
-            install_btn.setText("⏳ Preparing update...")
+            install_btn.setText("⏳ Preparing download...")
             install_btn.setEnabled(False)
             updater_service.download_and_install_update(background=True)
 
@@ -500,7 +607,11 @@ class QtFlightDeckWindow(QMainWindow):
 
         event_bus.subscribe("UPDATE_AVAILABLE", _on_update_avail)
         event_bus.subscribe("UPDATE_CHECK_COMPLETE", _on_update_complete)
+        event_bus.subscribe("UPDATE_DOWNLOADING", _on_downloading)
         event_bus.subscribe("UPDATE_DOWNLOAD_PROGRESS", _on_download_progress)
+        event_bus.subscribe("UPDATE_DOWNLOADED", _on_downloaded)
+        event_bus.subscribe("UPDATE_INSTALLED", _on_installed)
+        event_bus.subscribe("UPDATE_FAILED", _on_failed)
 
         # Initialize with current release info if already available
         if updater_service.latest_release_info and updater_service.latest_release_info.get("has_update"):
