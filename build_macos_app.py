@@ -190,9 +190,9 @@ exec "$BUNDLE_PYTHON" "$DIR/main.py" --dashboard "$@" >> "$LOG_FILE" 2>&1
     # 5b. Copy Python binary at build time so the C stub can exec it directly
     import sys
     python_bin = None
-    candidates = ["/opt/miniconda3/bin/python3", "/usr/local/bin/python3", "/opt/homebrew/bin/python3", sys.executable]
+    candidates = [sys.executable, "/opt/miniconda3/bin/python3", "/opt/homebrew/bin/python3", "/usr/local/bin/python3"]
     for p in candidates:
-        if os.path.isfile(p) and os.access(p, os.X_OK):
+        if p and os.path.isfile(p) and os.access(p, os.X_OK):
             try:
                 result = subprocess.run([p, "-c", "import AppKit; print('ok')"], capture_output=True, text=True, timeout=10)
                 if result.returncode == 0 and "ok" in result.stdout:

@@ -11,7 +11,13 @@ echo "📦 Packaging QuakMeeting into macOS .dmg..."
 
 # 1. Build .app bundle first
 cd "$ROOT_DIR"
-/opt/miniconda3/bin/python3 build_macos_app.py
+PYTHON_CMD="python3"
+if [ -n "$PYTHON" ]; then
+    PYTHON_CMD="$PYTHON"
+elif [ -x "/opt/miniconda3/bin/python3" ]; then
+    PYTHON_CMD="/opt/miniconda3/bin/python3"
+fi
+"$PYTHON_CMD" build_macos_app.py
 
 APP_PATH="$ROOT_DIR/QuakMeeting.app"
 if [ ! -d "$APP_PATH" ]; then
