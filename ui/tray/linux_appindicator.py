@@ -313,7 +313,7 @@ def run_linux_app():
 
 def show_qt_flight_deck(tab_index: int = 0):
     try:
-        from ui.qt_dashboard import show_qt_dashboard
-        show_qt_dashboard(tab_index)
+        import subprocess
+        subprocess.Popen([sys.executable, "-m", "ui.qt_dashboard", str(tab_index)])
     except Exception as e:
         logger.warning(f"Linux Flight Deck window error: {e}")

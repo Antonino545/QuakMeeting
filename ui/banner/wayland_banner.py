@@ -218,14 +218,30 @@ def show_wayland_banner(event_data: Dict[str, Any]) -> None:
 
         box.pack_start(vbox, True, True, 0)
 
+        timer_ids = {"step": None, "dismiss": None}
+
         def _close_and_quit():
+            if timer_ids["step"] is not None:
+                tid = timer_ids["step"]
+                timer_ids["step"] = None
+                try:
+                    GLib.source_remove(tid)
+                except Exception:
+                    pass
+            if timer_ids["dismiss"] is not None:
+                did = timer_ids["dismiss"]
+                timer_ids["dismiss"] = None
+                try:
+                    GLib.source_remove(did)
+                except Exception:
+                    pass
             try:
-                GLib.source_remove(timer_id)
+                win.destroy()
             except Exception:
                 pass
-            win.destroy()
             if "--test" in sys.argv and Gtk.main_level() > 0:
                 Gtk.main_quit()
+            return False
 
         if action_url or is_update_banner:
             btn = Gtk.Button(label=action_btn_text)
@@ -254,12 +270,12 @@ def show_wayland_banner(event_data: Dict[str, Any]) -> None:
             darea.queue_draw()
             return True
 
-        timer_id = GLib.timeout_add(40, _step) # ~25 FPS
+        timer_ids["step"] = GLib.timeout_add(40, _step) # ~25 FPS
 
         # Auto-dismiss pre-event banners after 12 seconds (stage 0 remains persistent until acknowledged)
         reminder_stage = event_data.get("reminder_stage")
         if reminder_stage is None or reminder_stage > 0:
-            GLib.timeout_add_seconds(12, _close_and_quit)
+            timer_ids["dismiss"] = GLib.timeout_add_seconds(12, _close_and_quit)
 
     def import_webbrowser():
         import webbrowser

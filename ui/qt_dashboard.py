@@ -638,3 +638,7 @@ def show_qt_dashboard(tab_index: int = 0):
 
     if is_standalone:
         app.exec()
+
+if __name__ == "__main__":
+    t_idx = int(sys.argv[1]) if len(sys.argv) > 1 and sys.argv[1].isdigit() else 0
+    show_qt_dashboard(t_idx)
