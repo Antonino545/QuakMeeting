@@ -197,10 +197,6 @@ def run_linux_app():
         sync_item = Gtk.MenuItem(label="🔄 Sync Calendars")
         sync_item.connect("activate", lambda w: threading.Thread(target=calendar_service.sync_now, daemon=True).start())
         menu.append(sync_item)
-        
-        test_item = Gtk.MenuItem(label="🧪 Test Flight Banner...")
-        test_item.connect("activate", lambda w: _trigger_tray_test_flight())
-        menu.append(test_item)
 
         pref_item = Gtk.MenuItem(label="⚙️ Settings & Preferences...")
         pref_item.connect("activate", lambda w: show_qt_flight_deck(2))
@@ -289,14 +285,6 @@ def run_linux_app():
             show_wayland_banner(data)
         except Exception as e:
             logger.error(f"Error showing banner: {e}")
-
-    def _trigger_tray_test_flight():
-        try:
-            from ui.banner.qt_banner import get_test_preset
-            evt = get_test_preset("duck")
-            on_banner_trigger(evt)
-        except Exception as e:
-            logger.error(f"Error triggering tray test flight: {e}")
 
     def on_update_state_changed(**kwargs):
         GLib.idle_add(build_menu)
