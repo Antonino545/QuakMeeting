@@ -182,8 +182,6 @@ class UpdaterService:
             name = asset.get("name", "").lower()
             if is_mac and (name.endswith(".dmg") or (name.endswith(".zip") and "macos" in name)):
                 return asset
-            elif is_linux and name.endswith(".deb"):
-                return asset
             elif is_linux and name.endswith(".appimage"):
                 return asset
 
@@ -293,52 +291,48 @@ class UpdaterService:
             return False
 
     def _install_linux_update(self, package_path: str) -> bool:
-        """Installs .deb package on Ubuntu Linux via pkexec or apt and automatically relaunches."""
+        """Installs .AppImage update in-place on Ubuntu Linux without requiring root."""
         try:
-            if package_path.endswith(".deb"):
-                try:
-                    logger.info(f"Executing: pkexec dpkg -i {package_path}")
-                    res = subprocess.run(["pkexec", "dpkg", "-i", package_path], capture_output=True, text=True)
-                    if res.returncode == 0:
-                        logger.info("✅ Update package installed successfully via dpkg!")
-                        event_bus.publish("UPDATE_INSTALLED")
-                        time.sleep(1.0)
-                        # Gracefully kill all old running QuakMeeting instances (tray daemon & dashboard) and launch new version
-                        relaunch_cmd = (
-                            "sleep 1.2; "
-                            "pkill -f 'quakmeeting' 2>/dev/null || true; "
-                            "pkill -f 'ui.qt_dashboard' 2>/dev/null || true; "
-                            "sleep 0.6; "
-                            "/usr/bin/quakmeeting > /dev/null 2>&1 &"
-                        )
-                        subprocess.Popen(["bash", "-c", relaunch_cmd], start_new_session=True)
-                        os._exit(0)
-                        return True
-                    else:
-                        err_msg = res.stderr.strip() or res.stdout.strip() or f"Process returned code {res.returncode}"
-                        logger.warning(f"pkexec install finished with error: {err_msg}")
-                        event_bus.publish("UPDATE_FAILED", error=err_msg)
-                        return False
-                except Exception as pk_err:
-                    logger.warning(f"pkexec install failed ({pk_err}). Opening browser release page.")
-                    event_bus.publish("UPDATE_FAILED", error=str(pk_err))
-                    if self.latest_release_info and self.latest_release_info.get("html_url"):
-                        import webbrowser
-                        webbrowser.open(self.latest_release_info["html_url"])
-                    return False
-            elif package_path.endswith(".AppImage"):
+            if package_path.lower().endswith(".appimage"):
                 os.chmod(package_path, 0o755)
+                
+                # Check if we are running as an AppImage currently
+                current_appimage = os.environ.get("APPIMAGE")
+                target_dest = current_appimage
+                
+                if not target_dest:
+                    # If not running as AppImage (e.g. from source), place it in ~/.local/bin
+                    bin_dir = os.path.expanduser("~/.local/bin")
+                    os.makedirs(bin_dir, exist_ok=True)
+                    target_dest = os.path.join(bin_dir, "QuakMeeting.AppImage")
+                    logger.info(f"Not running as AppImage. Installing new version to {target_dest}")
+                else:
+                    logger.info(f"Replacing running AppImage at {target_dest}")
+                    
+                # To avoid 'Text file busy', remove or rename the existing binary first
+                if os.path.exists(target_dest):
+                    try:
+                        os.remove(target_dest)
+                    except OSError:
+                        os.rename(target_dest, target_dest + ".old")
+                        
+                shutil.move(package_path, target_dest)
+                
                 event_bus.publish("UPDATE_INSTALLED")
                 relaunch_cmd = (
                     "sleep 1.2; "
                     "pkill -f 'quakmeeting' 2>/dev/null || true; "
                     "pkill -f 'ui.qt_dashboard' 2>/dev/null || true; "
                     "sleep 0.6; "
-                    f"'{package_path}' > /dev/null 2>&1 &"
+                    f"'{target_dest}' > /dev/null 2>&1 &"
                 )
                 subprocess.Popen(["bash", "-c", relaunch_cmd], start_new_session=True)
                 os._exit(0)
                 return True
+            else:
+                logger.error(f"Unsupported Linux package format: {package_path}")
+                event_bus.publish("UPDATE_FAILED", error="Only .AppImage updates are supported on Linux.")
+                return False
         except Exception as e:
             logger.error(f"Linux update installation failed: {e}")
             event_bus.publish("UPDATE_FAILED", error=str(e))

@@ -67,8 +67,11 @@ class TestUpdaterService(unittest.TestCase):
         with patch("subprocess.run", return_value=mock_run_res), \
              patch("subprocess.Popen") as mock_popen, \
              patch("os._exit") as mock_exit, \
-             patch("time.sleep"):
-            success = self.updater._install_linux_update("/tmp/mock_package.deb")
+             patch("time.sleep"), \
+             patch("shutil.move"), \
+             patch("os.chmod"), \
+             patch("os.makedirs"):
+            success = self.updater._install_linux_update("/tmp/mock_package.AppImage")
             self.assertTrue(success)
             self.assertTrue(len(installed_events) >= 1)
             mock_popen.assert_called_once()
