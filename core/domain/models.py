@@ -22,6 +22,7 @@ class EventCategory(str, Enum):
     VIDEO_MEETING = "video_meeting"
     TRAVEL = "travel"
     FOOD = "food"
+    CLASS = "class"
     STUDY = "study"
     HEALTH = "health"
     IN_PERSON = "in_person"
