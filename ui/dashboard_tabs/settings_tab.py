@@ -233,7 +233,7 @@ class SettingsTabController(AppKit.NSObject):
         self._add_row_label(card, "📅 General Events", "Alert ahead of start time (non-travel)", r2_y, 220)
 
         curr_general_stages = set(self.config.get("general_reminder_stages", [20, 10, 5, 2, 0]))
-        
+
         x_btn = 245.0
         for val, label in meeting_opts:
             btn_w = 60.0 if val != 0 else 92.0

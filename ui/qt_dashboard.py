@@ -435,11 +435,11 @@ class QtFlightDeckWindow(QMainWindow):
             desc_lbl.setStyleSheet("color: #94a3b8; font-size: 11px;")
             row_layout.addWidget(lbl)
             row_layout.addWidget(desc_lbl)
-            
+
             btn_layout = QHBoxLayout()
             btn_layout.setSpacing(8)
             curr_stages = set(config.get(config_key, [20, 10, 5, 2, 0]))
-            
+
             for val, label in opts:
                 chk = QCheckBox(label, timing_card)
                 chk.setStyleSheet("QCheckBox { color: #cbd5e1; font-size: 12px; } QCheckBox::indicator { width: 14px; height: 14px; }")
@@ -451,7 +451,7 @@ class QtFlightDeckWindow(QMainWindow):
                     config.set(k, sorted(list(c), reverse=True))
                 chk.toggled.connect(_toggled)
                 btn_layout.addWidget(chk)
-            
+
             btn_layout.addStretch()
             row_layout.addLayout(btn_layout)
             return row_layout
@@ -460,12 +460,12 @@ class QtFlightDeckWindow(QMainWindow):
         travel_opts = [(60, "60m"), (45, "45m"), (30, "30m"), (15, "15m"), (5, "5m"), (2, "2m"), (0, "0m Leave")]
 
         tc_layout.addLayout(create_stage_row("📹 Video Meetings", "Alert ahead of meeting start time", "meeting_reminder_stages", meeting_opts))
-        
+
         tc_div1 = QFrame(timing_card)
         tc_div1.setFixedHeight(1)
         tc_div1.setStyleSheet("background-color: rgba(255,255,255,0.05);")
         tc_layout.addWidget(tc_div1)
-        
+
         tc_layout.addLayout(create_stage_row("📅 General Events", "Alert ahead of start time (non-travel)", "general_reminder_stages", meeting_opts))
 
         tc_div2 = QFrame(timing_card)
@@ -906,13 +906,13 @@ class QtFlightDeckWindow(QMainWindow):
         pref_layout.addWidget(util_card)
 
         pref_layout.addStretch()
-        
+
         pref_scroll = QScrollArea()
         pref_scroll.setWidgetResizable(True)
         pref_scroll.setFrameShape(QFrame.Shape.NoFrame)
         pref_scroll.setStyleSheet("QScrollArea { background: transparent; }")
         pref_scroll.setWidget(pref_widget)
-        
+
         self.tabs.addTab(pref_scroll, "⚙️ Preferences")
 
         self.tabs.setCurrentIndex(tab_index)

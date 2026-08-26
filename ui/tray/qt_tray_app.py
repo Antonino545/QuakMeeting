@@ -7,11 +7,9 @@ from datetime import datetime
 
 from PyQt6.QtWidgets import QApplication, QSystemTrayIcon, QMenu
 from PyQt6.QtGui import QIcon, QAction
-from PyQt6.QtCore import QTimer
 
 from core.services.config_service import config
 from core.services.calendar_service import calendar_service
-from core.services.reminder_engine import reminder_engine
 from core.services.updater_service import updater_service
 from core.services.event_bus import event_bus
 from core.domain.models import format_duration
@@ -20,6 +18,13 @@ from core.logger import open_log_file
 logger = logging.getLogger("QuakMeeting.QtTrayApp")
 
 from ui.viewmodels.tray_viewmodel import TrayViewModel
+
+from PyQt6.QtCore import pyqtSignal, QObject
+
+class SignalBridge(QObject):
+    banner = pyqtSignal(dict)
+    menu = pyqtSignal()
+    agenda = pyqtSignal()
 
 class QuakMeetingTrayApp:
     def __init__(self, app: QApplication):
@@ -40,12 +45,17 @@ class QuakMeetingTrayApp:
         self.build_menu()
         self.tray.show()
 
-        event_bus.subscribe("TRIGGER_BANNER", self.on_banner_trigger)
-        event_bus.subscribe("REMINDER_TRIGGERED", self.on_banner_trigger)
-        event_bus.subscribe("AGENDA_UPDATED", self.on_agenda_updated)
-        event_bus.subscribe("UPDATE_AVAILABLE", lambda **k: self.build_menu())
-        event_bus.subscribe("UPDATE_CHECK_COMPLETE", lambda **k: self.build_menu())
-        event_bus.subscribe("UPDATE_INSTALLED", lambda **k: self.build_menu())
+        self._bridge = SignalBridge()
+        self._bridge.banner.connect(self.on_banner_trigger)
+        self._bridge.menu.connect(self.build_menu)
+        self._bridge.agenda.connect(self.on_agenda_updated)
+
+        event_bus.subscribe("TRIGGER_BANNER", lambda **kwargs: self._bridge.banner.emit(kwargs.get("event_dict") or kwargs))
+        event_bus.subscribe("REMINDER_TRIGGERED", lambda **kwargs: self._bridge.banner.emit(kwargs.get("event_dict") or kwargs))
+        event_bus.subscribe("AGENDA_UPDATED", lambda **kwargs: self._bridge.agenda.emit())
+        event_bus.subscribe("UPDATE_AVAILABLE", lambda **kwargs: self._bridge.menu.emit())
+        event_bus.subscribe("UPDATE_CHECK_COMPLETE", lambda **kwargs: self._bridge.menu.emit())
+        event_bus.subscribe("UPDATE_INSTALLED", lambda **kwargs: self._bridge.menu.emit())
         updater_service.check_for_updates(background=True)
 
     def build_menu(self):
