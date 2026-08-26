@@ -42,5 +42,27 @@ class TestDashboardUI(unittest.TestCase):
         except ImportError as e:
             self.fail(f"Failed to import UI controllers: {e}")
 
+    @unittest.skipIf(sys.platform != "darwin", "macOS specific UI tests")
+    def test_menu_bar_build_with_upcoming_events(self):
+        from ui.menu_bar_app import QuakMeetingMenuBar
+        from datetime import datetime, timedelta
+        now = datetime.now().astimezone()
+        menu_bar = QuakMeetingMenuBar.alloc().init()
+        self.assertIsNotNone(menu_bar)
+
+        # Set upcoming meeting for today
+        m = {
+            "title": "Upcoming Lecture",
+            "start_time": now + timedelta(minutes=30),
+            "end_time": now + timedelta(minutes=90),
+            "pilot_type": "owl",
+            "travel_time_minutes": 15,
+            "departure_time": now + timedelta(minutes=15)
+        }
+        menu_bar.meetings = [m]
+        # Must build menu without raising AttributeError
+        menu_bar.build_menu()
+        self.assertGreater(menu_bar.menu.numberOfItems(), 0)
+
 if __name__ == '__main__':
     unittest.main()

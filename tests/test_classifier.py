@@ -53,19 +53,32 @@ class TestEventClassifier(unittest.TestCase):
         self.assertFalse(meeting.is_travel)
         self.assertEqual(meeting.action_url, "https://meet.google.com/xyz-uvw-rst")
 
-    def test_classify_study_owl(self):
-        meeting = self.classifier.classify(
+    def test_classify_class_and_study(self):
+        # 1. Lecture / Classroom Attendance -> EventCategory.CLASS
+        m_lecture = self.classifier.classify(
             title="Neural Networks University Lecture",
             location="Room 3B",
             description=""
         )
-        self.assertEqual(meeting.pilot_type, PilotType.OWL.value)
-        self.assertEqual(meeting.event_type, EventCategory.STUDY.value)
+        self.assertEqual(m_lecture.pilot_type, PilotType.OWL.value)
+        self.assertEqual(m_lecture.event_type, EventCategory.CLASS.value)
+        self.assertIn("Class / Lecture", m_lecture.provider)
+
+        # 2. Self-Study Block -> EventCategory.STUDY
+        m_study = self.classifier.classify(
+            title="Self-Study: Review Neural Networks notes",
+            location="",
+            description=""
+        )
+        self.assertEqual(m_study.pilot_type, PilotType.OWL.value)
+        self.assertEqual(m_study.event_type, EventCategory.STUDY.value)
+        self.assertEqual(m_study.provider, "Self-Study Block 📚")
 
     def test_classroom_and_teacher_extraction(self):
         title = "ICT for smart mobility (VASSIO LUCA) - Aula 5M"
         meeting = self.classifier.classify(title=title, location="Politecnico")
         self.assertEqual(meeting.pilot_type, PilotType.OWL.value)
+        self.assertEqual(meeting.event_type, EventCategory.CLASS.value)
         self.assertEqual(meeting.classroom, "Aula 5M")
         self.assertEqual(meeting.teacher, "VASSIO LUCA")
         self.assertIn("Aula 5M", meeting.provider)

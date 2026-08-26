@@ -19,7 +19,8 @@ MEETING_PATTERNS = [
 DEFAULT_KEYWORDS = {
     "chef": ["dinner", "lunch", "cena", "pranzo", "restaurant", "ristorante", "pizza", "pizzeria", "sushi", "aperitivo", "apericena", "osteria", "trattoria", "food", "cibo", "eat", "mangiare", "pub", "burger", "barbecue", "bbq", "cocktail"],
     "captain": ["flight", "volo", "airport", "aeroporto", "bus", "navetta", "shuttle", "pullman", "ryanair", "easyjet", "wizz", "ita airways", "train", "treno", "frecciarossa", "italo", "station", "stazione", "travel", "viaggio", "trip", "departure", "partenza", "gate", "terminal", "boarding", "imbarco", "taxi", "uber"],
-    "owl": ["university", "universit", "uni", "exam", "esame", "esami", "lecture", "lezione", "lezioni", "study", "studio", "politecnico", "thesis", "tesi", "smartgrid", "building", "ict", "satellite", "operations research", "ricerca operativa", "course", "corso", "classroom", "aula"],
+    "class": ["lecture", "lezione", "lezioni", "course", "corso", "classroom", "aula", "university", "universit", "politecnico", "professor", "prof"],
+    "owl": ["study", "studio", "studying", "homework", "compiti", "ripasso", "revision", "self-study", "exam", "esame", "esami", "thesis", "tesi", "smartgrid", "building", "ict", "satellite", "operations research", "ricerca operativa"],
     "gym": ["gym", "palestra", "workout", "allenamento", "crossfit", "fitness", "sport", "padel", "tennis", "calcio", "calcetto", "partita", "match", "nuoto", "swimming", "running", "corsa", "boxe", "boxing", "basket", "pallavolo", "pesi", "cardio", "training", "maratona", "pilates", "atletica"],
     "driver": ["dentist", "dentista", "doctor", "dottore", "visit", "visita", "medical", "medico", "office", "ufficio", "drive", "driving", "appuntamento", "studio"],
     "zen_duck": ["serenis", "therapy", "terapia", "yoga", "meditation", "meditazione", "mindfulness", "wellness", "benessere", "relax", "spa", "chill"]
@@ -161,13 +162,36 @@ class EventClassifier:
                     teacher=teacher
                 )
 
-        # 4. Check University / Academic Owl or Classroom presence
-        is_academic = bool(classroom) or any(kw in search_blob for kw in keywords_dict.get("owl", []))
-        if is_academic:
+        # 4. Check Class / Lecture Attendance vs Self-Study Block
+        is_class_event = bool(classroom) or bool(teacher) or any(kw in search_blob for kw in keywords_dict.get("class", []))
+        is_study_event = any(kw in search_blob for kw in keywords_dict.get("owl", []))
+
+        if is_class_event:
             is_trav = bool(location and location != "missing value" and "online" not in search_blob)
             maps_dest = location if is_trav else (f"{title} {classroom or ''}".strip())
             maps_url = f"https://maps.apple.com/?q={urllib.parse.quote(maps_dest)}" if is_trav else "https://calendar.apple.com"
-            provider_label = f"Study / Class 🎓 {classroom}" if classroom else "Study / University 🎓"
+            provider_label = f"Class / Lecture 🏫 {classroom}" if classroom else "Class / Lecture 🏫"
+            return Meeting(
+                title=title,
+                start_time=start_time or datetime.now(),
+                end_time=end_time,
+                location=location,
+                description=description,
+                event_type=EventCategory.CLASS.value,
+                pilot_type=PilotType.OWL.value,
+                provider=provider_label,
+                action_btn_text=f"🗺️ {classroom or 'CAMPUS'}" if is_trav else "🏫 CLASSROOM & NOTES",
+                action_url=maps_url,
+                theme_name="Academic Purple",
+                is_travel=is_trav,
+                classroom=classroom,
+                teacher=teacher
+            )
+
+        if is_study_event:
+            is_trav = bool(location and location != "missing value" and "online" not in search_blob)
+            maps_dest = location if is_trav else title
+            maps_url = f"https://maps.apple.com/?q={urllib.parse.quote(maps_dest)}" if is_trav else "https://calendar.apple.com"
             return Meeting(
                 title=title,
                 start_time=start_time or datetime.now(),
@@ -176,8 +200,8 @@ class EventClassifier:
                 description=description,
                 event_type=EventCategory.STUDY.value,
                 pilot_type=PilotType.OWL.value,
-                provider=provider_label,
-                action_btn_text=f"🗺️ {classroom or 'CAMPUS'}" if is_trav else "📚 CLASSROOM & NOTES",
+                provider="Self-Study Block 📚",
+                action_btn_text=f"🗺️ {location}" if is_trav else "📚 STUDY NOTES & PLANNER",
                 action_url=maps_url,
                 theme_name="Academic Purple",
                 is_travel=is_trav,
