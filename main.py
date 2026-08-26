@@ -14,7 +14,6 @@ from core.logger import setup_logging, log_system_diagnostics, logger
 setup_logging()
 log_system_diagnostics()
 
-from core import config, get_upcoming_meetings
 from datetime import datetime
 
 def _ensure_gui_python_environment():

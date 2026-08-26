@@ -7,11 +7,9 @@ from datetime import datetime
 
 from PyQt6.QtWidgets import QApplication, QSystemTrayIcon, QMenu
 from PyQt6.QtGui import QIcon, QAction
-from PyQt6.QtCore import QTimer
 
 from core.services.config_service import config
 from core.services.calendar_service import calendar_service
-from core.services.reminder_engine import reminder_engine
 from core.services.updater_service import updater_service
 from core.services.event_bus import event_bus
 from core.domain.models import format_duration
