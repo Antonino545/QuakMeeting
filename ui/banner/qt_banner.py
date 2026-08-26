@@ -170,7 +170,7 @@ CARD_H    = 148
 CARD_R    = 18
 CABLE_LEN = 60
 PLANE_SPAN = 90       # horizontal span of plane drawing
-WIN_W     = CARD_W + CABLE_LEN + PLANE_SPAN + 16
+WIN_W     = CARD_W + CABLE_LEN + PLANE_SPAN + 120
 WIN_H     = 200       # height includes space for speech bubble above
 CARD_X    = 0
 CARD_Y    = 50        # card vertically centred inside WIN_H with room for bubble
@@ -862,11 +862,12 @@ class QtQuakPitFlyingBanner(QWidget):
 
         f = QFont("Inter, Arial", 8)
         f.setWeight(QFont.Weight.ExtraBold)
-        fm = QFontMetrics(f)
-        bw = max(180, fm.horizontalAdvance(self.quote_text) + 24)
-        bh = 26
+        p.setFont(f)
+        fm = p.fontMetrics()
+        bw = max(180, fm.horizontalAdvance(self.quote_text) + 36)
+        bh = 30
         bx = px - bw * 0.5
-        by = py - 56
+        by = py - 60
 
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(bg)
