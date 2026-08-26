@@ -44,6 +44,8 @@ class QuakMeetingTrayApp:
 
         self.build_menu()
         self.tray.show()
+        
+        self.tray.activated.connect(self._on_tray_activated)
 
         self._bridge = SignalBridge()
         self._bridge.banner.connect(self.on_banner_trigger)
@@ -58,8 +60,19 @@ class QuakMeetingTrayApp:
         event_bus.subscribe("UPDATE_INSTALLED", lambda **kwargs: self._bridge.menu.emit())
         updater_service.check_for_updates(background=True)
 
+    def _on_tray_activated(self, reason):
+        if reason == QSystemTrayIcon.ActivationReason.Trigger:
+            self.show_flight_deck(0)
+
     def build_menu(self):
-        menu = QMenu()
+        if hasattr(self, '_menu'):
+            menu = self._menu
+            menu.clear()
+        else:
+            menu = QMenu()
+            self._menu = menu
+            self.tray.setContextMenu(self._menu)
+            
         now = datetime.now().astimezone()
         meetings = calendar_service.get_upcoming_meetings()
         today_up = [m for m in meetings if m.start_time and m.start_time.astimezone().date() == now.date() and ((m.end_time and m.end_time.astimezone() > now) or m.start_time.astimezone() > now)]
@@ -67,7 +80,7 @@ class QuakMeetingTrayApp:
         icon_map = {"chef": "🍕", "captain": "✈️", "owl": "🎓", "driver": "🚗", "zen_duck": "🛋️", "duck": "🦆"}
 
         deck_act = QAction("🦆 Open Flight Deck", menu)
-        deck_act.triggered.connect(lambda: self.show_flight_deck(0))
+        deck_act.triggered.connect(lambda chk=False: self.show_flight_deck(0))
         menu.addAction(deck_act)
         menu.addSeparator()
 
@@ -98,7 +111,7 @@ class QuakMeetingTrayApp:
             if action_url:
                 btn_title = f"   {getattr(nx, 'action_btn_text', '🚀 Join Now')}"
                 join_act = QAction(btn_title, menu)
-                join_act.triggered.connect(lambda chk, u=action_url: webbrowser.open(u))
+                join_act.triggered.connect(lambda chk=False, u=action_url: webbrowser.open(u))
                 menu.addAction(join_act)
 
             menu.addSeparator()
@@ -109,11 +122,11 @@ class QuakMeetingTrayApp:
             menu.addSeparator()
 
         sync_act = QAction("🔄 Sync Calendars", menu)
-        sync_act.triggered.connect(lambda: threading.Thread(target=calendar_service.sync_now, daemon=True).start())
+        sync_act.triggered.connect(lambda chk=False: threading.Thread(target=calendar_service.sync_now, daemon=True).start())
         menu.addAction(sync_act)
 
         pref_act = QAction("⚙️ Settings & Preferences...", menu)
-        pref_act.triggered.connect(lambda: self.show_flight_deck(2))
+        pref_act.triggered.connect(lambda chk=False: self.show_flight_deck(2))
         menu.addAction(pref_act)
 
         mode_menu = QMenu("📊 Status Bar Mode", menu)
@@ -128,33 +141,31 @@ class QuakMeetingTrayApp:
             m_act = QAction(mode_label, mode_menu, checkable=True)
             if mode_key == curr_mode:
                 m_act.setChecked(True)
-            m_act.triggered.connect(lambda chk, m=mode_key: self.set_status_mode(m))
+            m_act.triggered.connect(lambda chk=False, m=mode_key: self.set_status_mode(m))
             mode_menu.addAction(m_act)
 
         menu.addMenu(mode_menu)
 
         logs_act = QAction("📄 View Logs & Diagnostics...", menu)
-        logs_act.triggered.connect(lambda: open_log_file())
+        logs_act.triggered.connect(lambda chk=False: open_log_file())
         menu.addAction(logs_act)
         menu.addSeparator()
 
         update_info = updater_service.latest_release_info
         if update_info and update_info.get("has_update"):
             up_act = QAction(f"🚀 Update Available: {update_info['tag_name']}", menu)
-            up_act.triggered.connect(lambda: updater_service.download_and_install_update())
+            up_act.triggered.connect(lambda chk=False: updater_service.download_and_install_update())
             menu.addAction(up_act)
         else:
             chk_act = QAction("🔍 Check for Updates...", menu)
-            chk_act.triggered.connect(lambda: updater_service.check_for_updates(background=True))
+            chk_act.triggered.connect(lambda chk=False: updater_service.check_for_updates(background=True))
             menu.addAction(chk_act)
 
         menu.addSeparator()
 
         quit_act = QAction("Quit QuakMeeting", menu)
-        quit_act.triggered.connect(self.app.quit)
+        quit_act.triggered.connect(lambda chk=False: self.app.quit())
         menu.addAction(quit_act)
-
-        self.tray.setContextMenu(menu)
 
     def set_status_mode(self, mode):
         config.set("menubar_status_mode", mode)
@@ -179,6 +190,7 @@ class QuakMeetingTrayApp:
             logger.warning(f"Error in QtTray agenda update: {e}")
 
     def show_flight_deck(self, tab_index: int = 0):
+        logger.info('🚀 show_flight_deck SIGNAL RECEIVED!')
         try:
             from ui.qt_dashboard import show_qt_dashboard
             show_qt_dashboard(tab_index)
@@ -201,4 +213,9 @@ def run_qt_tray_app():
         app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
     tray = QuakMeetingTrayApp(app)
+    
+    if "--silent" not in sys.argv:
+        tray.show_flight_deck(0)
+        
     app.exec()
+
