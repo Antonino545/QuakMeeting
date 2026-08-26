@@ -222,7 +222,7 @@ class QtFlightDeckWindow(QMainWindow):
         sync_btn = QPushButton("🔄 Sync Now", header)
         sync_btn.setObjectName("SecondaryBtn")
         sync_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        sync_btn.clicked.connect(lambda: threading.Thread(target=calendar_service.sync_now, daemon=True).start())
+        sync_btn.clicked.connect(lambda chk=False: threading.Thread(target=calendar_service.sync_now, daemon=True).start())
         header_layout.addWidget(sync_btn)
 
         main_layout.addWidget(header)
@@ -675,12 +675,12 @@ class QtFlightDeckWindow(QMainWindow):
         edit_btn = QPushButton("📝 Edit Config JSON", util_card)
         edit_btn.setObjectName("SecondaryBtn")
         edit_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        edit_btn.clicked.connect(lambda: config.open_config_in_editor())
+        edit_btn.clicked.connect(lambda chk=False: config.open_config_in_editor())
 
         log_btn = QPushButton("📄 View Live Log File", util_card)
         log_btn.setObjectName("SecondaryBtn")
         log_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        log_btn.clicked.connect(lambda: open_log_file())
+        log_btn.clicked.connect(lambda chk=False: open_log_file())
 
         up_btn = QPushButton("🔍 Check for Updates", util_card)
         up_btn.setObjectName("SecondaryBtn")
@@ -918,16 +918,35 @@ class QtFlightDeckWindow(QMainWindow):
         self.tabs.setCurrentIndex(tab_index)
         main_layout.addWidget(self.tabs)
 
+_dashboard_instance = None
+
 def show_qt_dashboard(tab_index: int = 0):
     """Launches the PyQt6 Flight Deck Control Center."""
+    import logging
+    logger = logging.getLogger("QuakMeeting.FlightDeck")
+    logger.info("🟢 show_qt_dashboard called. Attempting to open the Flight Deck window...")
+    global _dashboard_instance
     app = QApplication.instance()
     is_standalone = False
     if app is None:
+        logger.info("🟢 Creating new QApplication instance (standalone mode)")
         app = QApplication(sys.argv)
         is_standalone = True
+    else:
+        logger.info("🟢 Reusing existing QApplication instance from Tray App")
 
-    win = QtFlightDeckWindow(tab_index)
-    win.show()
+    if _dashboard_instance is None or not _dashboard_instance.isVisible():
+        logger.info("🟢 Creating a new QtFlightDeckWindow instance and binding it to global singleton.")
+        _dashboard_instance = QtFlightDeckWindow(tab_index)
+        _dashboard_instance.show()
+        _dashboard_instance.raise_()
+        _dashboard_instance.activateWindow()
+        logger.info("🟢 Window successfully created and shown!")
+    else:
+        logger.info("🟢 Window already exists. Bringing it to the front...")
+        _dashboard_instance.tabs.setCurrentIndex(tab_index)
+        _dashboard_instance.raise_()
+        _dashboard_instance.activateWindow()
 
     if is_standalone:
         app.exec()
