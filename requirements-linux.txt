@@ -1,4 +1,0 @@
-# Linux (Ubuntu) Python requirements (when using pip in a virtual environment)
-# Note: First install system libraries: bash scripts/install_linux_deps.sh
-PyGObject>=3.42.0
-pycairo>=1.20.0
