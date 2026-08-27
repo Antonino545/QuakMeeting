@@ -3,7 +3,7 @@ import objc
 from datetime import datetime
 
 try:
-    from ui.banner_window import _run_banner
+    from ui.macos.banner_window import _run_banner
 except ImportError:
     from banner_window import _run_banner
 

@@ -63,9 +63,17 @@ class QuakPitFlyingBanner(AppKit.NSObject):
 
             frame = AppKit.NSMakeRect(screen_rect.origin.x, y_pos, window_w, window_h)
 
-        style_mask = AppKit.NSWindowStyleMaskBorderless
+        # -------------------------------------------------------------------------
+        # CRITICAL: DO NOT MODIFY OR REVERT THIS WINDOW / PANEL CONFIGURATION!
+        # This exact setup (NSPanel + NSWindowStyleMaskNonactivatingPanel +
+        # NSScreenSaverWindowLevel + NSWindowCollectionBehaviorFullScreenAuxiliary
+        # + orderFrontRegardless) is REQUIRED for banners to float over native
+        # macOS full-screen apps, spaces, games, Keynote, and media players
+        # without glitching or stealing key window focus.
+        # -------------------------------------------------------------------------
+        style_mask = AppKit.NSWindowStyleMaskBorderless | AppKit.NSWindowStyleMaskNonactivatingPanel
 
-        self.window = AppKit.NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(
+        self.window = AppKit.NSPanel.alloc().initWithContentRect_styleMask_backing_defer_(
             frame,
             style_mask,
             AppKit.NSBackingStoreBuffered,
@@ -74,11 +82,13 @@ class QuakPitFlyingBanner(AppKit.NSObject):
 
         self.window.setReleasedWhenClosed_(False)
         self.window.setHidesOnDeactivate_(False)
+        self.window.setFloatingPanel_(True)
+        self.window.setWorksWhenModal_(True)
         self.window.setOpaque_(False)
         self.window.setBackgroundColor_(AppKit.NSColor.clearColor())
 
-        # NSStatusWindowLevel guarantees floating above full-screen spaces & menu bar
-        self.window.setLevel_(AppKit.NSStatusWindowLevel)
+        # NSScreenSaverWindowLevel guarantees floating above all full-screen spaces & apps
+        self.window.setLevel_(AppKit.NSScreenSaverWindowLevel)
 
         self.window.setIgnoresMouseEvents_(False)
         self.window.setAcceptsMouseMovedEvents_(True)
@@ -116,8 +126,7 @@ class QuakPitFlyingBanner(AppKit.NSObject):
             )
         self.window.setContentView_(self.banner_view)
 
-        # Display above everything on the active space
-        self.window.makeKeyAndOrderFront_(None)
+        # Display above everything on the active full-screen space without stealing key focus
         self.window.orderFrontRegardless()
 
         self.play_chime()
@@ -211,7 +220,7 @@ def _maybe_show_next_banner() -> None:
     if _current_banner_controller is not None:
         return
 
-    from .banner_queue import banner_queue
+    from ui.common.banner_queue import banner_queue
     next_item = banner_queue.pop_next()
     if next_item:
         def _on_close():
@@ -224,7 +233,7 @@ def _maybe_show_next_banner() -> None:
         controller.show()
 
 def _run_banner(meeting_data: Dict[str, Any]) -> None:
-    from .banner_queue import banner_queue, BannerQueueItem
+    from ui.common.banner_queue import banner_queue, BannerQueueItem
     item = BannerQueueItem(meeting_data)
     banner_queue.push(item)
     _maybe_show_next_banner()

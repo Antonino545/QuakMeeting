@@ -385,10 +385,10 @@ class QtFlightDeckWindow(QMainWindow):
                             "maps_url": res["maps_url"] if res else "https://maps.google.com"
                         }
                     else:
-                        from ui.banner.qt_banner import get_test_preset
+                        from ui.linux.banner.qt_banner import get_test_preset
                         evt = dict(get_test_preset(p_id_val))
 
-                    from ui.banner.qt_banner import show_qt_banner
+                    from ui.linux.banner.qt_banner import show_qt_banner
                     show_qt_banner(evt)
                 except Exception as ex:
                     logger.error(f"Error triggering test flight banner: {ex}")
@@ -644,7 +644,7 @@ class QtFlightDeckWindow(QMainWindow):
                     "maps_url": maps_url
                 }
 
-                from ui.banner.qt_banner import show_qt_banner
+                from ui.linux.banner.qt_banner import show_qt_banner
                 show_qt_banner(evt)
             except Exception as e:
                 logger.error(f"Error testing live departure banner: {e}")

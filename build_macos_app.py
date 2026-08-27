@@ -66,9 +66,11 @@ def check_python_code():
         import core.providers
         import core.config_manager
         import core.calendar_scanner
-        import ui.banner
-        import ui.dashboard_window
-        import ui.menu_bar_app
+        import ui.macos.banner
+        import ui.macos.dashboard_window
+        import ui.macos.menu_bar_app
+        import ui.common
+        import ui.app_launcher
         print("  ✓ All core/ and ui/ modules imported cleanly!")
     except Exception as e:
         print(f"  ❌ IMPORT ERROR: {e}")

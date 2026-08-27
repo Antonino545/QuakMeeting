@@ -19,15 +19,15 @@ from core.services.event_bus import event_bus
 from core.services.config_service import config
 from core.services.updater_service import updater_service
 from core.logger import setup_logging, logger, open_log_file, open_log_folder
-from ui.banner import show_banner_async, _run_banner
-from ui.dashboard_window import show_dashboard
-from ui.viewmodels.tray_viewmodel import TrayViewModel
+from ui.macos.banner import show_banner_async, _run_banner
+from ui.macos.dashboard_window import show_dashboard
+from ui.common.tray_viewmodel import TrayViewModel
 
 class QuakMeetingAppDelegate(AppKit.NSObject):
     def applicationDidFinishLaunching_(self, notification):
         logger.info("QuakMeeting running in macOS menu bar & system status bar!")
         import sys
-        if "--silent" not in sys.argv:
+        if "--silent" not in sys.argv and "--autostart" not in sys.argv:
             show_dashboard()
 
     def applicationShouldHandleReopen_hasVisibleWindows_(self, sender, flag):

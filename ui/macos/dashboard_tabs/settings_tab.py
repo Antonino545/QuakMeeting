@@ -6,6 +6,7 @@ import threading
 from core.calendar_scanner import get_available_calendars
 from core.services.event_bus import event_bus
 from core.services.updater_service import updater_service
+from core.autostart import is_autostart_enabled, enable_autostart, disable_autostart
 from core.logger import open_log_file, open_log_folder
 
 class SettingsTabController(AppKit.NSObject):
@@ -15,6 +16,11 @@ class SettingsTabController(AppKit.NSObject):
         self.config = None
         self.cached_calendars = []
         return self
+
+    @objc.python_method
+    def refresh_data(self, force=False):
+        if self.dashboard_controller and hasattr(self.dashboard_controller, 'refresh_data'):
+            self.dashboard_controller.refresh_data(force=force)
 
     @objc.python_method
     def render(self, container, w, h, config, cached_calendars):
@@ -49,7 +55,7 @@ class SettingsTabController(AppKit.NSObject):
         c4_h = max(118.0, 76.0 + cal_rows * 36.0) # Dynamic Calendars height
 
         c_up_h = 136.0 # Software Updates & Releases
-        c5_h = 142.0 # System & JSON Config
+        c5_h = 200.0 # System, Launch at Login & JSON Config
 
         content_h = c1_h + c_eta_h + c2_h + c3_h + c4_h + c_up_h + c5_h + gap * 8 + 24.0
         doc_view = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 0, w, content_h))
@@ -540,15 +546,29 @@ class SettingsTabController(AppKit.NSObject):
     def _build_system_section(self, card, w, h):
         self._add_section_header(
             card,
-            "System Diagnostics & JSON Rules",
-            "Customize classification rules and inspect real-time diagnostic logs.",
+            "System, Launch at Login & JSON Rules",
+            "Manage macOS startup behavior, classification rules, and diagnostic logs.",
             h, w,
             icon_emoji="🛠️",
             badge_rgba=(0.1, 0.72, 0.85, 0.20),
             border_rgba=(0.1, 0.72, 0.85, 0.38)
         )
 
-        y = h - 94.0
+        # 1. Launch at macOS Login Switch
+        r1_y = h - 84.0
+        self.autostart_switch = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(18, r1_y - 10, 480, 24))
+        self.autostart_switch.setButtonType_(AppKit.NSButtonTypeSwitch)
+        self.autostart_switch.setTitle_("🚀 Launch QuakMeeting automatically at macOS login")
+        self.autostart_switch.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.5))
+        self.autostart_switch.setState_(AppKit.NSControlStateValueOn if is_autostart_enabled() else AppKit.NSControlStateValueOff)
+        self.autostart_switch.setTarget_(self)
+        self.autostart_switch.setAction_("onToggleAutostart:")
+        card.addSubview_(self.autostart_switch)
+
+        self._add_row_divider(card, h - 108.0, w)
+
+        # 2. Action Buttons
+        y = h - 150.0
         btn_w = 170.0
 
         # 4 Sleek Action Buttons
@@ -872,4 +892,16 @@ class SettingsTabController(AppKit.NSObject):
     @objc.IBAction
     def onOpenLogFolder_(self, sender):
         open_log_folder()
+
+    @objc.IBAction
+    def onToggleAutostart_(self, sender):
+        is_on = (sender.state() == AppKit.NSControlStateValueOn)
+        if is_on:
+            success = enable_autostart()
+            if not success:
+                sender.setState_(AppKit.NSControlStateValueOff)
+        else:
+            success = disable_autostart()
+            if not success:
+                sender.setState_(AppKit.NSControlStateValueOn)
 

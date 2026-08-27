@@ -10,10 +10,10 @@ logger = logging.getLogger("QuakMeeting.AppLauncher")
 def launch_application():
     """Starts QuakMeeting menu bar status item and event listeners."""
     if sys.platform == "darwin":
-        from ui.menu_bar_app import run_menu_bar_app
+        from ui.macos.menu_bar_app import run_menu_bar_app
         run_menu_bar_app()
     elif sys.platform.startswith("linux") or sys.platform == "win32":
-        from ui.tray.qt_tray_app import run_qt_tray_app
+        from ui.linux.qt_tray_app import run_qt_tray_app
         run_qt_tray_app()
     else:
         logger.error(f"Unsupported operating system: {sys.platform}")

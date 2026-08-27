@@ -18,10 +18,10 @@ try:
     from core.services.updater_service import updater_service
     from core.domain.models import format_duration
     from core.logger import open_log_file, open_log_folder
-    from ui.banner_window import _run_banner
-    from ui.dashboard_tabs.agenda_tab import AgendaTabController
-    from ui.dashboard_tabs.hangar_tab import HangarTabController
-    from ui.dashboard_tabs.settings_tab import SettingsTabController
+    from ui.macos.banner_window import _run_banner
+    from ui.macos.dashboard_tabs.agenda_tab import AgendaTabController
+    from ui.macos.dashboard_tabs.hangar_tab import HangarTabController
+    from ui.macos.dashboard_tabs.settings_tab import SettingsTabController
 except ImportError:
     from config_manager import config
     from calendar_scanner import get_upcoming_meetings, sync_calendar_now, get_available_calendars
@@ -291,6 +291,13 @@ class DashboardWindowController(AppKit.NSObject):
             view = self.settings_tab.render(self, cw, ch, config, self.cached_calendars)
             self.content_container.addSubview_(view)
 
-def show_dashboard():
-    controller = DashboardWindowController.sharedController()
-    controller.show()
+def show_dashboard(tab_index=None):
+    def _show():
+        controller = DashboardWindowController.sharedController()
+        controller.show(tab_index)
+
+    if AppKit.NSThread.isMainThread():
+        _show()
+    else:
+        AppKit.NSOperationQueue.mainQueue().addOperationWithBlock_(_show)
+

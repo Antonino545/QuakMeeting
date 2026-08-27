@@ -8,9 +8,9 @@ class TestDashboardUI(unittest.TestCase):
     def test_instantiate_and_render_tabs(self):
         # Avoid showing actual windows during test
         try:
-            from ui.dashboard_tabs.agenda_tab import AgendaTabController
-            from ui.dashboard_tabs.hangar_tab import HangarTabController
-            from ui.dashboard_tabs.settings_tab import SettingsTabController
+            from ui.macos.dashboard_tabs.agenda_tab import AgendaTabController
+            from ui.macos.dashboard_tabs.hangar_tab import HangarTabController
+            from ui.macos.dashboard_tabs.settings_tab import SettingsTabController
 
             agenda = AgendaTabController.alloc().init()
             hangar = HangarTabController.alloc().init()
@@ -44,7 +44,7 @@ class TestDashboardUI(unittest.TestCase):
 
     @unittest.skipIf(sys.platform != "darwin", "macOS specific UI tests")
     def test_menu_bar_build_with_upcoming_events(self):
-        from ui.menu_bar_app import QuakMeetingMenuBar
+        from ui.macos.menu_bar_app import QuakMeetingMenuBar
         from datetime import datetime, timedelta
         now = datetime.now().astimezone()
         menu_bar = QuakMeetingMenuBar.alloc().init()
@@ -63,6 +63,17 @@ class TestDashboardUI(unittest.TestCase):
         # Must build menu without raising AttributeError
         menu_bar.build_menu()
         self.assertGreater(menu_bar.menu.numberOfItems(), 0)
+
+    @unittest.skipIf(sys.platform != "darwin", "macOS specific UI tests")
+    def test_show_dashboard_accepts_tab_index(self):
+        from ui.macos.dashboard_window import show_dashboard
+        # Ensure show_dashboard accepts positional tab_index parameters (0, 1, 2, None)
+        try:
+            show_dashboard()
+            show_dashboard(0)
+            show_dashboard(2)
+        except TypeError as e:
+            self.fail(f"show_dashboard raised TypeError with positional tab_index: {e}")
 
 if __name__ == '__main__':
     unittest.main()

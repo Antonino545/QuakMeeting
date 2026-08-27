@@ -16,10 +16,10 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
@@ -30,7 +30,8 @@ jobs:
 
       - name: Run Linter & Unit Tests
         run: |
-          pip install ruff
+          python3 -m pip install --upgrade pip
+          pip install ruff PyQt6
           ruff check .
           python3 -m unittest discover -s tests -v
 
@@ -43,21 +44,20 @@ jobs:
     runs-on: macos-14
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python 3.13
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.13'
 
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip
-          pip install pyobjc-core pyobjc-framework-Cocoa pyobjc-framework-EventKit pyobjc-framework-Quartz
+          pip install ruff pyobjc-core pyobjc-framework-Cocoa pyobjc-framework-EventKit pyobjc-framework-Quartz
 
       - name: Run Linter & Unit Tests
         run: |
-          pip install ruff
           ruff check .
           python3 -m unittest discover -s tests -v
 
