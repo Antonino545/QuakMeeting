@@ -63,9 +63,9 @@ class QuakPitFlyingBanner(AppKit.NSObject):
 
             frame = AppKit.NSMakeRect(screen_rect.origin.x, y_pos, window_w, window_h)
 
-        style_mask = AppKit.NSWindowStyleMaskBorderless
+        style_mask = AppKit.NSWindowStyleMaskBorderless | AppKit.NSWindowStyleMaskNonactivatingPanel
 
-        self.window = AppKit.NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(
+        self.window = AppKit.NSPanel.alloc().initWithContentRect_styleMask_backing_defer_(
             frame,
             style_mask,
             AppKit.NSBackingStoreBuffered,
@@ -74,11 +74,13 @@ class QuakPitFlyingBanner(AppKit.NSObject):
 
         self.window.setReleasedWhenClosed_(False)
         self.window.setHidesOnDeactivate_(False)
+        self.window.setFloatingPanel_(True)
+        self.window.setWorksWhenModal_(True)
         self.window.setOpaque_(False)
         self.window.setBackgroundColor_(AppKit.NSColor.clearColor())
 
-        # NSStatusWindowLevel guarantees floating above full-screen spaces & menu bar
-        self.window.setLevel_(AppKit.NSStatusWindowLevel)
+        # NSScreenSaverWindowLevel guarantees floating above all full-screen spaces & apps
+        self.window.setLevel_(AppKit.NSScreenSaverWindowLevel)
 
         self.window.setIgnoresMouseEvents_(False)
         self.window.setAcceptsMouseMovedEvents_(True)
@@ -116,8 +118,7 @@ class QuakPitFlyingBanner(AppKit.NSObject):
             )
         self.window.setContentView_(self.banner_view)
 
-        # Display above everything on the active space
-        self.window.makeKeyAndOrderFront_(None)
+        # Display above everything on the active full-screen space without stealing key focus
         self.window.orderFrontRegardless()
 
         self.play_chime()
