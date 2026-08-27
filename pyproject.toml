@@ -18,4 +18,6 @@ ignore = [
     "E402", # module level import not at top of file
     "F841", # local variable is assigned to but never used
     "E702", # multiple statements on one line (semicolon)
+    "W291", # trailing whitespace
+    "W293", # blank line contains whitespace
 ]
