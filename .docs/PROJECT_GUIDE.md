@@ -72,18 +72,27 @@ QuakMeeting/
 │   │   └── event_bus.py           # Decoupled pub/sub event system
 │   └── logger.py                  # Dual console & file logger (~/.quakmeeting/quakmeeting.log)
 ├── ui/
-│   ├── tray/                      # Cross-platform system tray components
-│   │   ├── linux_appindicator.py  # Ubuntu AppIndicator support
-│   │   └── qt_tray_app.py         # Qt-based system tray fallback
-│   ├── menu_bar_app.py            # macOS Status Bar Item (NSStatusItem)
-│   ├── dashboard_window.py        # Flight Deck HUD window (macOS)
-│   ├── qt_dashboard.py            # Qt-based Flight Deck for Linux
-│   └── banner/
-│       ├── banner_view.py         # Quartz 2D animated banner component (macOS)
-│       ├── wayland_banner.py      # Wayland-native animated banner (Linux)
-│       ├── qt_banner.py           # Qt-based animated banner (Linux fallback)
-│       └── renderers/             # Specialized pilot themes
-└── tests/                         # Full automated unit test suite (27+ tests)
+│   ├── app_launcher.py            # Platform-aware UI dispatcher
+│   ├── common/                    # Shared UI helpers & viewmodels
+│   │   ├── tray_viewmodel.py      # Status formatting & stage logic
+│   │   └── banner_queue.py        # Cross-platform banner sequencing queue
+│   ├── macos/                     # macOS Native UI (PyObjC, AppKit, Quartz 2D)
+│   │   ├── menu_bar_app.py        # NSStatusItem status bar controller & dropdown
+│   │   ├── dashboard_window.py    # Native NSWindow Flight Deck HUD
+│   │   ├── dashboard_tabs/        # Native AppKit Tab Views (Agenda, Hangar, Settings)
+│   │   ├── banner_window.py       # NSWindow overlay wrapper
+│   │   └── banner/                # Quartz 2D animated HUD banners
+│   │       ├── banner_controller.py
+│   │       ├── banner_view.py
+│   │       ├── quiet_banner_view.py
+│   │       └── renderers/         # Modular CoreGraphics pilot renderers
+│   └── linux/                     # Linux / Ubuntu UI (PyQt6, Wayland / X11)
+│       ├── qt_tray_app.py         # PyQt6 QSystemTrayIcon menu & status
+│       ├── qt_dashboard.py        # PyQt6 Flight Deck window
+│       └── banner/                # PyQt6 animated banner overlay
+│           ├── qt_banner.py
+│           └── renderers/         # Modular PyQt6 pilot renderers
+└── tests/                         # Full automated unit test suite (40+ tests)
 ```
 
 ---

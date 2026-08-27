@@ -211,7 +211,7 @@ def _maybe_show_next_banner() -> None:
     if _current_banner_controller is not None:
         return
 
-    from .banner_queue import banner_queue
+    from ui.common.banner_queue import banner_queue
     next_item = banner_queue.pop_next()
     if next_item:
         def _on_close():
@@ -224,7 +224,7 @@ def _maybe_show_next_banner() -> None:
         controller.show()
 
 def _run_banner(meeting_data: Dict[str, Any]) -> None:
-    from .banner_queue import banner_queue, BannerQueueItem
+    from ui.common.banner_queue import banner_queue, BannerQueueItem
     item = BannerQueueItem(meeting_data)
     banner_queue.push(item)
     _maybe_show_next_banner()

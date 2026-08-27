@@ -18,10 +18,10 @@ try:
     from core.services.updater_service import updater_service
     from core.domain.models import format_duration
     from core.logger import open_log_file, open_log_folder
-    from ui.banner_window import _run_banner
-    from ui.dashboard_tabs.agenda_tab import AgendaTabController
-    from ui.dashboard_tabs.hangar_tab import HangarTabController
-    from ui.dashboard_tabs.settings_tab import SettingsTabController
+    from ui.macos.banner_window import _run_banner
+    from ui.macos.dashboard_tabs.agenda_tab import AgendaTabController
+    from ui.macos.dashboard_tabs.hangar_tab import HangarTabController
+    from ui.macos.dashboard_tabs.settings_tab import SettingsTabController
 except ImportError:
     from config_manager import config
     from calendar_scanner import get_upcoming_meetings, sync_calendar_now, get_available_calendars

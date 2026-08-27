@@ -34,9 +34,9 @@ flowchart TD
     end
 
     subgraph UI Package [ui/]
-        Tray[menu_bar_app.py / qt_tray_app.py]
-        Dashboard[dashboard_window.py / qt_dashboard.py]
-        Banner[banner_controller.py / qt_banner.py]
+        Tray[ui/macos/menu_bar_app.py\nui/linux/qt_tray_app.py]
+        Dashboard[ui/macos/dashboard_window.py\nui/linux/qt_dashboard.py]
+        Banner[ui/macos/banner/banner_controller.py\nui/linux/banner/qt_banner.py]
     end
 
     EventKit --> CalService
@@ -77,9 +77,11 @@ Orchestrates business use cases.
 - **`app_controller.py`**: The central orchestrator that launches a background thread to poll services (Calendar, Reminders) without blocking the UI main loop.
 
 ### 4. UI Layer (`ui/`)
-Cross-platform presentation layer.
-- **macOS Native**: Uses PyObjC for `menu_bar_app.py` (NSStatusItem) and Quartz 2D for `banner_window.py` (highly performant animated HUD).
-- **Linux Native**: Uses PyQt6 for `qt_dashboard.py`, `qt_tray_app.py`, and Wayland-compatible notifications.
+Cross-platform presentation layer structured by operating system:
+- **`ui/macos/`**: Native macOS UI using PyObjC (AppKit NSStatusItem, NSWindow Flight Deck, and Quartz 2D animated HUD banners with modular pilot renderers in `renderers/`).
+- **`ui/linux/`**: Native Linux / Ubuntu UI using PyQt6 (QSystemTrayIcon, Flight Deck window, and Wayland/X11 animated banner with modular pilot renderers in `banner/renderers/`).
+- **`ui/common/`**: Shared viewmodels (`tray_viewmodel.py`) and sequencing queues (`banner_queue.py`).
+- **`ui/app_launcher.py`**: Platform-aware UI entrypoint.
 
 ---
 

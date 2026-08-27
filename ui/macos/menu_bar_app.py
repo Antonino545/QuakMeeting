@@ -19,9 +19,9 @@ from core.services.event_bus import event_bus
 from core.services.config_service import config
 from core.services.updater_service import updater_service
 from core.logger import setup_logging, logger, open_log_file, open_log_folder
-from ui.banner import show_banner_async, _run_banner
-from ui.dashboard_window import show_dashboard
-from ui.viewmodels.tray_viewmodel import TrayViewModel
+from ui.macos.banner import show_banner_async, _run_banner
+from ui.macos.dashboard_window import show_dashboard
+from ui.common.tray_viewmodel import TrayViewModel
 
 class QuakMeetingAppDelegate(AppKit.NSObject):
     def applicationDidFinishLaunching_(self, notification):
