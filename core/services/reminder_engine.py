@@ -24,6 +24,7 @@ class ReminderEngine:
         self.bus = bus or event_bus
         self._state_store = NotifiedStateStore()
         self.notified_stage_keys: Set[str] = self._state_store.load()
+        self.bus.subscribe("MARK_ARRIVED", lambda **kwargs: self.mark_arrived(kwargs.get("meeting_id")) if kwargs.get("meeting_id") else None)
 
     def _add_notified_key(self, key: str) -> None:
         self.notified_stage_keys.add(key)
@@ -177,7 +178,7 @@ class ReminderEngine:
                             stage_label = "at start (0m)" if stage == 0 else f"{stage}m ahead"
                             logger.info(f"🔔 >>> TRIGGER BANNER [{stage_label}] for \"{m.title}\" ({m.provider}, at {start_str}, diff={diff_min:+.1f}m)")
 
-                        self.bus.publish("REMINDER_TRIGGERED", meeting=m_triggered, stage=stage)
+                        self.bus.publish("REMINDER_TRIGGERED", meeting=m_triggered, stage=stage, event_dict=m_triggered.to_dict())
                         break
 
             # 2. Fallback: If target time is imminent (<= 5 min) or in progress and has NEVER been notified
@@ -203,7 +204,7 @@ class ReminderEngine:
                         stage_label = "at start (0m)" if fallback_stage == 0 else f"imminent ({fallback_stage}m)"
                         logger.info(f"🔔 >>> TRIGGER IMMEDIATE BANNER [{stage_label}] for \"{m.title}\" ({m.provider}, at {start_str}, diff={diff_min:+.1f}m)")
 
-                    self.bus.publish("REMINDER_TRIGGERED", meeting=m_triggered, stage=fallback_stage)
+                    self.bus.publish("REMINDER_TRIGGERED", meeting=m_triggered, stage=fallback_stage, event_dict=m_triggered.to_dict())
                     matched_stage = fallback_stage
 
             if not matched_stage:

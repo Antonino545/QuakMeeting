@@ -26,7 +26,7 @@ class TestReminderEngine(unittest.TestCase):
         )
 
         triggered_events = []
-        def handler(meeting, stage):
+        def handler(meeting, stage, **kwargs):
             triggered_events.append((meeting.title, stage))
 
         self.bus.subscribe("REMINDER_TRIGGERED", handler)

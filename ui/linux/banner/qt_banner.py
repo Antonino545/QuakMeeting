@@ -369,8 +369,24 @@ class QtQuakPitFlyingBanner(QWidget):
                 webbrowser.open(self.action_url)
             self._dismiss()
         elif self._arrive_rect().contains(p):
+            meeting_id = self.event_data.get("id")
+            if meeting_id:
+                try:
+                    from core.services.event_bus import event_bus
+                    event_bus.publish("MARK_ARRIVED", meeting_id=meeting_id)
+                except Exception:
+                    pass
             self._dismiss()
         elif self._snooze_rect().contains(p):
+            # If the button says "Got it", it means we want to ignore completely
+            if self.reminder_stage == 0 or not self.has_real_url:
+                meeting_id = self.event_data.get("id")
+                if meeting_id:
+                    try:
+                        from core.services.event_bus import event_bus
+                        event_bus.publish("MARK_ARRIVED", meeting_id=meeting_id)
+                    except Exception:
+                        pass
             self._dismiss()
 
     def leaveEvent(self, ev):

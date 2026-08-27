@@ -151,6 +151,7 @@ class Meeting:
     def to_dict(self) -> Dict[str, Any]:
         """Convert Meeting to dictionary format for backward compatibility and JSON serialization."""
         return {
+            "id": self.id,
             "title": self.title,
             "start_time": self.start_time,
             "end_time": self.end_time,

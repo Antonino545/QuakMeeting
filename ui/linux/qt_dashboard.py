@@ -564,7 +564,7 @@ class QtFlightDeckWindow(QMainWindow):
             btn = QPushButton(m_name, addr_card)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             mode_buttons[m_key] = btn
-            def _select_m(k=m_key):
+            def _select_m(chk=False, k=m_key):
                 config.set("transport_mode", k)
                 _update_mode_styles(k)
                 try:
