@@ -55,9 +55,12 @@ class QuakMeetingTrayApp:
         event_bus.subscribe("TRIGGER_BANNER", lambda **kwargs: self._bridge.banner.emit(kwargs.get("event_dict") or kwargs))
         event_bus.subscribe("REMINDER_TRIGGERED", lambda **kwargs: self._bridge.banner.emit(kwargs.get("event_dict") or kwargs))
         event_bus.subscribe("AGENDA_UPDATED", lambda **kwargs: self._bridge.agenda.emit())
+        event_bus.subscribe("CALENDAR_SYNCED", lambda **kwargs: self._bridge.agenda.emit())
+        event_bus.subscribe("CALENDAR_SYNCED", lambda **kwargs: self._bridge.menu.emit())
         event_bus.subscribe("UPDATE_AVAILABLE", lambda **kwargs: self._bridge.menu.emit())
         event_bus.subscribe("UPDATE_CHECK_COMPLETE", lambda **kwargs: self._bridge.menu.emit())
         event_bus.subscribe("UPDATE_INSTALLED", lambda **kwargs: self._bridge.menu.emit())
+        event_bus.subscribe("AGENDA_UPDATED", lambda **kwargs: self._bridge.menu.emit())
         event_bus.subscribe("CONFIG_CHANGED", lambda **kwargs: threading.Thread(target=calendar_service.sync_now, daemon=True).start())
         updater_service.check_for_updates(background=True)
 
@@ -224,7 +227,8 @@ class QuakMeetingTrayApp:
         return QIcon(pixmap)
 
     def on_agenda_updated(self, meeting_objects=None, **kwargs):
-        if meeting_objects is None: return
+        if meeting_objects is None:
+            meeting_objects = calendar_service.get_upcoming_meetings()
         try:
             now = datetime.now().astimezone()
             today_up = [m for m in meeting_objects if m.start_time and m.start_time.astimezone().date() == now.date() and ((m.end_time and m.end_time.astimezone() > now) or m.start_time.astimezone() > now)]

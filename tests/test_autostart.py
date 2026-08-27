@@ -7,6 +7,8 @@ import os
 import xml.etree.ElementTree as ET
 
 from core.autostart import (
+    IS_LINUX,
+    LINUX_DESKTOP_FILE,
     generate_launchagent_plist,
     _get_target_app_path,
     is_autostart_enabled,
@@ -18,6 +20,38 @@ from core.autostart import (
 )
 
 class TestAutostartService(unittest.TestCase):
+    def setUp(self):
+        # Default mock to macOS behavior for existing tests
+        self.patcher = patch('core.autostart.IS_LINUX', False)
+        self.patcher.start()
+
+    def tearDown(self):
+        self.patcher.stop()
+
+    @patch('core.autostart.IS_LINUX', True)
+    @patch('os.path.exists')
+    def test_is_autostart_enabled_linux(self, mock_exists):
+        mock_exists.return_value = True
+        self.assertTrue(is_autostart_enabled())
+        mock_exists.assert_called_with(LINUX_DESKTOP_FILE)
+
+    @patch('core.autostart.IS_LINUX', True)
+    @patch('os.makedirs')
+    @patch('builtins.open', create=True)
+    def test_enable_autostart_linux(self, mock_open, mock_makedirs):
+        res = enable_autostart()
+        self.assertTrue(res)
+        mock_makedirs.assert_called_once()
+        mock_open.assert_called_once()
+
+    @patch('core.autostart.IS_LINUX', True)
+    @patch('os.path.exists', return_value=True)
+    @patch('os.remove')
+    def test_disable_autostart_linux(self, mock_remove, mock_exists):
+        res = disable_autostart()
+        self.assertTrue(res)
+        mock_remove.assert_called_with(LINUX_DESKTOP_FILE)
+
     def test_generate_launchagent_plist(self):
         plist_str = generate_launchagent_plist("/Applications/QuakMeeting.app")
         self.assertIn("<string>com.quakmeeting.app</string>", plist_str)
