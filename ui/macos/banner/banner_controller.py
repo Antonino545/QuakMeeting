@@ -63,6 +63,14 @@ class QuakPitFlyingBanner(AppKit.NSObject):
 
             frame = AppKit.NSMakeRect(screen_rect.origin.x, y_pos, window_w, window_h)
 
+        # -------------------------------------------------------------------------
+        # CRITICAL: DO NOT MODIFY OR REVERT THIS WINDOW / PANEL CONFIGURATION!
+        # This exact setup (NSPanel + NSWindowStyleMaskNonactivatingPanel +
+        # NSScreenSaverWindowLevel + NSWindowCollectionBehaviorFullScreenAuxiliary
+        # + orderFrontRegardless) is REQUIRED for banners to float over native
+        # macOS full-screen apps, spaces, games, Keynote, and media players
+        # without glitching or stealing key window focus.
+        # -------------------------------------------------------------------------
         style_mask = AppKit.NSWindowStyleMaskBorderless | AppKit.NSWindowStyleMaskNonactivatingPanel
 
         self.window = AppKit.NSPanel.alloc().initWithContentRect_styleMask_backing_defer_(
