@@ -64,5 +64,16 @@ class TestDashboardUI(unittest.TestCase):
         menu_bar.build_menu()
         self.assertGreater(menu_bar.menu.numberOfItems(), 0)
 
+    @unittest.skipIf(sys.platform != "darwin", "macOS specific UI tests")
+    def test_show_dashboard_accepts_tab_index(self):
+        from ui.dashboard_window import show_dashboard
+        # Ensure show_dashboard accepts positional tab_index parameters (0, 1, 2, None)
+        try:
+            show_dashboard()
+            show_dashboard(0)
+            show_dashboard(2)
+        except TypeError as e:
+            self.fail(f"show_dashboard raised TypeError with positional tab_index: {e}")
+
 if __name__ == '__main__':
     unittest.main()

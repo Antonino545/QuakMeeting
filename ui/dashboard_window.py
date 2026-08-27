@@ -291,6 +291,13 @@ class DashboardWindowController(AppKit.NSObject):
             view = self.settings_tab.render(self, cw, ch, config, self.cached_calendars)
             self.content_container.addSubview_(view)
 
-def show_dashboard():
-    controller = DashboardWindowController.sharedController()
-    controller.show()
+def show_dashboard(tab_index=None):
+    def _show():
+        controller = DashboardWindowController.sharedController()
+        controller.show(tab_index)
+
+    if AppKit.NSThread.isMainThread():
+        _show()
+    else:
+        AppKit.NSOperationQueue.mainQueue().addOperationWithBlock_(_show)
+
