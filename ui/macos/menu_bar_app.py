@@ -27,7 +27,7 @@ class QuakMeetingAppDelegate(AppKit.NSObject):
     def applicationDidFinishLaunching_(self, notification):
         logger.info("QuakMeeting running in macOS menu bar & system status bar!")
         import sys
-        if "--silent" not in sys.argv:
+        if "--silent" not in sys.argv and "--autostart" not in sys.argv:
             show_dashboard()
 
     def applicationShouldHandleReopen_hasVisibleWindows_(self, sender, flag):
