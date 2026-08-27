@@ -17,7 +17,7 @@ from core.logger import open_log_file
 
 logger = logging.getLogger("QuakMeeting.QtTrayApp")
 
-from ui.viewmodels.tray_viewmodel import TrayViewModel
+from ui.common.tray_viewmodel import TrayViewModel
 
 from PyQt6.QtCore import pyqtSignal, QObject
 
@@ -192,7 +192,7 @@ class QuakMeetingTrayApp:
     def show_flight_deck(self, tab_index: int = 0):
         logger.info('🚀 show_flight_deck SIGNAL RECEIVED!')
         try:
-            from ui.qt_dashboard import show_qt_dashboard
+            from ui.linux.qt_dashboard import show_qt_dashboard
             show_qt_dashboard(tab_index)
         except Exception as e:
             logger.warning(f"Flight Deck window error: {e}")
@@ -202,7 +202,7 @@ class QuakMeetingTrayApp:
             data = event_dict or (meeting.to_dict() if hasattr(meeting, "to_dict") else meeting) or {}
             if stage is not None and "reminder_stage" not in data:
                 data["reminder_stage"] = stage
-            from ui.banner.qt_banner import show_qt_banner
+            from ui.linux.banner.qt_banner import show_qt_banner
             show_qt_banner(data)
         except Exception as e:
             logger.error(f"Error showing Qt banner: {e}")

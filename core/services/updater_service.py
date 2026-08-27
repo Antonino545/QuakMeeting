@@ -152,7 +152,7 @@ class UpdaterService:
                         logger.info(f"🚀 New QuakMeeting update found: {tag_name} (Current: {self.current_version})")
                         event_bus.publish("UPDATE_AVAILABLE", **release_info)
                         try:
-                            from ui.banner.qt_banner import get_update_preset
+                            from ui.linux.banner import get_update_preset
                             event_bus.publish("TRIGGER_BANNER", event_dict=get_update_preset(tag_name, release_info.get("html_url", "")))
                         except Exception as b_err:
                             logger.debug(f"Banner trigger on update: {b_err}")
@@ -307,7 +307,7 @@ class UpdaterService:
                         relaunch_cmd = (
                             "sleep 1.2; "
                             "pkill -f 'quakmeeting' 2>/dev/null || true; "
-                            "pkill -f 'ui.qt_dashboard' 2>/dev/null || true; "
+                            "pkill -f 'qt_dashboard' 2>/dev/null || true; "
                             "sleep 0.6; "
                             "/usr/bin/quakmeeting > /dev/null 2>&1 &"
                         )
@@ -332,7 +332,7 @@ class UpdaterService:
                 relaunch_cmd = (
                     "sleep 1.2; "
                     "pkill -f 'quakmeeting' 2>/dev/null || true; "
-                    "pkill -f 'ui.qt_dashboard' 2>/dev/null || true; "
+                    "pkill -f 'qt_dashboard' 2>/dev/null || true; "
                     "sleep 0.6; "
                     f"'{package_path}' > /dev/null 2>&1 &"
                 )

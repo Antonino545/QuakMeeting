@@ -86,23 +86,28 @@ def main():
             else:
                 print("\n🚀 Running Notification Banner Test...")
 
-            from ui.banner.qt_banner import get_test_preset
-            test_m = dict(get_test_preset(pilot_type))
-            if stage_val is not None:
-                test_m["reminder_stage"] = stage_val
-
             if sys.platform == "darwin":
                 import AppKit
-                from ui.banner.banner_controller import QuakPitFlyingBanner
+                from ui.macos.banner.banner_controller import QuakPitFlyingBanner
+                from ui.macos.banner.banner_view import QuakPitBannerView
+                # Preset mapping
+                from ui.linux.banner import get_test_preset
+                test_m = dict(get_test_preset(pilot_type))
+                if stage_val is not None:
+                    test_m["reminder_stage"] = stage_val
+
                 app = AppKit.NSApplication.sharedApplication()
                 app.setActivationPolicy_(AppKit.NSApplicationActivationPolicyAccessory)
                 def _on_test_done():
                     app.terminate_(None)
-                controller = QuakPitFlyingBanner(test_m, on_close_callback=_on_test_done)
+                controller = QuakPitFlyingBanner.alloc().initWithMeetingData_callback_(test_m, _on_test_done)
                 controller.show()
                 app.run()
             else:
-                from ui.banner.qt_banner import show_qt_banner
+                from ui.linux.banner import get_test_preset, show_qt_banner
+                test_m = dict(get_test_preset(pilot_type))
+                if stage_val is not None:
+                    test_m["reminder_stage"] = stage_val
                 show_qt_banner(test_m)
             return
 
@@ -113,8 +118,8 @@ def main():
         app_controller.start_background_loop()
 
         if sys.platform == "darwin":
-            from ui.menu_bar_app import QuakMeetingMenuBar
-            from ui.dashboard_window import show_dashboard
+            from ui.macos.menu_bar_app import QuakMeetingMenuBar
+            from ui.macos.dashboard_window import show_dashboard
 
             print("\n 📌 PERMISSION NOTICE:")
             print(" If macOS prompts for Calendar access, select 'ALLOW'.\n")

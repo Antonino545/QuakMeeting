@@ -2,7 +2,7 @@
 Backward-compatibility facade for QuakMeeting banner window.
 Delegates to modular components in ui.banner.
 """
-from ui.banner import (
+from ui.macos.banner import (
     QuakPitFlyingBanner,
     _run_banner,
     show_banner_async,
