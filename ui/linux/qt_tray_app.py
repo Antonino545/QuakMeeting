@@ -44,7 +44,7 @@ class QuakMeetingTrayApp:
 
         self.build_menu()
         self.tray.show()
-        
+
         self.tray.activated.connect(self._on_tray_activated)
 
         self._bridge = SignalBridge()
@@ -72,7 +72,7 @@ class QuakMeetingTrayApp:
             menu = QMenu()
             self._menu = menu
             self.tray.setContextMenu(self._menu)
-            
+
         now = datetime.now().astimezone()
         meetings = calendar_service.get_upcoming_meetings()
         today_up = [m for m in meetings if m.start_time and m.start_time.astimezone().date() == now.date() and ((m.end_time and m.end_time.astimezone() > now) or m.start_time.astimezone() > now)]
@@ -213,9 +213,9 @@ def run_qt_tray_app():
         app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
     tray = QuakMeetingTrayApp(app)
-    
+
     if "--silent" not in sys.argv:
         tray.show_flight_deck(0)
-        
+
     app.exec()
 

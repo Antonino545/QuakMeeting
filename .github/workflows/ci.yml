@@ -27,11 +27,10 @@ jobs:
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip
-          pip install pyobjc-core pyobjc-framework-Cocoa pyobjc-framework-EventKit pyobjc-framework-Quartz
+          pip install ruff pyobjc-core pyobjc-framework-Cocoa pyobjc-framework-EventKit pyobjc-framework-Quartz
 
       - name: Run Linter & Unit Tests
         run: |
-          pip install ruff
           ruff check .
           python3 -m unittest discover -s tests -v
 
@@ -65,7 +64,8 @@ jobs:
 
       - name: Run Linter & Unit Tests
         run: |
-          pip install ruff
+          python3 -m pip install --upgrade pip
+          pip install ruff PyQt6
           ruff check .
           python3 -m unittest discover -s tests -v
 
