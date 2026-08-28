@@ -45,47 +45,45 @@ class TestUIInteractions(unittest.TestCase):
             self.assertTrue(callback_fired)
             self.assertIsNone(controller.window)
 
-    @unittest.skipIf(sys.platform == "darwin", "Linux specific PyQt6 UI tests")
-    def test_linux_qt_banner_interactions(self, qtbot=None):
-        """
-        To be run via pytest-qt on Linux (mocking robotic mouse clicks on the banner).
-        """
-        try:
-            from PyQt6.QtCore import Qt
-            from PyQt6.QtWidgets import QApplication
-            from ui.linux.banner.qt_banner import QtQuakPitFlyingBanner
-        except ImportError:
-            self.skipTest("pytest-qt or PyQt6 not available for Linux UI testing")
-            return
-            
-        if not qtbot:
-            self.skipTest("qtbot fixture not provided (must be run via pytest)")
-            return
-            
-        test_meeting = {
-            "title": "Automated UI Test",
-            "provider": "Mock",
-            "is_quiet_reminder": True
-        }
+import pytest
+
+@pytest.mark.skipif(sys.platform == "darwin", reason="Linux specific PyQt6 UI tests")
+def test_linux_qt_banner_interactions(qtbot):
+    """
+    To be run via pytest-qt on Linux (mocking robotic mouse clicks on the banner).
+    """
+    try:
+        from PyQt6.QtCore import Qt
+        from PyQt6.QtWidgets import QApplication
+        from ui.linux.banner.qt_banner import QtQuakPitFlyingBanner
+    except ImportError:
+        pytest.skip("pytest-qt or PyQt6 not available for Linux UI testing")
+        return
         
-        # Instantiate banner
-        banner = QtQuakPitFlyingBanner(test_meeting)
-        banner.show()
-        qtbot.addWidget(banner)
-        
-        # Ensure it's visible
-        qtbot.waitForWindowShown(banner)
-        self.assertTrue(banner.isVisible())
-        
-        # Simulate robotic click on the 'Close' hit rect
-        # _join_rect, _snooze_rect, etc. We just click somewhere in the window for this test
-        # Actually, let's just test that the dismiss method doesn't crash
-        
-        # Click the center of the window (simulating a hit)
-        qtbot.mouseClick(banner, Qt.MouseButton.LeftButton)
-        
-        banner._dismiss()
-        self.assertFalse(banner.isVisible())
+    test_meeting = {
+        "title": "Automated UI Test",
+        "provider": "Mock",
+        "is_quiet_reminder": True
+    }
+    
+    # Instantiate banner
+    banner = QtQuakPitFlyingBanner(test_meeting)
+    banner.show()
+    qtbot.addWidget(banner)
+    
+    # Ensure it's visible
+    qtbot.waitForWindowShown(banner)
+    assert banner.isVisible()
+    
+    # Simulate robotic click on the 'Close' hit rect
+    # _join_rect, _snooze_rect, etc. We just click somewhere in the window for this test
+    # Actually, let's just test that the dismiss method doesn't crash
+    
+    # Click the center of the window (simulating a hit)
+    qtbot.mouseClick(banner, Qt.MouseButton.LeftButton)
+    
+    banner._dismiss()
+    assert not banner.isVisible()
 
 if __name__ == "__main__":
     unittest.main()

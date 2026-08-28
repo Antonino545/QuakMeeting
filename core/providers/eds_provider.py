@@ -24,6 +24,11 @@ class EDSCalendarProvider(BaseCalendarProvider):
     def _get_registry(self):
         if self._registry is None:
             try:
+                import os
+                gi_path = "/usr/lib/x86_64-linux-gnu/girepository-1.0"
+                if gi_path not in os.environ.get("GI_TYPELIB_PATH", ""):
+                    os.environ["GI_TYPELIB_PATH"] = f"{gi_path}:{os.environ.get('GI_TYPELIB_PATH', '')}".strip(":")
+                    
                 import gi
                 gi.require_version('EDataServer', '1.2')
                 gi.require_version('ECal', '2.0')

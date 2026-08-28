@@ -20,3 +20,4 @@ Refer to [.docs/PROJECT_GUIDE.md](.docs/PROJECT_GUIDE.md) for comprehensive arch
 - **Transit vs Meetings**: Travel events trigger notification stages relative to `departure_time` (leave time). Video/desk meetings trigger relative to `start_time`.
 - **Duration Formatting**: Use `format_duration()` for clean hour/minute display (e.g. 120m → 2h, 90m → 1h 30m).
 - **In-Process Python Launcher**: Preserve native Mach-O launcher with `dlopen`/`Py_Main` so top menu bar renders properly.
+

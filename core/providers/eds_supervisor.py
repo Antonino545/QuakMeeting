@@ -60,7 +60,7 @@ class EDSSupervisor:
                 # Subscribe to general calendar change signals. 
                 # (The exact signal depends on the EDS version; listening to object manager or properties changed is safest)
                 bus.subscribe(
-                    bus="org.gnome.evolution.dataserver.Calendar",
+                    sender="org.gnome.evolution.dataserver.Calendar",
                     signal_fired=_on_signal
                 )
                 

@@ -24,7 +24,8 @@ from PyQt6.QtCore import pyqtSignal, QObject
 class SignalBridge(QObject):
     banner = pyqtSignal(dict)
     menu = pyqtSignal()
-    agenda = pyqtSignal()
+    agenda = pyqtSignal(list)
+    syncComplete = pyqtSignal()
 
 class QuakMeetingTrayApp:
     def __init__(self, app: QApplication):

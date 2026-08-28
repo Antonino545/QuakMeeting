@@ -11,7 +11,7 @@ RUN apt-get update && \
     apt-get install -y software-properties-common && \
     add-apt-repository universe && \
     apt-get update && \
-    apt-get install -y dpkg-dev python3-pip xvfb libegl1 libgl1 fakeroot python3-gi gir1.2-edataserver-1.2 gir1.2-ecal-2.0 && \
+    apt-get install -y dpkg-dev python3-pip xvfb libegl1 libgl1 fakeroot python3-gi gir1.2-edataserver-1.2 gir1.2-ecal-2.0 libxkbcommon-x11-0 libxcb-cursor0 && \
     pip3 install PyQt6 pytest pytest-qt pytest-xvfb psutil requests setuptools
 
 # Build the .deb package inside the container
