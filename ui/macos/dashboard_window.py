@@ -121,14 +121,15 @@ class DashboardWindowController(AppKit.NSObject):
         self.window.setTitleVisibility_(AppKit.NSWindowTitleHidden)
         self.window.setMovableByWindowBackground_(True)
         self.window.setOpaque_(False)
-        self.window.setBackgroundColor_(AppKit.NSColor.colorWithRed_green_blue_alpha_(0.10, 0.11, 0.15, 1.0))
+        self.window.setBackgroundColor_(AppKit.NSColor.clearColor())
 
         self.delegate = DashboardWindowDelegate.alloc().init()
         self.delegate.controller = self
         self.window.setDelegate_(self.delegate)
 
         visual_view = AppKit.NSVisualEffectView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 0, width, height))
-        visual_view.setMaterial_(AppKit.NSVisualEffectMaterialUnderWindowBackground)
+        visual_view.setMaterial_(AppKit.NSVisualEffectMaterialPopover)
+        visual_view.setAppearance_(AppKit.NSAppearance.appearanceNamed_(AppKit.NSAppearanceNameVibrantDark))
         visual_view.setBlendingMode_(AppKit.NSVisualEffectBlendingModeBehindWindow)
         visual_view.setState_(AppKit.NSVisualEffectStateActive)
         visual_view.setAutoresizingMask_(AppKit.NSViewWidthSizable | AppKit.NSViewHeightSizable)
@@ -169,6 +170,17 @@ class DashboardWindowController(AppKit.NSObject):
         self.status_lbl.setEditable_(False)
         self.status_lbl.setSelectable_(False)
         header_view.addSubview_(self.status_lbl)
+
+        self.sync_status_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(w - 330, 28, 150, 20))
+        self.sync_status_lbl.setStringValue_("🔄 Pending")
+        self.sync_status_lbl.setFont_(AppKit.NSFont.systemFontOfSize_(11.5))
+        self.sync_status_lbl.setTextColor_(AppKit.NSColor.colorWithRed_green_blue_alpha_(0.68, 0.72, 0.85, 1.0))
+        self.sync_status_lbl.setAlignment_(AppKit.NSTextAlignmentRight)
+        self.sync_status_lbl.setBezeled_(False)
+        self.sync_status_lbl.setDrawsBackground_(False)
+        self.sync_status_lbl.setEditable_(False)
+        self.sync_status_lbl.setSelectable_(False)
+        header_view.addSubview_(self.sync_status_lbl)
 
         refresh_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(w - 170, 20, 130, 34))
         refresh_btn.setTitle_("🔄 Sync Now")
@@ -269,8 +281,22 @@ class DashboardWindowController(AppKit.NSObject):
         if not self.content_container:
             return
 
+        from core.services.calendar_service import calendar_service
+        
+        last_sync = calendar_service.last_sync_time
+        status = calendar_service.last_sync_status
+        sync_str = last_sync.strftime("%H:%M:%S") if last_sync else "Never"
+        
+        if status == "Error":
+            self.sync_status_lbl.setStringValue_(f"❌ Failed (Last: {sync_str})")
+            self.sync_status_lbl.setTextColor_(AppKit.NSColor.colorWithRed_green_blue_alpha_(0.9, 0.4, 0.4, 1.0))
+        else:
+            self.sync_status_lbl.setStringValue_(f"✅ Sync: {sync_str}")
+            self.sync_status_lbl.setTextColor_(AppKit.NSColor.colorWithRed_green_blue_alpha_(0.68, 0.72, 0.85, 1.0))
+
         m_sig = tuple((m.get("title"), str(m.get("start_time")), m.get("travel_time_minutes")) for m in self.meetings)
-        current_sig = (self.current_tab, self.is_loading, len(self.meetings), m_sig)
+        sync_time_str = calendar_service.last_sync_time.isoformat() if calendar_service.last_sync_time else ""
+        current_sig = (self.current_tab, self.is_loading, len(self.meetings), m_sig, sync_time_str)
         if self._last_rendered_signature == current_sig:
             return
         self._last_rendered_signature = current_sig

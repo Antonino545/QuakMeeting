@@ -87,27 +87,46 @@ Instead of subtle system notifications that disappear in seconds, QuakMeeting an
 
 ## 🏗️ Project Architecture
 
-```
+```text
 QuakMeeting/
-├── QuakMeeting.app/            # Native standalone macOS Application Bundle
-├── main.py                     # Primary Application Entrypoint (CLI / GUI)
-├── build_macos_app.py          # macOS Mach-O & In-Process Bundle Compiler
+├── main.py                        # App entry point (cross-platform dispatch)
+├── build_macos_app.py             # Custom build script compiling C launcher Mach-O & bundling app (macOS)
 ├── scripts/
-│   ├── build_macos_dmg.sh      # macOS DMG Drag-and-Drop Package Builder
-│   └── build_ubuntu_deb.sh     # Ubuntu Debian (.deb) Package Builder
-├── .github/workflows/
-│   └── release.yml             # Automated CI/CD Multiplatform Release Workflow
-├── core/                       # Platform-Agnostic Business Logic
-│   ├── domain/                 # Models, Enums, format_duration() & Classifier
-│   ├── providers/              # EventKit (macOS) & CalDAV/ICS (Linux) Providers
-│   └── services/               # Reminder Engine, ETA, EventBus, Config & Auto-Updater
-├── ui/                         # Native UI Implementations
-│   ├── menu_bar_app.py         # macOS NSStatusItem & Menu Bar
-│   ├── dashboard_window.py     # macOS Flight Deck HUD Window
-│   ├── linux_dashboard.py      # Ubuntu GTK3 Flight Deck Window
-│   ├── tray/                   # Linux AppIndicator3 Top Bar Item
-│   └── banner/                 # Animated Floating HUD Banners (Quartz & Wayland)
-└── tests/                      # Automated Unit Test Suite (33+ Tests)
+│   ├── build_ubuntu_deb.sh        # Debian/Ubuntu .deb package builder for Linux (Wayland/X11)
+│   └── install_linux_deps.sh      # Installs system dependencies for Linux
+├── assets/                        # App icons (PNG & ICNS), audio files
+├── core/
+│   ├── domain/
+│   │   ├── models.py              # Meeting dataclass, PilotType, TransportMode, format_duration()
+│   │   └── classifier.py          # Smart keyword matching & categorization
+│   ├── providers/
+│   │   ├── base.py                # BaseCalendarProvider abstract class
+│   │   ├── eventkit_provider.py   # Native Apple EventKit bridge (macOS)
+│   │   └── caldav_provider.py     # CalDAV calendar provider (Linux)
+│   ├── services/
+│   │   ├── calendar_service.py    # Synchronizes & caches Today-only events (00:00 to 23:59:59)
+│   │   ├── reminder_engine.py     # Multi-stage notification triggers (evaluates leave vs start time)
+│   │   ├── eta_service.py         # Apple Maps URL builder & departure time calculator
+│   │   ├── arrival_service.py     # Automatic/manual arrival detection and suppression
+│   │   ├── config_service.py      # Configuration manager (~/.quakmeeting/config.json)
+│   │   └── event_bus.py           # Decoupled pub/sub event system
+│   └── logger.py                  # Dual console & file logger (~/.quakmeeting/quakmeeting.log)
+├── ui/
+│   ├── app_launcher.py            # Platform-aware UI dispatcher
+│   ├── common/                    # Shared UI helpers & viewmodels
+│   │   ├── tray_viewmodel.py      # Status formatting & stage logic
+│   │   └── banner_queue.py        # Cross-platform banner sequencing queue
+│   ├── macos/                     # macOS Native UI (PyObjC, AppKit, Quartz 2D)
+│   │   ├── menu_bar_app.py        # NSStatusItem status bar controller & dropdown
+│   │   ├── dashboard_window.py    # Native NSWindow Flight Deck HUD
+│   │   ├── dashboard_tabs/        # Native AppKit Tab Views (Agenda, Hangar, Settings)
+│   │   ├── banner_window.py       # NSWindow overlay wrapper
+│   │   └── banner/                # Quartz 2D animated HUD banners
+│   └── linux/                     # Linux / Ubuntu UI (PyQt6, Wayland / X11)
+│       ├── qt_tray_app.py         # PyQt6 QSystemTrayIcon menu & status
+│       ├── qt_dashboard.py        # PyQt6 Flight Deck window
+│       └── banner/                # PyQt6 animated banner overlay
+└── tests/                         # Full automated unit test suite (40+ tests)
 ```
 
 ---
