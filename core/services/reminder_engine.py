@@ -105,6 +105,50 @@ class ReminderEngine:
         prefix = f"{base_key}_"
         return any(k.startswith(prefix) for k in self.notified_stage_keys)
 
+    def trigger_startup_catch_up(
+        self, meetings: List[Meeting], current_time: Optional[datetime] = None
+    ) -> Optional[Tuple[Meeting, int]]:
+        """Show the most recent missed reminder once when QuakMeeting starts.
+
+        Calendar reminders can be missed while the app is closed. On startup,
+        surface today's latest due reminder only when no banner for that event
+        is recorded in the persisted notification state. Travel events become
+        due at their departure time; all other events become due at start time.
+        """
+        from datetime import timezone
+
+        now = (current_time or datetime.now(timezone.utc)).astimezone(timezone.utc)
+        missed = []
+        for m in meetings:
+            if not m.start_time or m.is_all_day or arrival_service.is_meeting_arrived(m):
+                continue
+            reminder_time = m.departure_time if m.is_travel and m.departure_time else m.start_time
+            if reminder_time.astimezone().date() == now.astimezone().date() and reminder_time <= now:
+                missed.append((reminder_time, m))
+        if not missed:
+            return None
+
+        due_time, latest = max(missed, key=lambda item: item[0])
+        if self.has_notified_meeting(latest.id):
+            return None
+
+        catch_up_key = f"{latest.id}_{int(latest.start_time.timestamp())}_startup_catch_up"
+        self._add_notified_key(catch_up_key)
+
+        triggered = Meeting.from_dict(latest.to_dict())
+        triggered.reminder_stage = 0
+        logger.info(
+            f"🔔 >>> TRIGGER STARTUP CATCH-UP BANNER for \"{latest.title}\" "
+            f"(due at {due_time.astimezone().strftime('%H:%M')})"
+        )
+        self.bus.publish(
+            "REMINDER_TRIGGERED",
+            meeting=triggered,
+            stage=0,
+            event_dict=triggered.to_dict(),
+        )
+        return triggered, 0
+
     def evaluate_meetings(self, meetings: List[Meeting], current_time: Optional[datetime] = None) -> List[Tuple[Meeting, int]]:
         """
         Evaluate all upcoming meetings against notification windows and departure times.
@@ -225,6 +269,20 @@ class ReminderEngine:
 
                     self.bus.publish("REMINDER_TRIGGERED", meeting=m_triggered, stage=fallback_stage, event_dict=m_triggered.to_dict())
                     matched_stage = fallback_stage
+
+            # 3. ALWAYS trigger a banner exactly at start time for Travel events
+            if is_departure_mode:
+                start_diff_min = (m.start_time - now).total_seconds() / 60.0
+                start_stage_key = f"{m.id}_{int(m.start_time.timestamp())}_start_stage_0"
+                if self.is_within_stage_window(start_diff_min, 0):
+                    if start_stage_key not in self.notified_stage_keys:
+                        self._add_notified_key(start_stage_key)
+                        m_start_triggered = Meeting.from_dict(m.to_dict())
+                        m_start_triggered.reminder_stage = 0
+                        triggered_events.append((m_start_triggered, 0))
+                        logger.info(f"🔔 >>> TRIGGER START BANNER [at start (0m)] for \"{m.title}\" (Travel event starting, diff={start_diff_min:+.1f}m)")
+                        self.bus.publish("REMINDER_TRIGGERED", meeting=m_start_triggered, stage=0, event_dict=m_start_triggered.to_dict())
+                        matched_stage = 0
 
             if not matched_stage:
                 if is_departure_mode:

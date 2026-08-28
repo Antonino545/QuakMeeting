@@ -84,6 +84,7 @@ class QuakMeetingMenuBar(AppKit.NSObject):
 
         self._last_menu_signature = None
         self.meetings: List[Dict[str, Any]] = []
+        self._startup_catch_up_checked = False
 
         # Subscribe to EventBus
         event_bus.subscribe("REMINDER_TRIGGERED", self._on_reminder_triggered)
@@ -94,6 +95,7 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         event_bus.subscribe("UPDATE_CHECK_COMPLETE", self._on_update_event)
         event_bus.subscribe("UPDATE_INSTALLED", self._on_update_event)
 
+        self._check_startup_catch_up(calendar_service.get_upcoming_meetings())
         self.build_menu()
         return self
 
@@ -205,17 +207,41 @@ class QuakMeetingMenuBar(AppKit.NSObject):
     def openHelp_(self, sender):
         webbrowser.open("https://github.com/Antonino545/QuakMeeting")
 
-    def _on_reminder_triggered(self, meeting: Meeting, stage: int) -> None:
-        m_dict = meeting.to_dict() if isinstance(meeting, Meeting) else meeting
+    def _on_reminder_triggered(
+        self,
+        meeting: Optional[Meeting] = None,
+        stage: Optional[int] = None,
+        event_dict: Optional[Dict[str, Any]] = None,
+        **kwargs,
+    ) -> None:
+        """Display a reminder banner from the EventBus payload.
+
+        ReminderEngine publishes both the Meeting object and its serialized form.
+        Accepting the complete payload keeps the UI compatible with all event
+        subscribers and, importantly, prevents an unexpected keyword argument
+        from dropping the banner before it reaches AppKit.
+        """
+        m_dict = event_dict or (meeting.to_dict() if isinstance(meeting, Meeting) else meeting)
+        if not m_dict:
+            logger.warning("Ignoring REMINDER_TRIGGERED event without meeting data.")
+            return
         show_banner_async(m_dict)
 
     def _on_calendar_synced(self, meetings: List[Any]) -> None:
+        self._check_startup_catch_up(meetings)
         self.meetings = [m.to_dict() if isinstance(m, Meeting) else m for m in meetings]
         self.performSelectorOnMainThread_withObject_waitUntilDone_(
             "refreshMenuOnMainThread:",
             None,
             False
         )
+
+    def _check_startup_catch_up(self, meetings: List[Meeting]) -> None:
+        """Surface one missed event after the first startup calendar result."""
+        if self._startup_catch_up_checked or not meetings:
+            return
+        self._startup_catch_up_checked = True
+        reminder_engine.trigger_startup_catch_up(meetings)
 
     def _on_config_changed(self, key: Optional[str] = None, **kwargs) -> None:
         self._last_menu_signature = None

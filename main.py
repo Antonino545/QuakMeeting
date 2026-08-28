@@ -114,9 +114,6 @@ def main():
         logger.info("Initializing QuakMeeting Menu Bar and Flight Deck UI...")
         print(" Launching Menu Bar icon and Flight Deck...")
 
-        from core.app_controller import app_controller
-        app_controller.start_background_loop()
-
         if sys.platform == "darwin":
             from ui.macos.menu_bar_app import QuakMeetingMenuBar
             from ui.macos.dashboard_window import show_dashboard
@@ -128,6 +125,11 @@ def main():
             if app is None:
                 logger.error("Failed to allocate and initialize QuakMeetingMenuBar!")
                 return
+
+            # The menu bar must subscribe before reminders can be evaluated;
+            # otherwise a startup reminder is recorded as sent with no banner.
+            from core.app_controller import app_controller
+            app_controller.start_background_loop()
 
             if "--silent" not in sys.argv:
                 show_dashboard()
@@ -143,4 +145,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

@@ -10,6 +10,7 @@ from PyQt6.QtGui import QIcon, QAction, QPainter, QPixmap, QFont, QColor, QPalet
 
 from core.services.config_service import config
 from core.services.calendar_service import calendar_service
+from core.services.reminder_engine import reminder_engine
 from core.services.updater_service import updater_service
 from core.services.event_bus import event_bus
 from core.domain.models import format_duration
@@ -29,6 +30,7 @@ class SignalBridge(QObject):
 class QuakMeetingTrayApp:
     def __init__(self, app: QApplication):
         self.app = app
+        self._startup_catch_up_checked = False
 
         icon_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
@@ -57,12 +59,22 @@ class QuakMeetingTrayApp:
         event_bus.subscribe("AGENDA_UPDATED", lambda **kwargs: self._bridge.agenda.emit())
         event_bus.subscribe("CALENDAR_SYNCED", lambda **kwargs: self._bridge.agenda.emit())
         event_bus.subscribe("CALENDAR_SYNCED", lambda **kwargs: self._bridge.menu.emit())
+        event_bus.subscribe("CALENDAR_SYNCED", self._check_startup_catch_up)
         event_bus.subscribe("UPDATE_AVAILABLE", lambda **kwargs: self._bridge.menu.emit())
         event_bus.subscribe("UPDATE_CHECK_COMPLETE", lambda **kwargs: self._bridge.menu.emit())
         event_bus.subscribe("UPDATE_INSTALLED", lambda **kwargs: self._bridge.menu.emit())
         event_bus.subscribe("AGENDA_UPDATED", lambda **kwargs: self._bridge.menu.emit())
         event_bus.subscribe("CONFIG_CHANGED", lambda **kwargs: threading.Thread(target=calendar_service.sync_now, daemon=True).start())
         updater_service.check_for_updates(background=True)
+        self._check_startup_catch_up(meetings=calendar_service.get_upcoming_meetings())
+
+    def _check_startup_catch_up(self, meetings=None, **kwargs):
+        """Surface one missed event after the first startup calendar result."""
+        meetings = meetings or []
+        if self._startup_catch_up_checked or not meetings:
+            return
+        self._startup_catch_up_checked = True
+        reminder_engine.trigger_startup_catch_up(meetings)
 
     def _on_tray_activated(self, reason):
         if reason == QSystemTrayIcon.ActivationReason.Trigger:
@@ -321,5 +333,8 @@ def run_qt_tray_app():
     if "--silent" not in sys.argv:
         tray.show_flight_deck(0)
 
+    # Tray handlers are registered before the reminder loop begins, so an
+    # event cannot be recorded as notified before its banner is deliverable.
+    from core.app_controller import app_controller
+    app_controller.start_background_loop()
     app.exec()
-

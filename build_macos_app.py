@@ -29,9 +29,20 @@ def generate_icns():
         out_2x = os.path.join(iconset_dir, f"icon_{sz}x{sz}@2x.png")
         subprocess.run(["sips", "-z", str(sz * 2), str(sz * 2), icon_src, "--out", out_2x], capture_output=True)
 
-    # Generate ICNS
+    # Generate ICNS. Some macOS releases reject otherwise valid iconsets from
+    # `sips`; retain the checked-in icon instead of preventing an app rebuild.
     icns_path = os.path.join(PROJECT_DIR, "assets", "AppIcon.icns")
-    subprocess.run(["iconutil", "-c", "icns", iconset_dir, "-o", icns_path], check=True)
+    result = subprocess.run(
+        ["iconutil", "-c", "icns", iconset_dir, "-o", icns_path],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        if not os.path.exists(icns_path):
+            raise subprocess.CalledProcessError(
+                result.returncode, result.args, output=result.stdout, stderr=result.stderr
+            )
+        print("⚠️  iconutil rejected the generated iconset; using existing AppIcon.icns.")
     shutil.rmtree(iconset_dir, ignore_errors=True)
     print(f"✅ AppIcon.icns successfully generated: {icns_path}")
     return icns_path
