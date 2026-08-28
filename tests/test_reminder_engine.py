@@ -1,5 +1,5 @@
 import unittest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from core.domain.models import Meeting, PilotType
 from core.services.reminder_engine import ReminderEngine
 from core.services.event_bus import EventBus
@@ -114,6 +114,39 @@ class TestReminderEngine(unittest.TestCase):
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0][1], 0)
         self.assertEqual(results[0][0].reminder_stage, 0)
+
+    def test_rescheduled_event_resets_stages(self):
+        now = datetime(2026, 8, 22, 12, 0, 0, tzinfo=timezone.utc)
+        meeting = Meeting(
+            uid="uid-reschedule-1",
+            title="Design Review",
+            start_time=now + timedelta(minutes=10)
+        )
+
+        # Trigger stage 10
+        res1 = self.engine.evaluate_meetings([meeting], current_time=now)
+        self.assertEqual(len(res1), 1)
+        self.assertEqual(res1[0][1], 10)
+
+        # Event is rescheduled to 20 minutes later (e.g. 12:30)
+        # 10 minutes pass (now is 12:10). We evaluate again.
+        now_10m = now + timedelta(minutes=10)
+        meeting.start_time = meeting.start_time + timedelta(minutes=20)
+        
+        # Now diff is 20m. It should trigger stage 20 because the timestamp hash changed, pruning old state.
+        res2 = self.engine.evaluate_meetings([meeting], current_time=now_10m)
+        self.assertEqual(len(res2), 1)
+        self.assertEqual(res2[0][1], 20)
+
+    def test_all_day_event_is_skipped(self):
+        now = datetime(2026, 8, 22, 12, 0, 0, tzinfo=timezone.utc)
+        meeting = Meeting(
+            title="Company Holiday",
+            start_time=now, # starts right now
+            is_all_day=True
+        )
+        res = self.engine.evaluate_meetings([meeting], current_time=now)
+        self.assertEqual(len(res), 0)
 
     def test_check_and_notify_convenience_method(self):
         res = self.engine.check_and_notify()

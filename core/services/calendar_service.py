@@ -48,20 +48,28 @@ class CalendarService:
         self.bus = bus or event_bus
         self.repository = MeetingRepository(CACHE_FILE)
 
+        self.last_sync_time = None
+        self.last_sync_status = "Pending"
+        self.last_error = None
+        self.provider_name = "Unknown"
+
         # Select best available provider based on platform
         if provider:
             self._provider = provider
         elif sys.platform == "darwin":
             self._provider = EventKitCalendarProvider(self.config)
+            self.provider_name = "macOS EventKit"
         else:
             from core.providers.eds_provider import EDSCalendarProvider
             eds = EDSCalendarProvider(self.config)
             if eds.is_available():
                 logger.info("Evolution Data Server detected. Using EDSCalendarProvider.")
                 self._provider = eds
+                self.provider_name = "Evolution Data Server"
             else:
                 logger.info("EDS not available. Falling back to CalDAVCalendarProvider.")
                 self._provider = CalDAVCalendarProvider(self.config)
+                self.provider_name = "CalDAV"
 
         self._in_memory_cache: List[Meeting] = []
         self._last_fetch_time: float = 0.0
@@ -73,6 +81,7 @@ class CalendarService:
 
     def set_provider(self, provider: BaseCalendarProvider) -> None:
         self._provider = provider
+        self.provider_name = provider.__class__.__name__
 
     def _enrich_with_eta(self, meetings: List[Meeting]) -> None:
         """Enriches physical/travel meetings with ETA travel time and departure deadlines."""
@@ -84,6 +93,8 @@ class CalendarService:
         buffer_minutes = int(self.config.get("eta_buffer_minutes", 10))
 
         for m in meetings:
+            if m.is_all_day:
+                continue
             if m.is_travel and m.start_time:
                 dest = m.location if (m.location and m.location != "missing value") else m.title
 
@@ -141,22 +152,31 @@ class CalendarService:
     def _filter_within_window(self, meetings: List[Meeting]) -> List[Meeting]:
         """Filters events to only include those happening Today (00:00 to 23:59:59)."""
         from datetime import timezone
-        now = datetime.now().astimezone() # Local time to determine 'today' properly
-        start_of_today = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        end_of_today = now.replace(hour=23, minute=59, second=59, microsecond=999999)
+        # Determine local 'today' boundaries converted to UTC
+        now = datetime.now().astimezone() 
+        start_of_today_local = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_of_today_local = now.replace(hour=23, minute=59, second=59, microsecond=999999)
 
-        filtered = [
-            m for m in meetings
-            if (m.start_time and start_of_today <= m.start_time.astimezone() <= end_of_today) or
-               (m.departure_time and start_of_today <= m.departure_time.astimezone() <= end_of_today) or
-               (m.end_time and m.start_time and m.start_time.astimezone() <= now <= m.end_time.astimezone())
-        ]
+        start_of_today = start_of_today_local.astimezone(timezone.utc)
+        end_of_today = end_of_today_local.astimezone(timezone.utc)
 
-        # Deduplicate events based on title and start time to prevent sync duplication
+        filtered = []
+        for m in meetings:
+            if not m.start_time:
+                continue
+                
+            s = m.start_time
+            e = m.end_time or m.start_time
+            
+            # Intersection logic: begins on or before end_of_today AND ends on or after start_of_today
+            if s <= end_of_today and e >= start_of_today:
+                filtered.append(m)
+
+        # Deduplicate events based on uid if available, else title and start time
         seen = set()
         deduped = []
         for m in filtered:
-            key = (m.title, m.start_time.timestamp() if m.start_time else 0)
+            key = m.uid if m.uid else (m.title, m.start_time.timestamp())
             if key not in seen:
                 seen.add(key)
                 deduped.append(m)
@@ -184,10 +204,18 @@ class CalendarService:
                 self._in_memory_cache = filtered
                 self._last_fetch_time = time.time()
                 self._save_cache_to_disk(filtered)
+                
+                self.last_sync_time = datetime.now()
+                self.last_sync_status = "Success"
+                self.last_error = None
+
                 logger.info(f"Synchronized {len(filtered)} events scheduled for today.")
                 self.bus.publish("CALENDAR_SYNCED", meetings=filtered)
                 return filtered
             except Exception as e:
+                self.last_sync_time = datetime.now()
+                self.last_sync_status = "Error"
+                self.last_error = str(e)
                 logger.error(f"Error during calendar synchronization: {e}", exc_info=True)
                 return self._in_memory_cache
             finally:

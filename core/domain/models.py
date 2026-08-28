@@ -79,6 +79,10 @@ class Meeting:
     reminder_stage: Optional[int] = None
     category: Optional[str] = None
 
+    # Identity and All-day flags
+    uid: Optional[str] = None
+    is_all_day: bool = False
+
     # Travel & ETA Metadata
     travel_time_minutes: Optional[int] = None
     travel_distance_km: Optional[float] = None
@@ -101,12 +105,14 @@ class Meeting:
 
         from datetime import timezone
         import logging
-        if self.start_time and self.start_time.tzinfo is None:
-            self.start_time = self.start_time.astimezone()
-        if self.end_time and self.end_time.tzinfo is None:
-            self.end_time = self.end_time.astimezone()
-        if self.departure_time and self.departure_time.tzinfo is None:
-            self.departure_time = self.departure_time.astimezone()
+        
+        # Enforce all datetimes to be UTC aware
+        if self.start_time:
+            self.start_time = self.start_time.astimezone(timezone.utc)
+        if self.end_time:
+            self.end_time = self.end_time.astimezone(timezone.utc)
+        if self.departure_time:
+            self.departure_time = self.departure_time.astimezone(timezone.utc)
 
     def __getitem__(self, key: str) -> Any:
         if hasattr(self, key):
@@ -121,8 +127,9 @@ class Meeting:
 
     @property
     def id(self) -> str:
-        """Unique deterministic identifier for an event based on title and start time."""
-        # Note: start_time is UTC, so this produces a UTC time string.
+        """Unique deterministic identifier for an event."""
+        if self.uid:
+            return self.uid
         time_str = self.start_time.strftime("%Y%m%d%H%M") if self.start_time else "000000000000"
         return f"{self.title}_{time_str}"
 
@@ -140,7 +147,7 @@ class Meeting:
     def duration_minutes(self) -> Optional[int]:
         """Total scheduled duration in minutes."""
         if self.start_time and self.end_time:
-            diff = (self.end_time.astimezone() - self.start_time.astimezone()).total_seconds() / 60.0
+            diff = (self.end_time - self.start_time).total_seconds() / 60.0
             return max(0, int(round(diff)))
         return None
 
@@ -151,9 +158,11 @@ class Meeting:
     def to_dict(self) -> Dict[str, Any]:
         """Convert Meeting to dictionary format for backward compatibility and JSON serialization."""
         return {
+            "uid": self.uid,
             "title": self.title,
             "start_time": self.start_time,
             "end_time": self.end_time,
+            "is_all_day": self.is_all_day,
             "meeting_url": self.meeting_url,
             "location": self.location,
             "description": self.description,
@@ -208,9 +217,11 @@ class Meeting:
             dep_dt = dep_val
 
         return cls(
+            uid=d.get("uid"),
             title=d.get("title", ""),
             start_time=start_dt,
             end_time=end_dt,
+            is_all_day=bool(d.get("is_all_day", False)),
             meeting_url=d.get("meeting_url"),
             location=d.get("location", ""),
             description=d.get("description", ""),

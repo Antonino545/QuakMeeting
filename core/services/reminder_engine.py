@@ -54,17 +54,21 @@ class ReminderEngine:
 
     def is_meeting_active(self, m: Meeting, now: datetime) -> bool:
         """Determines if the meeting is currently active and taking user's attention."""
+        from datetime import timezone
         if now.tzinfo is None:
-            now = now.astimezone()
+            now = now.astimezone(timezone.utc)
+        else:
+            now = now.astimezone(timezone.utc)
+            
         if m.is_travel and m.departure_time:
             end = m.end_time or m.start_time or (m.departure_time + timedelta(minutes=60))
-            if m.departure_time.astimezone() <= now.astimezone() <= end.astimezone():
+            if m.departure_time <= now <= end:
                 return True
         if m.start_time and m.end_time:
-            if m.start_time.astimezone() <= now.astimezone() <= m.end_time.astimezone():
+            if m.start_time <= now <= m.end_time:
                 return True
         elif m.start_time:
-            diff = (now.astimezone() - m.start_time.astimezone()).total_seconds() / 60.0
+            diff = (now - m.start_time).total_seconds() / 60.0
             if 0 <= diff <= 45:
                 return True
         return False
@@ -95,9 +99,9 @@ class ReminderEngine:
             return -3.5 <= diff_minutes <= 1.2
         return (stage - 1.8) <= diff_minutes <= (stage + 1.2)
 
-    def has_notified_meeting(self, meeting_id: str) -> bool:
-        """Checks if any stage has already been notified for this meeting."""
-        prefix = f"{meeting_id}_"
+    def has_notified_meeting(self, base_key: str) -> bool:
+        """Checks if any stage has already been notified for this meeting schedule revision."""
+        prefix = f"{base_key}_"
         return any(k.startswith(prefix) for k in self.notified_stage_keys)
 
     def evaluate_meetings(self, meetings: List[Meeting], current_time: Optional[datetime] = None) -> List[Tuple[Meeting, int]]:
@@ -105,22 +109,25 @@ class ReminderEngine:
         Evaluate all upcoming meetings against notification windows and departure times.
         Returns a list of (meeting, triggered_stage) tuples and publishes REMINDER_TRIGGERED events.
         """
+        from datetime import timezone
         if current_time:
-            now = current_time.astimezone() if current_time.tzinfo is None else current_time
+            now = current_time.astimezone(timezone.utc) if current_time.tzinfo is None else current_time.astimezone(timezone.utc)
         else:
-            now = datetime.now().astimezone()
+            now = datetime.now(timezone.utc)
         triggered_events = []
 
         if not meetings:
-            logger.debug(f"[{now.strftime('%H:%M:%S')}] No events to evaluate.")
+            logger.debug(f"[{now.astimezone().strftime('%H:%M:%S')}] No events to evaluate.")
             return []
 
         # Determine if there are currently active meetings taking user's attention
         has_active_meeting = any(self.is_meeting_active(m, now) for m in meetings)
 
-        logger.info(f"📊 [Scanner] Evaluating {len(meetings)} events at {now.strftime('%H:%M:%S')} (Busy: {has_active_meeting})...")
+        logger.info(f"📊 [Scanner] Evaluating {len(meetings)} events at {now.astimezone().strftime('%H:%M:%S')} (Busy: {has_active_meeting})...")
 
         for m in meetings:
+            if m.is_all_day:
+                continue
             if not m.start_time:
                 continue
 
@@ -135,10 +142,22 @@ class ReminderEngine:
             is_departure_mode = bool(m.is_travel and m.departure_time)
             target_time = m.departure_time if is_departure_mode else m.start_time
 
+            # State key timestamp (revision hash)
+            rev_ts = int(target_time.timestamp())
+            base_key = f"{m.id}_{rev_ts}"
+
+            # Prune obsolete keys for this meeting
+            if m.uid:
+                keys_to_remove = [k for k in self.notified_stage_keys if k.startswith(f"{m.uid}_") and not k.startswith(base_key)]
+                for k in keys_to_remove:
+                    self.notified_stage_keys.remove(k)
+                    self._state_store.remove(k)
+                    logger.info(f"Pruned obsolete reminder state for rescheduled event: {k}")
+
             diff_min = (target_time - now).total_seconds() / 60.0
 
             # If event is on a future date and more than 3 hours away, do not trigger reminders today
-            if m.start_time.date() > now.date() and diff_min > 180:
+            if m.start_time.astimezone().date() > now.astimezone().date() and diff_min > 180:
                 continue
 
             start_str = m.start_time.astimezone().strftime("%H:%M")
@@ -149,7 +168,7 @@ class ReminderEngine:
 
             # 1. Evaluate Multi-Stage Intervals relative to target time (Departure vs Start)
             for stage in stages:
-                stage_key = f"{m.id}_dep_stage_{stage}" if is_departure_mode else f"{m.id}_stage_{stage}"
+                stage_key = f"{base_key}_dep_stage_{stage}" if is_departure_mode else f"{base_key}_stage_{stage}"
                 if self.is_within_stage_window(diff_min, stage):
                     if stage_key not in self.notified_stage_keys:
                         matched_stage = stage
@@ -181,10 +200,10 @@ class ReminderEngine:
                         break
 
             # 2. Fallback: If target time is imminent (<= 5 min) or in progress and has NEVER been notified
-            if matched_stage is None and not self.has_notified_meeting(m.id):
+            if matched_stage is None and not self.has_notified_meeting(base_key):
                 if -3.5 <= diff_min <= 5.0:
                     fallback_stage = max(0, round(diff_min))
-                    stage_key = f"{m.id}_dep_stage_{fallback_stage}" if is_departure_mode else f"{m.id}_stage_{fallback_stage}"
+                    stage_key = f"{base_key}_dep_stage_{fallback_stage}" if is_departure_mode else f"{base_key}_stage_{fallback_stage}"
                     self._add_notified_key(stage_key)
 
                     m_triggered = Meeting.from_dict(m.to_dict())

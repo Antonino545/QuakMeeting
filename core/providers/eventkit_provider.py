@@ -110,6 +110,12 @@ class EventKitCalendarProvider(BaseCalendarProvider):
                 start_time=start_dt,
                 end_time=end_dt
             )
+            
+            try:
+                meeting.uid = str(ev.eventIdentifier())
+                meeting.is_all_day = bool(ev.isAllDay())
+            except Exception:
+                pass
 
             # Extract Apple Calendar's native travel time & structured location.
             # These are set when a user enables "Travel Time" on a calendar event.
