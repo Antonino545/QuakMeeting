@@ -13,8 +13,8 @@ Read this file before changing the project. For deeper reference, use [docs/PROJ
 1. Verify you are on the `test` branch (`git branch --show-current`) before starting any work. Always ensure you are on `test` before doing anything.
 2. Inspect `git status --short`. The worktree may contain user changes; preserve them and do not revert, overwrite, or commit them.
 3. Locate the behavior with `rg` before editing. Read the relevant test and the caller/callee around the change.
-4. Keep changes narrow. Add or update regression tests for behavior changes.
-5. Do not commit, create a branch, alter user calendar/config data, install system dependencies, or publish/release anything unless the user explicitly asks.
+4. Keep changes narrow. Add or update regression tests for behavior changes. If making any architectural, structural, or config changes, update the relevant documentation in `docs/` (`docs/ARCHITECTURE.md`, `docs/PROJECT_GUIDE.md`, `docs/CONFIGURATION.md`) before committing.
+5. Do not commit, create a branch, alter user calendar/config data, install system dependencies, or publish/release anything unless the user explicitly asks. When committing upon explicit user request, always run and verify that all tests pass before committing. Never commit broken code.
 
 ## Architecture boundaries
 
@@ -81,6 +81,8 @@ tail -15 ~/.quakmeeting/quakmeeting.log
 
 ## Delivery checklist
 
+- Before committing changes upon user request, verify that all unit tests pass (`/opt/miniconda3/bin/python3 -m unittest discover -s tests -v`).
+- Update documentation in `docs/` (`docs/ARCHITECTURE.md`, `docs/PROJECT_GUIDE.md`, `docs/CONFIGURATION.md`) before committing if any architectural, interface, or configuration changes were made.
 - Report the outcome first, then concise evidence: tests/build/restart status and relevant files.
 - Call out any verification limitation rather than claiming an unobserved UI result.
 - Do not include unrelated existing modifications in the claimed change set.

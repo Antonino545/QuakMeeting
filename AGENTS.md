@@ -4,4 +4,4 @@ Read [.agents/rules/quakmeeting_workflow.md](.agents/rules/quakmeeting_workflow.
 
 For broader reference, use [docs/PROJECT_GUIDE.md](docs/PROJECT_GUIDE.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), and [docs/CONFIGURATION.md](docs/CONFIGURATION.md).
 
-Do not automatically commit changes. Commit only when the user explicitly requests it.
+Do not automatically commit changes. Commit only when the user explicitly requests it, and ensure all unit tests pass and documentation in `docs/` is updated for any architectural changes before committing.
