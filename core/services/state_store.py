@@ -35,6 +35,11 @@ class NotifiedStateStore:
             self._save()
             self._last_write = now_ts
 
+    def remove(self, key: str) -> None:
+        if key in self._state:
+            del self._state[key]
+            self._save()
+
     def _save(self) -> None:
         try:
             os.makedirs(os.path.dirname(self.path), exist_ok=True)

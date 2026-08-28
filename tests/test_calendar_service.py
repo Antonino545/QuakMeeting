@@ -27,5 +27,26 @@ class TestCalendarServiceTravelTime(unittest.TestCase):
         self.assertIn("30m", m.eta_text)
         self.assertTrue("maps.apple.com" in m.action_url or "maps.google.com" in m.action_url or "google.com/maps" in m.action_url)
 
+    def test_filter_within_window_midnight_spanning(self):
+        from datetime import timezone
+        # Test that an event starting yesterday but ending today is included
+        # Let's mock datetime.now() inside the _filter_within_window by actually injecting a specific time?
+        # Actually _filter_within_window uses datetime.now(), which is hard to mock without patch.
+        # But we can just create an event that spans across the current time's midnight boundary.
+        
+        now = datetime.now(timezone.utc)
+        # Event started 2 hours ago, ends in 2 hours
+        start = now - timedelta(hours=2)
+        end = now + timedelta(hours=2)
+        
+        m_spanning = Meeting(
+            title="Spanning Event",
+            start_time=start,
+            end_time=end
+        )
+        
+        filtered = self.service._filter_within_window([m_spanning])
+        self.assertEqual(len(filtered), 1)
+        self.assertEqual(filtered[0].title, "Spanning Event")
 if __name__ == "__main__":
     unittest.main()

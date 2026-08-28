@@ -114,11 +114,11 @@ class SettingsTabController(AppKit.NSObject):
         """Creates a modern lightweight card container with deep frosted slate styling."""
         card = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(x, y, w, h))
         card.setWantsLayer_(True)
-        card.layer().setBackgroundColor_(AppKit.NSColor.colorWithRed_green_blue_alpha_(0.13, 0.15, 0.21, 0.90).CGColor())
-        card.layer().setCornerRadius_(13.0)
+        card.layer().setBackgroundColor_(AppKit.NSColor.colorWithWhite_alpha_(1.0, 0.08).CGColor())
+        card.layer().setCornerRadius_(14.0)
         card.layer().setMasksToBounds_(True)
         card.layer().setBorderWidth_(1.0)
-        card.layer().setBorderColor_(AppKit.NSColor.colorWithWhite_alpha_(1.0, 0.08).CGColor())
+        card.layer().setBorderColor_(AppKit.NSColor.colorWithWhite_alpha_(1.0, 0.15).CGColor())
         return card
 
     @objc.python_method
@@ -178,11 +178,11 @@ class SettingsTabController(AppKit.NSObject):
         parent.addSubview_(div)
 
     @objc.python_method
-    def _add_row_label(self, parent, title, desc, y_center, w_label=220):
+    def _add_row_label(self, parent, title, desc, y_center, w_label=240):
         """Creates a left-side setting label with bold title and description."""
-        t_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, y_center + 2, w_label, 18))
+        t_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, y_center + 4, w_label, 22))
         t_lbl.setStringValue_(title)
-        t_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.5))
+        t_lbl.setFont_(AppKit.NSFont.systemFontOfSize_weight_(15.0, AppKit.NSFontWeightSemibold))
         t_lbl.setTextColor_(AppKit.NSColor.whiteColor())
         t_lbl.setBezeled_(False)
         t_lbl.setDrawsBackground_(False)
@@ -190,9 +190,9 @@ class SettingsTabController(AppKit.NSObject):
         parent.addSubview_(t_lbl)
 
         if desc:
-            d_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, y_center - 14, w_label, 15))
+            d_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, y_center - 16, w_label, 18))
             d_lbl.setStringValue_(desc)
-            d_lbl.setFont_(AppKit.NSFont.systemFontOfSize_(10.5))
+            d_lbl.setFont_(AppKit.NSFont.systemFontOfSize_weight_(12.0, AppKit.NSFontWeightRegular)); d_lbl.setTextColor_(AppKit.NSColor.colorWithWhite_alpha_(1.0, 0.65))
             d_lbl.setTextColor_(AppKit.NSColor.colorWithRed_green_blue_alpha_(0.62, 0.68, 0.82, 1.0))
             d_lbl.setBezeled_(False)
             d_lbl.setDrawsBackground_(False)
@@ -207,8 +207,8 @@ class SettingsTabController(AppKit.NSObject):
             "Select reminder alert windows to receive progressive notifications ahead of time.",
             h, w,
             icon_emoji="⏱️",
-            badge_rgba=(1.0, 0.6, 0.1, 0.20),
-            border_rgba=(1.0, 0.6, 0.1, 0.38)
+            badge_rgba=(0.96, 0.62, 0.04, 0.15),
+            border_rgba=(0.0, 0.0, 0.0, 0.0)
         )
 
         # 1. Video Meeting Stages
@@ -218,9 +218,9 @@ class SettingsTabController(AppKit.NSObject):
         curr_meeting_stages = set(self.config.get("meeting_reminder_stages", [20, 10, 5, 2, 0]))
         meeting_opts = [(30, "30m"), (20, "20m"), (15, "15m"), (10, "10m"), (5, "5m"), (2, "2m"), (0, "0m Start")]
 
-        x_btn = 245.0
+        x_btn = 265.0
         for val, label in meeting_opts:
-            btn_w = 60.0 if val != 0 else 92.0
+            btn_w = 64.0 if val != 0 else 96.0
             chk = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(x_btn, r1_y - 10, btn_w, 24))
             chk.setButtonType_(AppKit.NSButtonTypeSwitch)
             chk.setTitle_(label)
@@ -230,7 +230,7 @@ class SettingsTabController(AppKit.NSObject):
             chk.setTarget_(self)
             chk.setAction_("onToggleMeetingStage:")
             card.addSubview_(chk)
-            x_btn += (btn_w + 6.0)
+            x_btn += (btn_w + 8.0)
 
         self._add_row_divider(card, h - 108.0, w)
 
@@ -240,9 +240,9 @@ class SettingsTabController(AppKit.NSObject):
 
         curr_general_stages = set(self.config.get("general_reminder_stages", [20, 10, 5, 2, 0]))
 
-        x_btn = 245.0
+        x_btn = 265.0
         for val, label in meeting_opts:
-            btn_w = 60.0 if val != 0 else 92.0
+            btn_w = 64.0 if val != 0 else 96.0
             chk = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(x_btn, r2_y - 10, btn_w, 24))
             chk.setButtonType_(AppKit.NSButtonTypeSwitch)
             chk.setTitle_(label)
@@ -252,7 +252,7 @@ class SettingsTabController(AppKit.NSObject):
             chk.setTarget_(self)
             chk.setAction_("onToggleGeneralStage:")
             card.addSubview_(chk)
-            x_btn += (btn_w + 6.0)
+            x_btn += (btn_w + 8.0)
 
         self._add_row_divider(card, h - 160.0, w)
 
@@ -263,9 +263,9 @@ class SettingsTabController(AppKit.NSObject):
         curr_travel_stages = set(self.config.get("travel_reminder_stages", [45, 30, 15, 5, 2, 0]))
         travel_opts = [(60, "60m"), (45, "45m"), (30, "30m"), (15, "15m"), (5, "5m"), (2, "2m"), (0, "0m Leave")]
 
-        x_btn = 245.0
+        x_btn = 265.0
         for val, label in travel_opts:
-            btn_w = 60.0 if val != 0 else 92.0
+            btn_w = 64.0 if val != 0 else 96.0
             chk = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(x_btn, r3_y - 10, btn_w, 24))
             chk.setButtonType_(AppKit.NSButtonTypeSwitch)
             chk.setTitle_(label)
@@ -275,7 +275,7 @@ class SettingsTabController(AppKit.NSObject):
             chk.setTarget_(self)
             chk.setAction_("onToggleTravelStage:")
             card.addSubview_(chk)
-            x_btn += (btn_w + 6.0)
+            x_btn += (btn_w + 8.0)
 
         self._add_row_divider(card, h - 212.0, w)
 
@@ -284,7 +284,7 @@ class SettingsTabController(AppKit.NSObject):
         snooze_val = self.config.get("default_snooze_seconds", 120) // 60
         self._add_row_label(card, "💤 Snooze Duration", "Interval delay when clicking Snooze on a banner", r4_y, 220)
 
-        snooze_popup = AppKit.NSPopUpButton.alloc().initWithFrame_pullsDown_(AppKit.NSMakeRect(245, r4_y - 12, 260, 28), False)
+        snooze_popup = AppKit.NSPopUpButton.alloc().initWithFrame_pullsDown_(AppKit.NSMakeRect(265, r4_y - 12, 260, 28), False)
         snooze_popup.setFont_(AppKit.NSFont.systemFontOfSize_(12.5))
         snooze_popup.setTarget_(self)
         snooze_popup.setAction_("onSelectSnoozeDuration:")
@@ -315,12 +315,19 @@ class SettingsTabController(AppKit.NSObject):
         self._add_row_label(card, "🏠 Starting Address", "Home / origin for automated Apple Maps ETA", r1_y, 220)
 
         curr_addr = str(self.config.get("home_address", "") or "")
-        self.home_addr_field = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(245, r1_y - 10, 390, 26))
+        self.home_addr_field = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(265, r1_y - 10, 370, 26))
         self.home_addr_field.setStringValue_(curr_addr)
         self.home_addr_field.setPlaceholderString_("e.g. 24 Oxford Street, London or Piazza Castello, Torino")
         self.home_addr_field.setFont_(AppKit.NSFont.systemFontOfSize_(12))
         self.home_addr_field.setTarget_(self)
         self.home_addr_field.setAction_("onSaveHomeAddress:")
+        self.home_addr_field.setWantsLayer_(True)
+        self.home_addr_field.layer().setCornerRadius_(9.0)
+        self.home_addr_field.setBackgroundColor_(AppKit.NSColor.colorWithRed_green_blue_alpha_(0.08, 0.086, 0.11, 1.0))
+        self.home_addr_field.setDrawsBackground_(True)
+        self.home_addr_field.layer().setBorderWidth_(1.0)
+        self.home_addr_field.layer().setBorderColor_(AppKit.NSColor.colorWithWhite_alpha_(1.0, 0.1).CGColor())
+        self.home_addr_field.setFocusRingType_(AppKit.NSFocusRingTypeNone)
         card.addSubview_(self.home_addr_field)
 
         self.home_save_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(645, r1_y - 12, 85, 30))
@@ -329,6 +336,8 @@ class SettingsTabController(AppKit.NSObject):
         self.home_save_btn.setFont_(AppKit.NSFont.boldSystemFontOfSize_(11.5))
         self.home_save_btn.setTarget_(self)
         self.home_save_btn.setAction_("onSaveHomeAddress:")
+        if hasattr(self.home_save_btn, "setContentTintColor_"):
+            self.home_save_btn.setContentTintColor_(AppKit.NSColor.colorWithRed_green_blue_alpha_(0.357, 0.486, 0.980, 1.0))
         card.addSubview_(self.home_save_btn)
 
         self._add_row_divider(card, h - 108.0, w)
@@ -350,6 +359,8 @@ class SettingsTabController(AppKit.NSObject):
         self.mode_segmented.setSelectedSegment_(sel_idx)
         self.mode_segmented.setTarget_(self)
         self.mode_segmented.setAction_("onSelectTransportMode:")
+        if hasattr(self.mode_segmented, "setSelectedSegmentBezelColor_"):
+            self.mode_segmented.setSelectedSegmentBezelColor_(AppKit.NSColor.colorWithRed_green_blue_alpha_(0.357, 0.486, 0.980, 1.0))
         card.addSubview_(self.mode_segmented)
 
         self._add_row_divider(card, h - 160.0, w)

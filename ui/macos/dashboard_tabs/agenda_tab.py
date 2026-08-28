@@ -82,11 +82,11 @@ class AgendaTabController(AppKit.NSObject):
     def _create_meeting_card(self, m, idx, x, y, w, h):
         card = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(x, y, w, h))
         card.setWantsLayer_(True)
-        card.layer().setBackgroundColor_(AppKit.NSColor.colorWithRed_green_blue_alpha_(0.14, 0.16, 0.22, 0.85).CGColor())
-        card.layer().setCornerRadius_(12.0)
+        card.layer().setBackgroundColor_(AppKit.NSColor.colorWithWhite_alpha_(1.0, 0.08).CGColor())
+        card.layer().setCornerRadius_(14.0)
         card.layer().setMasksToBounds_(True)
         card.layer().setBorderWidth_(1.0)
-        card.layer().setBorderColor_(AppKit.NSColor.colorWithWhite_alpha_(1.0, 0.10).CGColor())
+        card.layer().setBorderColor_(AppKit.NSColor.colorWithWhite_alpha_(1.0, 0.15).CGColor())
 
         p_type = m.get("pilot_type", "duck")
         icon_map = {"chef": "🍕", "captain": "✈️", "owl": "🎓", "gym": "🏋️‍♂️", "driver": "🚗", "zen_duck": "🛋️", "duck": "🦆"}

@@ -61,14 +61,14 @@ class CalDAVCalendarProvider(BaseCalendarProvider):
                 if not s_dt:
                     continue
 
-                # Strict Today-only filter
-                if s_dt.date() != today_date:
-                    continue
-
                 title = ev.get("title", "Untitled Event")
                 loc = ev.get("location", "")
                 desc = ev.get("description", "")
                 url_val = ev.get("url", "")
+                is_all_day = ev.get("is_all_day", False)
+                uid_base = ev.get("uid", "")
+                rec_id = ev.get("recurrence_id", "")
+                uid = f"{uid_base}_{rec_id}" if rec_id else uid_base
 
                 meeting = EventClassifier.classify(
                     title=title,
@@ -80,6 +80,10 @@ class CalDAVCalendarProvider(BaseCalendarProvider):
                     end_time=e_dt or (s_dt + timedelta(hours=1))
                 )
                 meeting.provider = cal_name
+                meeting.uid = uid if uid else None
+                meeting.is_all_day = is_all_day
+                if is_all_day and not e_dt:
+                    meeting.end_time = s_dt.replace(hour=23, minute=59, second=59)
                 meetings.append(meeting)
 
         meetings.sort(key=lambda m: m.start_time)
@@ -160,27 +164,36 @@ class CalDAVCalendarProvider(BaseCalendarProvider):
                         current_event["description"] = self._unescape_ics(val)
                     elif key == "URL":
                         current_event["url"] = val.strip()
+                    elif key == "UID":
+                        current_event["uid"] = val.strip()
+                    elif key == "RECURRENCE-ID":
+                        current_event["recurrence_id"] = val.strip()
                     elif key == "DTSTART":
-                        current_event["start_time"] = self._parse_ics_datetime(val)
+                        dt, is_all_day = self._parse_ics_datetime(val)
+                        current_event["start_time"] = dt
+                        if is_all_day:
+                            current_event["is_all_day"] = True
                     elif key == "DTEND":
-                        current_event["end_time"] = self._parse_ics_datetime(val)
+                        dt, _ = self._parse_ics_datetime(val)
+                        current_event["end_time"] = dt
 
         return events
 
-    def _parse_ics_datetime(self, val: str) -> Optional[datetime]:
+    def _parse_ics_datetime(self, val: str):
         val = val.strip()
         try:
             if val.endswith("Z"):
-                dt = datetime.strptime(val, "%Y%m%dT%H%M%SZ")
-                return dt.replace(tzinfo=timezone.utc).astimezone()
+                dt = datetime.strptime(val, "%Y%m%dT%H%M%SZ").replace(tzinfo=timezone.utc)
+                return dt, False
             elif "T" in val:
-                return datetime.strptime(val[:15], "%Y%m%dT%H%M%S").astimezone()
+                dt = datetime.strptime(val[:15], "%Y%m%dT%H%M%S").astimezone(timezone.utc)
+                return dt, False
             elif len(val) == 8:
-                d = datetime.strptime(val, "%Y%m%d")
-                return d.replace(hour=0, minute=0, second=0).astimezone()
+                dt = datetime.strptime(val, "%Y%m%d").replace(hour=0, minute=0, second=0).astimezone(timezone.utc)
+                return dt, True
         except Exception:
             pass
-        return None
+        return None, False
 
     def _unescape_ics(self, text: str) -> str:
         return text.replace(r"\,", ",").replace(r"\;", ";").replace(r"\n", "\n").replace(r"\\", "\\").strip()
