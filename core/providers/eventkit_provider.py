@@ -24,25 +24,42 @@ class EventKitCalendarProvider(BaseCalendarProvider):
         if self._store is None:
             try:
                 import EventKit
+                import Foundation
                 self._store = EventKit.EKEventStore.alloc().init()
                 status = EventKit.EKEventStore.authorizationStatusForEntityType_(EventKit.EKEntityTypeEvent)
                 # status: 0=NotDetermined, 1=Restricted, 2=Denied, 3=Authorized/FullAccess, 4=WriteOnly
                 if status == 0:  # Only prompt user once if Not Determined
-                    import threading
-                    sem = threading.Semaphore(0)
                     def completion(granted, error):
-                        sem.release()
+                        if granted:
+                            from core.services.event_bus import event_bus
+                            event_bus.publish_on_main("CALENDAR_NEEDS_SYNC")
 
                     if hasattr(self._store, "requestFullAccessToEventsWithCompletion_"):
                         self._store.requestFullAccessToEventsWithCompletion_(completion)
                     else:
                         self._store.requestAccessToEntityType_completion_(EventKit.EKEntityTypeEvent, completion)
 
-                    sem.acquire()
-                    status = EventKit.EKEventStore.authorizationStatusForEntityType_(EventKit.EKEntityTypeEvent)
+                if status not in (0, 3, 4):  # Not Authorized and not pending
+                    logger.warning(f"EventKit Calendar access status: {status}. If events are missing, check System Settings.")
+                    
+                from core.services.debounce_timer import DebounceTimer
+                from core.services.event_bus import event_bus
+                
+                def _trigger_sync():
+                    event_bus.publish_on_main("CALENDAR_NEEDS_SYNC")
+                    
+                self._debounce = DebounceTimer(0.5, 2.0, _trigger_sync)
+                
+                def _on_change(notification):
+                    self._debounce.trigger()
+                    
+                self._observer = Foundation.NSNotificationCenter.defaultCenter().addObserverForName_object_queue_usingBlock_(
+                    EventKit.EKEventStoreChangedNotification,
+                    self._store,
+                    None,
+                    _on_change
+                )
 
-                if status not in (3, 4):  # Not Authorized
-                    logger.warning(f"EventKit Calendar access status: {status}. If events are missing, check System Settings -> Privacy & Security -> Calendars -> QuakMeeting.")
             except ImportError:
                 self._store = None
         return self._store

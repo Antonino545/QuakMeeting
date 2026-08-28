@@ -51,10 +51,11 @@ class QuakMeetingTrayApp:
         self._bridge.banner.connect(self.on_banner_trigger)
         self._bridge.menu.connect(self.build_menu)
         self._bridge.agenda.connect(self.on_agenda_updated)
+        self._bridge.syncComplete.connect(lambda: self.on_agenda_updated(calendar_service.get_upcoming_meetings()))
 
         event_bus.subscribe("TRIGGER_BANNER", lambda **kwargs: self._bridge.banner.emit(kwargs.get("event_dict") or kwargs))
-        event_bus.subscribe("REMINDER_TRIGGERED", lambda **kwargs: self._bridge.banner.emit(kwargs.get("event_dict") or kwargs))
-        event_bus.subscribe("AGENDA_UPDATED", lambda **kwargs: self._bridge.agenda.emit())
+        event_bus.subscribe("CALENDAR_SYNCED", lambda **kwargs: self._bridge.syncComplete.emit())
+        event_bus.subscribe("AGENDA_UPDATED", lambda **kwargs: self._bridge.agenda.emit(kwargs.get("meeting_objects") or []))
         event_bus.subscribe("UPDATE_AVAILABLE", lambda **kwargs: self._bridge.menu.emit())
         event_bus.subscribe("UPDATE_CHECK_COMPLETE", lambda **kwargs: self._bridge.menu.emit())
         event_bus.subscribe("UPDATE_INSTALLED", lambda **kwargs: self._bridge.menu.emit())

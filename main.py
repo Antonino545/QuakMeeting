@@ -3,7 +3,7 @@ import os
 
 if sys.platform.startswith("linux"):
     if "WAYLAND_DISPLAY" in os.environ or os.environ.get("XDG_SESSION_TYPE") == "wayland":
-        os.environ.setdefault("QT_QPA_PLATFORM", "xcb")
+        os.environ["QT_QPA_PLATFORM"] = "xcb"
 
 # Ensure current project directory is in import path
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))

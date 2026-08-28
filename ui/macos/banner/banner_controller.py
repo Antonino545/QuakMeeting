@@ -31,14 +31,13 @@ class QuakPitFlyingBanner(AppKit.NSObject):
         return self
 
     def show(self) -> None:
+        """Configures and displays the non-activating floating banner window on the active monitor."""
         mouse_loc = AppKit.NSEvent.mouseLocation()
-        target_screen = None
-        for s in AppKit.NSScreen.screens():
-            if AppKit.NSPointInRect(mouse_loc, s.frame()):
-                target_screen = s
+        target_screen = AppKit.NSScreen.mainScreen()
+        for screen in AppKit.NSScreen.screens():
+            if AppKit.NSMouseInRect(mouse_loc, screen.frame(), False):
+                target_screen = screen
                 break
-        if target_screen is None:
-            target_screen = AppKit.NSScreen.mainScreen() or (AppKit.NSScreen.screens()[0] if AppKit.NSScreen.screens() else None)
 
         screen_rect = target_screen.frame() if target_screen else AppKit.NSMakeRect(0, 0, 1440, 900)
 
@@ -111,7 +110,7 @@ class QuakPitFlyingBanner(AppKit.NSObject):
             )
             # Auto dismiss after 10 seconds for update, 6 seconds for quiet
             dismiss_time = 10.0 if is_update else 6.0
-            AppKit.NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
+            self.auto_dismiss_timer = AppKit.NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
                 dismiss_time,
                 self,
                 objc.selector(self.dismissAction_, signature=b"v@:@"),
@@ -119,11 +118,20 @@ class QuakPitFlyingBanner(AppKit.NSObject):
                 False
             )
         else:
+            # 0m urgency hover mode: if stage is 0 or less, we don't automatically dismiss, it stays hovering.
+            stage = self.meeting_data.get("reminder_stage", 15)
+            is_urgent = stage <= 0
+            
             self.banner_view = QuakPitBannerView.alloc().initWithFrame_meetingData_controller_(
                 AppKit.NSMakeRect(0, 0, window_w, window_h),
                 self.meeting_data,
                 self
             )
+            
+            # Note: QuakPitBannerView must be modified to understand `is_urgent` for its hover glowing effect.
+            if hasattr(self.banner_view, "setIsUrgent_"):
+                self.banner_view.setIsUrgent_(is_urgent)
+
         self.window.setContentView_(self.banner_view)
 
         # Display above everything on the active full-screen space without stealing key focus
@@ -204,6 +212,9 @@ class QuakPitFlyingBanner(AppKit.NSObject):
         self.dismiss()
 
     def dismiss(self) -> None:
+        if hasattr(self, "auto_dismiss_timer") and self.auto_dismiss_timer:
+            self.auto_dismiss_timer.invalidate()
+            self.auto_dismiss_timer = None
         if self.timer:
             self.timer.invalidate()
             self.timer = None
@@ -240,7 +251,8 @@ def _run_banner(meeting_data: Dict[str, Any]) -> None:
 
 def show_banner_async(meeting_data: Dict[str, Any]) -> None:
     """Safely dispatches banner display onto the AppKit main UI thread."""
+    from core.services.dispatcher import run_on_main_thread_async
     def _main_show():
         _run_banner(meeting_data)
 
-    AppKit.NSOperationQueue.mainQueue().addOperationWithBlock_(_main_show)
+    run_on_main_thread_async(_main_show)

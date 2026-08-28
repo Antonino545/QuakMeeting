@@ -229,8 +229,16 @@ class QtQuakPitFlyingBanner(QWidget):
         ) or self.is_travel
 
         # ── Screen ──
-        screen = QApplication.primaryScreen()
-        geo    = screen.availableGeometry() if screen else QRect(0, 0, 1920, 1080)
+        from PyQt6.QtGui import QCursor
+        try:
+            pos = QCursor.pos()
+            screen = QApplication.screenAt(pos)
+            if not screen or (pos.x() == 0 and pos.y() == 0):
+                screen = QApplication.primaryScreen()
+        except Exception:
+            screen = QApplication.primaryScreen()
+
+        geo = screen.availableGeometry() if screen else QRect(0, 0, 1920, 1080)
         self.screen_w = geo.width()
         self.screen_x = geo.x()
         self.screen_y = geo.y()
@@ -238,6 +246,9 @@ class QtQuakPitFlyingBanner(QWidget):
         self.tick      = 0
         self.is_paused = False
         self._hover    = None   # "join" | "arrive" | "snooze" | "close"
+
+        stage = self.event_data.get("reminder_stage", 15)
+        self.is_urgent = stage is not None and stage <= 0
 
         # ── Window setup ──
         if self.is_update_banner:
@@ -258,6 +269,7 @@ class QtQuakPitFlyingBanner(QWidget):
             self.win_x = float(self.screen_x - WIN_W - 20)
             self.win_y = float(self.screen_y + 14)
             self.speed = 3.8
+            self.center_x = self.screen_x + (self.screen_w - WIN_W) / 2
 
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint |
@@ -292,12 +304,17 @@ class QtQuakPitFlyingBanner(QWidget):
                         self._dismiss()
             self.update()
         else:
-            if not self.is_paused:
+            if self.is_urgent and abs(self.win_x - self.center_x) < self.speed and not self.is_paused:
+                self.win_x = self.center_x
+                # Pause at center
+            elif not self.is_paused:
                 self.win_x += self.speed
+                
             bob = math.sin(self.tick * 0.035) * 5
             self.move(int(self.win_x), int(self.win_y + bob))
+            
             if self.win_x > self.screen_x + self.screen_w + 20:
-                if self.reminder_stage is not None and self.reminder_stage > 0:
+                if not self.is_urgent:
                     self._dismiss()
                 else:
                     self.win_x = float(self.screen_x - WIN_W - 20)

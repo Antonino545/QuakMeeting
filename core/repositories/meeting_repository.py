@@ -15,10 +15,24 @@ class MeetingRepository:
 
     def save(self, meetings: List[Meeting]) -> None:
         try:
-            os.makedirs(self.cache_dir, exist_ok=True)
+            # Enforce 0700 on the directory
+            os.makedirs(self.cache_dir, mode=0o700, exist_ok=True)
             serializable = [m.to_serializable_dict() for m in meetings]
-            with open(self.cache_file, "w", encoding="utf-8") as f:
+            
+            tmp_file = f"{self.cache_file}.tmp"
+            
+            # Write to tmp file, flush, fsync, and close
+            with open(tmp_file, "w", encoding="utf-8") as f:
                 json.dump(serializable, f, ensure_ascii=False, indent=2)
+                f.flush()
+                os.fsync(f.fileno())
+                
+            # Enforce strict 0600 permissions before moving
+            os.chmod(tmp_file, 0o600)
+            
+            # Atomic swap guarantees durability and no torn reads
+            os.replace(tmp_file, self.cache_file)
+            
         except Exception as e:
             logger.warning(f"Error saving calendar cache to disk: {e}")
 

@@ -69,7 +69,7 @@ Section: utils
 Priority: optional
 Architecture: amd64
 Maintainer: QuakMeeting Team <support@quakmeeting.com>
-Depends: python3 (>= 3.10), python3-pyqt6, python3-gi, gir1.2-edataserver-1.2, gir1.2-ecal-2.0
+Depends: python3 (>= 3.10), python3-gi, gir1.2-edataserver-1.2, gir1.2-ecal-2.0
 Description: Smart Meeting Reminders & Animated Flight Deck HUD
  QuakMeeting provides progressive multi-stage notifications, real-time Apple/Google
  Maps travel ETAs, and pilot avatars floating smoothly over full-screen workspaces.

@@ -86,7 +86,6 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         self.meetings: List[Dict[str, Any]] = []
 
         # Subscribe to EventBus
-        event_bus.subscribe("REMINDER_TRIGGERED", self._on_reminder_triggered)
         event_bus.subscribe("CALENDAR_SYNCED", self._on_calendar_synced)
         event_bus.subscribe("CONFIG_CHANGED", self._on_config_changed)
         event_bus.subscribe("AGENDA_UPDATED", self._on_agenda_updated)
@@ -204,10 +203,6 @@ class QuakMeetingMenuBar(AppKit.NSObject):
     @objc.IBAction
     def openHelp_(self, sender):
         webbrowser.open("https://github.com/Antonino545/QuakMeeting")
-
-    def _on_reminder_triggered(self, meeting: Meeting, stage: int) -> None:
-        m_dict = meeting.to_dict() if isinstance(meeting, Meeting) else meeting
-        show_banner_async(m_dict)
 
     def _on_calendar_synced(self, meetings: List[Any]) -> None:
         self.meetings = [m.to_dict() if isinstance(m, Meeting) else m for m in meetings]

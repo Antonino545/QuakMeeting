@@ -5,6 +5,7 @@ from core.services.calendar_service import calendar_service
 from core.services.reminder_engine import reminder_engine
 from core.services.updater_service import updater_service
 from core.services.event_bus import event_bus
+from core.notifications.pipeline import notification_pipeline
 
 logger = logging.getLogger("QuakMeeting.AppController")
 
@@ -19,6 +20,13 @@ class AppController:
         if self.is_running:
             return
         self.is_running = True
+        
+        try:
+            from core.providers.eds_supervisor import eds_supervisor
+            eds_supervisor.start()
+        except ImportError:
+            pass
+
         self._thread = threading.Thread(target=self._loop, daemon=True)
         self._thread.start()
 
