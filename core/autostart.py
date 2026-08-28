@@ -3,6 +3,8 @@ Autostart / Launch-at-Login Management Subsystem for QuakMeeting.
 Supports native macOS 13+ SMAppService and universal Aqua LaunchAgents plist.
 """
 import os
+import platform
+import sys
 import subprocess
 import logging
 from typing import Optional
@@ -11,6 +13,50 @@ logger = logging.getLogger("QuakMeeting.Autostart")
 
 PLIST_LABEL = "com.quakmeeting.app"
 PLIST_PATH = os.path.expanduser(f"~/Library/LaunchAgents/{PLIST_LABEL}.plist")
+
+IS_LINUX = platform.system() == "Linux"
+LINUX_AUTOSTART_DIR = os.path.expanduser("~/.config/autostart")
+LINUX_DESKTOP_FILE = os.path.join(LINUX_AUTOSTART_DIR, "quakmeeting.desktop")
+
+def _get_linux_executable_path() -> str:
+    # If installed via deb package, it's in /usr/bin/quakmeeting
+    # Otherwise fallback to python3 main.py
+    if os.path.exists("/usr/bin/quakmeeting"):
+        return "/usr/bin/quakmeeting"
+    # fallback to source dir
+    project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    main_py = os.path.join(project_dir, "main.py")
+    return f"{sys.executable} {main_py}"
+
+def _enable_autostart_linux() -> bool:
+    try:
+        os.makedirs(LINUX_AUTOSTART_DIR, exist_ok=True)
+        exec_cmd = _get_linux_executable_path()
+        desktop_content = f"""[Desktop Entry]
+Type=Application
+Name=QuakMeeting
+Comment=Smart Meeting Reminders
+Exec={exec_cmd} --silent --autostart
+Icon=quakmeeting
+Terminal=false
+StartupNotify=false
+"""
+        with open(LINUX_DESKTOP_FILE, "w", encoding="utf-8") as f:
+            f.write(desktop_content)
+        return True
+    except Exception as e:
+        logger.error(f"Failed to enable Linux autostart: {e}")
+        return False
+
+def _disable_autostart_linux() -> bool:
+    try:
+        if os.path.exists(LINUX_DESKTOP_FILE):
+            os.remove(LINUX_DESKTOP_FILE)
+        return True
+    except Exception as e:
+        logger.error(f"Failed to disable Linux autostart: {e}")
+        return False
+
 
 
 def _get_target_app_path() -> str:
@@ -93,7 +139,10 @@ def _check_smappservice_status() -> Optional[bool]:
 
 
 def is_autostart_enabled() -> bool:
-    """Determines whether QuakMeeting is configured to launch at macOS login."""
+    """Determines whether QuakMeeting is configured to launch at macOS/Linux login."""
+    if IS_LINUX:
+        return os.path.exists(LINUX_DESKTOP_FILE)
+        
     sm_status = _check_smappservice_status()
     if sm_status is not None:
         return sm_status
@@ -102,9 +151,12 @@ def is_autostart_enabled() -> bool:
 
 
 def enable_autostart() -> bool:
-    """Enables launch at login using SMAppService (macOS 13+) or LaunchAgent plist."""
+    """Enables launch at login using SMAppService (macOS 13+) or LaunchAgent plist, or .desktop on Linux."""
     logger.info("Enabling Launch-at-Login for QuakMeeting...")
-
+    
+    if IS_LINUX:
+        return _enable_autostart_linux()
+        
     # 1. Try SMAppService if inside an app bundle
     try:
         import ServiceManagement
@@ -149,8 +201,12 @@ def enable_autostart() -> bool:
 
 
 def disable_autostart() -> bool:
-    """Disables launch at login by unregistering SMAppService and removing LaunchAgent plist."""
+    """Disables launch at login by unregistering SMAppService and removing LaunchAgent plist or .desktop on Linux."""
     logger.info("Disabling Launch-at-Login for QuakMeeting...")
+    
+    if IS_LINUX:
+        return _disable_autostart_linux()
+        
     success = True
 
     # 1. Try SMAppService unregister

@@ -9,10 +9,19 @@ trigger: always_on
 Refer to [.docs/PROJECT_GUIDE.md](.docs/PROJECT_GUIDE.md) for comprehensive architecture details.
 
 ## ⚡ Mandatory 4-Step Development Workflow (Execute on Every Change)
-1. **Test**: `/opt/miniconda3/bin/python3 -m unittest discover -s tests -v`
-2. **Build**: `/opt/miniconda3/bin/python3 build_macos_app.py`
+Depending on your current OS environment, execute the correct sequence:
+
+### 🍎 macOS Workflow
+1. **Test**: `python3 -m unittest discover -s tests -v`
+2. **Build**: `python3 build_macos_app.py`
 3. **Restart**: `pkill -f "QuakMeeting" 2>/dev/null; sleep 1; open /Applications/QuakMeeting.app`
 4. **Verify**: `sleep 2 && ps aux | grep -i "[Q]uakMeeting" && tail -15 ~/.quakmeeting/quakmeeting.log`
+
+### 🐧 Ubuntu/Linux Workflow
+1. **Test**: `python3 -m unittest discover -s tests -v`
+2. **Build & Install**: `bash scripts/build_ubuntu_deb.sh && sudo dpkg -i deb_dist/*.deb`
+3. **Restart**: `pkill -f "quakmeeting" 2>/dev/null; pkill -f "main.py" 2>/dev/null; sleep 1; quakmeeting &`
+4. **Verify**: `sleep 2 && ps aux | grep -i "quakmeeting" && tail -15 ~/.quakmeeting/quakmeeting.log`
 
 ## 🛑 Critical Rules
 - **No Auto-Commit**: Never commit changes to git automatically. Only commit when the user explicitly asks for a commit.

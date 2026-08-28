@@ -32,6 +32,7 @@ class QtUpdateBridge(QObject):
 from core.services.config_service import config
 from core.services.calendar_service import calendar_service
 from core.services.updater_service import updater_service
+from core.autostart import is_autostart_enabled, enable_autostart, disable_autostart
 from core.services.event_bus import event_bus
 from core.domain.models import format_duration, Meeting
 from core.logger import open_log_file, open_log_folder
@@ -219,10 +220,14 @@ class QtFlightDeckWindow(QMainWindow):
         header_layout.addWidget(badge)
 
         # Sync Button
-        sync_btn = QPushButton("🔄 Sync Now", header)
+        self.sync_btn = QPushButton("🔄 Sync Now", header)
+        sync_btn = self.sync_btn
         sync_btn.setObjectName("SecondaryBtn")
         sync_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        sync_btn.clicked.connect(lambda chk=False: threading.Thread(target=calendar_service.sync_now, daemon=True).start())
+        def _trigger_sync():
+            self.sync_btn.setText("🔄 Syncing...")
+            threading.Thread(target=calendar_service.sync_now, daemon=True).start()
+        sync_btn.clicked.connect(lambda chk=False: _trigger_sync())
         header_layout.addWidget(sync_btn)
 
         main_layout.addWidget(header)
@@ -239,85 +244,13 @@ class QtFlightDeckWindow(QMainWindow):
         scroll.setWidgetResizable(True)
         scroll.setStyleSheet("QScrollArea { border: none; background: transparent; } QWidget { background: transparent; }")
 
-        scroll_content = QWidget()
-        scroll_layout = QVBoxLayout(scroll_content)
-        scroll_layout.setContentsMargins(0, 0, 0, 0)
-        scroll_layout.setSpacing(12)
-
-        now = datetime.now().astimezone()
-        meetings = calendar_service.get_upcoming_meetings()
-        today_meets = [m for m in meetings if m.start_time and m.start_time.astimezone().date() == now.date()]
-
-        if not today_meets:
-            empty_box = QVBoxLayout()
-            empty_box.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            e_icon = QLabel("🧘‍♂️")
-            e_icon.setStyleSheet("font-size: 48px; border: none;")
-            e_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-            e_msg = QLabel("No Meetings Scheduled for Today\nEnjoy your clear agenda or add events to your calendar.")
-            e_msg.setStyleSheet("font-size: 15px; font-weight: bold; color: #cbd5e1; border: none;")
-            e_msg.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-            empty_box.addWidget(e_icon)
-            empty_box.addWidget(e_msg)
-            scroll_layout.addLayout(empty_box)
-        else:
-            for m in today_meets:
-                card = QFrame(scroll_content)
-                card.setObjectName("Card")
-                c_layout = QHBoxLayout(card)
-                c_layout.setContentsMargins(18, 14, 18, 14)
-                c_layout.setSpacing(14)
-
-                pilot_icon = "🦆"
-                if m.pilot_type == "chef": pilot_icon = "👨‍🍳"
-                elif m.pilot_type == "captain": pilot_icon = "🧑‍✈️"
-                elif m.pilot_type == "owl": pilot_icon = "🦉"
-                elif m.pilot_type == "gym": pilot_icon = "🏋️‍♂️"
-                elif m.pilot_type == "driver": pilot_icon = "🏎️"
-                elif m.pilot_type == "zen_duck": pilot_icon = "🦆🌸"
-
-                icon_l = QLabel(pilot_icon, card)
-                icon_l.setStyleSheet("font-size: 26px; border: none;")
-                c_layout.addWidget(icon_l)
-
-                info_box = QVBoxLayout()
-                info_box.setSpacing(2)
-
-                st = m.start_time.astimezone().strftime("%H:%M") if m.start_time else "--:--"
-                et = m.end_time.astimezone().strftime("%H:%M") if m.end_time else ""
-                dur_str = f" ({format_duration(m.duration_minutes)})" if m.duration_minutes else ""
-
-                t_l = QLabel(m.title, card)
-                t_l.setObjectName("CardTitle")
-
-                sub_txt = f"<b style='color:#38bdf8;'>{st} - {et}{dur_str}</b>  •  {m.provider}"
-                if m.is_travel and m.departure_time:
-                    sub_txt += f"  •  <span style='color:#fbbf24;'>🚗 Leave at {m.departure_time.astimezone().strftime('%H:%M')}</span>"
-                if m.classroom:
-                    sub_txt += f"  •  <span style='color:#c084fc;'>🏫 {m.classroom}</span>"
-
-                s_l = QLabel(sub_txt, card)
-                s_l.setObjectName("CardSub")
-
-                info_box.addWidget(t_l)
-                info_box.addWidget(s_l)
-                c_layout.addLayout(info_box, stretch=1)
-
-                has_real_url = bool(m.action_url and m.action_url.strip() and m.action_url != "https://calendar.apple.com")
-                if has_real_url:
-                    btn_text = "🚀 JOIN" if not m.is_travel else "🗺️ NAVIGATE"
-                    btn = QPushButton(btn_text, card)
-                    btn.setObjectName("PrimaryBtn")
-                    btn.setCursor(Qt.CursorShape.PointingHandCursor)
-                    btn.clicked.connect(lambda chk, u=m.action_url: webbrowser.open(u))
-                    c_layout.addWidget(btn)
-
-                scroll_layout.addWidget(card)
-
-        scroll_layout.addStretch()
-        scroll.setWidget(scroll_content)
+        self.scroll_content = QWidget()
+        self.scroll_layout = QVBoxLayout(self.scroll_content)
+        self.scroll_layout.setContentsMargins(0, 0, 0, 0)
+        self.scroll_layout.setSpacing(12)
+        
+        self.scroll = scroll
+        self._refresh_agenda()
         agenda_layout.addWidget(scroll)
         self.tabs.addTab(agenda_widget, "📅 Today's Agenda")
 
@@ -564,7 +497,7 @@ class QtFlightDeckWindow(QMainWindow):
             btn = QPushButton(m_name, addr_card)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             mode_buttons[m_key] = btn
-            def _select_m(k=m_key):
+            def _select_m(chk=False, k=m_key):
                 config.set("transport_mode", k)
                 _update_mode_styles(k)
                 try:
@@ -671,7 +604,22 @@ class QtFlightDeckWindow(QMainWindow):
         uc_title.setObjectName("CardTitle")
         uc_layout.addWidget(uc_title)
 
+        
+        autostart_chk = QCheckBox("🚀 Launch QuakMeeting automatically at Linux login", util_card)
+        autostart_chk.setStyleSheet("color: #e2e8f0; font-weight: bold; font-size: 13px;")
+        autostart_chk.setCursor(Qt.CursorShape.PointingHandCursor)
+        autostart_chk.setChecked(is_autostart_enabled())
+        def _toggle_autostart(checked):
+            if checked:
+                enable_autostart()
+            else:
+                disable_autostart()
+        autostart_chk.toggled.connect(_toggle_autostart)
+        uc_layout.addWidget(autostart_chk)
+        uc_layout.addSpacing(10)
+        
         sys_row = QHBoxLayout()
+
         edit_btn = QPushButton("📝 Edit Config JSON", util_card)
         edit_btn.setObjectName("SecondaryBtn")
         edit_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -874,7 +822,10 @@ class QtFlightDeckWindow(QMainWindow):
         self.update_bridge = QtUpdateBridge(self)
 
         def _on_bridge_event(event_name: str, data: dict):
-            if event_name == "UPDATE_AVAILABLE":
+            if event_name == "CALENDAR_SYNCED":
+                self.sync_btn.setText("🔄 Sync Now")
+                self._refresh_agenda(data.get("meetings"))
+            elif event_name == "UPDATE_AVAILABLE":
                 _on_update_avail(**data)
             elif event_name == "UPDATE_CHECK_COMPLETE":
                 _on_update_complete(**data)
@@ -898,6 +849,7 @@ class QtFlightDeckWindow(QMainWindow):
         event_bus.subscribe("UPDATE_DOWNLOADED", lambda **k: self.update_bridge.update_event.emit("UPDATE_DOWNLOADED", k))
         event_bus.subscribe("UPDATE_INSTALLED", lambda **k: self.update_bridge.update_event.emit("UPDATE_INSTALLED", k))
         event_bus.subscribe("UPDATE_FAILED", lambda **k: self.update_bridge.update_event.emit("UPDATE_FAILED", k))
+        event_bus.subscribe("CALENDAR_SYNCED", lambda **k: self.update_bridge.update_event.emit("CALENDAR_SYNCED", k))
 
         # Initialize with current release info if already available
         if updater_service.latest_release_info and updater_service.latest_release_info.get("has_update"):
@@ -917,6 +869,92 @@ class QtFlightDeckWindow(QMainWindow):
 
         self.tabs.setCurrentIndex(tab_index)
         main_layout.addWidget(self.tabs)
+
+    def _refresh_agenda(self, meetings=None):
+        # Clear layout safely
+        while self.scroll_layout.count():
+            child = self.scroll_layout.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
+                
+        now = datetime.now().astimezone()
+        if meetings is None:
+            meetings = calendar_service.get_upcoming_meetings()
+            
+        today_meets = [m for m in meetings if m.start_time and m.start_time.astimezone().date() == now.date()]
+
+        if not today_meets:
+            empty_box = QVBoxLayout()
+            empty_box.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            e_icon = QLabel("🧘‍♂️")
+            e_icon.setStyleSheet("font-size: 48px; border: none;")
+            e_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+            e_msg = QLabel("No Meetings Scheduled for Today\nEnjoy your clear agenda or add events to your calendar.")
+            e_msg.setStyleSheet("font-size: 15px; font-weight: bold; color: #cbd5e1; border: none;")
+            e_msg.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+            empty_box.addWidget(e_icon)
+            empty_box.addWidget(e_msg)
+            self.scroll_layout.addLayout(empty_box)
+        else:
+            for m in today_meets:
+                card = QFrame(self.scroll_content)
+                card.setObjectName("Card")
+                c_layout = QHBoxLayout(card)
+                c_layout.setContentsMargins(18, 14, 18, 14)
+                c_layout.setSpacing(14)
+
+                pilot_icon = "🦆"
+                if m.pilot_type == "chef": pilot_icon = "👨‍🍳"
+                elif m.pilot_type == "captain": pilot_icon = "🧑‍✈️"
+                elif m.pilot_type == "owl": pilot_icon = "🦉"
+                elif m.pilot_type == "gym": pilot_icon = "🏋️‍♂️"
+                elif m.pilot_type == "driver": pilot_icon = "🏎️"
+                elif m.pilot_type == "zen_duck": pilot_icon = "🦆🌸"
+
+                icon_l = QLabel(pilot_icon, card)
+                icon_l.setStyleSheet("font-size: 26px; border: none;")
+                c_layout.addWidget(icon_l)
+
+                info_box = QVBoxLayout()
+                info_box.setSpacing(2)
+
+                st = m.start_time.astimezone().strftime("%H:%M") if m.start_time else "--:--"
+                et = m.end_time.astimezone().strftime("%H:%M") if m.end_time else ""
+                dur_str = f" ({format_duration(m.duration_minutes)})" if m.duration_minutes else ""
+
+                t_l = QLabel(m.title, card)
+                t_l.setObjectName("CardTitle")
+
+                sub_txt = f"<b style='color:#38bdf8;'>{st} - {et}{dur_str}</b>  •  {m.provider}"
+                if m.is_travel and m.departure_time:
+                    sub_txt += f"  •  <span style='color:#fbbf24;'>🚗 Leave at {m.departure_time.astimezone().strftime('%H:%M')}</span>"
+                if m.classroom:
+                    sub_txt += f"  •  <span style='color:#c084fc;'>🏫 {m.classroom}</span>"
+
+                s_l = QLabel(sub_txt, card)
+                s_l.setObjectName("CardSub")
+
+                info_box.addWidget(t_l)
+                info_box.addWidget(s_l)
+                c_layout.addLayout(info_box, stretch=1)
+
+                has_real_url = bool(m.action_url and m.action_url.strip() and m.action_url != "https://calendar.apple.com")
+                if has_real_url:
+                    btn_text = "🚀 JOIN" if not m.is_travel else "🗺️ NAVIGATE"
+                    btn = QPushButton(btn_text, card)
+                    btn.setObjectName("PrimaryBtn")
+                    btn.setCursor(Qt.CursorShape.PointingHandCursor)
+                    btn.clicked.connect(lambda chk, u=m.action_url: webbrowser.open(u))
+                    c_layout.addWidget(btn)
+
+                self.scroll_layout.addWidget(card)
+
+        self.scroll_layout.addStretch()
+        self.scroll.setWidget(self.scroll_content)
+
+
 
 _dashboard_instance = None
 
@@ -954,3 +992,4 @@ def show_qt_dashboard(tab_index: int = 0):
 if __name__ == "__main__":
     t_idx = int(sys.argv[1]) if len(sys.argv) > 1 and sys.argv[1].isdigit() else 0
     show_qt_dashboard(t_idx)
+
