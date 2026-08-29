@@ -21,21 +21,17 @@ def _ensure_gui_python_environment():
     if sys.platform.startswith("linux"):
         try:
             import PyQt6
-            return
-        except ImportError:
-            pass
-
-        try:
             import gi
+            gi.require_version('EDataServer', '1.2')
             return
-        except ImportError:
+        except (ImportError, ValueError):
             pass
 
         system_python = "/usr/bin/python3"
         if sys.executable != system_python and os.path.exists(system_python):
             try:
                 import subprocess
-                res = subprocess.run([system_python, "-c", "import PyQt6"], capture_output=True)
+                res = subprocess.run([system_python, "-c", "import PyQt6; import gi; gi.require_version('EDataServer', '1.2')"], capture_output=True)
                 if res.returncode == 0:
                     logger.info(f"Relaunching QuakMeeting using system python GUI runtime ({system_python})...")
                     os.execv(system_python, [system_python] + sys.argv)

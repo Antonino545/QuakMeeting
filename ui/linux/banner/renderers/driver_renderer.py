@@ -1,4 +1,5 @@
 from __future__ import annotations
+from ui.linux.theme import Theme
 
 try:
     from PyQt6.QtCore import Qt, QRectF
@@ -15,7 +16,7 @@ from .base_renderer import BaseQtPilotRenderer
 
 class QtDriverRenderer(BaseQtPilotRenderer):
     def draw_pilot(self, p: QPainter, px: float, py: float, tick: int) -> None:
-        p.setBrush(self._c(38, 204, 138))
+        p.setBrush(Theme.OVERLAY0)
         p.drawEllipse(QRectF(px - 44, py - 13, 76, 28))
         p.setBrush(Qt.GlobalColor.white)
         p.drawRect(QRectF(px - 40, py + 1, 68, 3))
@@ -35,11 +36,11 @@ class QtDriverRenderer(BaseQtPilotRenderer):
         p.restore()
 
         p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(self._c(235, 51, 51))
+        p.setBrush(Theme.RED)
         p.drawEllipse(QRectF(px - 8, py + 3, 20, 20))
-        p.setBrush(self._c(20, 26, 38))
+        p.setBrush(Theme.MANTLE)
         p.drawRoundedRect(QRectF(px - 1, py + 8, 14, 9), 3.5, 3.5)
-        p.setBrush(self._c(102, 230, 255, 217))
+        p.setBrush(Theme.get_color('SAPPHIRE', 217))
         p.drawRect(QRectF(px + 2, py + 12, 8, 2.5))
 
         wing = QPainterPath()
@@ -48,7 +49,7 @@ class QtDriverRenderer(BaseQtPilotRenderer):
         wing.lineTo(px + 6, py - 24)
         wing.lineTo(px - 10, py - 24)
         wing.closeSubpath()
-        p.setBrush(self._c(250, 217, 56))
+        p.setBrush(Theme.PEACH)
         p.drawPath(wing)
 
         self.draw_propeller(p, px + 32.0, py + 2.0, tick)

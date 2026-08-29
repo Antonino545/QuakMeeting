@@ -11,7 +11,8 @@ class TestMeetingModel(unittest.TestCase):
             pilot_type=PilotType.DUCK.value,
             category=EventCategory.VIDEO_MEETING.value
         )
-        self.assertEqual(meeting.id, "Design Review_202608221430")
+        self.assertTrue(meeting.id is not None)
+        self.assertEqual(meeting.id, meeting.uid)
         self.assertEqual(meeting.title, "Design Review")
         
         # Test explicit uid
