@@ -73,10 +73,12 @@ QuakMeeting/
 │   └── logger.py                  # Dual console & file logger (~/.quakmeeting/quakmeeting.log)
 ├── ui/
 │   ├── app_launcher.py            # Platform-aware UI dispatcher
-│   ├── common/                    # Shared UI helpers & viewmodels
+│   ├── common/                    # Shared UI helpers, theme & viewmodels
+│   │   ├── theme.py               # Central Catppuccin Mocha palette & pilot mappings (Single source of truth)
 │   │   ├── tray_viewmodel.py      # Status formatting & stage logic
 │   │   └── banner_queue.py        # Cross-platform banner sequencing queue
 │   ├── macos/                     # macOS Native UI (PyObjC, AppKit, Quartz 2D)
+│   │   ├── theme.py               # Catppuccin Mocha AppKit NSColor/CGColor palette
 │   │   ├── menu_bar_app.py        # NSStatusItem status bar controller & dropdown
 │   │   ├── dashboard_window.py    # Native NSWindow Flight Deck HUD
 │   │   ├── dashboard_tabs/        # Native AppKit Tab Views (Agenda, Hangar, Settings)

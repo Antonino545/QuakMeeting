@@ -138,6 +138,61 @@ class TestReminderEngine(unittest.TestCase):
         self.assertEqual(len(res2), 1)
         self.assertEqual(res2[0][1], 20)
 
+    def test_travel_event_exact_start_time_banner(self):
+        now = datetime(2026, 8, 22, 12, 0, 0, tzinfo=timezone.utc)
+        # Event exactly starting at 12:00, but is a travel event with a past departure time
+        meeting = Meeting(
+            title="Meeting with Location",
+            start_time=now,
+            departure_time=now - timedelta(minutes=15),
+            is_travel=True
+        )
+        results = self.engine.evaluate_meetings([meeting], current_time=now)
+        # Should trigger the exact start time banner (stage 0) for the travel event
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0][1], 0)
+        self.assertEqual(results[0][0].reminder_stage, 0)
+
+    def test_startup_catch_up_shows_latest_unnotified_event_once(self):
+        now = datetime(2026, 8, 22, 12, 0, 0, tzinfo=timezone.utc)
+        older = Meeting(title="Earlier Event", start_time=now - timedelta(hours=2))
+        latest = Meeting(title="Most Recent Event", start_time=now - timedelta(minutes=20))
+        triggered_events = []
+        self.bus.subscribe(
+            "REMINDER_TRIGGERED",
+            lambda meeting, stage, **kwargs: triggered_events.append((meeting, stage)),
+        )
+
+        result = self.engine.trigger_startup_catch_up([older, latest], current_time=now)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result[0].title, "Most Recent Event")
+        self.assertEqual(result[1], 0)
+        self.assertEqual(len(triggered_events), 1)
+        self.assertIsNone(self.engine.trigger_startup_catch_up([older, latest], current_time=now))
+
+    def test_startup_catch_up_skips_event_with_existing_banner(self):
+        now = datetime(2026, 8, 22, 12, 0, 0, tzinfo=timezone.utc)
+        meeting = Meeting(title="Already Shown", start_time=now - timedelta(minutes=20))
+        self.engine._add_notified_key(f"{meeting.id}_{int(meeting.start_time.timestamp())}_stage_0")
+
+        self.assertIsNone(self.engine.trigger_startup_catch_up([meeting], current_time=now))
+
+    def test_startup_catch_up_uses_missed_travel_departure(self):
+        now = datetime(2026, 8, 22, 12, 0, 0, tzinfo=timezone.utc)
+        travel = Meeting(
+            title="Train to campus",
+            start_time=now + timedelta(minutes=30),
+            departure_time=now - timedelta(minutes=10),
+            is_travel=True,
+        )
+
+        result = self.engine.trigger_startup_catch_up([travel], current_time=now)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result[0].title, "Train to campus")
+        self.assertEqual(result[1], 0)
+
     def test_all_day_event_is_skipped(self):
         now = datetime(2026, 8, 22, 12, 0, 0, tzinfo=timezone.utc)
         meeting = Meeting(

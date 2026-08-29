@@ -20,6 +20,7 @@ except ImportError:
 from core.services.config_service import config
 from core.services.eta_service import MODE_ICONS, MODE_LABELS
 from core.domain.models import format_duration
+from ui.linux.theme import Theme
 from .renderers import get_pilot_renderer
 
 
@@ -303,54 +304,47 @@ class QtDuckBannerWindow(QWidget):
     def _build_theme_palette(self) -> Dict[str, Any]:
         """Returns exact theme palette matching macOS."""
         if self.pilot_type == "chef":
-            accent = QColor(255, 112, 97)
-            accent_bright = QColor(255, 158, 122)
-            btn_gradient_top = QColor(255, 122, 97)
-            btn_gradient_bot = QColor(235, 77, 56)
-            card_tint = QColor(33, 20, 20, 242)
+            accent = Theme.PEACH
+            accent_bright = Theme.YELLOW
+            btn_gradient_top = Theme.PEACH
+            btn_gradient_bot = Theme.MAROON
         elif self.pilot_type == "captain":
-            accent = QColor(97, 173, 255)
-            accent_bright = QColor(148, 209, 255)
-            btn_gradient_top = QColor(97, 173, 255)
-            btn_gradient_bot = QColor(46, 115, 230)
-            card_tint = QColor(18, 23, 36, 242)
+            accent = Theme.SAPPHIRE
+            accent_bright = Theme.SKY
+            btn_gradient_top = Theme.SAPPHIRE
+            btn_gradient_bot = Theme.BLUE
         elif self.pilot_type == "owl":
-            accent = QColor(194, 133, 255)
-            accent_bright = QColor(224, 173, 255)
-            btn_gradient_top = QColor(191, 128, 250)
-            btn_gradient_bot = QColor(140, 77, 209)
-            card_tint = QColor(26, 18, 36, 242)
+            accent = Theme.MAUVE
+            accent_bright = Theme.LAVENDER
+            btn_gradient_top = Theme.MAUVE
+            btn_gradient_bot = Theme.LAVENDER
         elif self.pilot_type == "driver":
-            accent = QColor(56, 217, 148)
-            accent_bright = QColor(107, 242, 184)
-            btn_gradient_top = QColor(61, 219, 148)
-            btn_gradient_bot = QColor(26, 166, 102)
-            card_tint = QColor(15, 31, 23, 242)
+            accent = Theme.YELLOW
+            accent_bright = Theme.PEACH
+            btn_gradient_top = Theme.YELLOW
+            btn_gradient_bot = Theme.PEACH
         elif self.pilot_type == "zen_duck":
-            accent = QColor(71, 224, 209)
-            accent_bright = QColor(122, 245, 230)
-            btn_gradient_top = QColor(71, 224, 209)
-            btn_gradient_bot = QColor(31, 173, 158)
-            card_tint = QColor(15, 28, 31, 242)
+            accent = Theme.TEAL
+            accent_bright = Theme.SKY
+            btn_gradient_top = Theme.TEAL
+            btn_gradient_bot = Theme.SKY
         elif self.pilot_type == "gym":
-            accent = QColor(255, 97, 46)
-            accent_bright = QColor(255, 148, 71)
-            btn_gradient_top = QColor(255, 102, 41)
-            btn_gradient_bot = QColor(217, 51, 20)
-            card_tint = QColor(36, 18, 15, 242)
+            accent = Theme.RED
+            accent_bright = Theme.MAROON
+            btn_gradient_top = Theme.RED
+            btn_gradient_bot = Theme.MAROON
         else:
-            accent = QColor(255, 194, 71)
-            accent_bright = QColor(255, 224, 115)
-            btn_gradient_top = QColor(255, 194, 71)
-            btn_gradient_bot = QColor(235, 143, 31)
-            card_tint = QColor(31, 26, 15, 242)
+            accent = Theme.GREEN
+            accent_bright = Theme.TEAL
+            btn_gradient_top = Theme.GREEN
+            btn_gradient_bot = Theme.TEAL
 
         return {
             "accent": accent,
             "accent_bright": accent_bright,
             "btn_gradient_top": btn_gradient_top,
             "btn_gradient_bot": btn_gradient_bot,
-            "card_tint": card_tint
+            "card_tint": Theme.BASE
         }
 
     def _get_button_rects(self, bx: float, by: float) -> Dict[str, QRectF]:

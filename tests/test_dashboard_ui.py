@@ -65,6 +65,21 @@ class TestDashboardUI(unittest.TestCase):
         self.assertGreater(menu_bar.menu.numberOfItems(), 0)
 
     @unittest.skipIf(sys.platform != "darwin", "macOS specific UI tests")
+    def test_reminder_event_payload_shows_banner(self):
+        """The EventBus payload includes event_dict as well as meeting/stage."""
+        from ui.macos.menu_bar_app import QuakMeetingMenuBar
+        from unittest.mock import patch
+
+        payload = {"title": "Banner regression test", "reminder_stage": 0}
+
+        with patch("ui.macos.menu_bar_app.show_banner_async") as show_banner:
+            QuakMeetingMenuBar._on_reminder_triggered(
+                object(), meeting=None, stage=0, event_dict=payload
+            )
+
+        show_banner.assert_called_once_with(payload)
+
+    @unittest.skipIf(sys.platform != "darwin", "macOS specific UI tests")
     def test_show_dashboard_accepts_tab_index(self):
         from ui.macos.dashboard_window import show_dashboard
         # Ensure show_dashboard accepts positional tab_index parameters (0, 1, 2, None)

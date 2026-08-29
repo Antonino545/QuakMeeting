@@ -1,2 +1,7 @@
-Please refer directly to [.docs/PROJECT_GUIDE.md](.docs/PROJECT_GUIDE.md) for the complete architecture overview, design rules, and the mandatory 4-step development workflow (test, build, restart, verify).
-Do NOT automatically commit changes; only commit when explicitly requested by the user.
+# QuakMeeting Agent Instructions
+
+Read [.agents/rules/quakmeeting_workflow.md](.agents/rules/quakmeeting_workflow.md) before making changes. It is the project’s required operating guide, including architecture boundaries, reminder invariants, and the platform-specific test/build/restart/verification workflow.
+
+For broader reference, use [docs/PROJECT_GUIDE.md](docs/PROJECT_GUIDE.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), and [docs/CONFIGURATION.md](docs/CONFIGURATION.md).
+
+Do not automatically commit changes. Commit only when the user explicitly requests it, and ensure all unit tests pass and documentation in `docs/` is updated for any architectural changes before committing.

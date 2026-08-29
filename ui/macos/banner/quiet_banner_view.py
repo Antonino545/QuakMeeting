@@ -1,6 +1,10 @@
 import AppKit
 import objc
 from datetime import datetime
+try:
+    from ui.macos.theme import Theme
+except ImportError:
+    from theme import Theme
 
 class QuietReminderView(AppKit.NSView):
     def initWithFrame_meetingData_controller_(self, frame, meeting_data, controller):
@@ -53,24 +57,22 @@ class QuietReminderView(AppKit.NSView):
         pass
 
     def drawRect_(self, dirtyRect):
-        ctx = AppKit.NSGraphicsContext.currentContext().CGContext()
         rect = self.bounds()
-
         path = AppKit.NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(rect, 14.0, 14.0)
 
         if self.hovered:
-            AppKit.NSColor.colorWithCalibratedRed_green_blue_alpha_(0.12, 0.14, 0.22, 0.96).setFill()
+            Theme.SURFACE0.setFill()
         else:
-            AppKit.NSColor.colorWithCalibratedRed_green_blue_alpha_(0.08, 0.09, 0.15, 0.94).setFill()
+            Theme.BASE.setFill()
 
         path.fill()
 
         # Draw border
         if self.is_update:
-            AppKit.NSColor.colorWithCalibratedRed_green_blue_alpha_(0.22, 0.74, 0.97, 0.5).setStroke()
+            Theme.SAPPHIRE.setStroke()
             path.setLineWidth_(1.5)
         else:
-            AppKit.NSColor.colorWithCalibratedWhite_alpha_(1.0, 0.2).setStroke()
+            Theme.SURFACE1.setStroke()
             path.setLineWidth_(1.0)
         path.stroke()
 
@@ -83,7 +85,7 @@ class QuietReminderView(AppKit.NSView):
         # Draw title
         title_attrs = {
             AppKit.NSFontAttributeName: AppKit.NSFont.boldSystemFontOfSize_(14),
-            AppKit.NSForegroundColorAttributeName: AppKit.NSColor.whiteColor()
+            AppKit.NSForegroundColorAttributeName: Theme.TEXT
         }
         title_str = AppKit.NSString.stringWithString_(self.title)
         title_str.drawAtPoint_withAttributes_(AppKit.NSMakePoint(58, rect.size.height - 28), title_attrs)
@@ -91,13 +93,13 @@ class QuietReminderView(AppKit.NSView):
         # Draw subtitle
         sub_attrs = {
             AppKit.NSFontAttributeName: AppKit.NSFont.systemFontOfSize_(12),
-            AppKit.NSForegroundColorAttributeName: AppKit.NSColor.colorWithCalibratedRed_green_blue_alpha_(0.58, 0.74, 0.97, 1.0) if self.is_update else AppKit.NSColor.colorWithCalibratedWhite_alpha_(0.8, 1.0)
+            AppKit.NSForegroundColorAttributeName: Theme.SAPPHIRE if self.is_update else Theme.SUBTEXT0
         }
         if self.is_update:
             subtitle = "⚡ Click to download & install update"
         elif self.stage == 0:
             subtitle = f"Starts NOW at {self.time_str}"
         else:
-            subtitle = f"Starts in {self.stage}m (at {self.time_str})"
+            subtitle = f"In {self.stage} minutes • {self.time_str}"
         sub_str = AppKit.NSString.stringWithString_(subtitle)
-        sub_str.drawAtPoint_withAttributes_(AppKit.NSMakePoint(58, rect.size.height - 48), sub_attrs)
+        sub_str.drawAtPoint_withAttributes_(AppKit.NSMakePoint(58, 12), sub_attrs)

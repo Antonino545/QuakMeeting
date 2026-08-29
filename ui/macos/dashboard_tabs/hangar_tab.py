@@ -4,8 +4,10 @@ from datetime import datetime
 
 try:
     from ui.macos.banner_window import _run_banner
+    from ui.macos.theme import Theme
 except ImportError:
     from banner_window import _run_banner
+    from theme import Theme
 
 class HangarTabController(AppKit.NSObject):
     def init(self):
@@ -51,16 +53,16 @@ class HangarTabController(AppKit.NSObject):
     def _create_pilot_card(self, p_id, p_name, p_desc, p_theme, p_action, x, y, w, h):
         card = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(x, y, w, h))
         card.setWantsLayer_(True)
-        card.layer().setBackgroundColor_(AppKit.NSColor.colorWithWhite_alpha_(1.0, 0.08).CGColor())
-        card.layer().setCornerRadius_(14.0)
+        card.layer().setBackgroundColor_(Theme.BASE.CGColor())
+        card.layer().setCornerRadius_(12.0)
         card.layer().setMasksToBounds_(True)
         card.layer().setBorderWidth_(1.0)
-        card.layer().setBorderColor_(AppKit.NSColor.colorWithWhite_alpha_(1.0, 0.15).CGColor())
+        card.layer().setBorderColor_(Theme.SURFACE0.CGColor())
 
         title_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(20, h - 38, w - 210, 26))
         title_lbl.setStringValue_(p_name)
         title_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(15))
-        title_lbl.setTextColor_(AppKit.NSColor.whiteColor())
+        title_lbl.setTextColor_(Theme.TEXT)
         title_lbl.setBezeled_(False)
         title_lbl.setDrawsBackground_(False)
         title_lbl.setEditable_(False)
@@ -69,7 +71,7 @@ class HangarTabController(AppKit.NSObject):
         desc_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(20, h - 70, w - 210, 32))
         desc_lbl.setStringValue_(p_desc)
         desc_lbl.setFont_(AppKit.NSFont.systemFontOfSize_(12))
-        desc_lbl.setTextColor_(AppKit.NSColor.colorWithRed_green_blue_alpha_(0.72, 0.76, 0.88, 1.0))
+        desc_lbl.setTextColor_(Theme.SUBTEXT0)
         desc_lbl.setBezeled_(False)
         desc_lbl.setDrawsBackground_(False)
         desc_lbl.setEditable_(False)
@@ -78,16 +80,26 @@ class HangarTabController(AppKit.NSObject):
         tag_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(20, 12, 180, 20))
         tag_lbl.setStringValue_(f"🎨 Theme: {p_theme}")
         tag_lbl.setFont_(AppKit.NSFont.systemFontOfSize_(11))
-        tag_lbl.setTextColor_(AppKit.NSColor.colorWithRed_green_blue_alpha_(0.55, 0.60, 0.75, 1.0))
+        tag_lbl.setTextColor_(Theme.SUBTEXT1)
         tag_lbl.setBezeled_(False)
         tag_lbl.setDrawsBackground_(False)
         tag_lbl.setEditable_(False)
         card.addSubview_(tag_lbl)
 
+        color_map = {
+            "duck": Theme.GREEN,
+            "chef": Theme.PEACH,
+            "captain": Theme.SAPPHIRE,
+            "owl": Theme.MAUVE,
+            "gym": Theme.RED,
+            "driver": Theme.YELLOW,
+            "zen_duck": Theme.TEAL
+        }
+        btn_accent = color_map.get(p_id, Theme.GREEN)
+
         test_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(w - 180, (h - 38) * 0.5, 160, 38))
         test_btn.setTitle_("🚀 Test Flight")
-        test_btn.setBezelStyle_(AppKit.NSBezelStyleRounded)
-        test_btn.setFont_(AppKit.NSFont.boldSystemFontOfSize_(13))
+        Theme.style_button(test_btn, bg_color=btn_accent, text_color=Theme.CRUST, border_color=None, corner_radius=8.0, font_size=13.0, bold=True)
         test_btn.setTarget_(self)
         test_btn.setAction_(p_action.__name__.rstrip('_') + ":")
         card.addSubview_(test_btn)
