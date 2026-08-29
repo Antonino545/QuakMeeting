@@ -391,6 +391,7 @@ class QtFlightDeckWindow(QMainWindow):
                     c = set(config.get(k, []))
                     if checked: c.add(v)
                     else: c.discard(v)
+                    c.add(0)
                     config.set(k, sorted(list(c), reverse=True))
                 chk.toggled.connect(_toggled)
                 btn_layout.addWidget(chk)
@@ -399,24 +400,24 @@ class QtFlightDeckWindow(QMainWindow):
             row_layout.addLayout(btn_layout)
             return row_layout
 
-        meeting_opts = [(30, "30m"), (20, "20m"), (15, "15m"), (10, "10m"), (5, "5m"), (2, "2m"), (0, "0m Start")]
-        travel_opts = [(60, "60m"), (45, "45m"), (30, "30m"), (15, "15m"), (5, "5m"), (2, "2m"), (0, "0m Leave")]
+        meeting_opts = [(30, "30m"), (20, "20m"), (15, "15m"), (10, "10m"), (5, "5m"), (2, "2m")]
+        travel_opts = [(60, "60m"), (45, "45m"), (30, "30m"), (15, "15m"), (5, "5m"), (2, "2m")]
 
-        tc_layout.addLayout(create_stage_row("📹 Video Meetings", "Alert ahead of meeting start time", "meeting_reminder_stages", meeting_opts))
+        tc_layout.addLayout(create_stage_row("📹 Video Meetings", "Alert ahead of meeting start (0m is always on)", "meeting_reminder_stages", meeting_opts))
 
         tc_div1 = QFrame(timing_card)
         tc_div1.setFixedHeight(1)
         tc_div1.setStyleSheet("background-color: #313244;")
         tc_layout.addWidget(tc_div1)
 
-        tc_layout.addLayout(create_stage_row("📅 General Events", "Alert ahead of start time (non-travel)", "general_reminder_stages", meeting_opts))
+        tc_layout.addLayout(create_stage_row("📅 General Events", "Alert ahead of start time (0m is always on)", "general_reminder_stages", meeting_opts))
 
         tc_div2 = QFrame(timing_card)
         tc_div2.setFixedHeight(1)
         tc_div2.setStyleSheet("background-color: #313244;")
         tc_layout.addWidget(tc_div2)
 
-        tc_layout.addLayout(create_stage_row("🚗 Travel & Trips", "Alert ahead of leave / departure time", "travel_reminder_stages", travel_opts))
+        tc_layout.addLayout(create_stage_row("🚗 Travel & Trips", "Alert ahead of leave time (0m is always on)", "travel_reminder_stages", travel_opts))
 
         pref_layout.addWidget(timing_card)
 

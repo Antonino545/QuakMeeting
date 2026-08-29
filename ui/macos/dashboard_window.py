@@ -22,6 +22,7 @@ try:
     from ui.macos.dashboard_tabs.agenda_tab import AgendaTabController
     from ui.macos.dashboard_tabs.hangar_tab import HangarTabController
     from ui.macos.dashboard_tabs.settings_tab import SettingsTabController
+    from ui.macos.theme import Theme
 except ImportError:
     from config_manager import config
     from calendar_scanner import get_upcoming_meetings, sync_calendar_now, get_available_calendars
@@ -33,6 +34,7 @@ except ImportError:
     from dashboard_tabs.agenda_tab import AgendaTabController
     from dashboard_tabs.hangar_tab import HangarTabController
     from dashboard_tabs.settings_tab import SettingsTabController
+    from theme import Theme
 
 class DashboardWindowDelegate(AppKit.NSObject):
     def init(self):
@@ -103,7 +105,7 @@ class DashboardWindowController(AppKit.NSObject):
         self.refresh_data()
 
     def _create_window(self):
-        width, height = 820.0, 580.0
+        width, height = 830.0, 610.0
         screen = AppKit.NSScreen.mainScreen()
         screen_rect = screen.frame() if screen else AppKit.NSMakeRect(0, 0, 1440, 900)
         x_pos = (screen_rect.size.width - width) * 0.5
@@ -132,44 +134,71 @@ class DashboardWindowController(AppKit.NSObject):
         self.delegate.controller = self
         self.window.setDelegate_(self.delegate)
 
-        visual_view = AppKit.NSVisualEffectView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 0, width, height))
-        visual_view.setMaterial_(AppKit.NSVisualEffectMaterialPopover)
-        visual_view.setAppearance_(AppKit.NSAppearance.appearanceNamed_(AppKit.NSAppearanceNameVibrantDark))
-        visual_view.setBlendingMode_(AppKit.NSVisualEffectBlendingModeBehindWindow)
-        visual_view.setState_(AppKit.NSVisualEffectStateActive)
-        visual_view.setAutoresizingMask_(AppKit.NSViewWidthSizable | AppKit.NSViewHeightSizable)
-        self.window.setContentView_(visual_view)
+        root_view = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 0, width, height))
+        root_view.setWantsLayer_(True)
+        root_view.layer().setBackgroundColor_(Theme.CRUST.CGColor())
+        root_view.layer().setCornerRadius_(16.0)
+        root_view.layer().setMasksToBounds_(True)
+        root_view.layer().setBorderWidth_(1.0)
+        root_view.layer().setBorderColor_(Theme.SURFACE0.CGColor())
+        root_view.setAutoresizingMask_(AppKit.NSViewWidthSizable | AppKit.NSViewHeightSizable)
+        self.window.setContentView_(root_view)
 
-        self._build_header(visual_view, width, height)
-        self._build_tab_selector(visual_view, width, height)
+        self._build_header(root_view, width, height)
+        self._build_tab_selector(root_view, width, height)
 
-        self.content_container = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(20, 20, width - 40, height - 150))
+        self.content_container = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(20, 20, width - 40, height - 192))
         self.content_container.setAutoresizingMask_(AppKit.NSViewWidthSizable | AppKit.NSViewHeightSizable)
-        visual_view.addSubview_(self.content_container)
+        root_view.addSubview_(self.content_container)
 
     def _build_header(self, parent, w, h):
-        header_view = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(20, h - 85, w - 40, 75))
-        icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "icon.png")
-        if os.path.exists(icon_path):
+        header_view = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(20, h - 116, w - 40, 74))
+        header_view.setWantsLayer_(True)
+        header_view.layer().setBackgroundColor_(Theme.MANTLE.CGColor())
+        header_view.layer().setCornerRadius_(12.0)
+        header_view.layer().setMasksToBounds_(True)
+        header_view.layer().setBorderWidth_(1.0)
+        header_view.layer().setBorderColor_(Theme.SURFACE0.CGColor())
+
+        candidates = [
+            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "assets", "icon.png"),
+            os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "icon.png"),
+            os.path.join(os.getcwd(), "assets", "icon.png"),
+        ]
+        if AppKit.NSBundle.mainBundle().resourcePath():
+            candidates.insert(0, os.path.join(AppKit.NSBundle.mainBundle().resourcePath(), "assets", "icon.png"))
+            candidates.insert(0, os.path.join(AppKit.NSBundle.mainBundle().resourcePath(), "icon.png"))
+
+        icon_path = next((p for p in candidates if os.path.exists(p)), None)
+        if icon_path:
             icon_img = AppKit.NSImage.alloc().initWithContentsOfFile_(icon_path)
-            icon_view = AppKit.NSImageView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 12, 52, 52))
+            icon_view = AppKit.NSImageView.alloc().initWithFrame_(AppKit.NSMakeRect(14, 11, 52, 52))
             icon_view.setImage_(icon_img)
             header_view.addSubview_(icon_view)
+        else:
+            icon_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(14, 14, 52, 48))
+            icon_lbl.setStringValue_("🦆")
+            icon_lbl.setFont_(AppKit.NSFont.systemFontOfSize_(36))
+            icon_lbl.setBezeled_(False)
+            icon_lbl.setDrawsBackground_(False)
+            icon_lbl.setEditable_(False)
+            icon_lbl.setSelectable_(False)
+            header_view.addSubview_(icon_lbl)
 
-        title_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(62, 34, 350, 30))
-        title_lbl.setStringValue_("🦆 QuakMeeting — Flight Deck")
-        title_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(19))
-        title_lbl.setTextColor_(AppKit.NSColor.whiteColor())
+        title_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(76, 36, 350, 30))
+        title_lbl.setStringValue_("QuakMeeting — Flight Deck")
+        title_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(18))
+        title_lbl.setTextColor_(Theme.TEXT)
         title_lbl.setBezeled_(False)
         title_lbl.setDrawsBackground_(False)
         title_lbl.setEditable_(False)
         title_lbl.setSelectable_(False)
         header_view.addSubview_(title_lbl)
 
-        self.status_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(64, 12, 450, 22))
+        self.status_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(76, 14, 450, 22))
         self.status_lbl.setStringValue_("🟢 Scanner Active  •  Loading events...")
-        self.status_lbl.setFont_(AppKit.NSFont.systemFontOfSize_(12.5))
-        self.status_lbl.setTextColor_(AppKit.NSColor.colorWithRed_green_blue_alpha_(0.65, 0.70, 0.85, 1.0))
+        self.status_lbl.setFont_(AppKit.NSFont.systemFontOfSize_(12.0))
+        self.status_lbl.setTextColor_(Theme.SUBTEXT0)
         self.status_lbl.setBezeled_(False)
         self.status_lbl.setDrawsBackground_(False)
         self.status_lbl.setEditable_(False)
@@ -179,7 +208,7 @@ class DashboardWindowController(AppKit.NSObject):
         self.sync_status_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(w - 330, 28, 150, 20))
         self.sync_status_lbl.setStringValue_("🔄 Pending")
         self.sync_status_lbl.setFont_(AppKit.NSFont.systemFontOfSize_(11.5))
-        self.sync_status_lbl.setTextColor_(AppKit.NSColor.colorWithRed_green_blue_alpha_(0.68, 0.72, 0.85, 1.0))
+        self.sync_status_lbl.setTextColor_(Theme.SUBTEXT1)
         self.sync_status_lbl.setAlignment_(AppKit.NSTextAlignmentRight)
         self.sync_status_lbl.setBezeled_(False)
         self.sync_status_lbl.setDrawsBackground_(False)
@@ -198,7 +227,7 @@ class DashboardWindowController(AppKit.NSObject):
         parent.addSubview_(header_view)
 
     def _build_tab_selector(self, parent, w, h):
-        self.tab_segmented = AppKit.NSSegmentedControl.alloc().initWithFrame_(AppKit.NSMakeRect(20, h - 130, w - 40, 32))
+        self.tab_segmented = AppKit.NSSegmentedControl.alloc().initWithFrame_(AppKit.NSMakeRect(20, h - 160, w - 40, 32))
         self.tab_segmented.setSegmentCount_(3)
         self.tab_segmented.setLabel_forSegment_("📅 Today's Agenda", 0)
         self.tab_segmented.setLabel_forSegment_("🦆 Pilot Hangar", 1)

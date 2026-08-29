@@ -17,6 +17,10 @@ from core.services.config_service import config
 from core.services.eta_service import MODE_ICONS, MODE_LABELS
 from core.domain.models import format_duration
 from .renderers import get_pilot_renderer
+try:
+    from ui.macos.theme import Theme
+except ImportError:
+    from theme import Theme
 
 class QuakPitBannerView(AppKit.NSView):
     def initWithFrame_meetingData_controller_(self, frame, meeting_data, controller):
@@ -126,11 +130,11 @@ class QuakPitBannerView(AppKit.NSView):
         self._font_sub = AppKit.NSFont.systemFontOfSize_(12)
         self._font_bubble = AppKit.NSFont.boldSystemFontOfSize_(10.5)
 
-        self._color_white = AppKit.NSColor.whiteColor()
-        self._color_sub = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.72, 0.76, 0.88, 1.0)
-        self._color_urgent_time = AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.35, 0.35, 1.0)
-        self._color_normal_time = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.96, 0.88, 0.65, 1.0)
-        self._color_arrived = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.30, 0.85, 0.55, 1.0)
+        self._color_white = Theme.TEXT
+        self._color_sub = Theme.SUBTEXT0
+        self._color_urgent_time = Theme.RED
+        self._color_normal_time = Theme.YELLOW
+        self._color_arrived = Theme.GREEN
 
         # Precompute static truncated title
         max_chars = 34
@@ -522,54 +526,47 @@ class QuakPitBannerView(AppKit.NSView):
 
     def _build_theme_palette(self):
         if self.pilot_type == "chef":
-            accent = AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.44, 0.38, 1.0)
-            accent_bright = AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.62, 0.48, 1.0)
-            btn_gradient_top = AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.48, 0.38, 1.0)
-            btn_gradient_bot = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.92, 0.30, 0.22, 1.0)
-            card_tint = (0.13, 0.08, 0.08)
+            accent = Theme.PEACH
+            accent_bright = Theme.YELLOW
+            btn_gradient_top = Theme.PEACH
+            btn_gradient_bot = Theme.MAROON
         elif self.pilot_type == "captain":
-            accent = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.38, 0.68, 1.0, 1.0)
-            accent_bright = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.58, 0.82, 1.0, 1.0)
-            btn_gradient_top = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.38, 0.68, 1.0, 1.0)
-            btn_gradient_bot = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.18, 0.45, 0.90, 1.0)
-            card_tint = (0.07, 0.09, 0.14)
+            accent = Theme.SAPPHIRE
+            accent_bright = Theme.SKY
+            btn_gradient_top = Theme.SAPPHIRE
+            btn_gradient_bot = Theme.BLUE
         elif self.pilot_type == "owl":
-            accent = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.76, 0.52, 1.0, 1.0)
-            accent_bright = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.88, 0.68, 1.0, 1.0)
-            btn_gradient_top = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.75, 0.50, 0.98, 1.0)
-            btn_gradient_bot = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.55, 0.30, 0.82, 1.0)
-            card_tint = (0.10, 0.07, 0.14)
+            accent = Theme.MAUVE
+            accent_bright = Theme.LAVENDER
+            btn_gradient_top = Theme.MAUVE
+            btn_gradient_bot = Theme.LAVENDER
         elif self.pilot_type == "driver":
-            accent = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.22, 0.85, 0.58, 1.0)
-            accent_bright = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.42, 0.95, 0.72, 1.0)
-            btn_gradient_top = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.24, 0.86, 0.58, 1.0)
-            btn_gradient_bot = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.10, 0.65, 0.40, 1.0)
-            card_tint = (0.06, 0.12, 0.09)
+            accent = Theme.YELLOW
+            accent_bright = Theme.PEACH
+            btn_gradient_top = Theme.YELLOW
+            btn_gradient_bot = Theme.PEACH
         elif self.pilot_type == "zen_duck":
-            accent = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.28, 0.88, 0.82, 1.0)
-            accent_bright = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.48, 0.96, 0.90, 1.0)
-            btn_gradient_top = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.28, 0.88, 0.82, 1.0)
-            btn_gradient_bot = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.12, 0.68, 0.62, 1.0)
-            card_tint = (0.06, 0.11, 0.12)
+            accent = Theme.TEAL
+            accent_bright = Theme.SKY
+            btn_gradient_top = Theme.TEAL
+            btn_gradient_bot = Theme.SKY
         elif self.pilot_type == "gym":
-            accent = AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.38, 0.18, 1.0)
-            accent_bright = AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.58, 0.28, 1.0)
-            btn_gradient_top = AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.40, 0.16, 1.0)
-            btn_gradient_bot = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.85, 0.20, 0.08, 1.0)
-            card_tint = (0.14, 0.07, 0.06)
+            accent = Theme.RED
+            accent_bright = Theme.MAROON
+            btn_gradient_top = Theme.RED
+            btn_gradient_bot = Theme.MAROON
         else:
-            accent = AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.76, 0.28, 1.0)
-            accent_bright = AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.88, 0.45, 1.0)
-            btn_gradient_top = AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.76, 0.28, 1.0)
-            btn_gradient_bot = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.92, 0.56, 0.12, 1.0)
-            card_tint = (0.12, 0.10, 0.06)
+            accent = Theme.GREEN
+            accent_bright = Theme.TEAL
+            btn_gradient_top = Theme.GREEN
+            btn_gradient_bot = Theme.TEAL
 
         return {
             "accent": accent,
             "accent_bright": accent_bright,
             "btn_gradient_top": btn_gradient_top,
             "btn_gradient_bot": btn_gradient_bot,
-            "card_tint": card_tint
+            "card_tint": Theme.BASE
         }
 
     def drawRect_(self, rect):
@@ -624,7 +621,7 @@ class QuakPitBannerView(AppKit.NSView):
         # 3. Towing Cables
         self._draw_towing_cables(banner_x, banner_y, banner_w, banner_h, plane_x, plane_y)
 
-        # 4. Card HUD
+        # 4. Card HUD (Solid Catppuccin Base)
         self._draw_glass_banner_card(banner_x, banner_y, banner_w, banner_h, palette)
 
         # 5. Provider Pill & Classroom Badge
@@ -649,7 +646,7 @@ class QuakPitBannerView(AppKit.NSView):
         self._draw_pilot_speech_bubble(plane_x, plane_y)
 
     def _draw_towing_cables(self, bx, by, bw, bh, px, py):
-        cable_col = AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.40, 0.35, 0.65) if self.is_late else AppKit.NSColor.colorWithWhite_alpha_(0.85, 0.42)
+        cable_col = Theme.RED.colorWithAlphaComponent_(0.75) if self.is_late else Theme.SUBTEXT1.colorWithAlphaComponent_(0.45)
         cable_col.set()
 
         cable_top = AppKit.NSBezierPath.bezierPath()
@@ -676,21 +673,19 @@ class QuakPitBannerView(AppKit.NSView):
 
     def _draw_glass_banner_card(self, bx, by, bw, bh, palette):
         card_rect = AppKit.NSMakeRect(bx, by, bw, bh)
-        card_path = AppKit.NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(card_rect, 18.0, 18.0)
+        card_path = AppKit.NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(card_rect, 16.0, 16.0)
 
-        # Frosted glass dark base
-        tint = palette["card_tint"]
-        bg_col = AppKit.NSColor.colorWithRed_green_blue_alpha_(tint[0], tint[1], tint[2], 0.95)
-        bg_col.set()
+        # Solid Catppuccin Base
+        Theme.BASE.set()
         card_path.fill()
 
-        # Subtle rim highlight / Emergency red pulse when late
+        # Subtle rim border / Emergency red pulse when late
         if self.is_late:
             pulse = math.sin(self.tick * 0.15) * 0.3 + 0.7
-            border_col = AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.30, 0.30, pulse)
+            border_col = Theme.RED.colorWithAlphaComponent_(pulse)
             card_path.setLineWidth_(1.8)
         else:
-            border_col = AppKit.NSColor.colorWithWhite_alpha_(1.0, 0.16)
+            border_col = Theme.SURFACE0
             card_path.setLineWidth_(1.0)
 
         border_col.set()
@@ -727,7 +722,7 @@ class QuakPitBannerView(AppKit.NSView):
         if self.classroom:
             c_attrs = {
                 AppKit.NSFontAttributeName: self._font_pill,
-                AppKit.NSForegroundColorAttributeName: AppKit.NSColor.colorWithRed_green_blue_alpha_(0.88, 0.72, 1.0, 1.0)
+                AppKit.NSForegroundColorAttributeName: Theme.MAUVE
             }
             c_str = AppKit.NSString.stringWithString_(f"🏫 {self.classroom}")
             c_size = c_str.sizeWithAttributes_(c_attrs)
@@ -735,9 +730,9 @@ class QuakPitBannerView(AppKit.NSView):
             c_pill_rect = AppKit.NSMakeRect(c_pill_x, pill_y, c_size.width + 14.0, pill_h)
             c_path = AppKit.NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(c_pill_rect, 10.0, 10.0)
 
-            AppKit.NSColor.colorWithRed_green_blue_alpha_(0.35, 0.20, 0.55, 0.65).set()
+            Theme.MAUVE.colorWithAlphaComponent_(0.15).set()
             c_path.fill()
-            AppKit.NSColor.colorWithRed_green_blue_alpha_(0.75, 0.55, 0.95, 0.65).set()
+            Theme.MAUVE.colorWithAlphaComponent_(0.45).set()
             c_path.setLineWidth_(1.0)
             c_path.stroke()
 
@@ -765,7 +760,7 @@ class QuakPitBannerView(AppKit.NSView):
         pill_rect = AppKit.NSMakeRect(pill_x, pill_y, pill_w, pill_h)
         pill_path = AppKit.NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(pill_rect, 10.0, 10.0)
 
-        bg_col = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.26, 0.08, 0.08, 0.88) if is_urgent else AppKit.NSColor.colorWithRed_green_blue_alpha_(0.15, 0.16, 0.24, 0.85)
+        bg_col = Theme.RED.colorWithAlphaComponent_(0.20) if is_urgent else Theme.MANTLE
         bg_col.set()
         pill_path.fill()
 
@@ -785,23 +780,23 @@ class QuakPitBannerView(AppKit.NSView):
         btn_path = AppKit.NSBezierPath.bezierPathWithOvalInRect_(btn_rect)
 
         if is_pressed:
-            fill_col = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.42, 0.44, 0.58, 1.0)
+            fill_col = Theme.SURFACE1
         elif is_hovered:
-            fill_col = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.30, 0.32, 0.44, 1.0)
+            fill_col = Theme.SURFACE0
         else:
-            fill_col = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.18, 0.20, 0.28, 0.85)
+            fill_col = Theme.MANTLE
 
         fill_col.set()
         btn_path.fill()
 
-        border_col = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.50, 0.55, 0.70, 0.65)
+        border_col = Theme.SURFACE1
         border_col.set()
         btn_path.setLineWidth_(1.0)
         btn_path.stroke()
 
         close_attrs = {
             AppKit.NSFontAttributeName: self._font_btn_sec,
-            AppKit.NSForegroundColorAttributeName: self._color_white
+            AppKit.NSForegroundColorAttributeName: Theme.TEXT if is_hovered else Theme.SUBTEXT0
         }
         AppKit.NSString.stringWithString_("✕").drawAtPoint_withAttributes_(
             AppKit.NSMakePoint(btn_rect.origin.x + 7.0, btn_rect.origin.y + 4.0),
@@ -833,9 +828,8 @@ class QuakPitBannerView(AppKit.NSView):
         btn_act_path = AppKit.NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(btn_act_rect, 9.0, 9.0)
 
         if not self.has_real_url:
-            # Render as "✅ Got it" acknowledge button (blue tint)
-            top_c = AppKit.NSColor.colorWithSRGBRed_green_blue_alpha_(0.1, 0.6, 0.7, 1.0)
-            bot_c = AppKit.NSColor.colorWithSRGBRed_green_blue_alpha_(0.0, 0.4, 0.5, 1.0)
+            top_c = Theme.SAPPHIRE
+            bot_c = Theme.BLUE
             btn_text = "✅ Got it"
         else:
             top_c = palette["btn_gradient_top"]
@@ -845,7 +839,7 @@ class QuakPitBannerView(AppKit.NSView):
         if is_pressed_act:
             grad = AppKit.NSGradient.alloc().initWithStartingColor_endingColor_(bot_c, top_c)
         elif is_hovered_act:
-            hover_color = AppKit.NSColor.colorWithSRGBRed_green_blue_alpha_(0.2, 0.8, 0.9, 1.0) if not self.has_real_url else palette["accent_bright"]
+            hover_color = Theme.SKY if not self.has_real_url else palette["accent_bright"]
             grad = AppKit.NSGradient.alloc().initWithStartingColor_endingColor_(hover_color, bot_c)
         else:
             grad = AppKit.NSGradient.alloc().initWithStartingColor_endingColor_(top_c, bot_c)
@@ -854,7 +848,7 @@ class QuakPitBannerView(AppKit.NSView):
 
         btn_attrs = {
             AppKit.NSFontAttributeName: self._font_btn,
-            AppKit.NSForegroundColorAttributeName: self._color_white
+            AppKit.NSForegroundColorAttributeName: Theme.CRUST
         }
         ns_btn_str = AppKit.NSString.stringWithString_(btn_text)
         str_size = ns_btn_str.sizeWithAttributes_(btn_attrs)
@@ -873,16 +867,16 @@ class QuakPitBannerView(AppKit.NSView):
             btn_arr_path = AppKit.NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(btn_arr_rect, 9.0, 9.0)
 
             if is_pressed_arr:
-                arr_fill = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.15, 0.45, 0.28, 0.95)
+                arr_fill = Theme.SURFACE1
             elif is_hovered_arr:
-                arr_fill = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.12, 0.38, 0.22, 0.90)
+                arr_fill = Theme.SURFACE0
             else:
-                arr_fill = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.08, 0.25, 0.16, 0.85)
+                arr_fill = Theme.MANTLE
 
             arr_fill.set()
             btn_arr_path.fill()
 
-            arr_border = self._color_arrived.colorWithAlphaComponent_(0.45)
+            arr_border = self._color_arrived.colorWithAlphaComponent_(0.50)
             arr_border.set()
             btn_arr_path.setLineWidth_(1.0)
             btn_arr_path.stroke()
@@ -907,25 +901,23 @@ class QuakPitBannerView(AppKit.NSView):
             path = AppKit.NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(rect, 9.0, 9.0)
 
             if is_stage_zero:
-                # "✅ Got it" styling
                 if is_pressed:
-                    fill = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.18, 0.40, 0.65, 0.95)
+                    fill = Theme.SURFACE1
                 elif is_hovered:
-                    fill = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.15, 0.48, 0.80, 0.90)
+                    fill = Theme.SURFACE0
                 else:
-                    fill = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.10, 0.30, 0.55, 0.85)
-                border = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.30, 0.65, 1.0, 0.50)
-                txt_col = AppKit.NSColor.whiteColor()
+                    fill = Theme.MANTLE
+                border = Theme.SAPPHIRE.colorWithAlphaComponent_(0.50)
+                txt_col = Theme.SAPPHIRE
             else:
-                # "💤 Snooze" styling
                 if is_pressed:
-                    fill = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.30, 0.32, 0.44, 0.95)
+                    fill = Theme.SURFACE1
                 elif is_hovered:
-                    fill = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.22, 0.25, 0.36, 0.90)
+                    fill = Theme.SURFACE0
                 else:
-                    fill = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.15, 0.17, 0.25, 0.85)
-                border = AppKit.NSColor.colorWithWhite_alpha_(1.0, 0.16)
-                txt_col = self._color_sub
+                    fill = Theme.MANTLE
+                border = Theme.SURFACE1
+                txt_col = Theme.TEXT if is_hovered else self._color_sub
 
             fill.set()
             path.fill()
@@ -957,7 +949,7 @@ class QuakPitBannerView(AppKit.NSView):
 
         bubble_attrs = {
             AppKit.NSFontAttributeName: self._font_bubble,
-            AppKit.NSForegroundColorAttributeName: AppKit.NSColor.whiteColor()
+            AppKit.NSForegroundColorAttributeName: Theme.CRUST if self.is_late else Theme.TEXT
         }
         ns_str = AppKit.NSString.stringWithString_(text)
         text_size = ns_str.sizeWithAttributes_(bubble_attrs)
@@ -979,19 +971,19 @@ class QuakPitBannerView(AppKit.NSView):
         tail_path.closePath()
 
         if self.is_late:
-            bg_col = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.85, 0.16, 0.16, 0.95)
-            border_col = AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.45, 0.45, 1.0)
+            bg_col = Theme.RED
+            border_col = Theme.MAROON
         else:
-            bg_col = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.14, 0.16, 0.24, 0.92)
-            border_col = AppKit.NSColor.colorWithWhite_alpha_(1.0, 0.25)
+            bg_col = Theme.MANTLE
+            border_col = Theme.SURFACE1
 
         bg_col.set()
         bubble_path.fill()
         tail_path.fill()
 
         border_col.set()
-        bubble_path.setLineWidth_(1.2)
+        bubble_path.setLineWidth_(1.0)
         bubble_path.stroke()
 
-        text_pt = AppKit.NSMakePoint(bx + 10.0, by + 5.0)
+        text_pt = AppKit.NSMakePoint(bx + 10.0, by + 5.5)
         ns_str.drawAtPoint_withAttributes_(text_pt, bubble_attrs)
