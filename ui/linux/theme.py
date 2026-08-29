@@ -1,33 +1,41 @@
 from PyQt6.QtGui import QColor
+from ui.common.theme import CatppuccinMocha, PILOT_THEME_COLORS
 
 class Theme:
-    # Catppuccin Mocha Colors
-    CRUST = QColor("#11111b")
-    MANTLE = QColor("#181825")
-    BASE = QColor("#1e1e2e")
-    SURFACE0 = QColor("#313244")
-    SURFACE1 = QColor("#45475a")
-    SURFACE2 = QColor("#585b70")
-    
-    TEXT = QColor("#cdd6f4")
-    SUBTEXT1 = QColor("#bac2de")
-    SUBTEXT0 = QColor("#a6adc8")
-    OVERLAY2 = QColor("#9399b2")
-    OVERLAY1 = QColor("#7f849c")
-    OVERLAY0 = QColor("#6c7086")
-    
-    MAUVE = QColor("#cba6f7")
-    BLUE = QColor("#89b4fa")
-    SAPPHIRE = QColor("#74c7ec")
-    SKY = QColor("#89dceb")
-    TEAL = QColor("#94e2d5")
-    GREEN = QColor("#a6e3a1")
-    YELLOW = QColor("#f9e2af")
-    PEACH = QColor("#fab387")
-    MAROON = QColor("#eba0ac")
-    RED = QColor("#f38ba8")
-    FLAMINGO = QColor("#f2cdcd")
-    ROSEWATER = QColor("#f5e0dc")
+    """Catppuccin Mocha Color Palette for Linux PyQt6."""
+    # Dark Base Surfaces
+    CRUST = QColor(CatppuccinMocha.CRUST_HEX)
+    MANTLE = QColor(CatppuccinMocha.MANTLE_HEX)
+    BASE = QColor(CatppuccinMocha.BASE_HEX)
+    SURFACE0 = QColor(CatppuccinMocha.SURFACE0_HEX)
+    SURFACE1 = QColor(CatppuccinMocha.SURFACE1_HEX)
+    SURFACE2 = QColor(CatppuccinMocha.SURFACE2_HEX)
+    OVERLAY0 = QColor(CatppuccinMocha.OVERLAY0_HEX)
+    OVERLAY1 = QColor(CatppuccinMocha.OVERLAY1_HEX)
+    OVERLAY2 = QColor(CatppuccinMocha.OVERLAY2_HEX)
+
+    # Typography & Text
+    TEXT = QColor(CatppuccinMocha.TEXT_HEX)
+    SUBTEXT1 = QColor(CatppuccinMocha.SUBTEXT1_HEX)
+    SUBTEXT0 = QColor(CatppuccinMocha.SUBTEXT0_HEX)
+
+    # Accent Colors
+    MAUVE = QColor(CatppuccinMocha.MAUVE_HEX)
+    BLUE = QColor(CatppuccinMocha.BLUE_HEX)
+    SAPPHIRE = QColor(CatppuccinMocha.SAPPHIRE_HEX)
+    SKY = QColor(CatppuccinMocha.SKY_HEX)
+    TEAL = QColor(CatppuccinMocha.TEAL_HEX)
+    GREEN = QColor(CatppuccinMocha.GREEN_HEX)
+    YELLOW = QColor(CatppuccinMocha.YELLOW_HEX)
+    PEACH = QColor(CatppuccinMocha.PEACH_HEX)
+    MAROON = QColor(CatppuccinMocha.MAROON_HEX)
+    RED = QColor(CatppuccinMocha.RED_HEX)
+    FLAMINGO = QColor(CatppuccinMocha.FLAMINGO_HEX)
+    ROSEWATER = QColor(CatppuccinMocha.ROSEWATER_HEX)
+    LAVENDER = QColor(CatppuccinMocha.LAVENDER_HEX)
+
+    # Pilot mappings
+    PILOT_COLORS = PILOT_THEME_COLORS
 
     @classmethod
     def get_color(cls, name: str, alpha: int = 255) -> QColor:
@@ -35,4 +43,9 @@ class Theme:
         c = QColor(color)
         c.setAlpha(alpha)
         return c
+
+    @classmethod
+    def rgba_str(cls, qcolor: QColor, alpha: float = 1.0) -> str:
+        """Returns css rgba(r, g, b, a) string."""
+        return f"rgba({qcolor.red()}, {qcolor.green()}, {qcolor.blue()}, {alpha:.2f})"
 

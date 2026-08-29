@@ -48,17 +48,37 @@ Instead of subtle system notifications that disappear in seconds, QuakMeeting an
 
 ---
 
+## 📸 Visual Showcase & Multiplatform Parity
+
+QuakMeeting delivers a unified **Catppuccin Mocha** visual experience across macOS (AppKit) and Linux (PyQt6). For complete implementation specifications, see [📐 UI Architecture & Design Tokens](docs/ARCHITECTURE.md#ui-architecture--visual-parity).
+
+### 🦆 Pilot Hangar Playground
+*Interactive test flight simulator featuring dedicated Catppuccin accent buttons for all 7 mascot pilots.*
+
+| 🍎 macOS (Native AppKit) | 🐧 Ubuntu Linux (PyQt6 / Wayland) |
+| :---: | :---: |
+| ![macOS Pilot Hangar](assets/screenshots/macos_hangar.png) | ![Linux Qt Pilot Hangar](assets/screenshots/qt_hangar.png) |
+
+### ⚙️ Preferences & Timing Flight Deck
+*Customizable staged reminder lead times (quick presets & dynamic pill chips), multi-modal routing, and calendar feeds.*
+
+| 🍎 macOS (Native AppKit) | 🐧 Ubuntu Linux (PyQt6 / Wayland) |
+| :---: | :---: |
+| ![macOS Settings](assets/screenshots/macos_settings.png) | ![Linux Qt Settings](assets/screenshots/qt_settings.png) |
+
+---
+
 ## 🦆 Pilot Themes & Smart Classification
 
 | Pilot Mascot | Theme | Triggers | 1-Click Action |
 | :--- | :--- | :--- | :--- |
-| 🦆 **Aviator Duck** | Google Green / Zoom Blue | Google Meet, Zoom, MS Teams, Webex, Online calls | `[🚀 JOIN MEETING]` |
-| 👨‍🍳 **Chef Duck** | Coral Food | Dinner, Lunch, Restaurant, Pizzeria, Sushi, Aperitivo | `[🗺️ RESTAURANT MAPS]` |
-| 🧑‍✈️ **Jet Captain** | Sky Blue | Flights, Airports, High-speed trains, Buses, Transit | `[🗺️ AIRPORT / TRANSIT]` |
-| 🦉 **Academic Owl** | Amethyst Academic | University Lectures, Exams, Campus courses, Study | `[📚 CLASSROOM & NOTES]` |
-| 🏋️‍♂️ **Athlete Duck** | Athletic Crimson | Palestra, Gym, CrossFit, Padel, Tennis, Football, Sport | `[🗺️ GYM DIRECTIONS (MAPS)]` |
-| 🏎️ **Speed Racer** | Emerald Speed | In-person meetings, Appointments, Doctor, Dentist | `[🗺️ NAVIGATE MAPS]` |
-| 🦆🌸 **Zen Duck** | Teal Zen | Serenis, Therapy, Yoga, Wellness, Meditation | `[🛋️ JOIN SESSION]` |
+| 🦆 **Aviator Duck** | Catppuccin Green | Google Meet, Zoom, MS Teams, Webex, Online calls | `[🚀 JOIN MEETING]` |
+| 👨‍🍳 **Chef Duck** | Catppuccin Peach | Dinner, Lunch, Restaurant, Pizzeria, Sushi, Aperitivo | `[🗺️ RESTAURANT MAPS]` |
+| 🧑‍✈️ **Jet Captain** | Catppuccin Sapphire | Flights, Airports, High-speed trains, Buses, Transit | `[🗺️ AIRPORT / TRANSIT]` |
+| 🦉 **Academic Owl** | Catppuccin Mauve | University Lectures, Exams, Campus courses, Study | `[📚 CLASSROOM & NOTES]` |
+| 🏋️‍♂️ **Athlete Duck** | Catppuccin Red | Palestra, Gym, CrossFit, Padel, Tennis, Football, Sport | `[🗺️ GYM DIRECTIONS (MAPS)]` |
+| 🏎️ **Speed Racer** | Catppuccin Yellow | In-person meetings, Appointments, Doctor, Dentist | `[🗺️ NAVIGATE MAPS]` |
+| 🦆🌸 **Zen Duck** | Catppuccin Teal | Serenis, Therapy, Yoga, Wellness, Meditation | `[🛋️ JOIN SESSION]` |
 
 
 ---

@@ -218,8 +218,7 @@ class DashboardWindowController(AppKit.NSObject):
 
         refresh_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(w - 170, 20, 130, 34))
         refresh_btn.setTitle_("🔄 Sync Now")
-        refresh_btn.setBezelStyle_(AppKit.NSBezelStyleRounded)
-        refresh_btn.setFont_(AppKit.NSFont.systemFontOfSize_(12.5))
+        Theme.style_button(refresh_btn, bg_color=Theme.SURFACE0, text_color=Theme.TEXT, border_color=Theme.SURFACE1, corner_radius=8.0, font_size=12.0, bold=True)
         refresh_btn.setTarget_(self)
         refresh_btn.setAction_("onRefreshClicked:")
         header_view.addSubview_(refresh_btn)

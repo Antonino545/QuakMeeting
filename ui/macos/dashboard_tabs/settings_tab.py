@@ -410,12 +410,9 @@ class SettingsTabController(AppKit.NSObject):
 
         self.home_save_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(645, r1_y - 12, 85, 30))
         self.home_save_btn.setTitle_("💾 Save")
-        self.home_save_btn.setBezelStyle_(AppKit.NSBezelStyleRounded)
-        self.home_save_btn.setFont_(AppKit.NSFont.boldSystemFontOfSize_(11.5))
+        Theme.style_button(self.home_save_btn, bg_color=Theme.GREEN, text_color=Theme.CRUST, border_color=None, corner_radius=7.0, font_size=11.5, bold=True)
         self.home_save_btn.setTarget_(self)
         self.home_save_btn.setAction_("onSaveHomeAddress:")
-        if hasattr(self.home_save_btn, "setContentTintColor_"):
-            self.home_save_btn.setContentTintColor_(Theme.SAPPHIRE)
         card.addSubview_(self.home_save_btn)
 
         self._add_row_divider(card, h - 108.0, w)
@@ -585,12 +582,9 @@ class SettingsTabController(AppKit.NSObject):
 
         play_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(485, r2_y - 12, 120, 28))
         play_btn.setTitle_("▶ Play Tone")
-        play_btn.setBezelStyle_(AppKit.NSBezelStyleRounded)
-        play_btn.setFont_(AppKit.NSFont.boldSystemFontOfSize_(11.5))
+        Theme.style_button(play_btn, bg_color=Theme.SAPPHIRE, text_color=Theme.CRUST, border_color=None, corner_radius=7.0, font_size=11.5, bold=True)
         play_btn.setTarget_(self)
         play_btn.setAction_("onPlaySoundPreview:")
-        if hasattr(play_btn, "setContentTintColor_"):
-            play_btn.setContentTintColor_(Theme.SAPPHIRE)
         card.addSubview_(play_btn)
 
     @objc.python_method
@@ -679,32 +673,28 @@ class SettingsTabController(AppKit.NSObject):
         # 4 Sleek Action Buttons
         open_json_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(18, y, btn_w, 32))
         open_json_btn.setTitle_("📝 Edit Rules")
-        open_json_btn.setBezelStyle_(AppKit.NSBezelStyleRounded)
-        open_json_btn.setFont_(AppKit.NSFont.systemFontOfSize_(12.0))
+        Theme.style_button(open_json_btn, bg_color=Theme.SURFACE0, text_color=Theme.TEXT, border_color=Theme.SURFACE1, corner_radius=7.0, font_size=12.0)
         open_json_btn.setTarget_(self)
         open_json_btn.setAction_("onOpenConfigEditor:")
         card.addSubview_(open_json_btn)
 
         reload_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(18 + (btn_w + 12.0) * 1, y, btn_w, 32))
         reload_btn.setTitle_("🔄 Reload Rules")
-        reload_btn.setBezelStyle_(AppKit.NSBezelStyleRounded)
-        reload_btn.setFont_(AppKit.NSFont.systemFontOfSize_(12.0))
+        Theme.style_button(reload_btn, bg_color=Theme.SURFACE0, text_color=Theme.TEXT, border_color=Theme.SURFACE1, corner_radius=7.0, font_size=12.0)
         reload_btn.setTarget_(self)
         reload_btn.setAction_("onReloadConfig:")
         card.addSubview_(reload_btn)
 
         view_logs_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(18 + (btn_w + 12.0) * 2, y, btn_w, 32))
         view_logs_btn.setTitle_("📄 View Logs")
-        view_logs_btn.setBezelStyle_(AppKit.NSBezelStyleRounded)
-        view_logs_btn.setFont_(AppKit.NSFont.systemFontOfSize_(12.0))
+        Theme.style_button(view_logs_btn, bg_color=Theme.SURFACE0, text_color=Theme.TEXT, border_color=Theme.SURFACE1, corner_radius=7.0, font_size=12.0)
         view_logs_btn.setTarget_(self)
         view_logs_btn.setAction_("onOpenLogs:")
         card.addSubview_(view_logs_btn)
 
         folder_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(18 + (btn_w + 12.0) * 3, y, btn_w, 32))
         folder_btn.setTitle_("📂 Log Folder")
-        folder_btn.setBezelStyle_(AppKit.NSBezelStyleRounded)
-        folder_btn.setFont_(AppKit.NSFont.systemFontOfSize_(12.0))
+        Theme.style_button(folder_btn, bg_color=Theme.SURFACE0, text_color=Theme.TEXT, border_color=Theme.SURFACE1, corner_radius=7.0, font_size=12.0)
         folder_btn.setTarget_(self)
         folder_btn.setAction_("onOpenLogFolder:")
         card.addSubview_(folder_btn)
@@ -737,8 +727,7 @@ class SettingsTabController(AppKit.NSObject):
         # Check for updates button
         check_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(18, y, btn_w, 32))
         check_btn.setTitle_("🔍 Check for Updates")
-        check_btn.setBezelStyle_(AppKit.NSBezelStyleRounded)
-        check_btn.setFont_(AppKit.NSFont.systemFontOfSize_(12.0))
+        Theme.style_button(check_btn, bg_color=Theme.SURFACE0, text_color=Theme.TEXT, border_color=Theme.SURFACE1, corner_radius=7.0, font_size=12.0)
         check_btn.setTarget_(self)
         check_btn.setAction_("onCheckForUpdatesMac:")
         card.addSubview_(check_btn)
@@ -747,8 +736,7 @@ class SettingsTabController(AppKit.NSObject):
         # Install update button (hidden by default unless update available)
         install_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(18 + btn_w + 14.0, y, 220, 32))
         install_btn.setTitle_("⚡ Install Update Now")
-        install_btn.setBezelStyle_(AppKit.NSBezelStyleRounded)
-        install_btn.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.0))
+        Theme.style_button(install_btn, bg_color=Theme.BLUE, text_color=Theme.CRUST, border_color=None, corner_radius=7.0, font_size=12.0, bold=True)
         install_btn.setTarget_(self)
         install_btn.setAction_("onInstallUpdateMac:")
         install_btn.setHidden_(True)

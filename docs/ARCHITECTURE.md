@@ -78,10 +78,51 @@ Orchestrates business use cases.
 
 ### 4. UI Layer (`ui/`)
 Cross-platform presentation layer structured by operating system:
-- **`ui/macos/`**: Native macOS UI using PyObjC (AppKit NSStatusItem, NSWindow Flight Deck, and Quartz 2D animated HUD banners with modular pilot renderers in `renderers/`).
-- **`ui/linux/`**: Native Linux / Ubuntu UI using PyQt6 (QSystemTrayIcon, Flight Deck window, and Wayland/X11 animated banner with modular pilot renderers in `banner/renderers/`).
-- **`ui/common/`**: Shared viewmodels (`tray_viewmodel.py`) and sequencing queues (`banner_queue.py`).
-- **`ui/app_launcher.py`**: Platform-aware UI entrypoint.
+- **`ui/common/`**: Platform-independent design tokens and view logic:
+  - **`theme.py`**: Central single-source-of-truth **Catppuccin Mocha** color palette (`Crust`, `Mantle`, `Base`, `Surface0/1/2`, `Text`, `Subtext0/1`, `Mauve`, `Blue`, `Sapphire`, `Green`, `Peach`, `Red`, `Yellow`, `Teal`) and pilot theme token maps.
+  - **`tray_viewmodel.py`**: Shared tray status logic and countdown string formatting.
+  - **`banner_queue.py`**: Cross-platform banner sequencing and queue management.
+- **`ui/macos/`**: Native macOS UI using PyObjC:
+  - **`theme.py`**: Native `NSColor` and `CGColor` bridges derived directly from `ui.common.theme.CatppuccinMocha`.
+  - **`menu_bar_app.py`**: AppKit `NSStatusItem` menu bar controller.
+  - **`dashboard_window.py`**: Native `NSWindow` Flight Deck HUD with custom segmented capsule pill switcher.
+  - **`dashboard_tabs/`**: Dedicated native tab views (`agenda_tab.py`, `hangar_tab.py`, `settings_tab.py`).
+  - **`banner/`**: Quartz 2D animated HUD banners with modular pilot renderers.
+- **`ui/linux/`**: Native Linux / Ubuntu UI using PyQt6 (Wayland / X11):
+  - **`theme.py`**: Native `QColor` and RGBA string converters derived directly from `ui.common.theme.CatppuccinMocha`.
+  - **`qt_tray_app.py`**: PyQt6 `QSystemTrayIcon` with custom Catppuccin context menu.
+  - **`qt_dashboard.py`**: PyQt6 Flight Deck window with capsule pill switcher and solid Catppuccin cards.
+  - **`banner/`**: PyQt6 Wayland/X11 animated overlay banner with modular pilot renderers.
+- **`ui/app_launcher.py`**: Platform-aware UI dispatcher and entrypoint.
+
+---
+
+## 🎨 UI Architecture & Visual Parity
+
+The UI follows strict multiplatform parity where both macOS AppKit and Linux PyQt6 render pixel-harmonious layouts, cards, buttons, and badges based on the common Catppuccin Mocha theme.
+
+### 📸 Visual Comparison: macOS (AppKit) vs Linux (PyQt6)
+
+#### 1. 📅 Today's Agenda Tab
+*Meeting countdowns, multi-modal travel leave times, and 1-click launch / navigation actions.*
+
+| macOS (AppKit) | Linux (PyQt6) |
+| :---: | :---: |
+| ![macOS Agenda](../assets/screenshots/macos_agenda.png) | ![Linux Qt Agenda](../assets/screenshots/qt_agenda.png) |
+
+#### 2. 🦆 Pilot Hangar Tab
+*Interactive mascot flight testing with pilot-specific Catppuccin accent buttons.*
+
+| macOS (AppKit) | Linux (PyQt6) |
+| :---: | :---: |
+| ![macOS Pilot Hangar](../assets/screenshots/macos_hangar.png) | ![Linux Qt Pilot Hangar](../assets/screenshots/qt_hangar.png) |
+
+#### 3. ⚙️ Preferences & Timing Tab
+*Modern pill chips for reminder lead times, transport mode switcher, sound selection, and calendar toggles.*
+
+| macOS (AppKit) | Linux (PyQt6) |
+| :---: | :---: |
+| ![macOS Settings](../assets/screenshots/macos_settings.png) | ![Linux Qt Settings](../assets/screenshots/qt_settings.png) |
 
 ---
 
@@ -98,3 +139,4 @@ Querying calendars (especially via EventKit) can be slow.
 - Starts the `AppController` background loop.
 - Initializes the specific UI loop (`NSApplication.sharedApplication().run()` for macOS or `QApplication.exec()` for Linux).
 - Note: On macOS, the application requires the `build_macos_app.py` Mach-O launcher to properly associate the process as an `.app` bundle, enabling the top menu bar to render correctly.
+

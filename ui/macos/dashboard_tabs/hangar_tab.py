@@ -86,10 +86,20 @@ class HangarTabController(AppKit.NSObject):
         tag_lbl.setEditable_(False)
         card.addSubview_(tag_lbl)
 
+        color_map = {
+            "duck": Theme.GREEN,
+            "chef": Theme.PEACH,
+            "captain": Theme.SAPPHIRE,
+            "owl": Theme.MAUVE,
+            "gym": Theme.RED,
+            "driver": Theme.YELLOW,
+            "zen_duck": Theme.TEAL
+        }
+        btn_accent = color_map.get(p_id, Theme.GREEN)
+
         test_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(w - 180, (h - 38) * 0.5, 160, 38))
         test_btn.setTitle_("🚀 Test Flight")
-        test_btn.setBezelStyle_(AppKit.NSBezelStyleRounded)
-        test_btn.setFont_(AppKit.NSFont.boldSystemFontOfSize_(13))
+        Theme.style_button(test_btn, bg_color=btn_accent, text_color=Theme.CRUST, border_color=None, corner_radius=8.0, font_size=13.0, bold=True)
         test_btn.setTarget_(self)
         test_btn.setAction_(p_action.__name__.rstrip('_') + ":")
         card.addSubview_(test_btn)

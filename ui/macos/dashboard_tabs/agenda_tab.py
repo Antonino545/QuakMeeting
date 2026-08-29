@@ -168,8 +168,7 @@ class AgendaTabController(AppKit.NSObject):
 
             action_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(w - 142, 20, 126, 34))
             action_btn.setTitle_(btn_short)
-            action_btn.setBezelStyle_(AppKit.NSBezelStyleRounded)
-            action_btn.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12))
+            Theme.style_button(action_btn, bg_color=Theme.BLUE, text_color=Theme.CRUST, border_color=None, corner_radius=8.0, font_size=12.0, bold=True)
             action_btn.setTarget_(self)
             action_btn.setAction_("onOpenMeetingUrl:")
             action_btn.setTag_(idx)
@@ -177,8 +176,7 @@ class AgendaTabController(AppKit.NSObject):
 
             copy_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(w - 238, 20, 90, 34))
             copy_btn.setTitle_("📋 Copy")
-            copy_btn.setBezelStyle_(AppKit.NSBezelStyleRounded)
-            copy_btn.setFont_(AppKit.NSFont.systemFontOfSize_(11.5))
+            Theme.style_button(copy_btn, bg_color=Theme.SURFACE0, text_color=Theme.TEXT, border_color=Theme.SURFACE1, corner_radius=8.0, font_size=11.5, bold=False)
             copy_btn.setTarget_(self)
             copy_btn.setAction_("onCopyMeetingUrl:")
             copy_btn.setTag_(idx)

@@ -76,30 +76,52 @@ QLabel#ActiveBadge {
     font-weight: bold;
 }
 
+QTabWidget::tab-bar {
+    alignment: center;
+}
+
+QTabBar {
+    background-color: #181825; /* Mantle capsule container */
+    border: 1px solid #313244; /* Surface0 */
+    border-radius: 10px;
+    padding: 3px 4px;
+    qproperty-drawBase: 0;
+    qproperty-elideMode: 0;
+}
+
 QTabBar::tab {
     background-color: transparent;
     color: #a6adc8; /* Subtext0 */
     font-weight: 600;
-    font-size: 13px;
-    padding: 12px 24px;
+    font-size: 12.5px;
+    padding: 7px 20px;
+    min-width: 170px;
+    border-radius: 7px;
     border: none;
+    margin: 0px 2px;
+}
+
+QTabBar::tab:hover {
+    color: #cdd6f4; /* Text */
+    background-color: rgba(69, 71, 90, 0.45); /* Surface1 subtle glow */
 }
 
 QTabBar::tab:selected {
-    color: #cba6f7; /* Mauve */
-    border-bottom: 3px solid #cba6f7;
-    background-color: rgba(203, 166, 247, 0.08);
+    color: #ffffff; /* Text */
+    background-color: #313244; /* Surface0 elevated active pill */
+    font-weight: 700;
+    border: 1px solid #45475a; /* Surface1 hairline */
 }
 
-QFrame#Card, QFrame#PrefCard {
+QFrame#Card, QFrame#PrefCard, QFrame#HangarCard {
     background-color: #1e1e2e; /* Base */
     border: 1px solid #313244; /* Surface0 */
-    border-radius: 14px;
+    border-radius: 12px;
 }
 
-QFrame#Card:hover {
+QFrame#Card:hover, QFrame#HangarCard:hover {
     background-color: #181825; /* Mantle */
-    border-color: #cba6f7; /* Mauve highlight on hover */
+    border: 1px solid #cba6f7; /* Mauve highlight on hover */
 }
 
 QLabel#CardTitle {
@@ -120,33 +142,33 @@ QPushButton#PrimaryBtn {
     font-weight: bold;
     border: 1px solid #89b4fa;
     border-radius: 8px;
-    padding: 6px 14px;
+    padding: 7px 16px;
 }
 QPushButton#PrimaryBtn:hover {
-    background-color: #b4befe; /* Lavender (lighter blue) */
+    background-color: #b4befe; /* Lavender */
     border: 1px solid #b4befe;
 }
 
 QPushButton#OutlineBtn {
-    background-color: transparent;
+    background-color: #313244; /* Surface0 */
     color: #cdd6f4; /* Text */
     border: 1px solid #45475a; /* Surface1 */
     font-size: 12px;
     font-weight: 600;
     border-radius: 8px;
-    padding: 6px 14px;
+    padding: 7px 14px;
 }
 QPushButton#OutlineBtn:hover {
-    background-color: #313244; /* Surface0 */
-    border-color: #a6adc8;
+    background-color: #45475a; /* Surface1 */
+    border-color: #89b4fa;
 }
 
 QScrollArea {
     border: none;
-    background: transparent;
+    background-color: transparent;
 }
 QScrollArea > QWidget > QWidget {
-    background: transparent;
+    background-color: transparent;
 }
 
 /* Modern Segmented Control for Transport Modes */
@@ -300,9 +322,12 @@ class QtFlightDeckWindow(QMainWindow):
         header_layout.addWidget(sync_btn)
 
         main_layout.addWidget(header)
+        main_layout.addSpacing(16)
 
         # 2. Tabs
         self.tabs = QTabWidget(central_widget)
+        self.tabs.setElideMode(Qt.TextElideMode.ElideNone)
+        self.tabs.tabBar().setExpanding(False)
 
         # --- TAB 1: Today's Agenda ---
         agenda_widget = QWidget()
@@ -311,7 +336,8 @@ class QtFlightDeckWindow(QMainWindow):
 
         scroll = QScrollArea(agenda_widget)
         scroll.setWidgetResizable(True)
-        scroll.setStyleSheet("QScrollArea { border: none; background: transparent; } QWidget { background: transparent; }")
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
 
         self.scroll_content = QWidget()
         self.scroll_layout = QVBoxLayout(self.scroll_content)
@@ -330,7 +356,8 @@ class QtFlightDeckWindow(QMainWindow):
 
         self.h_scroll = QScrollArea(hangar_widget)
         self.h_scroll.setWidgetResizable(True)
-        self.h_scroll.setStyleSheet("QScrollArea { border: none; background: transparent; } QWidget { background: transparent; }")
+        self.h_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.h_scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
 
         self.h_content = QWidget()
         self.h_layout = QVBoxLayout(self.h_content)
@@ -363,7 +390,64 @@ class QtFlightDeckWindow(QMainWindow):
         tc_layout.addWidget(tc_title)
         tc_layout.addWidget(tc_sub)
 
-        def create_stage_row(title, desc, config_key, opts):
+        # 1-Click Timing Presets Row
+        preset_row = QHBoxLayout()
+        preset_row.setSpacing(8)
+        preset_lbl = QLabel("<b>⚡ Quick Presets:</b>", timing_card)
+        preset_lbl.setStyleSheet("color: #a6adc8; font-size: 11.5px;")
+        preset_row.addWidget(preset_lbl)
+
+        presets = [
+            ("🧘 Relaxed", [15, 5, 0], [15, 5, 0], [45, 15, 0]),
+            ("⚡ Standard", [20, 10, 5, 2, 0], [20, 10, 5, 2, 0], [45, 30, 15, 5, 2, 0]),
+            ("🚨 Intensive", [30, 20, 15, 10, 5, 2, 0], [30, 20, 15, 10, 5, 2, 0], [60, 45, 30, 15, 5, 2, 0]),
+        ]
+
+        stage_buttons = {}
+
+        def _apply_preset(p_meetings, p_general, p_travel):
+            config.set("meeting_reminder_stages", p_meetings)
+            config.set("general_reminder_stages", p_general)
+            config.set("travel_reminder_stages", p_travel)
+            for (k, v), btn in stage_buttons.items():
+                if k == "meeting_reminder_stages":
+                    btn.setChecked(v in p_meetings)
+                elif k == "general_reminder_stages":
+                    btn.setChecked(v in p_general)
+                elif k == "travel_reminder_stages":
+                    btn.setChecked(v in p_travel)
+
+        for p_name, p_m, p_g, p_t in presets:
+            p_btn = QPushButton(p_name, timing_card)
+            p_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            p_btn.setStyleSheet("""
+                QPushButton {
+                    background: #242438;
+                    color: #cdd6f4;
+                    border: 1px solid #45475a;
+                    border-radius: 7px;
+                    padding: 4px 10px;
+                    font-size: 11.5px;
+                    font-weight: 600;
+                }
+                QPushButton:hover {
+                    background: #313244;
+                    border-color: #89b4fa;
+                    color: #ffffff;
+                }
+            """)
+            p_btn.clicked.connect(lambda _, m=p_m, g=p_g, t=p_t: _apply_preset(m, g, t))
+            preset_row.addWidget(p_btn)
+
+        preset_row.addStretch()
+        tc_layout.addLayout(preset_row)
+
+        tc_div_pre = QFrame(timing_card)
+        tc_div_pre.setFixedHeight(1)
+        tc_div_pre.setStyleSheet("background-color: #313244;")
+        tc_layout.addWidget(tc_div_pre)
+
+        def create_stage_row(title, desc, config_key, opts, accent_color="#cba6f7"):
             row_layout = QVBoxLayout()
             row_layout.setSpacing(4)
             lbl = QLabel(f"<b>{title}</b>", timing_card)
@@ -382,10 +466,27 @@ class QtFlightDeckWindow(QMainWindow):
                 chk.setCheckable(True)
                 chk.setCursor(Qt.CursorShape.PointingHandCursor)
                 chk.setChecked(val in curr_stages)
-                chk.setStyleSheet("""
-                    QPushButton { background: #313244; color: #cdd6f4; border: 1px solid #45475a; border-radius: 6px; padding: 5px 12px; font-size: 11px; }
-                    QPushButton:hover { background: #45475a; border-color: #89b4fa; }
-                    QPushButton:checked { background: #cba6f7; color: #11111b; font-weight: bold; border: 1px solid #cba6f7; }
+                stage_buttons[(config_key, val)] = chk
+                chk.setStyleSheet(f"""
+                    QPushButton {{
+                        background: #242438;
+                        color: #cdd6f4;
+                        border: 1px solid #45475a;
+                        border-radius: 7px;
+                        padding: 5px 14px;
+                        font-size: 11.5px;
+                        font-weight: 500;
+                    }}
+                    QPushButton:hover {{
+                        background: #313244;
+                        border-color: {accent_color};
+                    }}
+                    QPushButton:checked {{
+                        background: {accent_color};
+                        color: #11111b;
+                        font-weight: bold;
+                        border: 1px solid {accent_color};
+                    }}
                 """)
                 def _toggled(checked, v=val, k=config_key):
                     c = set(config.get(k, []))
@@ -403,21 +504,21 @@ class QtFlightDeckWindow(QMainWindow):
         meeting_opts = [(30, "30m"), (20, "20m"), (15, "15m"), (10, "10m"), (5, "5m"), (2, "2m")]
         travel_opts = [(60, "60m"), (45, "45m"), (30, "30m"), (15, "15m"), (5, "5m"), (2, "2m")]
 
-        tc_layout.addLayout(create_stage_row("📹 Video Meetings", "Alert ahead of meeting start (0m is always on)", "meeting_reminder_stages", meeting_opts))
+        tc_layout.addLayout(create_stage_row("📹 Video Meetings", "Alert ahead of meeting start (0m is always on)", "meeting_reminder_stages", meeting_opts, accent_color="#cba6f7"))
 
         tc_div1 = QFrame(timing_card)
         tc_div1.setFixedHeight(1)
         tc_div1.setStyleSheet("background-color: #313244;")
         tc_layout.addWidget(tc_div1)
 
-        tc_layout.addLayout(create_stage_row("📅 General Events", "Alert ahead of start time (0m is always on)", "general_reminder_stages", meeting_opts))
+        tc_layout.addLayout(create_stage_row("📅 General Events", "Alert ahead of start time (0m is always on)", "general_reminder_stages", meeting_opts, accent_color="#89b4fa"))
 
         tc_div2 = QFrame(timing_card)
         tc_div2.setFixedHeight(1)
         tc_div2.setStyleSheet("background-color: #313244;")
         tc_layout.addWidget(tc_div2)
 
-        tc_layout.addLayout(create_stage_row("🚗 Travel & Trips", "Alert ahead of leave time (0m is always on)", "travel_reminder_stages", travel_opts))
+        tc_layout.addLayout(create_stage_row("🚗 Travel & Trips", "Alert ahead of leave time (0m is always on)", "travel_reminder_stages", travel_opts, accent_color="#fab387"))
 
         pref_layout.addWidget(timing_card)
 
@@ -636,6 +737,89 @@ class QtFlightDeckWindow(QMainWindow):
         ac_layout.addWidget(sim_box)
 
         pref_layout.addWidget(addr_card)
+
+        # --- Included Calendars Card ---
+        cals_card = QFrame(pref_widget)
+        cals_card.setObjectName("Card")
+        cc_layout = QVBoxLayout(cals_card)
+        cc_layout.setContentsMargins(18, 14, 18, 14)
+        cc_layout.setSpacing(10)
+
+        cc_title = QLabel("📅 Included System Calendars", cals_card)
+        cc_title.setObjectName("CardTitle")
+        cc_sub = QLabel("Select which local, EDS, or CalDAV calendars to actively monitor for reminders.", cals_card)
+        cc_sub.setObjectName("CardSub")
+        cc_layout.addWidget(cc_title)
+        cc_layout.addWidget(cc_sub)
+
+        avail_cals = calendar_service.get_available_calendars()
+        if not avail_cals:
+            empty_lbl = QLabel("All calendar sources are currently monitored.", cals_card)
+            empty_lbl.setStyleSheet("color: #a6adc8; font-size: 12px;")
+            cc_layout.addWidget(empty_lbl)
+        else:
+            grid_widget = QWidget(cals_card)
+            grid_layout = QVBoxLayout(grid_widget)
+            grid_layout.setContentsMargins(0, 0, 0, 0)
+            grid_layout.setSpacing(8)
+
+            row_layout = QHBoxLayout()
+            row_layout.setSpacing(8)
+            count_in_row = 0
+
+            for cal in avail_cals:
+                c_name = cal.get("name", "Calendar")
+                c_enabled = cal.get("enabled", True)
+                btn = QPushButton(f"📅 {c_name}", grid_widget)
+                btn.setCheckable(True)
+                btn.setCursor(Qt.CursorShape.PointingHandCursor)
+                btn.setChecked(c_enabled)
+                btn.setStyleSheet("""
+                    QPushButton {
+                        background: #242438;
+                        color: #cdd6f4;
+                        border: 1px solid #45475a;
+                        border-radius: 7px;
+                        padding: 6px 14px;
+                        font-size: 11.5px;
+                        font-weight: 500;
+                    }
+                    QPushButton:hover {
+                        background: #313244;
+                        border-color: #a6e3a1;
+                    }
+                    QPushButton:checked {
+                        background: #a6e3a1;
+                        color: #11111b;
+                        font-weight: bold;
+                        border: 1px solid #a6e3a1;
+                    }
+                """)
+                def _cal_toggled(checked, name=c_name):
+                    ignored = set(config.get("ignored_calendars", []))
+                    if checked:
+                        ignored.discard(name)
+                    else:
+                        ignored.add(name)
+                    config.set("ignored_calendars", list(ignored))
+                btn.toggled.connect(_cal_toggled)
+
+                row_layout.addWidget(btn)
+                count_in_row += 1
+                if count_in_row >= 3:
+                    row_layout.addStretch()
+                    grid_layout.addLayout(row_layout)
+                    row_layout = QHBoxLayout()
+                    row_layout.setSpacing(8)
+                    count_in_row = 0
+
+            if count_in_row > 0:
+                row_layout.addStretch()
+                grid_layout.addLayout(row_layout)
+
+            cc_layout.addWidget(grid_widget)
+
+        pref_layout.addWidget(cals_card)
 
         # Utilities
         util_card = QFrame(pref_widget)
@@ -914,7 +1098,7 @@ class QtFlightDeckWindow(QMainWindow):
         pref_scroll.setStyleSheet("QScrollArea { background: transparent; }")
         pref_scroll.setWidget(pref_widget)
 
-        self.tabs.addTab(pref_scroll, "⚙️ Preferences")
+        self.tabs.addTab(pref_scroll, "⚙️ Preferences && Timing")
 
         self.tabs.setCurrentIndex(tab_index)
         main_layout.addWidget(self.tabs)
@@ -950,20 +1134,31 @@ class QtFlightDeckWindow(QMainWindow):
             for idx, m in enumerate(today_meets):
                 card = QFrame(self.scroll_content)
                 card.setObjectName("Card")
+                card.setStyleSheet("""
+                    QFrame#Card {
+                        background-color: #1e1e2e;
+                        border: 1px solid #313244;
+                        border-radius: 12px;
+                    }
+                    QFrame#Card:hover {
+                        background-color: #181825;
+                        border: 1px solid #cba6f7;
+                    }
+                """)
                 c_layout = QHBoxLayout(card)
                 c_layout.setContentsMargins(18, 14, 18, 14)
                 c_layout.setSpacing(14)
 
                 pilot_icon = "🦆"
-                if m.pilot_type == "chef": pilot_icon = "👨‍🍳"
-                elif m.pilot_type == "captain": pilot_icon = "🧑‍✈️"
-                elif m.pilot_type == "owl": pilot_icon = "🦉"
+                if m.pilot_type == "chef": pilot_icon = "🍕"
+                elif m.pilot_type == "captain": pilot_icon = "✈️"
+                elif m.pilot_type == "owl": pilot_icon = "🎓"
                 elif m.pilot_type == "gym": pilot_icon = "🏋️‍♂️"
-                elif m.pilot_type == "driver": pilot_icon = "🏎️"
-                elif m.pilot_type == "zen_duck": pilot_icon = "🦆🌸"
+                elif m.pilot_type == "driver": pilot_icon = "🚗"
+                elif m.pilot_type == "zen_duck": pilot_icon = "🛋️"
 
                 icon_l = QLabel(pilot_icon, card)
-                icon_l.setStyleSheet("font-size: 26px; border: none;")
+                icon_l.setStyleSheet("font-size: 26px; border: none; background: transparent;")
                 c_layout.addWidget(icon_l)
 
                 info_box = QVBoxLayout()
@@ -973,10 +1168,13 @@ class QtFlightDeckWindow(QMainWindow):
                 et = m.end_time.astimezone().strftime("%H:%M") if m.end_time else ""
                 dur_str = f" ({format_duration(m.duration_minutes)})" if m.duration_minutes else ""
 
-                t_l = QLabel(m.title, card)
+                t_l = QLabel(f"{st} - {et}  •  {m.title}", card)
                 t_l.setObjectName("CardTitle")
+                t_l.setStyleSheet("font-size: 14px; font-weight: 700; color: #cdd6f4; border: none; background: transparent;")
 
-                sub_txt = f"<b style='color:#89b4fa;'>{st} - {et}{dur_str}</b>  •  {m.provider}"
+                sub_txt = m.provider
+                if m.location and m.location != "missing value":
+                    sub_txt += f"  •  📍 {m.location[:35]}"
                 if m.is_travel and m.departure_time:
                     sub_txt += f"  •  <span style='color:#f9e2af;'>🚗 Leave at {m.departure_time.astimezone().strftime('%H:%M')}</span>"
                 if m.classroom:
@@ -984,19 +1182,66 @@ class QtFlightDeckWindow(QMainWindow):
 
                 s_l = QLabel(sub_txt, card)
                 s_l.setObjectName("CardSub")
+                s_l.setStyleSheet("font-size: 11.5px; color: #a6adc8; border: none; background: transparent;")
 
                 info_box.addWidget(t_l)
                 info_box.addWidget(s_l)
                 c_layout.addLayout(info_box, stretch=1)
 
-                has_real_url = bool(m.action_url and m.action_url.strip() and m.action_url != "https://calendar.apple.com")
+                action_url = m.action_url or m.meeting_url
+                if not action_url and m.location and m.location != "missing value":
+                    import urllib.parse
+                    action_url = f"https://www.google.com/maps/search/?api=1&query={urllib.parse.quote(m.location)}"
+                    m.action_url = action_url
+
+                has_real_url = bool(action_url and action_url.strip() and action_url != "https://calendar.apple.com")
                 if has_real_url:
-                    btn_text = "🚀 JOIN" if not m.is_travel else "🗺️ NAVIGATE"
+                    btn_text = m.action_btn_text or ("🚀 Join" if not m.is_travel else "🗺️ Maps")
                     btn = QPushButton(btn_text, card)
                     btn.setObjectName("PrimaryBtn")
                     btn.setCursor(Qt.CursorShape.PointingHandCursor)
-                    btn.clicked.connect(lambda chk, u=m.action_url: webbrowser.open(u))
+                    btn.setStyleSheet("""
+                        QPushButton {
+                            background-color: #89b4fa;
+                            color: #11111b;
+                            font-size: 12px;
+                            font-weight: bold;
+                            border: 1px solid #89b4fa;
+                            border-radius: 8px;
+                            padding: 6px 14px;
+                        }
+                        QPushButton:hover {
+                            background-color: #b4befe;
+                            border-color: #b4befe;
+                        }
+                    """)
+                    btn.clicked.connect(lambda chk, u=action_url: webbrowser.open(u))
                     c_layout.addWidget(btn)
+
+                    copy_btn = QPushButton("📋 Copy", card)
+                    copy_btn.setObjectName("OutlineBtn")
+                    copy_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+                    copy_btn.setStyleSheet("""
+                        QPushButton {
+                            background-color: #313244;
+                            color: #cdd6f4;
+                            border: 1px solid #45475a;
+                            font-size: 12px;
+                            font-weight: 600;
+                            border-radius: 8px;
+                            padding: 6px 12px;
+                        }
+                        QPushButton:hover {
+                            background-color: #45475a;
+                            border-color: #89b4fa;
+                        }
+                    """)
+                    def _copy_url(url=action_url, b=copy_btn):
+                        QApplication.clipboard().setText(url)
+                        b.setText("✓ Copied!")
+                        QTimer.singleShot(1500, lambda: b.setText("📋 Copy"))
+                    copy_btn.clicked.connect(lambda chk, u=action_url, b=copy_btn: _copy_url(u, b))
+                    c_layout.addWidget(copy_btn)
 
                 self.scroll_layout.addWidget(card)
 
