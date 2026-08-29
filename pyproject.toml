@@ -1,3 +1,51 @@
+[project]
+name = "quakmeeting"
+version = "1.0.5"
+description = "Cross-platform smart meeting reminder & flight deck application for macOS and Linux"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [
+    { name = "Antonino", email = "antonino@quakmeeting.local" }
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: MacOS X :: Cocoa",
+    "Environment :: X11 Applications :: Qt",
+    "Intended Audience :: End Users/Desktop",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Office/Business :: Scheduling",
+]
+dependencies = [
+    "requests",
+    "urllib3",
+]
+
+[project.optional-dependencies]
+macos = [
+    "pyobjc-framework-Cocoa",
+    "pyobjc-framework-Quartz",
+    "pyobjc-framework-EventKit",
+]
+linux = [
+    "PyQt6>=6.4.0",
+    "PyGObject>=3.42.0",
+]
+dev = [
+    "ruff",
+]
+
+[project.scripts]
+quakmeeting = "ui.app_launcher:launch_application"
+
 [tool.ruff]
 line-length = 150
 target-version = "py39"

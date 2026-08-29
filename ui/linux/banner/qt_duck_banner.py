@@ -56,8 +56,13 @@ class QtDuckBannerWindow(QWidget):
         self.provider = str(event_data.get("provider") or "Event")
         self.action_url = event_data.get("action_url") or event_data.get("meeting_url")
         self.action_btn_text = str(event_data.get("action_btn_text") or "🚀 JOIN NOW")
-        self.start_time = event_data.get("start_time")
-        self.end_time = event_data.get("end_time")
+        def _norm_dt(dt):
+            if isinstance(dt, datetime):
+                return dt.astimezone() if dt.tzinfo else dt.astimezone()
+            return dt
+
+        self.start_time = _norm_dt(event_data.get("start_time"))
+        self.end_time = _norm_dt(event_data.get("end_time"))
         self.location = str(event_data.get("location") or "")
         self.pilot_type = str(event_data.get("pilot_type") or "duck")
         self.is_travel = bool(event_data.get("is_travel", False))
@@ -70,7 +75,7 @@ class QtDuckBannerWindow(QWidget):
         self.travel_time_minutes = event_data.get("travel_time_minutes")
         self.travel_distance_km = event_data.get("travel_distance_km")
         self.transport_mode = event_data.get("transport_mode", config.get("transport_mode", "transit"))
-        self.departure_time = event_data.get("departure_time")
+        self.departure_time = _norm_dt(event_data.get("departure_time"))
         self.origin_address = event_data.get("origin_address")
         self.eta_text = event_data.get("eta_text")
 
@@ -149,11 +154,15 @@ class QtDuckBannerWindow(QWidget):
         """Determines if the event is already past departure time or past start time."""
         now = datetime.now().astimezone()
         if self.is_travel and self.departure_time:
-            dep = self.departure_time.astimezone() if hasattr(self.departure_time, "astimezone") else self.departure_time
-            return now > dep
+            dep = self.departure_time
+            if isinstance(dep, datetime):
+                dep = dep.astimezone() if dep.tzinfo else dep.replace(tzinfo=now.tzinfo)
+                return now > dep
         if self.start_time:
-            st = self.start_time.astimezone() if hasattr(self.start_time, "astimezone") else self.start_time
-            return now > st
+            st = self.start_time
+            if isinstance(st, datetime):
+                st = st.astimezone() if st.tzinfo else st.replace(tzinfo=now.tzinfo)
+                return now > st
         return False
 
     def _init_cached_resources(self):

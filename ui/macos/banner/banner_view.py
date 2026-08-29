@@ -17,10 +17,7 @@ from core.services.config_service import config
 from core.services.eta_service import MODE_ICONS, MODE_LABELS
 from core.domain.models import format_duration
 from .renderers import get_pilot_renderer
-try:
-    from ui.macos.theme import Theme
-except ImportError:
-    from theme import Theme
+from ui.macos.theme import Theme
 
 class QuakPitBannerView(AppKit.NSView):
     def initWithFrame_meetingData_controller_(self, frame, meeting_data, controller):
@@ -34,8 +31,13 @@ class QuakPitBannerView(AppKit.NSView):
         self.provider = str(meeting_data.get("provider") or "Event")
         self.action_url = meeting_data.get("action_url") or meeting_data.get("meeting_url")
         self.action_btn_text = str(meeting_data.get("action_btn_text") or "🚀 JOIN NOW")
-        self.start_time = meeting_data.get("start_time")
-        self.end_time = meeting_data.get("end_time")
+        def _norm_dt(dt):
+            if isinstance(dt, datetime):
+                return dt.astimezone() if dt.tzinfo else dt.astimezone()
+            return dt
+
+        self.start_time = _norm_dt(meeting_data.get("start_time"))
+        self.end_time = _norm_dt(meeting_data.get("end_time"))
         self.location = str(meeting_data.get("location") or "")
         self.pilot_type = str(meeting_data.get("pilot_type") or "duck")
         self.is_travel = bool(meeting_data.get("is_travel", False))
@@ -48,7 +50,7 @@ class QuakPitBannerView(AppKit.NSView):
         self.travel_time_minutes = meeting_data.get("travel_time_minutes")
         self.travel_distance_km = meeting_data.get("travel_distance_km")
         self.transport_mode = meeting_data.get("transport_mode", config.get("transport_mode", "transit"))
-        self.departure_time = meeting_data.get("departure_time")
+        self.departure_time = _norm_dt(meeting_data.get("departure_time"))
         self.origin_address = meeting_data.get("origin_address")
         self.eta_text = meeting_data.get("eta_text")
 
@@ -116,9 +118,15 @@ class QuakPitBannerView(AppKit.NSView):
         """Determines if the event is already past departure time or past start time."""
         now = datetime.now().astimezone()
         if self.is_travel and self.departure_time:
-            return now > self.departure_time
+            dep = self.departure_time
+            if isinstance(dep, datetime):
+                dep = dep.astimezone() if dep.tzinfo else dep.replace(tzinfo=now.tzinfo)
+                return now > dep
         if self.start_time:
-            return now > self.start_time
+            st = self.start_time
+            if isinstance(st, datetime):
+                st = st.astimezone() if st.tzinfo else st.replace(tzinfo=now.tzinfo)
+                return now > st
         return False
 
     def _init_cached_resources(self):

@@ -95,7 +95,7 @@ class TestDashboardUI(unittest.TestCase):
         from ui.app_launcher import launch_application
 
         with patch("sys.argv", ["main.py", "--qt"]), \
-             patch("ui.linux.qt_tray_app.run_qt_tray_app") as mock_qt_tray:
+             patch("ui.linux.qt_tray_app.run_qt_tray_app", create=True) as mock_qt_tray:
             launch_application()
             mock_qt_tray.assert_called_once()
 

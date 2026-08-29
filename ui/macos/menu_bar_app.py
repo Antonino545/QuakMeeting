@@ -586,6 +586,22 @@ class QuakMeetingMenuBar(AppKit.NSObject):
     def run(self):
         self.app.run()
 
+def run_menu_bar_app():
+    """Initializes and runs the native macOS menu bar status item and event loop."""
+    import sys
+    app_instance = QuakMeetingMenuBar.alloc().init()
+    if app_instance is None:
+        logger.error("Failed to allocate and initialize QuakMeetingMenuBar!")
+        return
+
+    from core.app_controller import app_controller
+    app_controller.start_background_loop()
+
+    if "--silent" not in sys.argv and "--autostart" not in sys.argv:
+        show_dashboard()
+
+    logger.info("Entering macOS Application Run Loop...")
+    app_instance.run()
+
 if __name__ == "__main__":
-    menu_app = QuakMeetingMenuBar.alloc().init()
-    menu_app.run()
+    run_menu_bar_app()

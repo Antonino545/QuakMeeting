@@ -3,16 +3,13 @@ import objc
 import os
 import time
 import threading
-from core.calendar_scanner import get_available_calendars
+from core.services.calendar_service import calendar_service
 from core.services.event_bus import event_bus
 from core.services.updater_service import updater_service
 from core.services.config_service import is_debug_mode
 from core.autostart import is_autostart_enabled, enable_autostart, disable_autostart
 from core.logger import open_log_file, open_log_folder
-try:
-    from ui.macos.theme import Theme, ModernButton, ModernToggleSwitch
-except ImportError:
-    from theme import Theme, ModernButton, ModernToggleSwitch
+from ui.macos.theme import Theme, ModernButton, ModernToggleSwitch
 
 class SettingsTabController(AppKit.NSObject):
     def init(self):
@@ -67,7 +64,7 @@ class SettingsTabController(AppKit.NSObject):
         c2_h = 246.0  # Home / Departure Address & Multi-Modal Route ETA
 
         # Calculate calendar section height dynamically based on wrapped rows
-        cals = self.cached_calendars if self.cached_calendars else get_available_calendars()
+        cals = self.cached_calendars if self.cached_calendars else calendar_service.get_available_calendars()
         if not self.cached_calendars and cals:
             self.cached_calendars = cals
         
@@ -476,7 +473,7 @@ class SettingsTabController(AppKit.NSObject):
         )
 
         if cals is None:
-            cals = self.cached_calendars if self.cached_calendars else get_available_calendars()
+            cals = self.cached_calendars if self.cached_calendars else calendar_service.get_available_calendars()
 
         if not cals:
             lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 86, w - 36, 22))

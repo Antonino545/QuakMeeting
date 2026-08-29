@@ -6,10 +6,7 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 from core.services.event_bus import event_bus
 from core.services.updater_service import updater_service
-try:
-    from ui.macos.theme import Theme
-except ImportError:
-    from theme import Theme
+from ui.macos.theme import Theme
 
 CARD_W = 500.0
 CARD_H = 148.0

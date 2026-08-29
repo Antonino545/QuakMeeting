@@ -2,12 +2,8 @@ import AppKit
 import objc
 from datetime import datetime
 
-try:
-    from ui.macos.banner_window import _run_banner
-    from ui.macos.theme import Theme
-except ImportError:
-    from banner_window import _run_banner
-    from theme import Theme
+from ui.macos.banner_window import _run_banner
+from ui.macos.theme import Theme
 
 class HangarTabController(AppKit.NSObject):
     def init(self):

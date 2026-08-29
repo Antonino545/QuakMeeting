@@ -85,7 +85,7 @@ def get_test_preset(pilot_type: str) -> Dict[str, Any]:
             "pilot_type": "duck",
             "action_btn_text": "🚀 JOIN GOOGLE MEET",
             "action_url": "https://meet.google.com/test-quak-pit",
-            "start_time": datetime.now(),
+            "start_time": datetime.now().astimezone(),
             "is_travel": False
         },
         "chef": {
@@ -97,7 +97,7 @@ def get_test_preset(pilot_type: str) -> Dict[str, Any]:
             "location": "Pizzeria Da Michele",
             "travel_time_minutes": 25,
             "transport_mode": "transit",
-            "start_time": datetime.now(),
+            "start_time": datetime.now().astimezone(),
             "is_travel": True
         },
         "captain": {
@@ -109,7 +109,7 @@ def get_test_preset(pilot_type: str) -> Dict[str, Any]:
             "location": "Terminal 5 - Gate B12",
             "travel_time_minutes": 45,
             "transport_mode": "driving",
-            "start_time": datetime.now(),
+            "start_time": datetime.now().astimezone(),
             "is_travel": True
         },
         "owl": {
@@ -121,7 +121,7 @@ def get_test_preset(pilot_type: str) -> Dict[str, Any]:
             "classroom": "Room 3B - Campus",
             "teacher": "Prof. Smith",
             "location": "Room 3B - Campus",
-            "start_time": datetime.now(),
+            "start_time": datetime.now().astimezone(),
             "is_travel": False
         },
         "gym": {
@@ -133,7 +133,7 @@ def get_test_preset(pilot_type: str) -> Dict[str, Any]:
             "location": "Downtown Gym Club",
             "travel_time_minutes": 15,
             "transport_mode": "bicycling",
-            "start_time": datetime.now(),
+            "start_time": datetime.now().astimezone(),
             "is_travel": True
         },
         "driver": {
@@ -145,7 +145,7 @@ def get_test_preset(pilot_type: str) -> Dict[str, Any]:
             "location": "Victoria Street, London",
             "travel_time_minutes": 30,
             "transport_mode": "driving",
-            "start_time": datetime.now(),
+            "start_time": datetime.now().astimezone(),
             "is_travel": True
         },
         "zen_duck": {
@@ -154,7 +154,7 @@ def get_test_preset(pilot_type: str) -> Dict[str, Any]:
             "pilot_type": "zen_duck",
             "action_btn_text": "🚀 JOIN SESSION",
             "action_url": "https://app.serenis.it/join/test",
-            "start_time": datetime.now(),
+            "start_time": datetime.now().astimezone(),
             "is_travel": False
         }
     }
@@ -169,7 +169,7 @@ def get_update_preset(version_str: str = "New Version", release_url: str = "") -
         "action_btn_text": "⚡ UPDATE NOW",
         "quote_text": f"🚀 {version_str} IS READY!",
         "action_url": release_url or "https://github.com/Antonino545/QuakMeeting/releases",
-        "start_time": datetime.now(),
+        "start_time": datetime.now().astimezone(),
         "is_travel": False,
         "is_update_banner": True,
         "location": "Click to download & install update",
