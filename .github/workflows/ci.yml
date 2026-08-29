@@ -67,8 +67,7 @@ jobs:
           PYTHONPATH: /usr/lib/python3/dist-packages
           QT_QPA_PLATFORM: offscreen
         run: |
-          python3 -m pip install --upgrade pip
-          pip install ruff PyQt6
+          pip install --break-system-packages ruff PyQt6 || pip install ruff PyQt6
           ruff check .
           python3 -m unittest discover -s tests -v
 
