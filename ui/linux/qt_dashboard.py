@@ -118,12 +118,13 @@ QPushButton#PrimaryBtn {
     color: #11111b; /* Crust */
     font-size: 12px;
     font-weight: bold;
-    border: none;
+    border: 1px solid #89b4fa;
     border-radius: 8px;
     padding: 6px 14px;
 }
 QPushButton#PrimaryBtn:hover {
     background-color: #b4befe; /* Lavender (lighter blue) */
+    border: 1px solid #b4befe;
 }
 
 QPushButton#OutlineBtn {
@@ -721,10 +722,11 @@ class QtFlightDeckWindow(QMainWindow):
                 font-size: 12px;
                 border-radius: 8px;
                 padding: 8px 16px;
-                border: none;
+                border: 1px solid #74c7ec;
             }
             QPushButton:hover {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #89b4fa, stop:1 #89b4fa);
+                border: 1px solid #89b4fa;
             }
             QPushButton:disabled {
                 background: rgba(205, 214, 244, 0.08);
