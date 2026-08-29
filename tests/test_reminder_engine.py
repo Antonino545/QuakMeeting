@@ -193,6 +193,26 @@ class TestReminderEngine(unittest.TestCase):
         self.assertEqual(result[0].title, "Train to campus")
         self.assertEqual(result[1], 0)
 
+    def test_startup_catch_up_skips_past_ended_events(self):
+        now = datetime(2026, 8, 22, 23, 30, 0, tzinfo=timezone.utc)
+        past_event = Meeting(
+            title="Studiare Satellite",
+            start_time=now - timedelta(hours=8),
+            end_time=now - timedelta(hours=6)
+        )
+        result = self.engine.trigger_startup_catch_up([past_event], current_time=now)
+        self.assertIsNone(result)
+
+    def test_evaluate_meetings_skips_past_ended_events(self):
+        now = datetime(2026, 8, 22, 23, 30, 0, tzinfo=timezone.utc)
+        past_event = Meeting(
+            title="Studiare Satellite",
+            start_time=now - timedelta(hours=8),
+            end_time=now - timedelta(hours=6)
+        )
+        results = self.engine.evaluate_meetings([past_event], current_time=now)
+        self.assertEqual(len(results), 0)
+
     def test_all_day_event_is_skipped(self):
         now = datetime(2026, 8, 22, 12, 0, 0, tzinfo=timezone.utc)
         meeting = Meeting(

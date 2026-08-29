@@ -911,11 +911,76 @@ class QtFlightDeckWindow(QMainWindow):
         uc_layout.setContentsMargins(18, 14, 18, 14)
         uc_layout.setSpacing(10)
 
-        uc_title = QLabel("⚙️ System & Diagnostics", util_card)
+        uc_title = QLabel("⚙️ System, Language & Diagnostics", util_card)
         uc_title.setObjectName("CardTitle")
         uc_layout.addWidget(uc_title)
 
-        
+        # Language Selector Row
+        lang_box = QVBoxLayout()
+        lang_box.setSpacing(6)
+        lang_lbl = QLabel("🌐 Language / Lingua dell'Applicazione:", util_card)
+        lang_lbl.setStyleSheet("color: #cdd6f4; font-weight: bold; font-size: 13px;")
+        lang_box.addWidget(lang_lbl)
+
+        lang_row = QHBoxLayout()
+        lang_row.setSpacing(8)
+        langs = [
+            ("system", "🌐 System (Auto)"),
+            ("en", "🇬🇧 English"),
+            ("it", "🇮🇹 Italiano")
+        ]
+        curr_lang = config.get("language", "system")
+        lang_buttons = {}
+
+        def _update_lang_ui(sel_l):
+            for lk, lb in lang_buttons.items():
+                if lk == sel_l:
+                    lb.setStyleSheet("""
+                        QPushButton {
+                            background-color: #cba6f7;
+                            color: #11111b;
+                            font-weight: bold;
+                            border: 1px solid #b4befe;
+                            border-radius: 6px;
+                            padding: 6px 12px;
+                            font-size: 12px;
+                        }
+                    """)
+                else:
+                    lb.setStyleSheet("""
+                        QPushButton {
+                            background-color: #313244;
+                            color: #cdd6f4;
+                            border: 1px solid #45475a;
+                            border-radius: 6px;
+                            padding: 6px 12px;
+                            font-size: 12px;
+                        }
+                        QPushButton:hover {
+                            background-color: #45475a;
+                        }
+                    """)
+
+        def _make_lang_cb(lkey):
+            def _cb():
+                config.set("language", lkey)
+                _update_lang_ui(lkey)
+                event_bus.publish("CONFIG_CHANGED", key="language", value=lkey)
+                self.render_hangar_tab()
+            return _cb
+
+        for lk, ltitle in langs:
+            lbtn = QPushButton(ltitle, util_card)
+            lbtn.setCursor(Qt.CursorShape.PointingHandCursor)
+            lbtn.clicked.connect(_make_lang_cb(lk))
+            lang_buttons[lk] = lbtn
+            lang_row.addWidget(lbtn)
+
+        _update_lang_ui(curr_lang)
+        lang_box.addLayout(lang_row)
+        uc_layout.addLayout(lang_box)
+        uc_layout.addSpacing(6)
+
         autostart_row = QHBoxLayout()
         autostart_lbl = QLabel("🚀 Launch QuakMeeting automatically at Linux login", util_card)
         autostart_lbl.setStyleSheet("color: #cdd6f4; font-weight: bold; font-size: 13px;")
@@ -932,26 +997,30 @@ class QtFlightDeckWindow(QMainWindow):
         uc_layout.addLayout(autostart_row)
         uc_layout.addSpacing(6)
 
-        # Debug / Developer Mode Toggle
-        dbg_row = QHBoxLayout()
-        dbg_lbl = QLabel("🐛 Enable Developer & Debug Diagnostics Mode", util_card)
+        # Debug / Developer Mode Toggle (Visible only when debug mode is enabled or active)
+        dbg_container = QWidget(util_card)
+        dbg_row = QHBoxLayout(dbg_container)
+        dbg_row.setContentsMargins(0, 0, 0, 0)
+        dbg_lbl = QLabel("🐛 Enable Developer & Debug Diagnostics Mode", dbg_container)
         dbg_lbl.setStyleSheet("color: #cdd6f4; font-weight: bold; font-size: 13px;")
 
-        dbg_sw = ToggleSwitch(is_debug_mode(), util_card)
+        dbg_sw = ToggleSwitch(is_debug_mode(), dbg_container)
         def _toggle_debug(checked):
             config.set("debug_mode", checked)
             sim_box.setVisible(checked)
             edit_btn.setVisible(checked)
             log_btn.setVisible(checked)
             demo_up_btn.setVisible(checked)
+            dbg_container.setVisible(checked)
             self._refresh_hangar()
         dbg_sw.toggled = _toggle_debug
 
         dbg_row.addWidget(dbg_lbl)
         dbg_row.addStretch()
         dbg_row.addWidget(dbg_sw)
-        uc_layout.addLayout(dbg_row)
-        uc_layout.addSpacing(10)
+        dbg_container.setVisible(is_debug_mode())
+        uc_layout.addWidget(dbg_container)
+        uc_layout.addSpacing(6)
         
         sys_row = QHBoxLayout()
 
@@ -977,10 +1046,43 @@ class QtFlightDeckWindow(QMainWindow):
         demo_up_btn.setToolTip("Preview the live rocket jet download & installation animation sequence")
         demo_up_btn.setVisible(is_debug_mode())
 
+        def _on_show_license():
+            from core.services.language_service import t
+            from PyQt6.QtWidgets import QMessageBox
+            msg = QMessageBox(self)
+            msg.setWindowTitle(t("license_title"))
+            msg.setText(f"<h3>🦆 QuakMeeting v{updater_service.current_version}</h3>"
+                        f"<p>{t('license_body').replace(chr(10), '<br>')}</p>")
+            msg.setStyleSheet("""
+                QMessageBox {
+                    background-color: #1e1e2e;
+                    color: #cdd6f4;
+                }
+                QLabel {
+                    color: #cdd6f4;
+                    font-size: 12px;
+                }
+                QPushButton {
+                    background-color: #89b4fa;
+                    color: #11111b;
+                    font-weight: bold;
+                    border-radius: 6px;
+                    padding: 6px 14px;
+                }
+            """)
+            msg.setStandardButtons(QMessageBox.StandardButton.Ok)
+            msg.exec()
+
+        lic_btn = QPushButton("📜 License & Info", util_card)
+        lic_btn.setObjectName("OutlineBtn")
+        lic_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        lic_btn.clicked.connect(_on_show_license)
+
         sys_row.addWidget(up_btn)
         sys_row.addWidget(edit_btn)
         sys_row.addWidget(log_btn)
         sys_row.addWidget(demo_up_btn)
+        sys_row.addWidget(lic_btn)
         uc_layout.addLayout(sys_row)
 
         # Animated Update status card with radar scanning and celebratory states

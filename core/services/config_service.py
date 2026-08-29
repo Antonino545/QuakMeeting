@@ -14,6 +14,7 @@ CONFIG_DIR = os.path.expanduser("~/.quakmeeting")
 CONFIG_PATH = os.path.join(CONFIG_DIR, "config.json")
 
 DEFAULT_CONFIG = {
+    "language": "system",              # "system" (Auto OS Language), "en" (English), "it" (Italiano)
     "meeting_reminder_stages": [20, 10, 5, 2, 0],
     "general_reminder_stages": [20, 10, 5, 2, 0],
     "travel_reminder_stages": [45, 30, 15, 5, 0],
@@ -52,14 +53,48 @@ DEFAULT_CONFIG = {
         "general": {"animal": "duck", "outfit": "aviator"}
     },
     "custom_keywords": {
-        "chef": ["cena", "pranzo", "dinner", "lunch", "ristorante", "pizza", "pizzeria", "sushi", "aperitivo", "apericena", "osteria", "trattoria", "cibo", "food", "mangiare", "pub", "burger"],
-        "captain": ["flight", "volo", "airport", "aeroporto", "bus", "navetta", "shuttle", "pullman", "ryanair", "easyjet", "wizz", "ita airways", "treno", "frecciarossa", "italo", "stazione", "viaggio", "partenza", "gate", "terminal", "imbarco", "boarding", "taxi", "uber"],
-        "owl": ["universit", "uni", "esame", "esami", "lezione", "lezioni", "politecnico", "tesi", "smartgrid", "building", "ict", "satellite", "ricerca operativa", "corso", "aula"],
-        "gym": ["palestra", "gym", "workout", "allenamento", "crossfit", "fitness", "sport", "padel", "tennis", "calcio", "calcetto", "partita", "match", "nuoto", "swimming", "running", "corsa", "boxe", "boxing", "basket", "pallavolo", "pesi", "cardio", "training", "maratona", "pilates", "atletica"],
-        "driver": ["dentista", "dottore", "visita", "medico", "studio", "ufficio", "appuntamento"],
-        "zen_duck": ["serenis", "terapia", "yoga", "meditazione", "benessere", "relax"],
-        "platypus": ["secret", "mission", "spy", "agent", "undercover", "confidential", "top secret", "perry", "doofenshmirtz"],
-        "squirrel": ["brainstorm", "idea", "quick", "sync", "flash", "agile", "standup", "sprint", "retro", "hackathon", "nut", "squirrel", "speed"]
+        "chef": [
+            "dinner", "lunch", "breakfast", "brunch", "restaurant", "pizza", "pizzeria", "sushi",
+            "barbecue", "bbq", "burger", "food", "eat", "dining", "cocktail", "drinks", "pub",
+            "cena", "pranzo", "colazione", "ristorante", "trattoria", "osteria", "aperitivo",
+            "apericena", "cibo", "mangiare", "pasticceria", "bar", "degustazione", "focaccia"
+        ],
+        "captain": [
+            "flight", "airplane", "airport", "boarding", "gate", "terminal", "train", "station",
+            "subway", "metro", "bus", "shuttle", "pullman", "ferry", "travel", "trip", "departure",
+            "volo", "aereo", "aeroporto", "imbarco", "partenza", "treno", "stazione", "ferrovia",
+            "frecciarossa", "italo", "regionale", "metropolitana", "navetta", "viaggio", "gita"
+        ],
+        "owl": [
+            "study", "studying", "homework", "assignment", "revision", "self-study", "exam",
+            "test", "thesis", "library", "research", "lecture", "class", "course", "classroom",
+            "studio", "studiare", "compiti", "ripasso", "esame", "esami", "tesi", "laurea",
+            "lezione", "lezioni", "corso", "aula", "universit", "politecnico", "biblioteca"
+        ],
+        "gym": [
+            "gym", "workout", "fitness", "training", "exercise", "crossfit", "weights", "cardio",
+            "running", "swimming", "cycling", "yoga", "pilates", "football", "soccer", "tennis", "padel",
+            "palestra", "allenamento", "pesi", "corsa", "nuoto", "piscina", "bici", "bicicletta",
+            "calcio", "calcetto", "partita", "basket", "pallavolo", "tennis", "boxe", "atletica"
+        ],
+        "driver": [
+            "doctor", "dr.", "dentist", "medical", "clinic", "hospital", "therapy", "checkup",
+            "appointment", "consultation", "optician", "vet", "mechanic", "garage", "driving",
+            "dottore", "medico", "visita", "dentista", "clinica", "ospedale", "controllo",
+            "appuntamento", "consulenza", "oculista", "veterinario", "meccanico", "tagliando"
+        ],
+        "zen_duck": [
+            "meditation", "mindfulness", "wellness", "relax", "spa", "massage", "sauna",
+            "mental health", "serenis", "therapy", "calm", "meditazione", "benessere", "terme"
+        ],
+        "platypus": [
+            "secret", "segreto", "mission", "missione", "spy", "spia", "agent", "agente",
+            "undercover", "in incognito", "confidential", "top secret", "perry", "classified"
+        ],
+        "squirrel": [
+            "brainstorm", "brainstorming", "idea", "quick", "sync", "flash", "agile",
+            "standup", "sprint", "retro", "hackathon", "nut", "squirrel", "allineamento", "confronto"
+        ]
     }
 }
 

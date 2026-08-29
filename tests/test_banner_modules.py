@@ -16,44 +16,59 @@ from ui.macos.banner.banner_layout import BannerLayout
 class TestBannerModules(unittest.TestCase):
 
     def test_banner_speech_vocalizations(self):
-        # 1. Normal mode speech
-        duck_speech = build_pilot_speech_text({}, animal="duck", outfit="aviator", is_late=False)
+        # 1. Normal mode speech (English)
+        duck_speech = build_pilot_speech_text({}, animal="duck", outfit="aviator", is_late=False, lang="en")
         self.assertIn("Quak!", duck_speech)
 
-        owl_speech = build_pilot_speech_text({}, animal="owl", outfit="student", is_late=False)
+        owl_speech = build_pilot_speech_text({}, animal="owl", outfit="student", is_late=False, lang="en")
         self.assertIn("Hoot!", owl_speech)
 
-        bunny_speech = build_pilot_speech_text({}, animal="bunny", outfit="gym", is_late=False)
+        bunny_speech = build_pilot_speech_text({}, animal="bunny", outfit="gym", is_late=False, lang="en")
         self.assertTrue("Boing!" in bunny_speech or "Hop" in bunny_speech)
 
-        squirrel_speech = build_pilot_speech_text({}, animal="squirrel", outfit="racer", is_late=False)
+        squirrel_speech = build_pilot_speech_text({}, animal="squirrel", outfit="racer", is_late=False, lang="en")
         self.assertTrue("Chirp" in squirrel_speech or "Nut-ping" in squirrel_speech)
 
-        platypus_speech = build_pilot_speech_text({}, animal="platypus", outfit="agent", is_late=False)
+        platypus_speech = build_pilot_speech_text({}, animal="platypus", outfit="agent", is_late=False, lang="en")
         self.assertIn("Kk-kk", platypus_speech)
 
-        # 2. Emergency late mode speech
-        duck_late = build_pilot_speech_text({}, animal="duck", outfit="aviator", is_late=True)
+        # 2. Emergency late mode speech (English)
+        duck_late = build_pilot_speech_text({}, animal="duck", outfit="aviator", is_late=True, lang="en")
         self.assertIn("QUAAK!", duck_late)
 
-        owl_late = build_pilot_speech_text({"event_type": "study"}, animal="owl", outfit="student", is_late=True)
+        owl_late = build_pilot_speech_text({"event_type": "study"}, animal="owl", outfit="student", is_late=True, lang="en")
         self.assertIn("HOOOT!", owl_late)
+
+        # 3. Italian mode speech
+        duck_it = build_pilot_speech_text({}, animal="duck", outfit="aviator", is_late=False, lang="it")
+        self.assertIn("Quak!", duck_it)
+        self.assertIn("decollo", duck_it)
+
+        owl_it_late = build_pilot_speech_text({"event_type": "study"}, animal="owl", outfit="student", is_late=True, lang="it")
+        self.assertIn("DEVI STUDIARE", owl_it_late)
 
     def test_banner_formatting_and_urgency(self):
         now = datetime.now().astimezone()
 
-        # Far future event (e.g. in 25 mins) -> not urgent
+        # Far future event (e.g. in 25 mins) -> not urgent (English)
         start_far = now + timedelta(minutes=25, seconds=10)
-        text, urgent = compute_countdown_text(
-            {}, start_far, None, None, False, "transit", None, "duck", "Calendar", "Sync"
+        text_en, urgent_en = compute_countdown_text(
+            {}, start_far, None, None, False, "transit", None, "duck", "Calendar", "Sync", lang="en"
         )
-        self.assertIn("25m", text)
-        self.assertFalse(urgent)
+        self.assertIn("In 25m", text_en)
+        self.assertFalse(urgent_en)
+
+        # Far future event (Italian)
+        text_it, urgent_it = compute_countdown_text(
+            {}, start_far, None, None, False, "transit", None, "duck", "Calendar", "Sync", lang="it"
+        )
+        self.assertIn("Tra 25m", text_it)
+        self.assertFalse(urgent_it)
 
         # Imminent event (in 3 mins) -> urgent
         start_soon = now + timedelta(minutes=3, seconds=10)
         text_soon, urgent_soon = compute_countdown_text(
-            {}, start_soon, None, None, False, "transit", None, "duck", "Calendar", "Sync"
+            {}, start_soon, None, None, False, "transit", None, "duck", "Calendar", "Sync", lang="en"
         )
         self.assertIn("3m", text_soon)
         self.assertTrue(urgent_soon)

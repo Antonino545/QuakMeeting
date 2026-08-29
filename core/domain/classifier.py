@@ -17,15 +17,72 @@ MEETING_PATTERNS = [
 ]
 
 DEFAULT_KEYWORDS = {
-    "chef": ["dinner", "lunch", "cena", "pranzo", "restaurant", "ristorante", "pizza", "pizzeria", "sushi", "aperitivo", "apericena", "osteria", "trattoria", "food", "cibo", "eat", "mangiare", "pub", "burger", "barbecue", "bbq", "cocktail"],
-    "captain": ["flight", "volo", "airport", "aeroporto", "bus", "navetta", "shuttle", "pullman", "ryanair", "easyjet", "wizz", "ita airways", "train", "treno", "frecciarossa", "italo", "station", "stazione", "travel", "viaggio", "trip", "departure", "partenza", "gate", "terminal", "boarding", "imbarco", "taxi", "uber"],
-    "class": ["lecture", "lezione", "lezioni", "course", "corso", "classroom", "aula", "university", "universit", "politecnico", "professor", "prof"],
-    "owl": ["study", "studio", "studiare", "studying", "homework", "compiti", "ripasso", "revision", "self-study", "exam", "esame", "esami", "thesis", "tesi", "smartgrid", "building", "ict", "satellite", "operations research", "ricerca operativa"],
-    "gym": ["gym", "palestra", "workout", "allenamento", "crossfit", "fitness", "sport", "padel", "tennis", "calcio", "calcetto", "partita", "match", "nuoto", "swimming", "running", "corsa", "boxe", "boxing", "basket", "pallavolo", "pesi", "cardio", "training", "maratona", "pilates", "atletica"],
-    "driver": ["dentist", "dentista", "doctor", "dottore", "visit", "visita", "medical", "medico", "office", "ufficio", "drive", "driving", "appuntamento", "studio"],
-    "zen_duck": ["serenis", "therapy", "terapia", "yoga", "meditation", "meditazione", "mindfulness", "wellness", "benessere", "relax", "spa", "chill"],
-    "platypus": ["secret", "mission", "spy", "agent", "undercover", "confidential", "top secret", "perry", "doofenshmirtz"],
-    "squirrel": ["brainstorm", "idea", "quick", "sync", "flash", "agile", "standup", "sprint", "retro", "hackathon", "nut", "squirrel", "speed"]
+    "chef": [
+        "dinner", "lunch", "breakfast", "brunch", "restaurant", "pizza", "pizzeria", "sushi",
+        "barbecue", "bbq", "burger", "food", "eat", "dining", "cocktail", "drinks", "pub",
+        "bistro", "cafe", "coffee", "snack", "tasting", "cooking", "supper",
+        "cena", "pranzo", "colazione", "ristorante", "trattoria", "osteria", "aperitivo",
+        "apericena", "cibo", "mangiare", "pasticceria", "bar", "degustazione", "focaccia",
+        "panino", "spuntino", "mensa"
+    ],
+    "captain": [
+        "flight", "airplane", "airport", "boarding", "gate", "terminal", "takeoff", "landing",
+        "train", "railway", "station", "subway", "metro", "bus", "shuttle", "pullman", "ferry",
+        "cruise", "travel", "trip", "journey", "departure", "transit", "commute", "roadtrip",
+        "cab", "taxi", "uber", "lyft", "airline", "ryanair", "easyjet", "wizz", "delta",
+        "lufthansa", "british airways", "volo", "aereo", "aeroporto", "imbarco", "partenza",
+        "treno", "stazione", "ferrovia", "frecciarossa", "italo", "regionale", "metropolitana",
+        "navetta", "traghetto", "viaggio", "gita", "trasferta", "spostamento", "ita airways"
+    ],
+    "class": [
+        "lecture", "classes", "course", "classroom", "seminar", "workshop", "tutorial",
+        "lab", "laboratory", "university", "college", "professor", "prof", "academic",
+        "lezione", "lezioni", "corso", "aula", "seminario", "laboratorio", "universit",
+        "politecnico", "professore", "docente"
+    ],
+    "owl": [
+        "study", "studying", "homework", "assignment", "revision", "self-study", "exam",
+        "test", "quiz", "midterm", "final exam", "thesis", "dissertation", "library",
+        "research", "paper", "reading", "textbook", "smartgrid", "building", "ict", "satellite",
+        "operations research", "studio", "studiare", "compiti", "ripasso", "esame", "esami",
+        "parziale", "esonero", "tesi", "tesina", "laurea", "biblioteca", "ricerca", "dispense",
+        "esercitazione", "appunti", "ricerca operativa"
+    ],
+    "gym": [
+        "gym", "workout", "fitness", "training", "exercise", "crossfit", "bodybuilding",
+        "weights", "cardio", "running", "jogging", "swimming", "pool", "cycling", "bike ride",
+        "yoga", "pilates", "football", "soccer", "basketball", "tennis", "padel", "volleyball",
+        "boxing", "martial arts", "climbing", "hiking", "treadmill", "stretching", "match",
+        "palestra", "allenamento", "pesi", "corsa", "camminata", "nuoto", "piscina", "bici",
+        "bicicletta", "calcio", "calcetto", "partita", "partitella", "basket", "pallavolo",
+        "tennis", "atletica", "boxe", "maratona", "scalata", "arrampicata", "ginnastica"
+    ],
+    "driver": [
+        "doctor", "dr.", "physician", "dentist", "medical", "clinic", "hospital",
+        "therapy", "checkup", "appointment", "consultation", "optician", "eye doctor",
+        "vet", "veterinarian", "mechanic", "garage", "car inspection", "car wash", "driving",
+        "drive", "post office", "bank", "barber", "haircut", "errand", "office",
+        "dottore", "medico", "visita", "dentista", "ortodontista", "clinica", "ospedale",
+        "controllo", "appuntamento", "consulenza", "oculista", "veterinario", "meccanico",
+        "tagliando", "revisione auto", "posta", "banca", "barbiere", "parrucchiere",
+        "commissione", "ufficio", "studio"
+    ],
+    "zen_duck": [
+        "meditation", "mindfulness", "wellness", "relax", "spa", "massage", "thermal",
+        "sauna", "breathing", "mental health", "counseling", "serenis", "therapy",
+        "therapy session", "calm", "retreat", "chill", "meditazione", "benessere",
+        "terme", "massaggio", "respirazione", "salute mentale", "terapia", "seduta", "riposo"
+    ],
+    "platypus": [
+        "secret", "segreto", "mission", "missione", "spy", "spia", "agent", "agente",
+        "undercover", "in incognito", "confidential", "confidenziale", "top secret",
+        "perry", "doofenshmirtz", "classified", "riservato"
+    ],
+    "squirrel": [
+        "brainstorm", "brainstorming", "idea", "quick", "sync", "flash", "agile",
+        "standup", "sprint", "retro", "retrospettiva", "hackathon", "nut", "squirrel",
+        "speed", "allineamento", "confronto", "chiacchierata", "touchpoint", "huddle"
+    ]
 }
 
 LEGACY_PILOT_MAP = {
@@ -89,6 +146,12 @@ class EventClassifier:
 
         return classroom, teacher
 
+    @staticmethod
+    def _matches_kw(kw: str, text: str) -> bool:
+        if len(kw) <= 5 or not kw.isalnum():
+            return bool(re.search(r'\b' + re.escape(kw) + r'\b', text, re.IGNORECASE))
+        return kw in text
+
     @classmethod
     def classify(cls, title: str, location: str = "", description: str = "",
                  meeting_url: Optional[str] = None,
@@ -135,7 +198,7 @@ class EventClassifier:
 
         # 2. Check Physical Food / Dinner keywords
         for kw in keywords_dict.get("chef", []):
-            if kw in search_blob:
+            if cls._matches_kw(kw, search_blob):
                 maps_dest = location if (location and location != "missing value") else title
                 maps_url = f"https://maps.apple.com/?q={urllib.parse.quote(maps_dest)}"
                 res_meeting = Meeting(
@@ -158,7 +221,7 @@ class EventClassifier:
 
         # 3. Check Travel / Flights / Airport / Trains
         for kw in keywords_dict.get("captain", []):
-            if kw in search_blob:
+            if cls._matches_kw(kw, search_blob):
                 maps_dest = location if (location and location != "missing value") else title
                 maps_url = f"https://maps.apple.com/?q={urllib.parse.quote(maps_dest)}"
                 res_meeting = Meeting(
@@ -180,8 +243,8 @@ class EventClassifier:
                 return cls._apply_forced_pilot_if_needed(res_meeting)
 
         # 4. Check Class / Lecture Attendance vs Self-Study Block
-        is_class_event = bool(classroom) or bool(teacher) or any(kw in search_blob for kw in keywords_dict.get("class", []))
-        is_study_event = any(kw in search_blob for kw in keywords_dict.get("owl", []))
+        is_class_event = bool(classroom) or bool(teacher) or any(cls._matches_kw(kw, search_blob) for kw in keywords_dict.get("class", []))
+        is_study_event = any(cls._matches_kw(kw, search_blob) for kw in keywords_dict.get("owl", []))
 
         if is_class_event:
             is_trav = bool(location and location != "missing value" and "online" not in search_blob)
@@ -230,7 +293,7 @@ class EventClassifier:
 
         # 5. Check Gym / Palestra / Sport / Workout
         for kw in keywords_dict.get("gym", []):
-            if kw in search_blob:
+            if cls._matches_kw(kw, search_blob):
                 maps_dest = location if (location and location != "missing value") else title
                 maps_url = f"https://maps.apple.com/?daddr={urllib.parse.quote(maps_dest)}"
                 res_meeting = Meeting(
@@ -253,7 +316,7 @@ class EventClassifier:
 
         # 6. Check In-Person Appointments / Driver
         for kw in keywords_dict.get("driver", []):
-            if kw in search_blob:
+            if cls._matches_kw(kw, search_blob):
                 maps_dest = location if (location and location != "missing value") else title
                 maps_url = f"https://maps.apple.com/?daddr={urllib.parse.quote(maps_dest)}"
                 res_meeting = Meeting(
@@ -274,7 +337,7 @@ class EventClassifier:
 
         # 6. Check Therapy / Zen Duck
         for kw in keywords_dict.get("zen_duck", []):
-            if kw in search_blob:
+            if cls._matches_kw(kw, search_blob):
                 res_meeting = Meeting(
                     title=title,
                     start_time=start_time or datetime.now(),
@@ -283,17 +346,17 @@ class EventClassifier:
                     description=description,
                     event_type=EventCategory.HEALTH.value,
                     pilot_type=PilotType.ZEN_DUCK.value,
-                    provider="Serenis & Wellness 🛋️",
-                    action_btn_text="🚀 JOIN SESSION",
-                    action_url="https://app.serenis.it",
-                    theme_name="Zen Teal",
+                    provider="Therapy & Wellness 🌸🛋️",
+                    action_btn_text="🌸 WELLNESS TIME",
+                    action_url="https://calendar.apple.com",
+                    theme_name="Teal Modern",
                     is_travel=False
                 )
                 return cls._apply_forced_pilot_if_needed(res_meeting)
 
-        # 7. Check Secret Agent Platypus 🕵️‍♂️
+        # 7. Check Secret Mission / Platypus
         for kw in keywords_dict.get("platypus", []):
-            if kw in search_blob:
+            if cls._matches_kw(kw, search_blob):
                 res_meeting = Meeting(
                     title=title,
                     start_time=start_time or datetime.now(),
@@ -302,17 +365,17 @@ class EventClassifier:
                     description=description,
                     event_type=EventCategory.GENERAL.value,
                     pilot_type=PilotType.PLATYPUS.value,
-                    provider="Secret Mission 🕵️‍♂️",
-                    action_btn_text="🔍 TOP SECRET BRIEFING",
+                    provider="Top Secret Mission 🕵️‍♂️",
+                    action_btn_text="🕵️ BRIEFING ACCESS",
                     action_url="https://calendar.apple.com",
-                    theme_name="Teal Agent",
+                    theme_name="Midnight Slate",
                     is_travel=False
                 )
                 return cls._apply_forced_pilot_if_needed(res_meeting)
 
-        # 8. Check Hyper Squirrel 🐿️
+        # 8. Check Quick Sync / Squirrel
         for kw in keywords_dict.get("squirrel", []):
-            if kw in search_blob:
+            if cls._matches_kw(kw, search_blob):
                 res_meeting = Meeting(
                     title=title,
                     start_time=start_time or datetime.now(),
@@ -321,10 +384,10 @@ class EventClassifier:
                     description=description,
                     event_type=EventCategory.GENERAL.value,
                     pilot_type=PilotType.SQUIRREL.value,
-                    provider="Quick Sync 🐿️⚡",
-                    action_btn_text="⚡ JOIN QUICK SYNC",
+                    provider="Quick Sync & Brainstorm 🐿️⚡",
+                    action_btn_text="🐿️ JOIN HUDDLE",
                     action_url="https://calendar.apple.com",
-                    theme_name="Hyper Maroon",
+                    theme_name="Amber Glow",
                     is_travel=False
                 )
                 return cls._apply_forced_pilot_if_needed(res_meeting)
