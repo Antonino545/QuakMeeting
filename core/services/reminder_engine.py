@@ -112,8 +112,8 @@ class ReminderEngine:
 
         Calendar reminders can be missed while the app is closed. On startup,
         surface today's latest due reminder only when no banner for that event
-        is recorded in the persisted notification state. Travel events become
-        due at their departure time; all other events become due at start time.
+        is recorded in the persisted notification state and the event has not already ended.
+        Travel events become due at their departure time; all other events become due at start time.
         """
         from datetime import timezone
 
@@ -122,8 +122,15 @@ class ReminderEngine:
         for m in meetings:
             if not m.start_time or m.is_all_day or arrival_service.is_meeting_arrived(m):
                 continue
+            # If the event has already ended, do not trigger catch-up
+            if m.end_time and m.end_time <= now:
+                continue
             reminder_time = m.departure_time if m.is_travel and m.departure_time else m.start_time
             if reminder_time.astimezone().date() == now.astimezone().date() and reminder_time <= now:
+                # Do not catch up on events that started/were due >30 minutes ago unless still actively ongoing
+                elapsed_min = (now - reminder_time).total_seconds() / 60.0
+                if elapsed_min > 30.0 and not self.is_meeting_active(m, now):
+                    continue
                 missed.append((reminder_time, m))
         if not missed:
             return None
@@ -174,6 +181,12 @@ class ReminderEngine:
             if m.is_all_day:
                 continue
             if not m.start_time:
+                continue
+
+            # Skip events that have already ended or are in the past (>45 min ago with no end_time)
+            if m.end_time and m.end_time <= now:
+                continue
+            if not m.end_time and (now - m.start_time).total_seconds() > 45 * 60:
                 continue
 
             # Check if user already arrived (manually or via Wi-Fi/Active app)

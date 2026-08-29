@@ -6,6 +6,25 @@ from core.domain.models import PilotType, EventCategory
 class TestEventClassifier(unittest.TestCase):
     def setUp(self):
         self.classifier = EventClassifier()
+        from unittest.mock import patch
+        self._patcher = patch("core.services.config_service.config.get", side_effect=lambda k, d=None: {
+            "default_pilot": "duck",
+            "force_default_pilot": False,
+            "mascot_customization": {
+                "study": {"animal": "owl", "outfit": "student"},
+                "class": {"animal": "owl", "outfit": "student"},
+                "food": {"animal": "duck", "outfit": "chef"},
+                "travel": {"animal": "duck", "outfit": "captain"},
+                "sport": {"animal": "duck", "outfit": "gym"},
+                "in_person": {"animal": "duck", "outfit": "racer"},
+                "health": {"animal": "duck", "outfit": "zen"},
+                "general": {"animal": "duck", "outfit": "aviator"}
+            }
+        }.get(k, d))
+        self._patcher.start()
+
+    def tearDown(self):
+        self._patcher.stop()
 
     def test_extract_meeting_url(self):
         meet_text = "Join us at https://meet.google.com/abc-defg-hij please!"
@@ -105,5 +124,68 @@ class TestEventClassifier(unittest.TestCase):
         self.assertEqual(m2.pilot_type, PilotType.GYM.value)
         self.assertEqual(m2.event_type, EventCategory.SPORT.value)
         self.assertTrue(m2.is_travel)
+
+    def test_classify_platypus_and_squirrel(self):
+        # 1. Platypus secret mission
+        m_plat = self.classifier.classify(title="Top Secret Agent Mission Briefing", location="")
+        self.assertEqual(m_plat.pilot_type, PilotType.PLATYPUS.value)
+        self.assertIn("Secret Mission", m_plat.provider)
+
+        # 2. Squirrel quick sync / brainstorm
+        m_squir = self.classifier.classify(title="Hackathon Sprint Planning & Quick Sync", location="")
+        self.assertEqual(m_squir.pilot_type, PilotType.SQUIRREL.value)
+        self.assertIn("Quick Sync", m_squir.provider)
+
+    def test_default_pilot_customization(self):
+        from unittest.mock import patch
+        from core.services.config_service import DEFAULT_CONFIG
+
+        def mock_get_def(k, d=None):
+            if k == "default_pilot":
+                return "platypus"
+            return DEFAULT_CONFIG.get(k, d)
+
+        with patch("core.services.config_service.config.get", side_effect=mock_get_def):
+            meeting = self.classifier.classify(title="General unclassified discussion", location="")
+            self.assertEqual(meeting.animal, "platypus")
+
+        def mock_get_forced(k, d=None):
+            if k == "force_default_pilot":
+                return True
+            if k == "default_pilot":
+                return "bunny"
+            return DEFAULT_CONFIG.get(k, d)
+
+        with patch("core.services.config_service.config.get", side_effect=mock_get_forced):
+            meeting = self.classifier.classify(title="Dinner with team", location="Pizzeria")
+            self.assertEqual(meeting.animal, "bunny")
+            self.assertEqual(meeting.pilot_type, "bunny_chef")
+
+    def test_modular_mascot_customization(self):
+        from unittest.mock import patch
+        from core.services.config_service import DEFAULT_CONFIG
+
+        customs = {
+            "study": {"animal": "bunny", "outfit": "student"},
+            "food": {"animal": "owl", "outfit": "chef"}
+        }
+
+        def mock_get_customs(k, d=None):
+            if k == "mascot_customization":
+                return customs
+            return DEFAULT_CONFIG.get(k, d)
+
+        with patch("core.services.config_service.config.get", side_effect=mock_get_customs):
+            # Study event -> Bunny with Student Hat
+            m_study = self.classifier.classify(title="Studiare Fisica e Matematica", location="")
+            self.assertEqual(m_study.animal, "bunny")
+            self.assertEqual(m_study.outfit, "student")
+            self.assertEqual(m_study.pilot_type, "bunny_student")
+
+            # Food event -> Owl with Chef Hat
+            m_food = self.classifier.classify(title="Cena con amici", location="Pizzeria")
+            self.assertEqual(m_food.animal, "owl")
+            self.assertEqual(m_food.outfit, "chef")
+            self.assertEqual(m_food.pilot_type, "owl_chef")
 
 

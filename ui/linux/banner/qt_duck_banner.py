@@ -18,9 +18,11 @@ except ImportError:
     pass
 
 from core.services.config_service import config
-from core.services.eta_service import MODE_ICONS, MODE_LABELS
 from core.domain.models import format_duration
 from ui.linux.theme import Theme
+from ui.common.banner_speech import build_pilot_speech_text
+from ui.common.banner_particles import BannerParticleEngine
+from ui.common.banner_formatting import compute_countdown_text, MODE_ICONS
 from .renderers import get_pilot_renderer
 
 
@@ -98,8 +100,12 @@ class QtDuckBannerWindow(QWidget):
              "google.com/maps" in self.action_url.lower())
         ) or self.is_travel
 
+        # Modular animal & outfit customization
+        self.animal = event_data.get("animal")
+        self.outfit = event_data.get("outfit")
+
         # Instantiate pilot renderer
-        self.renderer = get_pilot_renderer(self.pilot_type)
+        self.renderer = get_pilot_renderer(self.pilot_type, animal=self.animal, outfit=self.outfit)
 
         # Flight dynamics & geometry (Boost speed by 40% when late)
         base_speed = float(config.get("flight_speed", 3.2))
@@ -107,10 +113,8 @@ class QtDuckBannerWindow(QWidget):
         self.tick = 0
         self.is_paused = False
 
-        # Particle emitters
-        self.smoke_particles = []
-        self.sparkle_particles = []
-        self.flame_particles = []
+        # Particle Engine
+        self.particle_engine = BannerParticleEngine()
 
         # Hover & Click Interaction State
         self.hovered_button = None
@@ -200,148 +204,55 @@ class QtDuckBannerWindow(QWidget):
 
         self._cached_detail_text = detail_text
 
-        # Pilot speech quote
-        self._cached_speech_text = self._build_pilot_speech_text()
-
-        # Countdown
-        self._cached_countdown_text = "⏰ Upcoming Alert"
-        self._cached_is_urgent = False
-        self._update_countdown_text()
-
-    def _build_pilot_speech_text(self) -> str:
-        """Constructs context-aware quote for the pilot speech bubble."""
-        is_self_study = (
-            self.event_data.get("event_type") == "study"
-            or "STUDY" in (self.provider or "").upper()
-            or "STUDIARE" in (self.title or "").upper()
-            or (not self.classroom and "STUDY" in (self.title or "").upper())
+        # Precompute pilot speech bubble text & countdown strings from common modules
+        self._cached_speech_text = build_pilot_speech_text(
+            self.event_data,
+            animal=self.animal,
+            outfit=self.outfit,
+            pilot_type=self.pilot_type,
+            is_late=self.is_late,
+            classroom=self.classroom,
+            title=self.title,
+            provider=self.provider
+        )
+        self._cached_countdown_text, self._cached_is_urgent = compute_countdown_text(
+            self.event_data,
+            self.start_time,
+            self.departure_time,
+            self.travel_time_minutes,
+            self.is_travel,
+            self.transport_mode,
+            self.classroom,
+            self.pilot_type,
+            self.provider,
+            self.title
         )
 
-        if self.is_late:
-            if self.pilot_type == "owl":
-                if is_self_study:
-                    return "🚨 YOU NEED TO STUDY! DO IT! 📖"
-                if self.classroom:
-                    return f"🚨 CLASS STARTED IN {self.classroom.upper()}! SPRINT!"
-                return "🚨 PROFESSOR IS STARTING! YOU'RE LATE!"
-            elif self.pilot_type == "chef":
-                return "🔥 THE FOOD IS GETTING COLD! HURRY!"
-            elif self.pilot_type == "captain":
-                return "⚠️ LAST CALL FOR BOARDING! SPRINT TO GATE!"
-            elif self.pilot_type == "driver":
-                return "🔥 FLOOR THE GAS! WE ARE LATE!"
-            elif self.pilot_type == "gym":
-                return "🔥 DON'T SKIP WORKOUT! TIME FOR GAINS! 🏋️‍♂️"
-            elif self.pilot_type == "zen_duck":
-                return "🚨 BREATHE IN... AND SPRINT! 🏃💨"
-            else:
-                return "QUAAK! 🚨 YOU ARE LATE! RUN!"
-        else:
-            if self.pilot_type == "owl":
-                if is_self_study:
-                    return "Time to study! You need to study, do it! 📖"
-                if self.classroom:
-                    return f"Class in {self.classroom} soon! 📚"
-                return "Class starting soon! 🦉"
-            elif self.pilot_type == "chef":
-                return "Dinner / food time soon! 🍕"
-            elif self.pilot_type == "captain":
-                return "Cabin crew, prepare for takeoff ✈️"
-            elif self.pilot_type == "driver":
-                return "Engines running, ready to roll! 🏎️"
-            elif self.pilot_type == "gym":
-                return "Time to train & crush workout! 🏋️‍♂️💪"
-            elif self.pilot_type == "zen_duck":
-                return "Time for wellness & calm 🌸"
-            else:
-                return "Quak! Ready for takeoff! 🦆"
+    @property
+    def flame_particles(self):
+        return self.particle_engine.flame_particles
+
+    @property
+    def smoke_particles(self):
+        return self.particle_engine.smoke_particles
+
+    @property
+    def sparkle_particles(self):
+        return self.particle_engine.sparkle_particles
 
     def _update_countdown_text(self):
-        countdown_text = "⏰ Upcoming Alert"
-        is_urgent = False
-        mode_icon = MODE_ICONS.get(self.transport_mode, "🚆")
-        is_self_study = (
-            self.event_data.get("event_type") == "study"
-            or "STUDY" in (self.provider or "").upper()
-            or "STUDIARE" in (self.title or "").upper()
-            or (not self.classroom and "STUDY" in (self.title or "").upper())
+        self._cached_countdown_text, self._cached_is_urgent = compute_countdown_text(
+            self.event_data,
+            self.start_time,
+            self.departure_time,
+            self.travel_time_minutes,
+            self.is_travel,
+            self.transport_mode,
+            self.classroom,
+            self.pilot_type,
+            self.provider,
+            self.title
         )
-
-        if self.start_time:
-            now = datetime.now().astimezone()
-            st = self.start_time.astimezone() if hasattr(self.start_time, "astimezone") else self.start_time
-            diff = (st - now).total_seconds()
-
-            if self.is_travel and self.departure_time:
-                dep = self.departure_time.astimezone() if hasattr(self.departure_time, "astimezone") else self.departure_time
-                dep_diff = (dep - now).total_seconds()
-                dep_mins = int(dep_diff // 60)
-                dep_time_str = dep.strftime("%H:%M")
-                dur_str = format_duration(self.travel_time_minutes or 20)
-
-                if dep_diff <= 0:
-                    late_min = abs(int(dep_diff // 60))
-                    countdown_text = f"🚨 {mode_icon} LATE BY {late_min}m • LEAVE NOW!" if late_min > 0 else f"🚨 {mode_icon} DEPART NOW!"
-                    is_urgent = True
-                elif dep_mins <= 10:
-                    countdown_text = f"⏳ {mode_icon} Leave in {dep_mins}m ({dep_time_str})"
-                    is_urgent = True
-                else:
-                    countdown_text = f"{mode_icon} Leave at {dep_time_str} (~{dur_str})"
-            elif diff > 0:
-                mins = int(diff // 60)
-                secs = int(diff % 60)
-                if is_self_study:
-                    if mins >= 15:
-                        countdown_text = f"📖 In {mins}m • Study Time"
-                    elif mins >= 5:
-                        countdown_text = f"⏳ In {mins}m • Open Books"
-                    elif mins >= 1:
-                        countdown_text = f"⚡ In {mins}m • Time to Study!"
-                        is_urgent = True
-                    else:
-                        countdown_text = f"⏳ In {secs}s • Study Starting!"
-                        is_urgent = True
-                elif self.classroom:
-                    if mins >= 10:
-                        countdown_text = f"🎓 Lesson in {mins}m • {self.classroom}"
-                    elif mins >= 1:
-                        countdown_text = f"⏳ Class in {mins}m • {self.classroom}"
-                        is_urgent = True
-                    else:
-                        countdown_text = f"🚨 Class starting now • {self.classroom}"
-                        is_urgent = True
-                elif self.is_travel:
-                    if mins >= 30:
-                        countdown_text = f"{mode_icon} In {mins}m • Travel Notice"
-                    elif mins >= 15:
-                        countdown_text = f"{mode_icon} In {mins}m • Prepare to Leave"
-                    else:
-                        countdown_text = f"🚨 {mode_icon} Leave Now!"
-                        is_urgent = True
-                else:
-                    if mins >= 15:
-                        countdown_text = f"⏰ In {mins}m • Early Alert"
-                    elif mins >= 5:
-                        countdown_text = f"⏳ In {mins}m • Get Ready"
-                    elif mins >= 1:
-                        countdown_text = f"🚀 In {mins}m • Almost Time!"
-                        is_urgent = True
-                    else:
-                        countdown_text = f"⏳ In {secs}s • Starting Now!"
-                        is_urgent = True
-            elif diff > -1800:
-                late_mins = abs(int(diff // 60))
-                if self.pilot_type == "owl" and is_self_study:
-                    countdown_text = f"🚨 STUDY OVERDUE BY {late_mins}m • DO IT!" if late_mins > 0 else "📖 TIME TO STUDY • DO IT!"
-                elif self.classroom:
-                    countdown_text = f"🔴 LATE BY {late_mins}m • {self.classroom}" if late_mins > 0 else f"🔴 CLASS STARTED • {self.classroom}"
-                else:
-                    countdown_text = f"🔴 LATE BY {late_mins}m • IN PROGRESS" if late_mins > 0 else "🔴 IN PROGRESS NOW"
-                is_urgent = True
-
-        self._cached_countdown_text = countdown_text
-        self._cached_is_urgent = is_urgent
 
     def _build_theme_palette(self) -> Dict[str, Any]:
         """Returns exact theme palette matching macOS."""
@@ -375,6 +286,16 @@ class QtDuckBannerWindow(QWidget):
             accent_bright = Theme.MAROON
             btn_gradient_top = Theme.RED
             btn_gradient_bot = Theme.MAROON
+        elif self.pilot_type == "platypus":
+            accent = Theme.TEAL
+            accent_bright = Theme.SAPPHIRE
+            btn_gradient_top = Theme.TEAL
+            btn_gradient_bot = Theme.SAPPHIRE
+        elif self.pilot_type == "squirrel":
+            accent = Theme.MAROON
+            accent_bright = Theme.PEACH
+            btn_gradient_top = Theme.MAROON
+            btn_gradient_bot = Theme.PEACH
         else:
             accent = Theme.GREEN
             accent_bright = Theme.TEAL
@@ -457,75 +378,9 @@ class QtDuckBannerWindow(QWidget):
         plane_x = self.PLANE_CX
         plane_y = self.PLANE_CY
 
-        # 1. Turbo Flame Emitter (When Late / Emergency Mode)
-        if self.is_late and not self.is_paused:
-            for dy_eng in [-10, 10]:
-                self.flame_particles.append({
-                    "x": plane_x - 30.0,
-                    "y": plane_y + dy_eng + (random.random() - 0.5) * 4.0,
-                    "r": 5.5 + random.random() * 3.0,
-                    "alpha": 0.95,
-                    "vx": -4.2 - random.random() * 2.0,
-                    "vy": (random.random() - 0.5) * 1.5,
-                    "color_stage": 0.0
-                })
-
-        # 2. Standard Smoke / Sparkles (Active during flight)
-        if self.tick % 4 == 0 and not self.is_paused:
-            if not self.is_late:
-                if self.pilot_type == "captain":
-                    self.smoke_particles.append({"x": plane_x - 22, "y": plane_y - 12, "r": 4.0, "alpha": 0.75, "drift": -0.2})
-                    self.smoke_particles.append({"x": plane_x - 22, "y": plane_y + 12, "r": 4.0, "alpha": 0.75, "drift": 0.2})
-                elif self.pilot_type == "zen_duck":
-                    self.smoke_particles.append({"x": plane_x - 28, "y": plane_y + 4, "r": 4.5, "alpha": 0.65, "drift": 0.0})
-                    if self.tick % 8 == 0:
-                        self.sparkle_particles.append({"x": plane_x - 24, "y": plane_y + 8, "r": 3.0, "alpha": 0.9, "vy": 0.4})
-                elif self.pilot_type == "owl":
-                    self.smoke_particles.append({"x": plane_x - 26, "y": plane_y + 6, "r": 4.2, "alpha": 0.6, "drift": 0.0})
-                    if self.tick % 10 == 0:
-                        self.sparkle_particles.append({"x": plane_x - 22, "y": plane_y + 10, "r": 3.2, "alpha": 0.95, "vy": 0.3})
-                else:
-                    self.smoke_particles.append({
-                        "x": plane_x - 28,
-                        "y": plane_y + 6,
-                        "r": 4.8,
-                        "alpha": 0.75,
-                        "drift": math.sin(self.tick * 0.1) * 0.4
-                    })
-
-        # Update flames
-        new_flames = []
-        for f in self.flame_particles:
-            f["x"] += f["vx"]
-            f["y"] += f["vy"]
-            f["r"] += 0.4
-            f["alpha"] -= 0.05
-            f["color_stage"] = min(2.0, f["color_stage"] + 0.1)
-            if f["alpha"] > 0 and f["r"] < 28:
-                new_flames.append(f)
-        self.flame_particles = new_flames
-
-        # Update smoke
-        new_particles = []
-        for p in self.smoke_particles:
-            p["x"] -= 2.4
-            p["y"] += p.get("drift", 0.0) + math.sin(p["x"] * 0.04) * 0.3
-            p["r"] += 0.35
-            p["alpha"] -= 0.022
-            if p["alpha"] > 0 and p["r"] < 24:
-                new_particles.append(p)
-        self.smoke_particles = new_particles
-
-        # Update sparkles
-        new_sparkles = []
-        for s in self.sparkle_particles:
-            s["x"] -= 1.8
-            s["y"] += s["vy"]
-            s["alpha"] -= 0.028
-            s["r"] = max(0.5, s["r"] - 0.04)
-            if s["alpha"] > 0:
-                new_sparkles.append(s)
-        self.sparkle_particles = new_sparkles
+        self.particle_engine.emit_and_update(
+            plane_x, plane_y, self.tick, self.is_late, self.is_paused, self.pilot_type
+        )
 
         self.update()
 
@@ -750,8 +605,8 @@ class QtDuckBannerWindow(QWidget):
         self.renderer.draw_pilot(p, px, py, self.tick)
         p.restore()
 
-        # 11. Animated Pilot Speech Bubble (Above plane)
-        self._draw_pilot_speech_bubble(p, px, py)
+        # 11. Animated Pilot Speech Bubble (Above plane, kept strictly clear of card HUD & close button)
+        self._draw_pilot_speech_bubble(p, px, py, bx + bw)
 
         p.end()
 
@@ -1005,8 +860,8 @@ class QtDuckBannerWindow(QWidget):
             _draw_snooze_btn("snooze1", rects["snooze1"], "💤 5m")
             _draw_snooze_btn("snooze2", rects["snooze2"], "⏭️ Skip")
 
-    def _draw_pilot_speech_bubble(self, p: QPainter, px: float, py: float):
-        """Draws an animated floating speech bubble pointing directly at the pilot."""
+    def _draw_pilot_speech_bubble(self, p: QPainter, px: float, py: float, card_right_x: float):
+        """Draws an animated floating speech bubble pointing directly at the pilot, kept strictly clear of the card close button."""
         text = self._cached_speech_text
         if not text:
             return
@@ -1016,18 +871,27 @@ class QtDuckBannerWindow(QWidget):
         fm = p.fontMetrics()
         bw = fm.horizontalAdvance(text) + 20.0
         bh = 26.0
-        bx = px - bw * 0.5
+
+        # Ensure the speech bubble never overlaps the close button or left card area
+        min_bx = card_right_x + 10.0
+        ideal_bx = px - bw * 0.5
+        bx = max(min_bx, ideal_bx)
+
         # Float above plane with bobbing
         bob = math.sin(self.tick * 0.08) * 3.0
         by = py - 46.0 + bob
 
         bubble_rect = QRectF(bx, by, bw, bh)
 
+        # Anchor tail securely between bubble base and pilot tip
+        tail_tip_x = px
+        tail_base_x = max(bx + 14.0, min(bx + bw - 14.0, tail_tip_x))
+
         # Bubble Container Shape & Tail pointing to pilot
         tail = QPainterPath()
-        tail.moveTo(px - 6.0, by + bh)
-        tail.lineTo(px, by + bh + 8.0)
-        tail.lineTo(px + 6.0, by + bh)
+        tail.moveTo(tail_base_x - 6.0, by + bh)
+        tail.lineTo(tail_tip_x, by + bh + 8.0)
+        tail.lineTo(tail_base_x + 6.0, by + bh)
         tail.closeSubpath()
 
         if self.is_late:

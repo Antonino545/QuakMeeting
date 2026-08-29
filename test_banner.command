@@ -26,19 +26,21 @@ echo ""
 echo "Select which notification banner to test over your Full Screen apps:"
 echo ""
 echo " 1) 🦆 Classic Aviator Duck (Google Meet / Zoom)"
-echo " 2) 🍕 Chef Duck (Dinner / Restaurant & Food)"
-echo " 3) ✈️  Jet Captain (Flights, Trains & Travel)"
-echo " 4) 🎓 Academic Owl (University & Lectures)"
-echo " 5) 🏋️‍♂️ Athlete Duck (Palestra / Gym & Sport)"
-echo " 6) 🚗 Speed Racer (Driving / Real-Time Navigation)"
-echo " 7) 🛋️  Zen Duck (Serenis & Wellness)"
-echo " 8) ⏱️  Quick Full Screen Test (with 4-second delay)"
-echo " 9) 🚪 Exit"
+echo " 2) 🕵️‍♂️ Secret Agent Platypus (Secret Missions & Agile)"
+echo " 3) 🐿️  Hyper Nut Explorer (Brainstorms & Sprints)"
+echo " 4) 🍕 Chef Duck (Dinner / Restaurant & Food)"
+echo " 5) ✈️  Jet Captain (Flights, Trains & Travel)"
+echo " 6) 🎓 Academic Owl (University & Lectures)"
+echo " 7) 🏋️‍♂️ Athlete Duck (Palestra / Gym & Sport)"
+echo " 8) 🚗 Speed Racer (Driving / Real-Time Navigation)"
+echo " 9) 🛋️  Zen Duck (Serenis & Wellness)"
+echo "10) ⏱️  Quick Full Screen Test (with 4-second delay)"
+echo "11) 🚪 Exit"
 echo ""
-read -p "Enter your choice [1-9] (default: 8): " CHOICE
+read -p "Enter your choice [1-11] (default: 10): " CHOICE
 
 if [ -z "$CHOICE" ]; then
-    CHOICE="8"
+    CHOICE="10"
 fi
 
 PILOT="duck"
@@ -50,46 +52,56 @@ case "$CHOICE" in
         DELAY=1
         ;;
     2)
-        PILOT="chef"
+        PILOT="platypus"
         DELAY=1
         ;;
     3)
-        PILOT="captain"
+        PILOT="squirrel"
         DELAY=1
         ;;
     4)
-        PILOT="owl"
+        PILOT="chef"
         DELAY=1
         ;;
     5)
-        PILOT="gym"
+        PILOT="captain"
         DELAY=1
         ;;
     6)
-        PILOT="driver"
+        PILOT="owl"
         DELAY=1
         ;;
     7)
-        PILOT="zen_duck"
+        PILOT="gym"
         DELAY=1
         ;;
     8)
+        PILOT="driver"
+        DELAY=1
+        ;;
+    9)
+        PILOT="zen_duck"
+        DELAY=1
+        ;;
+    10)
         echo ""
         echo "Choose the pilot character for the full-screen test:"
-        echo " 1) Aviator Duck  2) Chef  3) Jet Captain  4) Academic Owl  5) Athlete Duck  6) Speed Racer  7) Zen Duck"
-        read -p "Choice [1-7] (default: 1): " P_CHOICE
+        echo " 1) Aviator Duck  2) Agent Platypus  3) Hyper Squirrel  4) Chef  5) Jet Captain  6) Owl  7) Gym  8) Driver  9) Zen Duck"
+        read -p "Choice [1-9] (default: 1): " P_CHOICE
         case "$P_CHOICE" in
-            2) PILOT="chef" ;;
-            3) PILOT="captain" ;;
-            4) PILOT="owl" ;;
-            5) PILOT="gym" ;;
-            6) PILOT="driver" ;;
-            7) PILOT="zen_duck" ;;
+            2) PILOT="platypus" ;;
+            3) PILOT="squirrel" ;;
+            4) PILOT="chef" ;;
+            5) PILOT="captain" ;;
+            6) PILOT="owl" ;;
+            7) PILOT="gym" ;;
+            8) PILOT="driver" ;;
+            9) PILOT="zen_duck" ;;
             *) PILOT="duck" ;;
         esac
         DELAY=4
         ;;
-    9)
+    11)
         echo "Exiting..."
         exit 0
         ;;

@@ -24,7 +24,7 @@ from PyQt6.QtWidgets import (
     QProgressBar, QStackedWidget, QSizePolicy
 )
 from PyQt6.QtCore import Qt, QTimer, QObject, pyqtSignal
-from PyQt6.QtGui import QColor, QFont, QPixmap, QIcon
+from PyQt6.QtGui import QColor, QFont, QPixmap, QIcon, QPainter
 
 from ui.linux.animated_widgets import (
     BouncingMascotLabel, AnimatedSpinButton, AnimatedUpdateCard, UpdatingHUDWidget, ToggleSwitch
@@ -247,7 +247,70 @@ QScrollBar::handle:vertical:hover {
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
     height: 0px;
 }
+
+QScrollBar:horizontal {
+    height: 0px;
+    border: none;
+    background: transparent;
+}
+QScrollBar::handle:horizontal {
+    height: 0px;
+    background: transparent;
+}
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+    width: 0px;
+    height: 0px;
+}
+
+QStatusBar {
+    background: transparent;
+    border: none;
+    max-height: 0px;
+}
+QSizeGrip {
+    width: 0px;
+    height: 0px;
+    background: transparent;
+}
 """
+
+class QtMascotMiniWidget(QFrame):
+    def __init__(self, animal="duck", outfit="aviator", parent=None):
+        super().__init__(parent)
+        self.animal = animal
+        self.outfit = outfit
+        self.tick = 0
+        self.setFixedSize(68, 64)
+        self.setStyleSheet("""
+            QFrame {
+                background: #11111b;
+                border: 1px solid #313244;
+                border-radius: 8px;
+            }
+        """)
+
+    def update_mascot(self, animal, outfit):
+        self.animal = animal
+        self.outfit = outfit
+        self.update()
+
+    def update_animal(self, animal):
+        self.animal = animal
+        self.update()
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        w = self.width()
+        h = self.height()
+        p.save()
+        p.translate(w * 0.5 - 2, h * 0.5 - 2)
+        p.scale(0.68, -0.68)
+        from ui.linux.banner.renderers.modular_renderer import QtModularRenderer
+        renderer = QtModularRenderer(animal=self.animal, outfit=self.outfit)
+        renderer.draw_pilot(p, 0, 0, self.tick)
+        p.restore()
 
 class QtFlightDeckWindow(QMainWindow):
     """PyQt6 Flight Deck Dashboard Window."""
@@ -264,6 +327,7 @@ class QtFlightDeckWindow(QMainWindow):
             self.move((geo.width() - 840) // 2, (geo.height() - 620) // 2)
 
         self.setStyleSheet(QT_DASHBOARD_QSS)
+        self.setStatusBar(None)
 
         central_widget = QWidget(self)
         central_widget.setObjectName("CentralWidget")
@@ -354,6 +418,7 @@ class QtFlightDeckWindow(QMainWindow):
         scroll = QScrollArea(agenda_widget)
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
 
         self.scroll_content = QWidget()
@@ -374,6 +439,7 @@ class QtFlightDeckWindow(QMainWindow):
         self.h_scroll = QScrollArea(hangar_widget)
         self.h_scroll.setWidgetResizable(True)
         self.h_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.h_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.h_scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
 
         self.h_content = QWidget()
@@ -845,11 +911,76 @@ class QtFlightDeckWindow(QMainWindow):
         uc_layout.setContentsMargins(18, 14, 18, 14)
         uc_layout.setSpacing(10)
 
-        uc_title = QLabel("⚙️ System & Diagnostics", util_card)
+        uc_title = QLabel("⚙️ System, Language & Diagnostics", util_card)
         uc_title.setObjectName("CardTitle")
         uc_layout.addWidget(uc_title)
 
-        
+        # Language Selector Row
+        lang_box = QVBoxLayout()
+        lang_box.setSpacing(6)
+        lang_lbl = QLabel("🌐 Language / Lingua dell'Applicazione:", util_card)
+        lang_lbl.setStyleSheet("color: #cdd6f4; font-weight: bold; font-size: 13px;")
+        lang_box.addWidget(lang_lbl)
+
+        lang_row = QHBoxLayout()
+        lang_row.setSpacing(8)
+        langs = [
+            ("system", "🌐 System (Auto)"),
+            ("en", "🇬🇧 English"),
+            ("it", "🇮🇹 Italiano")
+        ]
+        curr_lang = config.get("language", "system")
+        lang_buttons = {}
+
+        def _update_lang_ui(sel_l):
+            for lk, lb in lang_buttons.items():
+                if lk == sel_l:
+                    lb.setStyleSheet("""
+                        QPushButton {
+                            background-color: #cba6f7;
+                            color: #11111b;
+                            font-weight: bold;
+                            border: 1px solid #b4befe;
+                            border-radius: 6px;
+                            padding: 6px 12px;
+                            font-size: 12px;
+                        }
+                    """)
+                else:
+                    lb.setStyleSheet("""
+                        QPushButton {
+                            background-color: #313244;
+                            color: #cdd6f4;
+                            border: 1px solid #45475a;
+                            border-radius: 6px;
+                            padding: 6px 12px;
+                            font-size: 12px;
+                        }
+                        QPushButton:hover {
+                            background-color: #45475a;
+                        }
+                    """)
+
+        def _make_lang_cb(lkey):
+            def _cb():
+                config.set("language", lkey)
+                _update_lang_ui(lkey)
+                event_bus.publish("CONFIG_CHANGED", key="language", value=lkey)
+                self.render_hangar_tab()
+            return _cb
+
+        for lk, ltitle in langs:
+            lbtn = QPushButton(ltitle, util_card)
+            lbtn.setCursor(Qt.CursorShape.PointingHandCursor)
+            lbtn.clicked.connect(_make_lang_cb(lk))
+            lang_buttons[lk] = lbtn
+            lang_row.addWidget(lbtn)
+
+        _update_lang_ui(curr_lang)
+        lang_box.addLayout(lang_row)
+        uc_layout.addLayout(lang_box)
+        uc_layout.addSpacing(6)
+
         autostart_row = QHBoxLayout()
         autostart_lbl = QLabel("🚀 Launch QuakMeeting automatically at Linux login", util_card)
         autostart_lbl.setStyleSheet("color: #cdd6f4; font-weight: bold; font-size: 13px;")
@@ -866,26 +997,30 @@ class QtFlightDeckWindow(QMainWindow):
         uc_layout.addLayout(autostart_row)
         uc_layout.addSpacing(6)
 
-        # Debug / Developer Mode Toggle
-        dbg_row = QHBoxLayout()
-        dbg_lbl = QLabel("🐛 Enable Developer & Debug Diagnostics Mode", util_card)
+        # Debug / Developer Mode Toggle (Visible only when debug mode is enabled or active)
+        dbg_container = QWidget(util_card)
+        dbg_row = QHBoxLayout(dbg_container)
+        dbg_row.setContentsMargins(0, 0, 0, 0)
+        dbg_lbl = QLabel("🐛 Enable Developer & Debug Diagnostics Mode", dbg_container)
         dbg_lbl.setStyleSheet("color: #cdd6f4; font-weight: bold; font-size: 13px;")
 
-        dbg_sw = ToggleSwitch(is_debug_mode(), util_card)
+        dbg_sw = ToggleSwitch(is_debug_mode(), dbg_container)
         def _toggle_debug(checked):
             config.set("debug_mode", checked)
             sim_box.setVisible(checked)
             edit_btn.setVisible(checked)
             log_btn.setVisible(checked)
             demo_up_btn.setVisible(checked)
+            dbg_container.setVisible(checked)
             self._refresh_hangar()
         dbg_sw.toggled = _toggle_debug
 
         dbg_row.addWidget(dbg_lbl)
         dbg_row.addStretch()
         dbg_row.addWidget(dbg_sw)
-        uc_layout.addLayout(dbg_row)
-        uc_layout.addSpacing(10)
+        dbg_container.setVisible(is_debug_mode())
+        uc_layout.addWidget(dbg_container)
+        uc_layout.addSpacing(6)
         
         sys_row = QHBoxLayout()
 
@@ -911,10 +1046,43 @@ class QtFlightDeckWindow(QMainWindow):
         demo_up_btn.setToolTip("Preview the live rocket jet download & installation animation sequence")
         demo_up_btn.setVisible(is_debug_mode())
 
+        def _on_show_license():
+            from core.services.language_service import t
+            from PyQt6.QtWidgets import QMessageBox
+            msg = QMessageBox(self)
+            msg.setWindowTitle(t("license_title"))
+            msg.setText(f"<h3>🦆 QuakMeeting v{updater_service.current_version}</h3>"
+                        f"<p>{t('license_body').replace(chr(10), '<br>')}</p>")
+            msg.setStyleSheet("""
+                QMessageBox {
+                    background-color: #1e1e2e;
+                    color: #cdd6f4;
+                }
+                QLabel {
+                    color: #cdd6f4;
+                    font-size: 12px;
+                }
+                QPushButton {
+                    background-color: #89b4fa;
+                    color: #11111b;
+                    font-weight: bold;
+                    border-radius: 6px;
+                    padding: 6px 14px;
+                }
+            """)
+            msg.setStandardButtons(QMessageBox.StandardButton.Ok)
+            msg.exec()
+
+        lic_btn = QPushButton("📜 License & Info", util_card)
+        lic_btn.setObjectName("OutlineBtn")
+        lic_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        lic_btn.clicked.connect(_on_show_license)
+
         sys_row.addWidget(up_btn)
         sys_row.addWidget(edit_btn)
         sys_row.addWidget(log_btn)
         sys_row.addWidget(demo_up_btn)
+        sys_row.addWidget(lic_btn)
         uc_layout.addLayout(sys_row)
 
         # Animated Update status card with radar scanning and celebratory states
@@ -1112,6 +1280,7 @@ class QtFlightDeckWindow(QMainWindow):
         pref_scroll = QScrollArea()
         pref_scroll.setWidgetResizable(True)
         pref_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        pref_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         pref_scroll.setStyleSheet("QScrollArea { background: transparent; }")
         pref_scroll.setWidget(pref_widget)
 
@@ -1286,6 +1455,9 @@ class QtFlightDeckWindow(QMainWindow):
         self.scroll_layout.addStretch()
         self.scroll.setWidget(self.scroll_content)
 
+    def render_hangar_tab(self):
+        self._refresh_hangar()
+
     def _refresh_hangar(self):
         # Clear layout safely
         while self.h_layout.count():
@@ -1293,95 +1465,209 @@ class QtFlightDeckWindow(QMainWindow):
             if child.widget():
                 child.widget().deleteLater()
 
-        all_pilots = [
-            ("update_banner", "🚀", "Software Update Banner", "System Updates, Releases & Live Package Installer", "Mauve", "#cba6f7", "#89b4fa", "⚡ Test Update", True),
-            ("duck", "🦆", "Aviator Duck", "Google Meet / Zoom / Video Meetings & Online Calls", "Green", "#a6e3a1", "#94e2d5", "🚀 Test Flight", False),
-            ("travel_departure", "🚦", "Multi-Modal Route ETA", "Transit, Driving & Cycling Departure Countdown", "Sapphire", "#74c7ec", "#89b4fa", "🗺️ Test Route", False),
-            ("chef", "👨‍🍳", "Chef Duck & Food", "Dinner / Lunch / Restaurants / Aperitivo & Food Routes", "Peach", "#fab387", "#f2cdcd", "🚀 Test Flight", False),
-            ("captain", "🧑‍✈️", "Jet Airliner Captain", "Airline Flights, Airports, High-Speed Trains & Travel", "Sky", "#89dceb", "#74c7ec", "🚀 Test Flight", False),
-            ("owl", "🦉", "Academic Owl", "University Lectures, Exams, Campus Courses & Study", "Mauve", "#cba6f7", "#b4befe", "🚀 Test Flight", False),
-            ("gym", "🏋️‍♂️", "Athlete Duck & Gym", "Palestra, Gym Workouts, CrossFit, Padel & Sport", "Red", "#f38ba8", "#eba0ac", "🚀 Test Flight", False),
-            ("driver", "🏎️", "Speed Racer Driver", "In-Person Meetings, Doctor Visits & Navigation", "Yellow", "#f9e2af", "#fab387", "🚀 Test Flight", False),
-            ("zen_duck", "🦆🌸", "Zen Duck & Wellness", "Serenis Sessions, Therapy, Yoga & Wellness", "Teal", "#94e2d5", "#a6e3a1", "🚀 Test Flight", False)
+        # 1. Header Toolbar
+        customs = config.get("mascot_customization", {})
+        header_card = QFrame(self.h_content)
+        header_card.setObjectName("HeaderCard")
+        header_card.setStyleSheet("""
+            QFrame#HeaderCard {
+                background: #1e1e2e;
+                border: 1px solid #313244;
+                border-radius: 12px;
+            }
+        """)
+        r_box = QHBoxLayout(header_card)
+        r_box.setContentsMargins(18, 10, 18, 10)
+        r_box.setSpacing(10)
+
+        r_title = QLabel("🦆 Mascot Workshop & Pilot Hangar", header_card)
+        r_title.setStyleSheet("color: #cdd6f4; font-weight: bold; font-size: 13.5px;")
+        r_box.addWidget(r_title, stretch=1)
+
+        def _on_surprise():
+            import random
+            all_a = [a[0] for a in ANIMALS]
+            c_dict = config.get("mascot_customization", {})
+            if not isinstance(c_dict, dict):
+                c_dict = {}
+            for ck, _, _, fixed_outfit, _, _ in CATEGORIES:
+                c_dict[ck] = {"animal": random.choice(all_a), "outfit": fixed_outfit}
+            config.set("mascot_customization", c_dict)
+            event_bus.publish("CONFIG_CHANGED", key="mascot_customization", value=c_dict)
+            self.render_hangar_tab()
+
+        def _on_reset():
+            defs = {
+                "study": {"animal": "owl", "outfit": "student"},
+                "food": {"animal": "duck", "outfit": "chef"},
+                "travel": {"animal": "duck", "outfit": "captain"},
+                "sport": {"animal": "bunny", "outfit": "gym"},
+                "in_person": {"animal": "squirrel", "outfit": "racer"},
+                "health": {"animal": "bunny", "outfit": "zen"},
+                "general": {"animal": "duck", "outfit": "aviator"}
+            }
+            config.set("mascot_customization", defs)
+            event_bus.publish("CONFIG_CHANGED", key="mascot_customization", value=defs)
+            self.render_hangar_tab()
+
+        sur_btn = QPushButton("🎲 Surprise Me", header_card)
+        sur_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        sur_btn.setStyleSheet("background: #313244; color: #cdd6f4; border: 1px solid #45475a; border-radius: 6px; padding: 5px 12px; font-size: 11px;")
+        sur_btn.clicked.connect(_on_surprise)
+        r_box.addWidget(sur_btn)
+
+        res_btn = QPushButton("🔄 Reset Presets", header_card)
+        res_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        res_btn.setStyleSheet("background: #313244; color: #a6adc8; border: 1px solid #45475a; border-radius: 6px; padding: 5px 12px; font-size: 11px;")
+        res_btn.clicked.connect(_on_reset)
+        r_box.addWidget(res_btn)
+
+        self.h_layout.addWidget(header_card)
+
+        # 2. Category Mascot Customizer Cards
+        ANIMALS = [
+            ("duck", "🦆 Aviator Duck"),
+            ("owl", "🦉 Academic Owl"),
+            ("bunny", "🐰 Clever Bunny"),
+            ("platypus", "🕵️‍♂️ Secret Platypus"),
+            ("squirrel", "🐿️ Hyper Squirrel")
         ]
 
-        dbg = is_debug_mode()
-        pilots = [p for p in all_pilots if not p[8] or dbg]
+        CATEGORIES = [
+            ("study", "🎓 University & Study Sessions", "Lectures, exams, self-study, homework & thesis.", "student", "owl", "#cba6f7"),
+            ("food", "🍕 Dining, Lunch & Restaurants", "Dinners, lunch dates, pizzerias & food routes.", "chef", "duck", "#fab387"),
+            ("travel", "✈️ Travel, Flights & Trains", "Airports, flights, high-speed trains & trips.", "captain", "duck", "#74c7ec"),
+            ("sport", "🏋️ Gym, Palestra & Sports", "Workouts, crossfit, padel, tennis & running.", "gym", "bunny", "#f38ba8"),
+            ("in_person", "🏎️ In-Person & Commute", "Doctor visits, dentist & real-time navigation.", "racer", "squirrel", "#f9e2af"),
+            ("health", "🌸 Wellness & Therapy", "Serenis sessions, yoga, meditation & calm.", "zen", "bunny", "#94e2d5"),
+            ("general", "⏰ General Meetings & Reminders", "Video conferences (Meet, Zoom, Teams) & alerts.", "aviator", "duck", "#a6e3a1")
+        ]
 
-        for idx, (p_id, p_icon, p_name, p_desc, theme_name, c1, c2, btn_text, _) in enumerate(pilots):
+        for idx, (cat_key, cat_title, cat_desc, fixed_outfit, def_animal, cat_color) in enumerate(CATEGORIES):
+            current_setting = customs.get(cat_key, {})
+            current_animal = current_setting.get("animal", def_animal) if isinstance(current_setting, dict) else (current_setting or def_animal)
+
             card = QFrame(self.h_content)
             card.setObjectName("Card")
+            card.setStyleSheet(f"""
+                QFrame#Card {{
+                    background: #181825;
+                    border: 1px solid #313244;
+                    border-left: 4px solid {cat_color};
+                    border-radius: 10px;
+                }}
+            """)
             c_layout = QHBoxLayout(card)
-            c_layout.setContentsMargins(18, 14, 18, 14)
+            c_layout.setContentsMargins(14, 12, 18, 12)
             c_layout.setSpacing(14)
 
-            icon_l = QLabel(p_icon, card)
-            icon_l.setStyleSheet("font-size: 26px; border: none;")
-            c_layout.addWidget(icon_l)
+            # Mini Canvas Preview on Left
+            mini_preview = QtMascotMiniWidget(animal=current_animal, outfit=fixed_outfit, parent=card)
+            c_layout.addWidget(mini_preview)
 
             p_box = QVBoxLayout()
             p_box.setSpacing(2)
-            n_l = QLabel(p_name, card)
-            n_l.setObjectName("CardTitle")
-            sub_html = f"{p_desc}  •  <span style='color:{c1}; font-weight: 600;'>🎨 Catppuccin {theme_name}</span>"
-            d_l = QLabel(sub_html, card)
-            d_l.setObjectName("CardSub")
+            n_l = QLabel(cat_title, card)
+            n_l.setStyleSheet("color: #cdd6f4; font-weight: bold; font-size: 13px;")
+            d_l = QLabel(f"{cat_desc}  •  <span style='color:{cat_color}; font-weight:bold;'>✨ Active Pilot: {current_animal.capitalize()}</span>", card)
+            d_l.setStyleSheet("color: #a6adc8; font-size: 11px;")
             p_box.addWidget(n_l)
             p_box.addWidget(d_l)
             c_layout.addLayout(p_box, stretch=1)
 
-            def _trigger_test_flight(p_id_val):
-                try:
-                    if p_id_val == "travel_departure":
-                        from core.services.eta_service import eta_service
-                        t_mode = config.get("transport_mode", "transit")
-                        res = eta_service.calculate_eta("Piazza Castello, Torino", "Politecnico di Torino, Corso Duca degli Abruzzi 24, Torino", mode=t_mode)
-                        dur = res["duration_minutes"] if res else 12
-                        evt = {
-                            "title": "ICT for Smart Mobility (Politecnico di Torino)",
-                            "location": "Corso Duca degli Abruzzi 24, Torino",
-                            "pilot_type": "owl",
-                            "provider": "Politecnico Calendar 📅",
-                            "start_time": datetime.now().astimezone() + timedelta(minutes=dur + 15),
-                            "departure_time": datetime.now().astimezone() + timedelta(minutes=15),
-                            "travel_time_minutes": dur,
-                            "transport_mode": t_mode,
-                            "is_travel": True,
-                            "reminder_stage": 15,
-                            "action_btn_text": f"🗺️ NAVIGATE ({dur}m)",
-                            "maps_url": res["maps_url"] if res else "https://maps.google.com"
-                        }
-                    elif p_id_val == "update_banner":
-                        from ui.linux.banner.qt_banner import get_update_preset
-                        evt = get_update_preset("v2.0.0 (Test)")
-                    else:
-                        from ui.linux.banner.qt_banner import get_test_preset
-                        evt = dict(get_test_preset(p_id_val))
+            # Controls Box: Label on top, ComboBox and Test Button side-by-side on same baseline
+            ctrl_box = QVBoxLayout()
+            ctrl_box.setSpacing(3)
+            a_lbl = QLabel("Animal Mascot:", card)
+            a_lbl.setStyleSheet("color: #a6adc8; font-size: 10px; font-weight: bold;")
+            ctrl_box.addWidget(a_lbl)
 
+            btn_row = QHBoxLayout()
+            btn_row.setSpacing(10)
+
+            a_combo = QComboBox(card)
+            for a_id, a_name in ANIMALS:
+                a_combo.addItem(a_name, a_id)
+            a_idx = next((i for i, (a_id, _) in enumerate(ANIMALS) if a_id == current_animal), 0)
+            a_combo.setCurrentIndex(a_idx)
+            a_combo.setFixedHeight(32)
+            a_combo.setStyleSheet("""
+                QComboBox {
+                    background: #313244;
+                    color: #cdd6f4;
+                    border: 1px solid #45475a;
+                    border-radius: 6px;
+                    padding: 4px 10px;
+                    font-size: 11.5px;
+                    min-width: 145px;
+                }
+            """)
+            def _make_animal_cb(ck, fo):
+                def _on_a_changed(i_val):
+                    sel_a = ANIMALS[i_val][0]
+                    c_dict = config.get("mascot_customization", {})
+                    if not isinstance(c_dict, dict):
+                        c_dict = {}
+                    c_dict[ck] = {"animal": sel_a, "outfit": fo}
+                    config.set("mascot_customization", c_dict)
+                    event_bus.publish("CONFIG_CHANGED", key="mascot_customization", value=c_dict)
+                    self.render_hangar_tab()
+                return _on_a_changed
+
+            a_combo.currentIndexChanged.connect(_make_animal_cb(cat_key, fixed_outfit))
+            btn_row.addWidget(a_combo)
+
+            # Test Flight Button
+            def _make_test_flight_cb(ck, fo):
+                def _trigger_test():
+                    c_dict = config.get("mascot_customization", {})
+                    val = c_dict.get(ck, {})
+                    an = val.get("animal", "duck") if isinstance(val, dict) else (val or "duck")
+                    out = fo
+                    titles = {
+                        "study": "Neural Networks & AI University Lecture",
+                        "food": "Dinner with Friends at Pizzeria",
+                        "travel": "Flight BA 257 to London Heathrow",
+                        "sport": "CrossFit & Palestra Workout Session",
+                        "in_person": "Architectural Studio Consultation",
+                        "health": "Serenis Mindfulness & Yoga Session",
+                        "secret": "Top Secret Agent Mission Briefing",
+                        "general": "Weekly Team Sprint Planning"
+                    }
+                    evt = {
+                        "title": titles.get(ck, "Custom Mascot Test Flight"),
+                        "provider": f"{an.capitalize()} wearing {out.capitalize()} Hat ✨",
+                        "pilot_type": f"{an}_{out}",
+                        "animal": an,
+                        "outfit": out,
+                        "action_btn_text": "🚀 TEST FLIGHT",
+                        "action_url": "https://calendar.apple.com",
+                        "start_time": datetime.now().astimezone(),
+                        "is_travel": ck in ("food", "travel", "sport", "in_person")
+                    }
                     from ui.linux.banner.qt_banner import show_qt_banner
                     show_qt_banner(evt)
-                except Exception as ex:
-                    logger.error(f"Error triggering test flight banner: {ex}")
+                return _trigger_test
 
-            t_btn = QPushButton(btn_text, card)
+            t_btn = QPushButton("🚀 Test", card)
             t_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            t_btn.setFixedHeight(32)
             t_btn.setStyleSheet(f"""
                 QPushButton {{
-                    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 {c1}, stop:1 {c2});
+                    background: {cat_color};
                     color: #11111b;
                     font-weight: bold;
-                    font-size: 12px;
-                    border-radius: 8px;
-                    padding: 7px 16px;
-                    border: 1px solid {c1};
-                }}
-                QPushButton:hover {{
-                    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 {c2}, stop:1 {c1});
-                    border: 1px solid {c2};
+                    font-size: 11.5px;
+                    border-radius: 6px;
+                    padding: 6px 16px;
+                    border: 1px solid {cat_color};
                 }}
             """)
-            t_btn.clicked.connect(lambda chk, i=p_id: _trigger_test_flight(i))
-            c_layout.addWidget(t_btn)
+            t_btn.clicked.connect(_make_test_flight_cb(cat_key, fixed_outfit))
+            btn_row.addWidget(t_btn)
+
+            ctrl_box.addLayout(btn_row)
+            c_layout.addLayout(ctrl_box)
             self.h_layout.addWidget(card)
 
         self.h_layout.addStretch()

@@ -3,6 +3,7 @@ import math
 import os
 
 def create_app_icon(output_path="assets/icon.png", size=512):
+    s = size / 512.0
     image = AppKit.NSImage.alloc().initWithSize_(AppKit.NSMakeSize(size, size))
     image.lockFocus()
 
@@ -31,10 +32,15 @@ def create_app_icon(output_path="assets/icon.png", size=512):
     no_shadow = AppKit.NSShadow.alloc().init()
     no_shadow.set()
 
-    # Inner Rim Highlight
-    hi_rect = AppKit.NSMakeRect(icon_rect.origin.x + 2, icon_rect.origin.y + icon_rect.size.height - 4, icon_rect.size.width - 4, 3)
-    AppKit.NSColor.colorWithWhite_alpha_(1.0, 0.28).set()
-    AppKit.NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(hi_rect, 1.5, 1.5).fill()
+    # Save state & clip all contents to the squircle shape
+    ctx = AppKit.NSGraphicsContext.currentContext()
+    ctx.saveGraphicsState()
+    bg_path.addClip()
+
+    # Inner Rim Highlight along the squircle curve
+    AppKit.NSColor.colorWithWhite_alpha_(1.0, 0.25).set()
+    bg_path.setLineWidth_(2.0 * s)
+    bg_path.stroke()
 
     # 2. Clouds in Background
     cloud_col = AppKit.NSColor.colorWithWhite_alpha_(1.0, 0.15)
@@ -143,6 +149,7 @@ def create_app_icon(output_path="assets/icon.png", size=512):
     prop.lineToPoint_(AppKit.NSMakePoint(center_x + 108 * s, center_y + 60 * s))
     prop.stroke()
 
+    ctx.restoreGraphicsState()
     image.unlockFocus()
 
     # Save as PNG

@@ -75,6 +75,7 @@ Orchestrates business use cases.
 - **`eta_service.py`**: Handles routing links (e.g. Apple Maps) and calculates transit/walking buffers.
 - **`event_bus.py`**: Decouples UI updates from background logic. Components publish events (e.g., `CALENDAR_UPDATED`, `CONFIG_CHANGED`) that the UI subscribes to.
 - **`updater_service.py`**: Checks GitHub Releases for new releases, fetches platform packages (.dmg/.zip on macOS, .deb on Ubuntu), performs in-place upgrades, and publishes update progress events.
+- **`language_service.py`**: Internationalization and localization service with OS language auto-detection (macOS `AppKit.NSLocale` & Linux `$LANG`), user language override, and centralized bilingual translations (English & Italian).
 - **`app_controller.py`**: The central orchestrator that launches a background thread to poll services (Calendar, Reminders) without blocking the UI main loop.
 
 ### 4. UI Layer (`ui/`)
@@ -83,18 +84,27 @@ Cross-platform presentation layer structured by operating system:
   - **`theme.py`**: Central single-source-of-truth **Catppuccin Mocha** color palette (`Crust`, `Mantle`, `Base`, `Surface0/1/2`, `Text`, `Subtext0/1`, `Mauve`, `Blue`, `Sapphire`, `Green`, `Peach`, `Red`, `Yellow`, `Teal`) and pilot theme token maps.
   - **`tray_viewmodel.py`**: Shared tray status logic and countdown string formatting.
   - **`banner_queue.py`**: Cross-platform banner sequencing and queue management.
+  - **`banner_speech.py`**: Animal-specific vocalization generator (`duck`, `owl`, `bunny`, `squirrel`, `platypus`) and context-aware dialogue builder.
+  - **`banner_particles.py`**: Physics simulation engine for turbo afterburner flames, exhaust smoke puffs, and magical sparkles.
+  - **`banner_formatting.py`**: Time differentials, countdown text, urgency flags, and travel duration formatting.
 - **`ui/macos/`**: Native macOS UI using PyObjC:
   - **`theme.py`**: Native `NSColor` and `CGColor` bridges derived directly from `ui.common.theme.CatppuccinMocha`.
   - **`menu_bar_app.py`**: AppKit `NSStatusItem` menu bar controller.
   - **`dashboard_window.py`**: Native `NSWindow` Flight Deck HUD with custom segmented capsule pill switcher.
   - **`dashboard_tabs/`**: Dedicated native tab views (`agenda_tab.py`, `hangar_tab.py`, `settings_tab.py`).
-  - **`banner/`**: Quartz 2D animated HUD banners (`banner_view.py`), quiet notifications (`quiet_banner_view.py`), and software update banners (`update_banner_view.py`).
+  - **`banner/`**: Quartz 2D animated HUD banners:
+    - `banner_view.py`: Streamlined Cocoa `NSView` managing animation timer ticks, flight motion, and mouse event dispatch.
+    - `banner_layout.py`: Bounding boxes, button positions, and hit testing targets.
+    - `banner_hud_painter.py`: Quartz 2D drawing routines (Glass card, pills, action buttons, towing cables, speech bubble).
+    - `quiet_banner_view.py`: Distraction-free compact notifications.
+    - `update_banner_view.py`: Software update alerts.
 - **`ui/linux/`**: Native Linux / Ubuntu UI using PyQt6 (Wayland / X11):
   - **`theme.py`**: Native `QColor` and RGBA string converters derived directly from `ui.common.theme.CatppuccinMocha`.
   - **`qt_tray_app.py`**: PyQt6 `QSystemTrayIcon` with custom Catppuccin context menu.
   - **`qt_dashboard.py`**: PyQt6 Flight Deck window with capsule pill switcher and solid Catppuccin cards.
   - **`banner/`**: PyQt6 Wayland/X11 animated overlay banner (`qt_duck_banner.py`) and software update banners (`qt_update_banner.py`).
 - **`ui/app_launcher.py`**: Platform-aware UI dispatcher and entrypoint.
+
 
 ---
 

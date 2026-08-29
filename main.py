@@ -40,6 +40,10 @@ def _ensure_gui_python_environment():
 
 def main():
     _ensure_gui_python_environment()
+    if "--debug" in sys.argv or "-d" in sys.argv:
+        os.environ["QUAKMEETING_DEBUG"] = "1"
+        logger.info("🔧 Debug mode activated via CLI flag (--debug)")
+
     print("=" * 60)
     print(" 🦆 QuakMeeting - Smart Meeting Reminders & Flight Deck")
     print(" Inspired by QuakPit (https://github.com/Ooble-Studio/QuakPit)")

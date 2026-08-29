@@ -9,6 +9,7 @@ QuakMeeting stores all user preferences, timing thresholds, routing configuratio
 
 | Key | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
+| `language` | `string` | `"system"` | Active UI language (`"system"` for OS auto-detection, `"en"` for English, `"it"` for Italian). |
 | `meeting_reminder_stages` | `list[int]` | `[20, 10, 5, 2, 0]` | Minutes before an online meeting to trigger the banner notification sequence. |
 | `general_reminder_stages` | `list[int]` | `[20, 10, 5, 2, 0]` | Minutes before a general non-travel event to trigger the banner notification sequence. |
 | `travel_reminder_stages` | `list[int]` | `[45, 30, 15, 5, 0]` | Minutes before departure to trigger the travel/transit banner notification sequence. |
