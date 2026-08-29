@@ -95,6 +95,8 @@ def get_test_preset(pilot_type: str) -> Dict[str, Any]:
             "action_btn_text": "🗺️ RESTAURANT DIRECTIONS",
             "action_url": "https://maps.apple.com/?q=Pizzeria+Napoli",
             "location": "Pizzeria Da Michele",
+            "travel_time_minutes": 25,
+            "transport_mode": "transit",
             "start_time": datetime.now(),
             "is_travel": True
         },
@@ -105,6 +107,8 @@ def get_test_preset(pilot_type: str) -> Dict[str, Any]:
             "action_btn_text": "🗺️ AIRPORT DIRECTIONS",
             "action_url": "https://maps.apple.com/?q=Heathrow+Airport",
             "location": "Terminal 5 - Gate B12",
+            "travel_time_minutes": 45,
+            "transport_mode": "driving",
             "start_time": datetime.now(),
             "is_travel": True
         },
@@ -114,6 +118,8 @@ def get_test_preset(pilot_type: str) -> Dict[str, Any]:
             "pilot_type": "owl",
             "action_btn_text": "📚 CLASSROOM & NOTES",
             "action_url": "https://calendar.apple.com",
+            "classroom": "Room 3B - Campus",
+            "teacher": "Prof. Smith",
             "location": "Room 3B - Campus",
             "start_time": datetime.now(),
             "is_travel": False
@@ -125,6 +131,8 @@ def get_test_preset(pilot_type: str) -> Dict[str, Any]:
             "action_btn_text": "🗺️ GYM DIRECTIONS",
             "action_url": "https://maps.apple.com/?daddr=Gym+Fitness",
             "location": "Downtown Gym Club",
+            "travel_time_minutes": 15,
+            "transport_mode": "bicycling",
             "start_time": datetime.now(),
             "is_travel": True
         },
@@ -135,6 +143,8 @@ def get_test_preset(pilot_type: str) -> Dict[str, Any]:
             "action_btn_text": "🗺️ NAVIGATE WITH MAPS",
             "action_url": "https://maps.apple.com/?daddr=City+Center",
             "location": "Victoria Street, London",
+            "travel_time_minutes": 30,
+            "transport_mode": "driving",
             "start_time": datetime.now(),
             "is_travel": True
         },
@@ -168,33 +178,15 @@ def get_update_preset(version_str: str = "New Version", release_url: str = "") -
 
 # ── Layout constants ──────────────────────────────────────────────────────────
 
-CARD_W    = 500
-CARD_H    = 148
+CARD_W    = 535
+CARD_H    = 126
 CARD_R    = 18
-CABLE_LEN = 60
-PLANE_SPAN = 90       # horizontal span of plane drawing
-WIN_W     = CARD_W + CABLE_LEN + PLANE_SPAN + 120
-WIN_H     = 200       # height includes space for speech bubble above
-CARD_X    = 0
-CARD_Y    = 50        # card vertically centred inside WIN_H with room for bubble
-PLANE_CX  = CARD_W + CABLE_LEN + PLANE_SPAN // 2   # plane centre inside window
-PLANE_CY  = CARD_Y + CARD_H // 2
-
-# Button layout
-BTN_H       = 32
-BTN_Y       = CARD_Y + CARD_H - BTN_H - 12
-BTN_X0      = CARD_X + 16
-BTN_JOIN_W  = 170
-BTN_SMALL_W = 100
-BTN_ARR_W   = 100
-BTN_SNOOZE_W= 100
-BTN_GAP     = 8
-BTN_ARRIVE_X = BTN_X0 + BTN_JOIN_W + 8
-BTN_SNOOZE_X = BTN_ARRIVE_X + BTN_ARR_W + 8
-
-CLOSE_R     = 10
-CLOSE_CX    = CARD_X + CARD_W - 18
-CLOSE_CY    = CARD_Y + 18
+WIN_W     = 750
+WIN_H     = 195
+CARD_X    = 10
+CARD_Y    = 55
+PLANE_CX  = CARD_X + 615
+PLANE_CY  = CARD_Y + 54
 
 
 
