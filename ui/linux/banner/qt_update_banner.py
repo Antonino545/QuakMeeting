@@ -1,4 +1,5 @@
 from __future__ import annotations
+from ui.linux.theme import Theme
 import sys
 import os
 import math
@@ -281,16 +282,16 @@ class QtUpdateBannerWindow(QWidget):
         card = QRectF(cx, cy, CARD_W, CARD_H)
 
         # ── Background ──
-        p.setBrush(QColor(16, 18, 28, 245))
+        p.setBrush(Theme.get_color('BASE', 245))
         if self.is_update_banner:
             # 🚀 Update Banner: Animated sweep border
             speed_mult = 5.0 if getattr(self, "install_mode", False) else 1.0
             phase = (math.sin(self.tick * 0.04 * speed_mult) + 1.0) / 2.0  # 0.0 to 1.0
             border_grad = QLinearGradient(cx, cy, cx + CARD_W, cy + CARD_H)
-            c1 = QColor(56, 189, 248, 255)
-            c2 = QColor(99, 102, 241, 120)
+            c1 = Theme.BLUE
+            c2 = Theme.get_color('MAUVE', 120)
             border_grad.setColorAt(0.0, c1 if phase < 0.5 else c2)
-            border_grad.setColorAt(phase, QColor(255, 255, 255, 255))
+            border_grad.setColorAt(phase, Theme.TEXT)
             border_grad.setColorAt(1.0, c2 if phase < 0.5 else c1)
             p.setPen(QPen(border_grad, 2.5))
         else:
@@ -305,7 +306,7 @@ class QtUpdateBannerWindow(QWidget):
 
         # Provider pill
         prov_lower = self.provider.lower()
-        dot_color = QColor(56, 189, 248)
+        dot_color = Theme.BLUE
         for k, c in PROVIDER_DOTS.items():
             if k in prov_lower:
                 dot_color = c
@@ -391,19 +392,19 @@ class QtUpdateBannerWindow(QWidget):
         if getattr(self, "install_mode", False):
             pr = QRectF(cx + 16, cy + CARD_H - BTN_H - 12, CARD_W - 32, BTN_H)
             p.setPen(Qt.PenStyle.NoPen)
-            p.setBrush(QColor(15, 23, 42, 200))
+            p.setBrush(Theme.get_color('MANTLE', 200))
             p.drawRoundedRect(pr, 10, 10)
 
             if self.install_progress > 0:
                 fill_w = (CARD_W - 32) * (self.install_progress / 100.0)
                 fill_r = QRectF(pr.x(), pr.y(), fill_w, pr.height())
                 fill_g = QLinearGradient(fill_r.topLeft(), fill_r.topRight())
-                fill_g.setColorAt(0, QColor(56, 189, 248))
-                fill_g.setColorAt(1, QColor(99, 102, 241))
+                fill_g.setColorAt(0, Theme.BLUE)
+                fill_g.setColorAt(1, Theme.MAUVE)
                 p.setBrush(fill_g)
                 p.drawRoundedRect(fill_r, 10, 10)
 
-            p.setPen(QColor(255, 255, 255))
+            p.setPen(Theme.TEXT)
             f = QFont("Inter, Arial", 10, QFont.Weight.Bold)
             p.setFont(f)
             if self.install_ready:
@@ -420,7 +421,7 @@ class QtUpdateBannerWindow(QWidget):
             # Software update styling (vibrant cyan to electric blue gradient)
             g = QLinearGradient(jr.topLeft(), jr.topRight())
             if hover_join:
-                g.setColorAt(0, QColor(56, 189, 248, 255))
+                g.setColorAt(0, Theme.BLUE)
                 g.setColorAt(1, QColor(37, 99, 235, 255))
             else:
                 g.setColorAt(0, QColor(2, 132, 199, 255))
@@ -428,13 +429,13 @@ class QtUpdateBannerWindow(QWidget):
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(g)
             p.drawRoundedRect(jr, 10, 10)
-            p.setPen(QColor(255, 255, 255))
+            p.setPen(Theme.TEXT)
             display_text = self.btn_text
         elif not self.has_real_url:
             # Got it styling (blue tint)
             g = QLinearGradient(jr.topLeft(), jr.topRight())
             if hover_join:
-                g.setColorAt(0, QColor(56, 189, 248, 255))
+                g.setColorAt(0, Theme.BLUE)
                 g.setColorAt(1, QColor(14, 116, 144, 255))
             else:
                 g.setColorAt(0, QColor(14, 116, 144, 255))
@@ -442,7 +443,7 @@ class QtUpdateBannerWindow(QWidget):
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(g)
             p.drawRoundedRect(jr, 10, 10)
-            p.setPen(QColor(255, 255, 255, 255))
+            p.setPen(Theme.TEXT)
             display_text = "✅ Got it"
         else:
             # JOIN styling (yellow/amber gradient, black text)
@@ -495,7 +496,7 @@ class QtUpdateBannerWindow(QWidget):
             if self.reminder_stage == 0:
                 p.setBrush(QColor(14, 116, 144, 220) if hover_snz else QColor(15, 23, 42, 255))
                 p.drawRoundedRect(sr, 10, 10)
-                p.setPen(QColor(255, 255, 255, 240) if hover_snz else QColor(56, 189, 248))
+                p.setPen(QColor(255, 255, 255, 240) if hover_snz else Theme.BLUE)
                 p.setFont(mf)
                 p.drawText(sr, Qt.AlignmentFlag.AlignCenter, "✅ Got it")
             else:
@@ -554,7 +555,7 @@ class QtUpdateBannerWindow(QWidget):
         tail.closeSubpath()
         p.drawPath(tail)
 
-        p.setPen(QColor(255, 255, 255))
+        p.setPen(Theme.TEXT)
         p.setFont(f)
         p.drawText(QRectF(bx, by, bw, bh), Qt.AlignmentFlag.AlignCenter, self.quote_text)
 

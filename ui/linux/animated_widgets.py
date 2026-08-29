@@ -6,6 +6,7 @@ Rock-Solid, Glitch-Free PyQt6 Animations for QuakMeeting Flight Deck.
 - Clean QPainter pipelines with proper state preservation.
 """
 from __future__ import annotations
+from ui.linux.theme import Theme
 
 import math
 import logging
@@ -15,7 +16,7 @@ from PyQt6.QtWidgets import (
     QWidget, QLabel, QPushButton, QProgressBar, QFrame
 )
 from PyQt6.QtCore import (
-    Qt, QTimer, QRectF, QPointF
+    Qt, QTimer, QRectF, QPointF, QPropertyAnimation, QEasingCurve, pyqtProperty
 )
 from PyQt6.QtGui import (
     QPainter, QColor, QBrush, QPen, QFont, QPixmap,
@@ -349,13 +350,13 @@ class UpdatingHUDWidget(QFrame):
                 pulse = 0.5 + 0.5 * math.sin(self._tick * 0.15)
                 bg_col = QColor(2, 132, 199, int(60 + pulse * 45))
                 border_col = QColor(56, 189, 248, int(160 + pulse * 95))
-                text_col = QColor(255, 255, 255)
+                text_col = Theme.TEXT
                 label = name
             else:
                 # Pending step (dim grey)
                 bg_col = QColor(255, 255, 255, 10)
                 border_col = QColor(255, 255, 255, 25)
-                text_col = QColor(148, 163, 184)
+                text_col = Theme.SUBTEXT0
                 label = name
 
             painter.setPen(QPen(border_col, 1.0))
@@ -386,7 +387,7 @@ class UpdatingHUDWidget(QFrame):
 
             chunk_grad = QLinearGradient(track_x, 0, track_x + fill_w, 0)
             chunk_grad.setColorAt(0.0, QColor(2, 132, 199))
-            chunk_grad.setColorAt(0.7, QColor(56, 189, 248))
+            chunk_grad.setColorAt(0.7, Theme.BLUE)
             chunk_grad.setColorAt(1.0, QColor(99, 102, 241))
 
             painter.setPen(Qt.PenStyle.NoPen)
@@ -421,30 +422,86 @@ class UpdatingHUDWidget(QFrame):
             painter.translate(jet_cx, jet_cy)
             painter.rotate(self._gear_angle)
             painter.setFont(QFont("sans-serif", 16))
-            painter.setPen(QColor(255, 255, 255))
+            painter.setPen(Theme.TEXT)
             painter.drawText(QRectF(-12, -12, 24, 24), Qt.AlignmentFlag.AlignCenter, "⚙️")
             painter.restore()
         elif self._phase_index == 3:
             # Completed: Confetti Star
             painter.setFont(QFont("sans-serif", 18))
-            painter.setPen(QColor(255, 255, 255))
+            painter.setPen(Theme.TEXT)
             painter.drawText(QRectF(jet_cx - 14, jet_cy - 14, 28, 28), Qt.AlignmentFlag.AlignCenter, "🎉")
         else:
             # Downloading: Flying Jet Duck
             painter.setFont(QFont("sans-serif", 16))
-            painter.setPen(QColor(255, 255, 255))
+            painter.setPen(Theme.TEXT)
             painter.drawText(QRectF(jet_cx - 12, jet_cy - 14, 24, 24), Qt.AlignmentFlag.AlignCenter, "🚀")
 
         # ── 3. Bottom Status & Readout Row ────────────────────────────────────
         bottom_y = 86.0
         painter.setFont(QFont("sans-serif", 10, QFont.Weight.Bold))
-        painter.setPen(QColor(241, 245, 249))
+        painter.setPen(Theme.TEXT)
         painter.drawText(QRectF(margin + 4.0, bottom_y, w - 120.0, 22.0),
                          Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
                          self._status_caption)
 
         pct_label = f"{int(self._percent)}%"
-        painter.setPen(QColor(56, 189, 248))
+        painter.setPen(Theme.BLUE)
         painter.drawText(QRectF(w - margin - 80.0, bottom_y, 76.0, 22.0),
                          Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight,
                          pct_label)
+
+
+class ToggleSwitch(QWidget):
+    def __init__(self, checked=False, parent=None):
+        super().__init__(parent)
+        self.setFixedSize(44, 24)
+        self._checked = checked
+        self._pos = 22.0 if checked else 2.0
+        self._anim = QPropertyAnimation(self, b"pos")
+        self._anim.setDuration(150)
+        self._anim.setEasingCurve(QEasingCurve.Type.InOutQuad)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.toggled = None # Custom signal/callback
+
+    @pyqtProperty(float)
+    def pos(self):
+        return self._pos
+
+    @pos.setter
+    def pos(self, val):
+        self._pos = val
+        self.update()
+
+    def isChecked(self):
+        return self._checked
+
+    def setChecked(self, val):
+        self._checked = val
+        self._pos = 22.0 if val else 2.0
+        self.update()
+
+    def mousePressEvent(self, ev):
+        if ev.button() == Qt.MouseButton.LeftButton:
+            self._checked = not self._checked
+            self._anim.setEndValue(22.0 if self._checked else 2.0)
+            self._anim.start()
+            if self.toggled:
+                self.toggled(self._checked)
+
+    def paintEvent(self, ev):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        
+        # Catppuccin Mocha colors
+        c_off = Theme.SURFACE0 # Surface0
+        c_on = Theme.MAUVE  # Mauve
+        c_knob = Theme.TEXT # Text
+
+        bg = c_on if self._checked else c_off
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(bg)
+        p.drawRoundedRect(0, 0, self.width(), self.height(), 12, 12)
+
+        p.setBrush(c_knob)
+        p.drawEllipse(QRectF(self._pos, 2.0, 20.0, 20.0))
+        p.end()

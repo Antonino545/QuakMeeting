@@ -1,4 +1,5 @@
 from __future__ import annotations
+from ui.linux.theme import Theme
 import sys
 import os
 import math
@@ -246,7 +247,7 @@ class QtDuckBannerWindow(QWidget):
         card = QRectF(cx, cy, CARD_W, CARD_H)
 
         # ── Background ──
-        p.setBrush(QColor(16, 18, 28, 245))
+        p.setBrush(Theme.get_color('BASE', 245))
         if self.is_update_banner:
             # 🚀 Update Banner: Animated sweep border
             phase = (math.sin(self.tick * 0.04) + 1.0) / 2.0  # 0.0 to 1.0
@@ -378,7 +379,7 @@ class QtDuckBannerWindow(QWidget):
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(g)
             p.drawRoundedRect(jr, 10, 10)
-            p.setPen(QColor(255, 255, 255))
+            p.setPen(Theme.TEXT)
             display_text = self.btn_text
         elif not self.has_real_url:
             # Got it styling (blue tint)
@@ -481,7 +482,7 @@ class QtDuckBannerWindow(QWidget):
 
     def _draw_bubble(self, p: QPainter, px: float, py: float):
         is_late_q = self.is_late or "LATE" in self.quote_text or "RUN" in self.quote_text
-        bg = QColor(200, 30, 30, 230) if is_late_q else QColor(16, 18, 28, 220)
+        bg = Theme.get_color('RED', 230) if is_late_q else Theme.get_color('MANTLE', 220)
 
         f = QFont("Inter, Arial", 8)
         f.setWeight(QFont.Weight.ExtraBold)
@@ -504,7 +505,7 @@ class QtDuckBannerWindow(QWidget):
         tail.closeSubpath()
         p.drawPath(tail)
 
-        p.setPen(QColor(255, 255, 255))
+        p.setPen(Theme.TEXT)
         p.setFont(f)
         p.drawText(QRectF(bx, by, bw, bh), Qt.AlignmentFlag.AlignCenter, self.quote_text)
 

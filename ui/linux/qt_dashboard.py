@@ -27,7 +27,7 @@ from PyQt6.QtCore import Qt, QTimer, QObject, pyqtSignal
 from PyQt6.QtGui import QColor, QFont, QPixmap, QIcon
 
 from ui.linux.animated_widgets import (
-    BouncingMascotLabel, AnimatedSpinButton, AnimatedUpdateCard, UpdatingHUDWidget
+    BouncingMascotLabel, AnimatedSpinButton, AnimatedUpdateCard, UpdatingHUDWidget, ToggleSwitch
 )
 
 class QtUpdateBridge(QObject):
@@ -44,48 +44,41 @@ from core.logger import open_log_file, open_log_folder
 logger = logging.getLogger("QuakMeeting.QtDashboard")
 
 QT_DASHBOARD_QSS = """
-QMainWindow {
-    background-color: #0f111a;
-}
-
-QWidget#CentralWidget {
-    background-color: #0f111a;
+/* Catppuccin Mocha Palette */
+QMainWindow, QWidget#CentralWidget, QTabWidget::pane {
+    background-color: #11111b; /* Crust */
+    border: none;
 }
 
 QFrame#HeaderBox {
-    background-color: #161926;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background-color: #181825; /* Mantle */
+    border-bottom: 1px solid #313244; /* Surface0 */
 }
 
 QLabel#HeaderTitle {
     font-size: 20px;
     font-weight: 800;
-    color: #ffffff;
+    color: #cdd6f4; /* Text */
 }
 
 QLabel#HeaderSub {
     font-size: 12px;
-    color: #94a3b8;
+    color: #a6adc8; /* Subtext0 */
 }
 
 QLabel#ActiveBadge {
-    background-color: rgba(16, 185, 129, 0.15);
-    color: #10b981;
-    border: 1px solid rgba(16, 185, 129, 0.3);
+    background-color: rgba(166, 227, 161, 0.15); /* Green */
+    color: #a6e3a1; /* Green */
+    border: 1px solid rgba(166, 227, 161, 0.3);
     border-radius: 12px;
     padding: 4px 12px;
     font-size: 11px;
     font-weight: bold;
 }
 
-QTabWidget::pane {
-    border: none;
-    background-color: #0f111a;
-}
-
 QTabBar::tab {
     background-color: transparent;
-    color: #94a3b8;
+    color: #a6adc8; /* Subtext0 */
     font-weight: 600;
     font-size: 13px;
     padding: 12px 24px;
@@ -93,73 +86,101 @@ QTabBar::tab {
 }
 
 QTabBar::tab:selected {
-    color: #38bdf8;
-    border-bottom: 3px solid #38bdf8;
-    background-color: rgba(56, 189, 248, 0.08);
+    color: #cba6f7; /* Mauve */
+    border-bottom: 3px solid #cba6f7;
+    background-color: rgba(203, 166, 247, 0.08);
 }
 
-QFrame#Card {
-    background-color: #181c2b;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+QFrame#Card, QFrame#PrefCard {
+    background-color: #1e1e2e; /* Base */
+    border: 1px solid #313244; /* Surface0 */
     border-radius: 14px;
 }
 
 QFrame#Card:hover {
-    background-color: #1e2336;
-    border-color: rgba(56, 189, 248, 0.3);
+    background-color: #181825; /* Mantle */
+    border-color: #cba6f7; /* Mauve highlight on hover */
 }
 
 QLabel#CardTitle {
     font-size: 15px;
     font-weight: 700;
-    color: #f8fafc;
+    color: #cdd6f4; /* Text */
 }
 
 QLabel#CardSub {
     font-size: 12px;
-    color: #94a3b8;
+    color: #a6adc8; /* Subtext0 */
 }
 
 QPushButton#PrimaryBtn {
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #0284c7, stop:1 #2563eb);
-    color: #ffffff;
+    background-color: #89b4fa; /* Blue */
+    color: #11111b; /* Crust */
     font-size: 12px;
-    font-weight: 800;
+    font-weight: bold;
     border-radius: 8px;
-    border: none;
-    padding: 8px 18px;
+    padding: 6px 14px;
 }
-
 QPushButton#PrimaryBtn:hover {
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #38bdf8, stop:1 #3b82f6);
+    background-color: #b4befe; /* Lavender (lighter blue) */
 }
 
-QPushButton#SecondaryBtn {
-    background-color: #242a3d;
-    color: #cbd5e1;
+QPushButton#OutlineBtn {
+    background-color: transparent;
+    color: #cdd6f4; /* Text */
+    border: 1px solid #45475a; /* Surface1 */
     font-size: 12px;
     font-weight: 600;
     border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 8px 16px;
+    padding: 6px 14px;
+}
+QPushButton#OutlineBtn:hover {
+    background-color: #313244; /* Surface0 */
+    border-color: #a6adc8;
 }
 
-QPushButton#SecondaryBtn:hover {
-    background-color: #313850;
-    color: #ffffff;
+QScrollArea {
+    border: none;
+    background: transparent;
+}
+QScrollArea > QWidget > QWidget {
+    background: transparent;
 }
 
-QLineEdit {
-    background-color: #12141f;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    border-radius: 8px;
-    color: #f8fafc;
-    padding: 8px 12px;
+/* Modern Segmented Control for Transport Modes */
+QPushButton#SegmentBtn {
+    background-color: transparent;
+    color: #a6adc8;
+    font-weight: bold;
     font-size: 13px;
+    border: none;
+    border-radius: 8px;
+    padding: 6px 12px;
+}
+QPushButton#SegmentBtn:hover {
+    background-color: rgba(255,255,255,0.05);
+}
+QPushButton#SegmentBtn:checked {
+    background-color: #313244; /* Surface0 */
+    color: #cba6f7; /* Mauve */
 }
 
-QLineEdit:focus {
-    border-color: #38bdf8;
+/* ScrollBar styling (Catppuccin) */
+QScrollBar:vertical {
+    background: transparent;
+    width: 8px;
+    margin: 0px 0px 0px 0px;
+}
+QScrollBar::handle:vertical {
+    background: #45475a; /* Surface1 */
+    min-height: 20px;
+    border-radius: 4px;
+}
+QScrollBar::handle:vertical:hover {
+    background: #585b70; /* Surface2 */
+}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0px;
 }
 """
 
@@ -223,7 +244,7 @@ class QtFlightDeckWindow(QMainWindow):
         # Sync Button with frame-by-frame spinner animation
         self.sync_btn = AnimatedSpinButton("🔄 Sync Now", header)
         sync_btn = self.sync_btn
-        sync_btn.setObjectName("SecondaryBtn")
+        sync_btn.setObjectName("OutlineBtn")
         sync_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         def _trigger_sync():
             self.sync_btn.start_spinning("Syncing...")
@@ -379,9 +400,15 @@ class QtFlightDeckWindow(QMainWindow):
             curr_stages = set(config.get(config_key, [20, 10, 5, 2, 0]))
 
             for val, label in opts:
-                chk = QCheckBox(label, timing_card)
-                chk.setStyleSheet("QCheckBox { color: #cbd5e1; font-size: 12px; } QCheckBox::indicator { width: 14px; height: 14px; }")
+                chk = QPushButton(label, timing_card)
+                chk.setCheckable(True)
+                chk.setCursor(Qt.CursorShape.PointingHandCursor)
                 chk.setChecked(val in curr_stages)
+                chk.setStyleSheet("""
+                    QPushButton { background: #313244; color: #a6adc8; border: none; border-radius: 6px; padding: 4px 10px; font-size: 11px; }
+                    QPushButton:hover { background: #45475a; }
+                    QPushButton:checked { background: #cba6f7; color: #11111b; font-weight: bold; }
+                """)
                 def _toggled(checked, v=val, k=config_key):
                     c = set(config.get(k, []))
                     if checked: c.add(v)
@@ -401,14 +428,14 @@ class QtFlightDeckWindow(QMainWindow):
 
         tc_div1 = QFrame(timing_card)
         tc_div1.setFixedHeight(1)
-        tc_div1.setStyleSheet("background-color: rgba(255,255,255,0.05);")
+        tc_div1.setStyleSheet("background-color: #313244;")
         tc_layout.addWidget(tc_div1)
 
         tc_layout.addLayout(create_stage_row("📅 General Events", "Alert ahead of start time (non-travel)", "general_reminder_stages", meeting_opts))
 
         tc_div2 = QFrame(timing_card)
         tc_div2.setFixedHeight(1)
-        tc_div2.setStyleSheet("background-color: rgba(255,255,255,0.05);")
+        tc_div2.setStyleSheet("background-color: #313244;")
         tc_layout.addWidget(tc_div2)
 
         tc_layout.addLayout(create_stage_row("🚗 Travel & Trips", "Alert ahead of leave / departure time", "travel_reminder_stages", travel_opts))
@@ -610,37 +637,40 @@ class QtFlightDeckWindow(QMainWindow):
         uc_layout.addWidget(uc_title)
 
         
-        autostart_chk = QCheckBox("🚀 Launch QuakMeeting automatically at Linux login", util_card)
-        autostart_chk.setStyleSheet("color: #e2e8f0; font-weight: bold; font-size: 13px;")
-        autostart_chk.setCursor(Qt.CursorShape.PointingHandCursor)
-        autostart_chk.setChecked(is_autostart_enabled())
+        autostart_row = QHBoxLayout()
+        autostart_lbl = QLabel("🚀 Launch QuakMeeting automatically at Linux login", util_card)
+        autostart_lbl.setStyleSheet("color: #cdd6f4; font-weight: bold; font-size: 13px;")
+        
+        autostart_sw = ToggleSwitch(is_autostart_enabled(), util_card)
         def _toggle_autostart(checked):
-            if checked:
-                enable_autostart()
-            else:
-                disable_autostart()
-        autostart_chk.toggled.connect(_toggle_autostart)
-        uc_layout.addWidget(autostart_chk)
+            if checked: enable_autostart()
+            else: disable_autostart()
+        autostart_sw.toggled = _toggle_autostart
+        
+        autostart_row.addWidget(autostart_lbl)
+        autostart_row.addStretch()
+        autostart_row.addWidget(autostart_sw)
+        uc_layout.addLayout(autostart_row)
         uc_layout.addSpacing(10)
         
         sys_row = QHBoxLayout()
 
         edit_btn = QPushButton("📝 Edit Config JSON", util_card)
-        edit_btn.setObjectName("SecondaryBtn")
+        edit_btn.setObjectName("OutlineBtn")
         edit_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         edit_btn.clicked.connect(lambda chk=False: config.open_config_in_editor())
 
         log_btn = QPushButton("📄 View Live Log File", util_card)
-        log_btn.setObjectName("SecondaryBtn")
+        log_btn.setObjectName("OutlineBtn")
         log_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         log_btn.clicked.connect(lambda chk=False: open_log_file())
 
         up_btn = AnimatedSpinButton("🔍 Check for Updates", util_card)
-        up_btn.setObjectName("SecondaryBtn")
+        up_btn.setObjectName("OutlineBtn")
         up_btn.setCursor(Qt.CursorShape.PointingHandCursor)
 
         demo_up_btn = QPushButton("🎬 Test Update Animation", util_card)
-        demo_up_btn.setObjectName("SecondaryBtn")
+        demo_up_btn.setObjectName("OutlineBtn")
         demo_up_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         demo_up_btn.setToolTip("Preview the live rocket jet download & installation animation sequence")
 
