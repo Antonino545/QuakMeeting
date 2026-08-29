@@ -1,94 +1,132 @@
 from __future__ import annotations
-from ui.linux.theme import Theme
 import sys
 import os
 import math
+import random
 import webbrowser
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 try:
     from PyQt6.QtWidgets import QApplication, QWidget
     from PyQt6.QtCore import Qt, QTimer, QRect, QRectF, QPointF
     from PyQt6.QtGui import (
         QColor, QPainter, QBrush, QPen, QFont, QPainterPath,
-        QLinearGradient, QRadialGradient, QFontMetrics
+        QLinearGradient, QRadialGradient, QFontMetrics, QCursor
     )
 except ImportError:
     pass
 
+from core.services.config_service import config
+from core.services.eta_service import MODE_ICONS, MODE_LABELS
+from core.domain.models import format_duration
 from .renderers import get_pilot_renderer
-from .qt_banner import (
-    PILOT_QUOTES, PILOT_COLORS, PROVIDER_DOTS,
-    CARD_W, CARD_H, CARD_R, CABLE_LEN, PLANE_SPAN, WIN_W, WIN_H,
-    CARD_X, CARD_Y, PLANE_CX, PLANE_CY, BTN_H, BTN_Y, BTN_X0,
-    BTN_JOIN_W, BTN_SMALL_W, BTN_ARR_W, BTN_SNOOZE_W, BTN_GAP,
-    BTN_ARRIVE_X, BTN_SNOOZE_X, CLOSE_R, CLOSE_CX, CLOSE_CY
-)
-
-# ── Main Banner Widget ────────────────────────────────────────────────────────
 
 
 class QtDuckBannerWindow(QWidget):
+    """
+    High-Performance Animated Flying Duck Notification Banner for Ubuntu Linux.
+    100% visual and behavioral parity with the macOS QuakPit banner:
+    - Frosted glass HUD with pilot-specific tints & glowing borders
+    - Dual curved towing cables (red glowing during late mode)
+    - Dynamic particle systems: Turbo Afterburner flames, engine exhaust smoke, and sparkles
+    - Provider pill, classroom badge, live dynamic countdown pill
+    - Full action button bar (Pilot-themed gradient Action, "📍 I'm Here", "💤 5m", "⏭️ Skip")
+    - Animated context-aware pilot speech bubble
+    """
+
+    CARD_W = 535.0
+    CARD_H = 126.0
+    CARD_R = 18.0
+    CARD_X = 10.0
+    CARD_Y = 55.0
+
+    WIN_W = 750
+    WIN_H = 195
+
+    PLANE_CX = CARD_X + 615.0
+    PLANE_CY = CARD_Y + 54.0
 
     def __init__(self, event_data: Dict[str, Any], parent=None):
         super().__init__(parent)
-        self.event_data  = event_data
-        self.pilot_type  = event_data.get("pilot_type", "duck")
-        self.action_url  = event_data.get("action_url") or event_data.get("meeting_url")
-        self.title       = str(event_data.get("title", "Upcoming Event"))
-        self.provider    = str(event_data.get("provider", "Calendar"))
-        self.btn_text    = event_data.get("action_btn_text", "🚀 JOIN MEETING")
-        self.is_late     = bool(event_data.get("is_late", False))
-        self.is_travel   = bool(event_data.get("is_travel", False))
-        self.is_update_banner = bool(event_data.get("is_update_banner", False))
-        self.quote_text  = event_data.get("quote_text") or PILOT_QUOTES.get(self.pilot_type, "🚀 Meeting starting soon!")
+        self.event_data = event_data
 
-        # Formatted time string
-        st = event_data.get("start_time")
-        self.time_str = st.strftime("At %H:%M") if hasattr(st, "strftime") else ""
-        self.classroom = str(event_data.get("classroom") or "")
+        self.title = str(event_data.get("title") or "Event Reminder")
+        self.provider = str(event_data.get("provider") or "Event")
+        self.action_url = event_data.get("action_url") or event_data.get("meeting_url")
+        self.action_btn_text = str(event_data.get("action_btn_text") or "🚀 JOIN NOW")
+        self.start_time = event_data.get("start_time")
+        self.end_time = event_data.get("end_time")
+        self.location = str(event_data.get("location") or "")
+        self.pilot_type = str(event_data.get("pilot_type") or "duck")
+        self.is_travel = bool(event_data.get("is_travel", False))
+
+        # Classroom & Teacher Metadata
+        self.classroom = event_data.get("classroom")
+        self.teacher = event_data.get("teacher")
+
+        # Multi-modal Travel & ETA metadata
+        self.travel_time_minutes = event_data.get("travel_time_minutes")
+        self.travel_distance_km = event_data.get("travel_distance_km")
+        self.transport_mode = event_data.get("transport_mode", config.get("transport_mode", "transit"))
+        self.departure_time = event_data.get("departure_time")
+        self.origin_address = event_data.get("origin_address")
+        self.eta_text = event_data.get("eta_text")
+
+        # Reminder stage metadata (e.g. 20, 10, 5, 2, 0)
         self.reminder_stage = event_data.get("reminder_stage")
 
+        # Determine Late Status
+        self.is_late = self._compute_is_late()
+
+        # URL characteristics
         self.has_real_url = bool(
             self.action_url and
             self.action_url.strip() and
             self.action_url != "https://calendar.apple.com"
         )
         self.has_maps_url = bool(
-            self.action_url and ("maps.apple.com" in self.action_url or "maps.google.com" in self.action_url or "google.com/maps" in self.action_url)
+            self.has_real_url and
+            ("maps.apple.com" in self.action_url.lower() or
+             "maps.google.com" in self.action_url.lower() or
+             "google.com/maps" in self.action_url.lower())
         ) or self.is_travel
 
-        # ── Screen ──
+        # Instantiate pilot renderer
+        self.renderer = get_pilot_renderer(self.pilot_type)
+
+        # Flight dynamics & geometry (Boost speed by 40% when late)
+        base_speed = float(config.get("flight_speed", 3.2))
+        self.speed = base_speed * 1.40 if self.is_late else base_speed
+        self.tick = 0
+        self.is_paused = False
+
+        # Particle emitters
+        self.smoke_particles = []
+        self.sparkle_particles = []
+        self.flame_particles = []
+
+        # Hover & Click Interaction State
+        self.hovered_button = None
+        self.pressed_button = None
+
+        # Precompute Theme Palette & Cached Text
+        self._palette = self._build_theme_palette()
+        self._init_cached_resources()
+
+        # Screen setup
         screen = QApplication.primaryScreen()
-        geo    = screen.availableGeometry() if screen else QRect(0, 0, 1920, 1080)
+        geo = screen.availableGeometry() if screen else QRect(0, 0, 1920, 1080)
         self.screen_w = geo.width()
         self.screen_x = geo.x()
         self.screen_y = geo.y()
 
-        self.tick      = 0
-        self.is_paused = False
-        self._hover    = None   # "join" | "arrive" | "snooze" | "close"
+        self.win_w = self.WIN_W
+        self.win_h = self.WIN_H
+        self.setFixedSize(self.win_w, self.win_h)
 
-        # ── Window setup ──
-        if self.is_update_banner:
-            self.win_w = CARD_W + 12
-            self.win_h = CARD_H + 12
-            self.setFixedSize(self.win_w, self.win_h)
-            self.final_x = float(self.screen_x + self.screen_w - self.win_w - 24)
-            self.final_y = float(self.screen_y + 24)
-            self.win_x = self.final_x
-            self.win_y = float(self.screen_y - self.win_h - 10)
-            self.speed = 10.0
-            self.stay_ticks = 0
-            self.max_stay_ticks = 600  # 10s auto-dismiss
-        else:
-            self.win_w = WIN_W
-            self.win_h = WIN_H
-            self.setFixedSize(WIN_W, WIN_H)
-            self.win_x = float(self.screen_x - WIN_W - 20)
-            self.win_y = float(self.screen_y + 14)
-            self.speed = 3.8
+        self.win_x = float(self.screen_x - self.win_w - 20)
+        self.base_y = float(self.screen_y + 24)
 
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint |
@@ -100,106 +138,434 @@ class QtDuckBannerWindow(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setMouseTracking(True)
-        self.move(int(self.win_x), int(self.win_y))
+        self.move(int(self.win_x), int(self.base_y))
 
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._step)
         self._timer.start(16)
 
-    # ── Animation ─────────────────────────────────────────────────────────────
+    def _compute_is_late(self) -> bool:
+        """Determines if the event is already past departure time or past start time."""
+        now = datetime.now().astimezone()
+        if self.is_travel and self.departure_time:
+            dep = self.departure_time.astimezone() if hasattr(self.departure_time, "astimezone") else self.departure_time
+            return now > dep
+        if self.start_time:
+            st = self.start_time.astimezone() if hasattr(self.start_time, "astimezone") else self.start_time
+            return now > st
+        return False
+
+    def _init_cached_resources(self):
+        """Precomputes static details, pilot speech quotes, and countdown text."""
+        # Static truncated title
+        max_chars = 34
+        self._cached_short_title = self.title if len(self.title) <= max_chars else self.title[:max_chars - 3] + "..."
+
+        # Static details string
+        detail_text = ""
+        if self.start_time:
+            st = self.start_time.astimezone() if hasattr(self.start_time, "astimezone") else self.start_time
+            s_time = st.strftime("%H:%M")
+            if self.end_time:
+                et = self.end_time.astimezone() if hasattr(self.end_time, "astimezone") else self.end_time
+                e_time = et.strftime("%H:%M")
+                detail_text = f"🕒 {s_time} - {e_time}"
+            else:
+                detail_text = f"🕒 At {s_time}"
+
+        if self.classroom:
+            detail_text += f"  •  🏫 {self.classroom}"
+        elif self.location:
+            loc_short = self.location if len(self.location) <= 20 else self.location[:17] + "..."
+            detail_text += f"  •  📍 {loc_short}"
+            if self.travel_time_minutes:
+                mode_icon = MODE_ICONS.get(self.transport_mode, "🚆")
+                dur_str = format_duration(self.travel_time_minutes)
+                detail_text += f" ({mode_icon} ~{dur_str})"
+        elif self.action_url and ("meet.google.com" in self.action_url or "zoom" in self.action_url or "teams" in self.action_url):
+            detail_text += "  •  🌐 Online Meeting"
+
+        if self.teacher:
+            detail_text += f" ({self.teacher})"
+
+        self._cached_detail_text = detail_text
+
+        # Pilot speech quote
+        self._cached_speech_text = self._build_pilot_speech_text()
+
+        # Countdown
+        self._cached_countdown_text = "⏰ Upcoming Alert"
+        self._cached_is_urgent = False
+        self._update_countdown_text()
+
+    def _build_pilot_speech_text(self) -> str:
+        """Constructs context-aware quote for the pilot speech bubble."""
+        if self.is_late:
+            if self.pilot_type == "owl":
+                if self.classroom:
+                    return f"🚨 CLASS STARTED IN {self.classroom.upper()}! SPRINT!"
+                return "🚨 PROFESSOR IS STARTING! YOU'RE LATE!"
+            elif self.pilot_type == "chef":
+                return "🔥 THE FOOD IS GETTING COLD! HURRY!"
+            elif self.pilot_type == "captain":
+                return "⚠️ LAST CALL FOR BOARDING! SPRINT TO GATE!"
+            elif self.pilot_type == "driver":
+                return "🔥 FLOOR THE GAS! WE ARE LATE!"
+            elif self.pilot_type == "gym":
+                return "🔥 DON'T SKIP WORKOUT! TIME FOR GAINS! 🏋️‍♂️"
+            elif self.pilot_type == "zen_duck":
+                return "🚨 BREATHE IN... AND SPRINT! 🏃💨"
+            else:
+                return "QUAAK! 🚨 YOU ARE LATE! RUN!"
+        else:
+            if self.pilot_type == "owl":
+                if self.classroom:
+                    return f"Class in {self.classroom} soon! 📚"
+                return "Class starting soon! 🦉"
+            elif self.pilot_type == "chef":
+                return "Dinner / food time soon! 🍕"
+            elif self.pilot_type == "captain":
+                return "Cabin crew, prepare for takeoff ✈️"
+            elif self.pilot_type == "driver":
+                return "Engines running, ready to roll! 🏎️"
+            elif self.pilot_type == "gym":
+                return "Time to train & crush workout! 🏋️‍♂️💪"
+            elif self.pilot_type == "zen_duck":
+                return "Time for wellness & calm 🌸"
+            else:
+                return "Quak! Ready for takeoff! 🦆"
+
+    def _update_countdown_text(self):
+        countdown_text = "⏰ Upcoming Alert"
+        is_urgent = False
+        mode_icon = MODE_ICONS.get(self.transport_mode, "🚆")
+
+        if self.start_time:
+            now = datetime.now().astimezone()
+            st = self.start_time.astimezone() if hasattr(self.start_time, "astimezone") else self.start_time
+            diff = (st - now).total_seconds()
+
+            if self.is_travel and self.departure_time:
+                dep = self.departure_time.astimezone() if hasattr(self.departure_time, "astimezone") else self.departure_time
+                dep_diff = (dep - now).total_seconds()
+                dep_mins = int(dep_diff // 60)
+                dep_time_str = dep.strftime("%H:%M")
+                dur_str = format_duration(self.travel_time_minutes or 20)
+
+                if dep_diff <= 0:
+                    late_min = abs(int(dep_diff // 60))
+                    countdown_text = f"🚨 {mode_icon} LATE BY {late_min}m • LEAVE NOW!" if late_min > 0 else f"🚨 {mode_icon} DEPART NOW!"
+                    is_urgent = True
+                elif dep_mins <= 10:
+                    countdown_text = f"⏳ {mode_icon} Leave in {dep_mins}m ({dep_time_str})"
+                    is_urgent = True
+                else:
+                    countdown_text = f"{mode_icon} Leave at {dep_time_str} (~{dur_str})"
+            elif diff > 0:
+                mins = int(diff // 60)
+                secs = int(diff % 60)
+                if self.classroom:
+                    if mins >= 10:
+                        countdown_text = f"🎓 Lesson in {mins}m • {self.classroom}"
+                    elif mins >= 1:
+                        countdown_text = f"⏳ Class in {mins}m • {self.classroom}"
+                        is_urgent = True
+                    else:
+                        countdown_text = f"🚨 Class starting now • {self.classroom}"
+                        is_urgent = True
+                elif self.is_travel:
+                    if mins >= 30:
+                        countdown_text = f"{mode_icon} In {mins}m • Travel Notice"
+                    elif mins >= 15:
+                        countdown_text = f"{mode_icon} In {mins}m • Prepare to Leave"
+                    else:
+                        countdown_text = f"🚨 {mode_icon} Leave Now!"
+                        is_urgent = True
+                else:
+                    if mins >= 15:
+                        countdown_text = f"⏰ In {mins}m • Early Alert"
+                    elif mins >= 5:
+                        countdown_text = f"⏳ In {mins}m • Get Ready"
+                    elif mins >= 1:
+                        countdown_text = f"🚀 In {mins}m • Almost Time!"
+                        is_urgent = True
+                    else:
+                        countdown_text = f"⏳ In {secs}s • Starting Now!"
+                        is_urgent = True
+            elif diff > -1800:
+                late_mins = abs(int(diff // 60))
+                countdown_text = f"🔴 LATE BY {late_mins}m • IN PROGRESS" if late_mins > 0 else "🔴 IN PROGRESS NOW"
+                is_urgent = True
+
+        self._cached_countdown_text = countdown_text
+        self._cached_is_urgent = is_urgent
+
+    def _build_theme_palette(self) -> Dict[str, Any]:
+        """Returns exact theme palette matching macOS."""
+        if self.pilot_type == "chef":
+            accent = QColor(255, 112, 97)
+            accent_bright = QColor(255, 158, 122)
+            btn_gradient_top = QColor(255, 122, 97)
+            btn_gradient_bot = QColor(235, 77, 56)
+            card_tint = QColor(33, 20, 20, 242)
+        elif self.pilot_type == "captain":
+            accent = QColor(97, 173, 255)
+            accent_bright = QColor(148, 209, 255)
+            btn_gradient_top = QColor(97, 173, 255)
+            btn_gradient_bot = QColor(46, 115, 230)
+            card_tint = QColor(18, 23, 36, 242)
+        elif self.pilot_type == "owl":
+            accent = QColor(194, 133, 255)
+            accent_bright = QColor(224, 173, 255)
+            btn_gradient_top = QColor(191, 128, 250)
+            btn_gradient_bot = QColor(140, 77, 209)
+            card_tint = QColor(26, 18, 36, 242)
+        elif self.pilot_type == "driver":
+            accent = QColor(56, 217, 148)
+            accent_bright = QColor(107, 242, 184)
+            btn_gradient_top = QColor(61, 219, 148)
+            btn_gradient_bot = QColor(26, 166, 102)
+            card_tint = QColor(15, 31, 23, 242)
+        elif self.pilot_type == "zen_duck":
+            accent = QColor(71, 224, 209)
+            accent_bright = QColor(122, 245, 230)
+            btn_gradient_top = QColor(71, 224, 209)
+            btn_gradient_bot = QColor(31, 173, 158)
+            card_tint = QColor(15, 28, 31, 242)
+        elif self.pilot_type == "gym":
+            accent = QColor(255, 97, 46)
+            accent_bright = QColor(255, 148, 71)
+            btn_gradient_top = QColor(255, 102, 41)
+            btn_gradient_bot = QColor(217, 51, 20)
+            card_tint = QColor(36, 18, 15, 242)
+        else:
+            accent = QColor(255, 194, 71)
+            accent_bright = QColor(255, 224, 115)
+            btn_gradient_top = QColor(255, 194, 71)
+            btn_gradient_bot = QColor(235, 143, 31)
+            card_tint = QColor(31, 26, 15, 242)
+
+        return {
+            "accent": accent,
+            "accent_bright": accent_bright,
+            "btn_gradient_top": btn_gradient_top,
+            "btn_gradient_bot": btn_gradient_bot,
+            "card_tint": card_tint
+        }
+
+    def _get_button_rects(self, bx: float, by: float) -> Dict[str, QRectF]:
+        """Returns accurate bounding rects for all interactive elements."""
+        btn_close_rect = QRectF(bx + self.CARD_W - 36.0, by + 10.0, 24.0, 24.0)
+        btn_close_hit_rect = QRectF(bx + self.CARD_W - 44.0, by + 2.0, 40.0, 40.0)
+
+        # 4 Button Bar: [Action] [I'm Here] [Snooze 5m] [Snooze 15m / Skip]
+        btn_y = by + self.CARD_H - 33.0 - 12.0
+        btn_action_rect = QRectF(bx + 18.0, btn_y, 220.0, 33.0)
+        is_stage_zero = (self.reminder_stage == 0)
+
+        if self.has_maps_url:
+            btn_arrived_rect = QRectF(bx + 246.0, btn_y, 100.0, 33.0)
+            if is_stage_zero:
+                if not self.has_real_url:
+                    btn_snooze1_rect = QRectF(0, 0, 0, 0)
+                else:
+                    btn_snooze1_rect = QRectF(bx + 354.0, btn_y, 163.0, 33.0)
+                btn_snooze2_rect = QRectF(0, 0, 0, 0)
+            else:
+                btn_snooze1_rect = QRectF(bx + 354.0, btn_y, 85.0, 33.0)
+                btn_snooze2_rect = QRectF(bx + 447.0, btn_y, 70.0, 33.0)
+        else:
+            btn_arrived_rect = QRectF(0, 0, 0, 0)
+            if is_stage_zero:
+                if not self.has_real_url:
+                    btn_snooze1_rect = QRectF(0, 0, 0, 0)
+                else:
+                    btn_snooze1_rect = QRectF(bx + 246.0, btn_y, 208.0, 33.0)
+                btn_snooze2_rect = QRectF(0, 0, 0, 0)
+            else:
+                btn_snooze1_rect = QRectF(bx + 246.0, btn_y, 100.0, 33.0)
+                btn_snooze2_rect = QRectF(bx + 354.0, btn_y, 100.0, 33.0)
+
+        return {
+            "close": btn_close_rect,
+            "close_hit": btn_close_hit_rect,
+            "action": btn_action_rect,
+            "arrived": btn_arrived_rect,
+            "snooze1": btn_snooze1_rect,
+            "snooze2": btn_snooze2_rect,
+            "card": QRectF(bx, by, self.CARD_W, self.CARD_H)
+        }
+
+    # ── Animation Step ─────────────────────────────────────────────────────────
 
     def _step(self):
         self.tick += 1
-        if self.is_update_banner:
-            # Clean slide-down HUD animation
-            if self.win_y < self.final_y:
-                self.win_y = min(self.final_y, self.win_y + self.speed)
-                self.move(int(self.win_x), int(self.win_y))
-            else:
-                self.move(int(self.win_x), int(self.final_y))
-                if not self.is_paused:
-                    self.stay_ticks += 1
-                    if self.stay_ticks > self.max_stay_ticks:
-                        self._dismiss()
-            self.update()
-        else:
-            if not self.is_paused:
-                self.win_x += self.speed
-            bob = math.sin(self.tick * 0.035) * 5
-            self.move(int(self.win_x), int(self.win_y + bob))
+
+        if not self.is_paused:
+            self.win_x += self.speed
             if self.win_x > self.screen_x + self.screen_w + 20:
                 if self.reminder_stage is not None and self.reminder_stage > 0:
                     self._dismiss()
+                    return
                 else:
-                    self.win_x = float(self.screen_x - WIN_W - 20)
-            else:
-                self.update()
+                    self.win_x = float(self.screen_x - self.win_w - 20)
 
-    # ── Hit rects (window-local coords) ──────────────────────────────────────
+        # Smooth vertical sine wave flight bobbing
+        y_wave = self.base_y + math.sin(self.tick * 0.038) * 8.0
+        self.move(int(self.win_x), int(y_wave))
 
-    def _join_rect(self)   -> QRectF:
-        card_y = CARD_Y
-        card_x = CARD_X
-        btn_y  = card_y + CARD_H - BTN_H - 12
-        btn_x0 = card_x + 16
-        return QRectF(btn_x0, btn_y, BTN_JOIN_W, BTN_H)
+        # Update countdown once every 30 frames (~0.5s) to save CPU
+        if self.tick % 30 == 0:
+            self._update_countdown_text()
 
-    def _arrive_rect(self) -> QRectF:
-        if self.has_maps_url and not self.is_update_banner:
-            return QRectF(BTN_ARRIVE_X, BTN_Y, BTN_SMALL_W, BTN_H)
-        return QRectF(0, 0, 0, 0)
+        plane_x = self.PLANE_CX
+        plane_y = self.PLANE_CY
 
-    def _snooze_rect(self) -> QRectF:
-        if self.is_update_banner:
-            card_y = 6
-            card_x = 6
-            btn_y  = card_y + CARD_H - BTN_H - 12
-            btn_x0 = card_x + 16
-            return QRectF(btn_x0 + BTN_JOIN_W + 8, btn_y, BTN_SMALL_W, BTN_H)
-        if self.reminder_stage == 0 and not self.has_real_url:
-            return QRectF(0, 0, 0, 0)
-        if self.has_maps_url:
-            return QRectF(BTN_SNOOZE_X, BTN_Y, BTN_SMALL_W, BTN_H)
-        return QRectF(BTN_ARRIVE_X, BTN_Y, BTN_SMALL_W, BTN_H)
+        # 1. Turbo Flame Emitter (When Late / Emergency Mode)
+        if self.is_late and not self.is_paused:
+            for dy_eng in [-10, 10]:
+                self.flame_particles.append({
+                    "x": plane_x - 30.0,
+                    "y": plane_y + dy_eng + (random.random() - 0.5) * 4.0,
+                    "r": 5.5 + random.random() * 3.0,
+                    "alpha": 0.95,
+                    "vx": -4.2 - random.random() * 2.0,
+                    "vy": (random.random() - 0.5) * 1.5,
+                    "color_stage": 0.0
+                })
 
-    def _close_rect(self)  -> QRectF:
-        s = 22
-        card_y = CARD_Y
-        card_x = CARD_X
-        return QRectF(card_x + CARD_W - s - 8, card_y + 8, s, s)
+        # 2. Standard Smoke / Sparkles (Active during flight)
+        if self.tick % 4 == 0 and not self.is_paused:
+            if not self.is_late:
+                if self.pilot_type == "captain":
+                    self.smoke_particles.append({"x": plane_x - 22, "y": plane_y - 12, "r": 4.0, "alpha": 0.75, "drift": -0.2})
+                    self.smoke_particles.append({"x": plane_x - 22, "y": plane_y + 12, "r": 4.0, "alpha": 0.75, "drift": 0.2})
+                elif self.pilot_type == "zen_duck":
+                    self.smoke_particles.append({"x": plane_x - 28, "y": plane_y + 4, "r": 4.5, "alpha": 0.65, "drift": 0.0})
+                    if self.tick % 8 == 0:
+                        self.sparkle_particles.append({"x": plane_x - 24, "y": plane_y + 8, "r": 3.0, "alpha": 0.9, "vy": 0.4})
+                elif self.pilot_type == "owl":
+                    self.smoke_particles.append({"x": plane_x - 26, "y": plane_y + 6, "r": 4.2, "alpha": 0.6, "drift": 0.0})
+                    if self.tick % 10 == 0:
+                        self.sparkle_particles.append({"x": plane_x - 22, "y": plane_y + 10, "r": 3.2, "alpha": 0.95, "vy": 0.3})
+                else:
+                    self.smoke_particles.append({
+                        "x": plane_x - 28,
+                        "y": plane_y + 6,
+                        "r": 4.8,
+                        "alpha": 0.75,
+                        "drift": math.sin(self.tick * 0.1) * 0.4
+                    })
 
-    # ── Mouse ─────────────────────────────────────────────────────────────────
+        # Update flames
+        new_flames = []
+        for f in self.flame_particles:
+            f["x"] += f["vx"]
+            f["y"] += f["vy"]
+            f["r"] += 0.4
+            f["alpha"] -= 0.05
+            f["color_stage"] = min(2.0, f["color_stage"] + 0.1)
+            if f["alpha"] > 0 and f["r"] < 28:
+                new_flames.append(f)
+        self.flame_particles = new_flames
+
+        # Update smoke
+        new_particles = []
+        for p in self.smoke_particles:
+            p["x"] -= 2.4
+            p["y"] += p.get("drift", 0.0) + math.sin(p["x"] * 0.04) * 0.3
+            p["r"] += 0.35
+            p["alpha"] -= 0.022
+            if p["alpha"] > 0 and p["r"] < 24:
+                new_particles.append(p)
+        self.smoke_particles = new_particles
+
+        # Update sparkles
+        new_sparkles = []
+        for s in self.sparkle_particles:
+            s["x"] -= 1.8
+            s["y"] += s["vy"]
+            s["alpha"] -= 0.028
+            s["r"] = max(0.5, s["r"] - 0.04)
+            if s["alpha"] > 0:
+                new_sparkles.append(s)
+        self.sparkle_particles = new_sparkles
+
+        self.update()
+
+    # ── Mouse Interaction ──────────────────────────────────────────────────────
 
     def mouseMoveEvent(self, ev):
-        p = ev.position()
-        old = self._hover
-        if   self._close_rect().contains(p):  self._hover = "close";  self.is_paused = True
-        elif self._join_rect().contains(p):    self._hover = "join";   self.is_paused = True
-        elif self._arrive_rect().contains(p):  self._hover = "arrive"; self.is_paused = True
-        elif self._snooze_rect().contains(p):  self._hover = "snooze"; self.is_paused = True
-        elif QRectF(CARD_X, CARD_Y, CARD_W, CARD_H).contains(p):
-            self._hover = None; self.is_paused = True
+        pos = ev.position()
+        rects = self._get_button_rects(self.CARD_X, self.CARD_Y)
+        old_hover = self.hovered_button
+
+        if rects["close_hit"].contains(pos):
+            self.hovered_button = "close"
+            self.is_paused = True
+        elif rects["action"].contains(pos):
+            self.hovered_button = "action"
+            self.is_paused = True
+        elif rects["arrived"].contains(pos):
+            self.hovered_button = "arrived"
+            self.is_paused = True
+        elif rects["snooze1"].contains(pos):
+            self.hovered_button = "snooze1"
+            self.is_paused = True
+        elif rects["snooze2"].contains(pos):
+            self.hovered_button = "snooze2"
+            self.is_paused = True
+        elif rects["card"].contains(pos):
+            self.hovered_button = "card"
+            self.is_paused = True
         else:
-            self._hover = None; self.is_paused = False
-        cur = Qt.CursorShape.PointingHandCursor if self._hover else Qt.CursorShape.ArrowCursor
+            self.hovered_button = None
+            self.is_paused = False
+
+        cur = Qt.CursorShape.PointingHandCursor if self.hovered_button in ["close", "action", "arrived", "snooze1", "snooze2"] else Qt.CursorShape.ArrowCursor
         self.setCursor(cur)
-        if old != self._hover:
+
+        if old_hover != self.hovered_button:
             self.update()
 
     def mousePressEvent(self, ev):
         if ev.button() != Qt.MouseButton.LeftButton:
             return
-        p = ev.position()
-        if self._close_rect().contains(p):
+        pos = ev.position()
+        rects = self._get_button_rects(self.CARD_X, self.CARD_Y)
+
+        if rects["close_hit"].contains(pos):
+            self.pressed_button = "close"
+        elif rects["action"].contains(pos):
+            self.pressed_button = "action"
+        elif rects["arrived"].contains(pos):
+            self.pressed_button = "arrived"
+        elif rects["snooze1"].contains(pos):
+            self.pressed_button = "snooze1"
+        elif rects["snooze2"].contains(pos):
+            self.pressed_button = "snooze2"
+        elif rects["card"].contains(pos):
+            self.pressed_button = "card"
+        else:
+            self.pressed_button = None
+
+        self.update()
+
+    def mouseReleaseEvent(self, ev):
+        pos = ev.position()
+        rects = self._get_button_rects(self.CARD_X, self.CARD_Y)
+
+        clicked = self.pressed_button
+        self.pressed_button = None
+        self.update()
+
+        if clicked == "close" and rects["close_hit"].contains(pos):
             self._dismiss()
-        elif self._join_rect().contains(p):
-            if self.is_update_banner:
-                from core.services.updater_service import updater_service
-                updater_service.download_and_install_update(background=True)
-            elif self.has_real_url:
+        elif clicked == "action" and rects["action"].contains(pos):
+            if self.has_real_url:
                 webbrowser.open(self.action_url)
             self._dismiss()
-        elif self._arrive_rect().contains(p):
+        elif clicked == "arrived" and rects["arrived"].contains(pos):
             meeting_id = self.event_data.get("id")
             if meeting_id:
                 try:
@@ -208,9 +574,8 @@ class QtDuckBannerWindow(QWidget):
                 except Exception:
                     pass
             self._dismiss()
-        elif self._snooze_rect().contains(p):
-            # If the button says "Got it", it means we want to ignore completely
-            if self.reminder_stage == 0 or not self.has_real_url:
+        elif clicked == "snooze1" and rects["snooze1"].contains(pos):
+            if self.reminder_stage == 0:
                 meeting_id = self.event_data.get("id")
                 if meeting_id:
                     try:
@@ -218,298 +583,406 @@ class QtDuckBannerWindow(QWidget):
                         event_bus.publish("MARK_ARRIVED", meeting_id=meeting_id)
                     except Exception:
                         pass
+            else:
+                try:
+                    from core.services.event_bus import event_bus
+                    event_bus.publish("SNOOZE_REMINDER", seconds=300)
+                except Exception:
+                    pass
+            self._dismiss()
+        elif clicked == "snooze2" and rects["snooze2"].contains(pos):
+            meeting_id = self.event_data.get("id")
+            if meeting_id:
+                try:
+                    from core.services.event_bus import event_bus
+                    event_bus.publish("MARK_ARRIVED", meeting_id=meeting_id)
+                except Exception:
+                    pass
+            self._dismiss()
+        elif clicked == "card" and rects["card"].contains(pos):
+            if self.has_real_url:
+                webbrowser.open(self.action_url)
             self._dismiss()
 
     def leaveEvent(self, ev):
         self.is_paused = False
-        self._hover = None
+        self.pressed_button = None
+        self.hovered_button = None
+        self.setCursor(Qt.CursorShape.ArrowCursor)
         self.update()
 
-    # ── Paint ─────────────────────────────────────────────────────────────────
+    # ── Paint Event ────────────────────────────────────────────────────────────
 
     def paintEvent(self, _):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         p.setRenderHint(QPainter.RenderHint.TextAntialiasing)
-        if not self.is_update_banner:
-            self._draw_cable(p)
-        self._draw_card(p)
-        if not self.is_update_banner:
-            self._draw_plane(p, PLANE_CX, PLANE_CY)
-            self._draw_bubble(p, PLANE_CX, PLANE_CY)
-        p.end()
 
-    # ── Card ──────────────────────────────────────────────────────────────────
+        palette = self._palette
+        accent = palette["accent"]
 
-    def _draw_card(self, p: QPainter):
-        cx = float(CARD_X)
-        cy = float(CARD_Y)
-        card = QRectF(cx, cy, CARD_W, CARD_H)
+        bx = self.CARD_X
+        by = self.CARD_Y
+        bw = self.CARD_W
+        bh = self.CARD_H
+        px = self.PLANE_CX
+        py = self.PLANE_CY
 
-        # ── Background ──
-        p.setBrush(Theme.get_color('BASE', 245))
-        if self.is_update_banner:
-            # 🚀 Update Banner: Animated sweep border
-            phase = (math.sin(self.tick * 0.04) + 1.0) / 2.0  # 0.0 to 1.0
-            border_grad = QLinearGradient(cx, cy, cx + CARD_W, cy + CARD_H)
-            c1 = Theme.BLUE
-            c2 = Theme.get_color('MAUVE', 120)
-            border_grad.setColorAt(0.0, c1 if phase < 0.5 else c2)
-            border_grad.setColorAt(phase, Theme.TEXT)
-            border_grad.setColorAt(1.0, c2 if phase < 0.5 else c1)
-            p.setPen(QPen(border_grad, 2.5))
-        else:
-            # 🦆 Duck Banner: No border
-            p.setPen(Qt.PenStyle.NoPen)
-        
-        p.drawRoundedRect(card, CARD_R, CARD_R)
-
-        # ── Optional: Animated gear for Update Banner ──
-        if self.is_update_banner:
-            p.save()
-            gear_x = cx + CARD_W - 55.0
-            gear_y = cy + CARD_H - 35.0
-            p.translate(gear_x, gear_y)
-            p.rotate((self.tick * 3) % 360)
-            p.setFont(QFont("sans-serif", 32))
-            p.setPen(Theme.get_color('BLUE', 40))
-            p.drawText(QRectF(-20, -20, 40, 40), Qt.AlignmentFlag.AlignCenter, "⚙️")
-            p.restore()
-
-        # ── Row 1: Provider pill + Status pill + Close ──
-        py = cy + 12.0
-
-        # Provider pill
-        prov_lower = self.provider.lower()
-        dot_color = Theme.GREEN
-        for k, c in PROVIDER_DOTS.items():
-            if k in prov_lower:
-                dot_color = c
-                break
-        prov_label = self.provider.upper()[:24]
-        p.setFont(QFont("Inter, Arial", 9, QFont.Weight.ExtraBold))
-        fm = QFontMetrics(p.font())
-        pill_text_w = fm.horizontalAdvance(prov_label) + 24 + 12  # dot + text + padding
-        pill_h = 22.0
-        pill_x = cx + 14.0
-
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(Theme.MANTLE)
-        p.drawRoundedRect(QRectF(pill_x, py, pill_text_w, pill_h), 11, 11)
-        # dot
-        p.setBrush(dot_color)
-        p.drawEllipse(QRectF(pill_x + 8, py + 7, 8, 8))
-        # text
-        p.setPen(Theme.TEXT)
-        p.drawText(QRectF(pill_x + 22, py, pill_text_w - 22, pill_h),
-                   Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
-                   prov_label)
-
-        # Status pill (LATE / IN PROGRESS)
-        if self.is_late:
-            status_text = "🔴 LATE • IN PROGRESS"
-            status_bg   = Theme.get_color('RED', 220)
-            status_fg   = Theme.CRUST
-        else:
-            status_text = ""
-            status_bg   = QColor(0, 0, 0, 0)
-            status_fg   = QColor(0, 0, 0, 0)
-
-        if status_text:
-            p.setFont(QFont("Inter, Arial", 8, QFont.Weight.Bold))
-            fm2 = QFontMetrics(p.font())
-            sw = fm2.horizontalAdvance(status_text) + 20
-            sx = cx + CARD_W - 36 - sw  # 36 = close btn area
-            p.setPen(Qt.PenStyle.NoPen)
-            p.setBrush(status_bg)
-            p.drawRoundedRect(QRectF(sx, py, sw, pill_h), 11, 11)
-            p.setPen(status_fg)
-            p.drawText(QRectF(sx, py, sw, pill_h), Qt.AlignmentFlag.AlignCenter, status_text)
-
-        # Close button ✕
-        cr = self._close_rect()
-        hover_close = self._hover == "close"
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(Theme.get_color('RED', 200) if hover_close else Theme.get_color('TEXT', 22))
-        p.drawEllipse(cr)
-        p.setPen(Theme.CRUST if hover_close else Theme.SUBTEXT0)
-        p.setFont(QFont("Arial", 10, QFont.Weight.Bold))
-        p.drawText(cr, Qt.AlignmentFlag.AlignCenter, "✕")
-
-        # ── Row 2: Title ──
-        p.setPen(Theme.TEXT)
-        tf = QFont("Inter, Arial", 15)
-        tf.setWeight(QFont.Weight.Bold)
-        p.setFont(tf)
-        title_rect = QRectF(cx + 14, cy + 40, CARD_W - 28, 26)
-        fm_t = QFontMetrics(tf)
-        elided = fm_t.elidedText(self.title, Qt.TextElideMode.ElideRight, int(CARD_W - 28))
-        p.drawText(title_rect, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft, elided)
-
-        # ── Row 3: Subtitle ──
-        sub_parts = []
-        if self.time_str:
-            sub_parts.append(f"🕙 {self.time_str}")
-        if self.is_update_banner:
-            sub_parts.append("⚡ Ready to download & install")
-        elif "meet" in self.provider.lower() or "zoom" in self.provider.lower() or "teams" in self.provider.lower():
-            sub_parts.append("🌐 Online Meeting")
-        elif self.classroom:
-            sub_parts.append(f"🏫 {self.classroom}")
-        sub_text = "  •  ".join(sub_parts) if sub_parts else self.provider
-        p.setPen(Theme.SUBTEXT0)
-        sf = QFont("Inter, Arial", 10)
-        p.setFont(sf)
-        p.drawText(QRectF(cx + 14, cy + 68, CARD_W - 28, 20),
-                   Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft, sub_text)
-
-        # ── Row 4: Action Buttons ──
-        jr = self._join_rect()
-        hover_join = self._hover == "join"
-
-        if self.is_update_banner:
-            # Software update styling (vibrant cyan to electric blue gradient)
-            g = QLinearGradient(jr.topLeft(), jr.topRight())
-            if hover_join:
-                g.setColorAt(0, Theme.BLUE)
-                g.setColorAt(1, Theme.MAUVE)
+        # 1. Turbo Flame Particles (Afterburners)
+        for f in self.flame_particles:
+            stage = f["color_stage"]
+            alpha_val = max(0, min(255, int(f["alpha"] * 255)))
+            if stage < 1.0:
+                f_col = QColor(255, 230, 77, alpha_val)
+            elif stage < 2.0:
+                f_col = QColor(255, 133, 38, alpha_val)
             else:
-                g.setColorAt(0, Theme.SAPPHIRE)
-                g.setColorAt(1, Theme.BLUE)
+                f_col = QColor(242, 56, 46, int(alpha_val * 0.8))
+
             p.setPen(Qt.PenStyle.NoPen)
-            p.setBrush(g)
-            p.drawRoundedRect(jr, 10, 10)
-            p.setPen(Theme.CRUST)
-            display_text = self.btn_text
-        elif not self.has_real_url:
-            # Got it styling (blue tint)
-            g = QLinearGradient(jr.topLeft(), jr.topRight())
-            if hover_join:
-                g.setColorAt(0, Theme.BLUE)
-                g.setColorAt(1, Theme.TEAL)
-            else:
-                g.setColorAt(0, Theme.TEAL)
-                g.setColorAt(1, Theme.GREEN)
+            p.setBrush(f_col)
+            p.drawEllipse(QRectF(f["x"] - f["r"], f["y"] - f["r"], f["r"] * 2, f["r"] * 2))
+
+        # 2. Standard Smoke & Sparkles
+        for sm in self.smoke_particles:
+            smoke_alpha = max(0, min(255, int(sm["alpha"] * 128)))
             p.setPen(Qt.PenStyle.NoPen)
-            p.setBrush(g)
-            p.drawRoundedRect(jr, 10, 10)
-            p.setPen(Theme.CRUST)
-            display_text = "✅ Got it"
-        else:
-            # JOIN styling (yellow/amber gradient, black text)
-            g = QLinearGradient(jr.topLeft(), jr.topRight())
-            if hover_join:
-                g.setColorAt(0, Theme.YELLOW)
-                g.setColorAt(1, Theme.PEACH)
-            else:
-                g.setColorAt(0, Theme.PEACH)
-                g.setColorAt(1, Theme.MAROON)
+            p.setBrush(QColor(217, 224, 250, smoke_alpha))
+            p.drawEllipse(QRectF(sm["x"] - sm["r"], sm["y"] - sm["r"], sm["r"] * 2, sm["r"] * 2))
+
+        for sp in self.sparkle_particles:
+            sp_alpha = max(0, min(255, int(sp["alpha"] * 255)))
             p.setPen(Qt.PenStyle.NoPen)
-            p.setBrush(g)
-            p.drawRoundedRect(jr, 10, 10)
-            p.setPen(Theme.CRUST)
-            display_text = self.btn_text
+            p.setBrush(QColor(255, 235, 115, sp_alpha))
+            p.drawEllipse(QRectF(sp["x"] - sp["r"], sp["y"] - sp["r"], sp["r"] * 2, sp["r"] * 2))
 
-        bf = QFont("Inter, Arial", 11)
-        bf.setWeight(QFont.Weight.ExtraBold)
-        p.setFont(bf)
-        p.drawText(jr, Qt.AlignmentFlag.AlignCenter, display_text)
+        # 3. Towing Cables (Curved Bezier Cables)
+        self._draw_towing_cables(p, bx, by, bw, bh, px, py)
 
-        mf = QFont("Inter, Arial", 10)
-        mf.setWeight(QFont.Weight.Bold)
+        # 4. Frosted Glass Banner Card
+        self._draw_glass_banner_card(p, bx, by, bw, bh, palette)
 
-        if self.is_update_banner:
-            sr = self._snooze_rect()
-            hover_snz = self._hover == "snooze"
-            p.setPen(Qt.PenStyle.NoPen)
-            p.setBrush(Theme.SURFACE1 if hover_snz else Theme.MANTLE)
-            p.drawRoundedRect(sr, 10, 10)
-            p.setPen(Theme.CRUST if hover_snz else Theme.SUBTEXT0)
-            p.setFont(mf)
-            p.drawText(sr, Qt.AlignmentFlag.AlignCenter, "✕ Later")
-        else:
-            # I'm Here (dark pill, greenish tint on hover)
-            if self.has_maps_url:
-                ar = self._arrive_rect()
-                hover_arr = self._hover == "arrive"
-                p.setPen(Qt.PenStyle.NoPen)
-                p.setBrush(Theme.get_color('GREEN', 180) if hover_arr else Theme.MANTLE)
-                p.drawRoundedRect(ar, 10, 10)
-                p.setPen(Theme.CRUST if hover_arr else Theme.SUBTEXT0)
-                p.setFont(mf)
-                p.drawText(ar, Qt.AlignmentFlag.AlignCenter, "📍 I'm Here")
+        # 5. Provider Pill & Classroom Badge
+        self._draw_provider_pill(p, bx, by, bh, accent)
 
-            # Snooze / Got it button
-            sr = self._snooze_rect()
-            hover_snz = self._hover == "snooze"
-            p.setPen(Qt.PenStyle.NoPen)
-            if self.reminder_stage == 0:
-                p.setBrush(Theme.SURFACE1 if hover_snz else Theme.SURFACE0)
-                p.drawRoundedRect(sr, 10, 10)
-                p.setPen(Theme.CRUST if hover_snz else Theme.BLUE)
-                p.setFont(mf)
-                p.drawText(sr, Qt.AlignmentFlag.AlignCenter, "✅ Got it")
-            else:
-                p.setBrush(Theme.SURFACE1 if hover_snz else Theme.MANTLE)
-                p.drawRoundedRect(sr, 10, 10)
-                p.setPen(Theme.CRUST if hover_snz else Theme.SUBTEXT0)
-                p.setFont(mf)
-                p.drawText(sr, Qt.AlignmentFlag.AlignCenter, "💤 Snooze 2m")
+        # 6. Countdown Pill
+        self._draw_countdown_pill(p, bx, by, bw, bh, accent)
 
-    # ── Tow cable ─────────────────────────────────────────────────────────────
+        # 7. Close Button
+        self._draw_close_button(p, bx, by, bw, bh)
 
-    def _draw_cable(self, p: QPainter):
-        pen = QPen(Theme.get_color('TEXT', 160), 1.4)
-        p.setPen(pen)
-        p.drawLine(
-            int(CARD_X + CARD_W), int(CARD_Y + CARD_H // 2),
-            int(PLANE_CX - 36),   int(PLANE_CY)
-        )
+        # 8. Event Title & Details
+        self._draw_event_details(p, bx, by, bw, bh)
 
-    def _draw_plane(self, p: QPainter, px: float, py: float):
-        # AppKit uses Y-up; Qt uses Y-down.
-        # Flip the painter around py so all ported AppKit coordinates render correctly.
+        # 9. Action Buttons Bar ([Action] [📍 I'm Here] [💤 Snooze])
+        self._draw_buttons_bar(p, bx, by, palette)
+
+        # 10. Draw Pilot Vehicle & Character (Flips Y coordinate so ported AppKit coordinates align)
         p.save()
         p.translate(0.0, 2.0 * py)
         p.scale(1.0, -1.0)
         p.setPen(Qt.PenStyle.NoPen)
-        renderer = get_pilot_renderer(self.pilot_type)
-        renderer.draw_pilot(p, px, py, self.tick)
+        self.renderer.draw_pilot(p, px, py, self.tick)
         p.restore()
 
+        # 11. Animated Pilot Speech Bubble (Above plane)
+        self._draw_pilot_speech_bubble(p, px, py)
 
-    # ── Speech bubble ─────────────────────────────────────────────────────────
+        p.end()
 
-    def _draw_bubble(self, p: QPainter, px: float, py: float):
-        is_late_q = self.is_late or "LATE" in self.quote_text or "RUN" in self.quote_text
-        bg = Theme.get_color('RED', 230) if is_late_q else Theme.get_color('MANTLE', 220)
+    # ── Sub-drawing Helpers ────────────────────────────────────────────────────
 
-        f = QFont("Inter, Arial", 8)
-        f.setWeight(QFont.Weight.ExtraBold)
+    def _draw_towing_cables(self, p: QPainter, bx: float, by: float, bw: float, bh: float, px: float, py: float):
+        cable_col = QColor(255, 102, 89, 166) if self.is_late else QColor(217, 217, 217, 107)
+        pen = QPen(cable_col, 1.5)
+        p.setPen(pen)
+        p.setBrush(Qt.BrushStyle.NoBrush)
+
+        dx = px - bx - bw
+        # Top Cable
+        top_cable = QPainterPath()
+        top_cable.moveTo(bx + bw, by + 24.0)
+        top_cable.cubicTo(
+            bx + bw + dx * 0.45, by + 16.0,
+            px - 32.0, py - 6.0,
+            px - 16.0, py - 4.0
+        )
+        p.drawPath(top_cable)
+
+        # Bottom Cable
+        bot_cable = QPainterPath()
+        bot_cable.moveTo(bx + bw, by + bh - 24.0)
+        bot_cable.cubicTo(
+            bx + bw + dx * 0.45, by + bh - 16.0,
+            px - 32.0, py + 12.0,
+            px - 16.0, py + 8.0
+        )
+        p.drawPath(bot_cable)
+
+    def _draw_glass_banner_card(self, p: QPainter, bx: float, by: float, bw: float, bh: float, palette: Dict[str, Any]):
+        card_rect = QRectF(bx, by, bw, bh)
+        p.setBrush(palette["card_tint"])
+
+        if self.is_late:
+            pulse = math.sin(self.tick * 0.15) * 0.3 + 0.7
+            border_col = QColor(255, 77, 77, max(0, min(255, int(pulse * 255))))
+            p.setPen(QPen(border_col, 1.8))
+        else:
+            border_col = QColor(255, 255, 255, 41)
+            p.setPen(QPen(border_col, 1.0))
+
+        p.drawRoundedRect(card_rect, self.CARD_R, self.CARD_R)
+
+    def _draw_provider_pill(self, p: QPainter, bx: float, by: float, bh: float, accent: QColor):
+        p.setFont(QFont("Inter, Arial", 9, QFont.Weight.ExtraBold))
+        fm = p.fontMetrics()
+        prov_str = self.provider.upper()
+        text_w = fm.horizontalAdvance(prov_str)
+        pill_w = text_w + 16.0
+        pill_h = 20.0
+
+        pill_x = bx + 18.0
+        pill_y = by + 12.0
+        pill_rect = QRectF(pill_x, pill_y, pill_w, pill_h)
+
+        # Pill background
+        bg_c = QColor(accent.red(), accent.green(), accent.blue(), 36)
+        border_c = QColor(accent.red(), accent.green(), accent.blue(), 97)
+        p.setBrush(bg_c)
+        p.setPen(QPen(border_c, 1.0))
+        p.drawRoundedRect(pill_rect, 10.0, 10.0)
+
+        # Pill text
+        p.setPen(accent)
+        p.drawText(pill_rect, Qt.AlignmentFlag.AlignCenter, prov_str)
+
+        # Classroom Badge (if present)
+        if self.classroom:
+            c_str = f"🏫 {self.classroom}"
+            c_text_w = fm.horizontalAdvance(c_str)
+            c_pill_w = c_text_w + 14.0
+            c_pill_x = pill_x + pill_w + 8.0
+            c_pill_rect = QRectF(c_pill_x, pill_y, c_pill_w, pill_h)
+
+            p.setBrush(QColor(89, 51, 140, 166))
+            p.setPen(QPen(QColor(191, 140, 242, 166), 1.0))
+            p.drawRoundedRect(c_pill_rect, 10.0, 10.0)
+
+            p.setPen(QColor(224, 184, 255))
+            p.drawText(c_pill_rect, Qt.AlignmentFlag.AlignCenter, c_str)
+
+    def _draw_countdown_pill(self, p: QPainter, bx: float, by: float, bw: float, bh: float, accent: QColor):
+        countdown_text = self._cached_countdown_text
+        is_urgent = self._cached_is_urgent
+
+        p.setFont(QFont("Inter, Arial", 9, QFont.Weight.Bold))
+        fm = p.fontMetrics()
+        text_w = fm.horizontalAdvance(countdown_text)
+        pill_w = text_w + 18.0
+        pill_h = 20.0
+
+        pill_x = bx + bw - 44.0 - pill_w
+        pill_y = by + 12.0
+        pill_rect = QRectF(pill_x, pill_y, pill_w, pill_h)
+
+        if is_urgent:
+            bg_col = QColor(66, 20, 20, 224)
+            border_col = QColor(255, 89, 89, 140)
+            text_col = QColor(255, 89, 89)
+        else:
+            bg_col = QColor(38, 41, 61, 217)
+            border_col = QColor(245, 224, 166, 140)
+            text_col = QColor(245, 224, 166)
+
+        p.setBrush(bg_col)
+        p.setPen(QPen(border_col, 1.0))
+        p.drawRoundedRect(pill_rect, 10.0, 10.0)
+
+        p.setPen(text_col)
+        p.drawText(pill_rect, Qt.AlignmentFlag.AlignCenter, countdown_text)
+
+    def _draw_close_button(self, p: QPainter, bx: float, by: float, bw: float, bh: float):
+        is_pressed = (self.pressed_button == "close")
+        is_hovered = (self.hovered_button == "close")
+
+        btn_rect = QRectF(bx + bw - 36.0, by + 10.0, 24.0, 24.0)
+
+        if is_pressed:
+            fill_col = QColor(107, 112, 148)
+        elif is_hovered:
+            fill_col = QColor(77, 82, 112)
+        else:
+            fill_col = QColor(46, 51, 71, 217)
+
+        p.setBrush(fill_col)
+        p.setPen(QPen(QColor(128, 140, 179, 166), 1.0))
+        p.drawEllipse(btn_rect)
+
+        p.setPen(Qt.GlobalColor.white)
+        p.setFont(QFont("Inter, Arial", 10, QFont.Weight.Bold))
+        p.drawText(btn_rect, Qt.AlignmentFlag.AlignCenter, "✕")
+
+    def _draw_event_details(self, p: QPainter, bx: float, by: float, bw: float, bh: float):
+        # Title
+        p.setPen(Qt.GlobalColor.white)
+        tf = QFont("Inter, Arial", 12, QFont.Weight.Bold)
+        p.setFont(tf)
+        title_rect = QRectF(bx + 18.0, by + 38.0, bw - 36.0, 24.0)
+        p.drawText(title_rect, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft, self._cached_short_title)
+
+        # Subtitle details
+        p.setPen(QColor(184, 194, 224))
+        sf = QFont("Inter, Arial", 10)
+        p.setFont(sf)
+        sub_rect = QRectF(bx + 18.0, by + 62.0, bw - 36.0, 20.0)
+        p.drawText(sub_rect, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft, self._cached_detail_text)
+
+    def _draw_buttons_bar(self, p: QPainter, bx: float, by: float, palette: Dict[str, Any]):
+        rects = self._get_button_rects(bx, by)
+
+        # 1. Main Action Button
+        is_pressed_act = (self.pressed_button == "action")
+        is_hovered_act = (self.hovered_button == "action")
+
+        btn_act_rect = rects["action"]
+
+        if not self.has_real_url:
+            top_c = QColor(26, 153, 179)
+            bot_c = QColor(0, 102, 128)
+            btn_text = "✅ Got it"
+        else:
+            top_c = palette["btn_gradient_top"]
+            bot_c = palette["btn_gradient_bot"]
+            btn_text = self.action_btn_text
+
+        g = QLinearGradient(btn_act_rect.topLeft(), btn_act_rect.bottomLeft())
+        if is_pressed_act:
+            g.setColorAt(0, bot_c)
+            g.setColorAt(1, top_c)
+        elif is_hovered_act:
+            hover_color = QColor(51, 204, 230) if not self.has_real_url else palette["accent_bright"]
+            g.setColorAt(0, hover_color)
+            g.setColorAt(1, bot_c)
+        else:
+            g.setColorAt(0, top_c)
+            g.setColorAt(1, bot_c)
+
+        p.setBrush(g)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.drawRoundedRect(btn_act_rect, 9.0, 9.0)
+
+        p.setPen(Qt.GlobalColor.white)
+        p.setFont(QFont("Inter, Arial", 10, QFont.Weight.ExtraBold))
+        p.drawText(btn_act_rect, Qt.AlignmentFlag.AlignCenter, btn_text)
+
+        # 2. "📍 I'm Here" Arrival Dismissal Button
+        if self.has_maps_url:
+            is_pressed_arr = (self.pressed_button == "arrived")
+            is_hovered_arr = (self.hovered_button == "arrived")
+            btn_arr_rect = rects["arrived"]
+
+            if is_pressed_arr:
+                arr_fill = QColor(38, 115, 71, 242)
+            elif is_hovered_arr:
+                arr_fill = QColor(31, 97, 56, 230)
+            else:
+                arr_fill = QColor(20, 64, 41, 217)
+
+            p.setBrush(arr_fill)
+            p.setPen(QPen(QColor(77, 217, 140, 115), 1.0))
+            p.drawRoundedRect(btn_arr_rect, 9.0, 9.0)
+
+            p.setPen(QColor(77, 217, 140))
+            p.setFont(QFont("Inter, Arial", 9, QFont.Weight.Bold))
+            p.drawText(btn_arr_rect, Qt.AlignmentFlag.AlignCenter, "📍 I'm Here")
+
+        # 3. Snooze / Acknowledge Buttons
+        is_stage_zero = (self.reminder_stage == 0)
+
+        def _draw_snooze_btn(btn_key: str, rect: QRectF, text_str: str):
+            if rect.width() == 0:
+                return
+            is_pressed = (self.pressed_button == btn_key)
+            is_hovered = (self.hovered_button == btn_key)
+
+            if is_stage_zero:
+                # "✅ Got it" blue glass styling
+                if is_pressed:
+                    fill = QColor(46, 102, 166, 242)
+                elif is_hovered:
+                    fill = QColor(38, 122, 204, 230)
+                else:
+                    fill = QColor(26, 77, 140, 217)
+                border = QColor(77, 166, 255, 128)
+                txt_col = Qt.GlobalColor.white
+            else:
+                # "💤 Snooze" slate glass styling
+                if is_pressed:
+                    fill = QColor(77, 82, 112, 242)
+                elif is_hovered:
+                    fill = QColor(56, 64, 92, 230)
+                else:
+                    fill = QColor(38, 43, 64, 217)
+                border = QColor(255, 255, 255, 41)
+                txt_col = QColor(184, 194, 224)
+
+            p.setBrush(fill)
+            p.setPen(QPen(border, 1.0))
+            p.drawRoundedRect(rect, 9.0, 9.0)
+
+            p.setPen(txt_col)
+            p.setFont(QFont("Inter, Arial", 9, QFont.Weight.Bold))
+            p.drawText(rect, Qt.AlignmentFlag.AlignCenter, text_str)
+
+        if is_stage_zero:
+            _draw_snooze_btn("snooze1", rects["snooze1"], "✅ Got it")
+        else:
+            _draw_snooze_btn("snooze1", rects["snooze1"], "💤 5m")
+            _draw_snooze_btn("snooze2", rects["snooze2"], "⏭️ Skip")
+
+    def _draw_pilot_speech_bubble(self, p: QPainter, px: float, py: float):
+        """Draws an animated floating speech bubble pointing directly at the pilot."""
+        text = self._cached_speech_text
+        if not text:
+            return
+
+        f = QFont("Inter, Arial", 8, QFont.Weight.ExtraBold)
         p.setFont(f)
         fm = p.fontMetrics()
-        bw = max(180, fm.horizontalAdvance(self.quote_text) + 36)
-        bh = 30
+        bw = fm.horizontalAdvance(text) + 20.0
+        bh = 26.0
         bx = px - bw * 0.5
-        by = py - 60
+        # Float above plane with bobbing
+        bob = math.sin(self.tick * 0.08) * 3.0
+        by = py - 46.0 + bob
 
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(bg)
-        p.drawRoundedRect(QRectF(bx, by, bw, bh), 13, 13)
+        bubble_rect = QRectF(bx, by, bw, bh)
 
-        # Tiny tail pointing down-right towards plane
+        # Bubble Container Shape & Tail pointing to pilot
         tail = QPainterPath()
-        tail.moveTo(bx + bw * 0.65, by + bh)
-        tail.lineTo(bx + bw * 0.65 + 8, by + bh + 8)
-        tail.lineTo(bx + bw * 0.65 + 16, by + bh)
+        tail.moveTo(px - 6.0, by + bh)
+        tail.lineTo(px, by + bh + 8.0)
+        tail.lineTo(px + 6.0, by + bh)
         tail.closeSubpath()
+
+        if self.is_late:
+            bg_col = QColor(217, 41, 41, 242)
+            border_col = QColor(255, 115, 115)
+        else:
+            bg_col = QColor(36, 41, 61, 235)
+            border_col = QColor(255, 255, 255, 64)
+
+        p.setBrush(bg_col)
+        p.setPen(QPen(border_col, 1.2))
+        p.drawRoundedRect(bubble_rect, 10.0, 10.0)
+        p.setPen(Qt.PenStyle.NoPen)
         p.drawPath(tail)
 
-        p.setPen(Theme.TEXT)
-        p.setFont(f)
-        p.drawText(QRectF(bx, by, bw, bh), Qt.AlignmentFlag.AlignCenter, self.quote_text)
+        # Bubble text
+        p.setPen(Qt.GlobalColor.white)
+        p.drawText(bubble_rect, Qt.AlignmentFlag.AlignCenter, text)
 
-    # ── Dismiss ───────────────────────────────────────────────────────────────
+    # ── Dismiss ────────────────────────────────────────────────────────────────
 
     def _dismiss(self):
         self._timer.stop()
@@ -520,5 +993,6 @@ class QtDuckBannerWindow(QWidget):
         app = QApplication.instance()
         if app and "--test" in sys.argv:
             app.quit()
+
 
 

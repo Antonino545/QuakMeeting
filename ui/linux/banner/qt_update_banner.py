@@ -17,15 +17,24 @@ try:
 except ImportError:
     pass
 
-from .qt_banner import (
-    PILOT_QUOTES, PILOT_COLORS, PROVIDER_DOTS,
-    CARD_W, CARD_H, CARD_R, CABLE_LEN, PLANE_SPAN, WIN_W, WIN_H,
-    CARD_X, CARD_Y, PLANE_CX, PLANE_CY, BTN_H, BTN_Y, BTN_X0,
-    BTN_JOIN_W, BTN_SMALL_W, BTN_ARR_W, BTN_SNOOZE_W, BTN_GAP,
-    BTN_ARRIVE_X, BTN_SNOOZE_X, CLOSE_R, CLOSE_CX, CLOSE_CY
-)
-
-# ── Main Banner Widget ────────────────────────────────────────────────────────
+# ── Constants for Update Banner ──
+CARD_W    = 500
+CARD_H    = 148
+CARD_R    = 18
+BTN_H     = 32
+BTN_JOIN_W = 170
+BTN_SMALL_W = 100
+BTN_ARR_W   = 100
+BTN_SNOOZE_W = 100
+BTN_ARRIVE_X = 16 + BTN_JOIN_W + 8
+BTN_SNOOZE_X = BTN_ARRIVE_X + BTN_ARR_W + 8
+PROVIDER_DOTS = {
+    "google meet": Theme.GREEN,
+    "zoom":        Theme.BLUE,
+    "teams":       Theme.MAUVE,
+    "webex":       Theme.PEACH,
+    "meet":        Theme.GREEN,
+}
 
 
 class QtUpdateBannerWindow(QWidget):
