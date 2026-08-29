@@ -44,6 +44,7 @@ except (ImportError, ModuleNotFoundError):
         return args
 
 from .renderers import get_pilot_renderer
+from ui.linux.theme import Theme
 
 # ── Pilot data ────────────────────────────────────────────────────────────────
 
@@ -58,21 +59,21 @@ PILOT_QUOTES = {
 }
 
 PILOT_COLORS = {
-    "duck":     QColor(250, 204, 21),
-    "chef":     QColor(244, 63, 94),
-    "captain":  QColor(56, 189, 248),
-    "owl":      QColor(192, 132, 252),
-    "gym":      QColor(248, 113, 113),
-    "driver":   QColor(251, 191, 36),
-    "zen_duck": QColor(45, 212, 191),
+    "duck":     Theme.YELLOW,
+    "chef":     Theme.PEACH,
+    "captain":  Theme.SAPPHIRE,
+    "owl":      Theme.MAUVE,
+    "gym":      Theme.RED,
+    "driver":   Theme.PEACH,
+    "zen_duck": Theme.TEAL,
 }
 
 PROVIDER_DOTS = {
-    "google meet": QColor(52, 211, 153),
-    "zoom":        QColor(56, 189, 248),
-    "teams":       QColor(99, 102, 241),
-    "webex":       QColor(251, 191, 36),
-    "meet":        QColor(52, 211, 153),
+    "google meet": Theme.GREEN,
+    "zoom":        Theme.BLUE,
+    "teams":       Theme.MAUVE,
+    "webex":       Theme.PEACH,
+    "meet":        Theme.GREEN,
 }
 
 

@@ -33,7 +33,7 @@ from ui.linux.animated_widgets import (
 class QtUpdateBridge(QObject):
     update_event = pyqtSignal(str, dict)
 
-from core.services.config_service import config
+from core.services.config_service import config, is_debug_mode
 from core.services.calendar_service import calendar_service
 from core.services.updater_service import updater_service
 from core.autostart import is_autostart_enabled, enable_autostart, disable_autostart
@@ -167,6 +167,51 @@ QPushButton#SegmentBtn:checked {
     color: #cba6f7; /* Mauve */
 }
 
+/* Inputs and Dropdowns (Catppuccin) */
+QLineEdit {
+    background-color: #181825; /* Mantle */
+    color: #cdd6f4; /* Text */
+    border: 1px solid #313244; /* Surface0 */
+    border-radius: 8px;
+    padding: 7px 12px;
+    font-size: 12px;
+    selection-background-color: #cba6f7;
+    selection-color: #11111b;
+}
+QLineEdit:focus {
+    border-color: #89b4fa; /* Blue */
+    background-color: #11111b; /* Crust */
+}
+
+QComboBox {
+    background-color: #181825; /* Mantle */
+    color: #cdd6f4; /* Text */
+    border: 1px solid #313244; /* Surface0 */
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 12px;
+    min-width: 140px;
+}
+QComboBox:hover {
+    border-color: #45475a; /* Surface1 */
+}
+QComboBox:focus {
+    border-color: #89b4fa; /* Blue */
+}
+QComboBox::drop-down {
+    border: none;
+    width: 24px;
+}
+QComboBox QAbstractItemView {
+    background-color: #181825; /* Mantle */
+    color: #cdd6f4; /* Text */
+    border: 1px solid #313244; /* Surface0 */
+    selection-background-color: #313244; /* Surface0 */
+    selection-color: #cba6f7; /* Mauve */
+    border-radius: 6px;
+    padding: 4px;
+}
+
 /* ScrollBar styling (Catppuccin) */
 QScrollBar:vertical {
     background: transparent;
@@ -283,87 +328,18 @@ class QtFlightDeckWindow(QMainWindow):
         hangar_layout = QVBoxLayout(hangar_widget)
         hangar_layout.setContentsMargins(20, 16, 20, 16)
 
-        h_scroll = QScrollArea(hangar_widget)
-        h_scroll.setWidgetResizable(True)
-        h_scroll.setStyleSheet("QScrollArea { border: none; background: transparent; } QWidget { background: transparent; }")
+        self.h_scroll = QScrollArea(hangar_widget)
+        self.h_scroll.setWidgetResizable(True)
+        self.h_scroll.setStyleSheet("QScrollArea { border: none; background: transparent; } QWidget { background: transparent; }")
 
-        h_content = QWidget()
-        h_layout = QVBoxLayout(h_content)
-        h_layout.setContentsMargins(0, 0, 0, 0)
-        h_layout.setSpacing(12)
+        self.h_content = QWidget()
+        self.h_layout = QVBoxLayout(self.h_content)
+        self.h_layout.setContentsMargins(0, 0, 0, 0)
+        self.h_layout.setSpacing(12)
 
-        pilots = [
-            ("update_banner", "🚀 Software Update Banner", "System Updates & New Releases", "https://github.com/Antonino545/QuakMeeting/releases"),
-            ("duck", "🦆 Aviator Duck", "Google Meet / Zoom / Video Meetings", "https://meet.google.com/test"),
-            ("travel_departure", "🚦 Multi-Modal Route ETA", "Transit, Driving & Cycling Departure Countdown", "https://maps.google.com"),
-            ("chef", "👨‍🍳 Chef Duck", "Dinner / Lunch / Restaurants / Aperitivo", "https://maps.google.com/?q=Pizzeria"),
-            ("captain", "🧑‍✈️ Jet Captain", "Flights / Airports / High-Speed Transit", "https://maps.google.com/?q=Airport"),
-            ("owl", "🦉 Academic Owl", "University Lectures / Exams / Campus Study", "https://calendar.google.com"),
-            ("gym", "🏋️‍♂️ Athlete Duck", "Palestra / Gym / CrossFit / Sport", "https://maps.google.com/?daddr=Gym"),
-            ("driver", "🏎️ Speed Racer", "In-Person Meetings / Appointments / Travel", "https://maps.google.com/?daddr=Office"),
-            ("zen_duck", "🦆🌸 Zen Duck", "Serenis / Therapy / Yoga / Wellness", "https://app.serenis.it")
-        ]
-
-        for idx, (p_id, p_name, p_desc, p_url) in enumerate(pilots):
-            card = QFrame(h_content)
-            card.setObjectName("Card")
-            c_layout = QHBoxLayout(card)
-            c_layout.setContentsMargins(18, 14, 18, 14)
-            c_layout.setSpacing(14)
-
-            p_box = QVBoxLayout()
-            p_box.setSpacing(2)
-            n_l = QLabel(p_name, card)
-            n_l.setObjectName("CardTitle")
-            d_l = QLabel(p_desc, card)
-            d_l.setObjectName("CardSub")
-            p_box.addWidget(n_l)
-            p_box.addWidget(d_l)
-            c_layout.addLayout(p_box, stretch=1)
-
-            def _trigger_test_flight(p_id_val):
-                try:
-                    if p_id_val == "travel_departure":
-                        from core.services.eta_service import eta_service
-                        t_mode = config.get("transport_mode", "transit")
-                        res = eta_service.calculate_eta("Piazza Castello, Torino", "Politecnico di Torino, Corso Duca degli Abruzzi 24, Torino", mode=t_mode)
-                        dur = res["duration_minutes"] if res else 12
-                        evt = {
-                            "title": "ICT for Smart Mobility (Politecnico di Torino)",
-                            "location": "Corso Duca degli Abruzzi 24, Torino",
-                            "pilot_type": "owl",
-                            "provider": "Politecnico Calendar 📅",
-                            "start_time": datetime.now().astimezone() + timedelta(minutes=dur + 15),
-                            "departure_time": datetime.now().astimezone() + timedelta(minutes=15),
-                            "travel_time_minutes": dur,
-                            "transport_mode": t_mode,
-                            "is_travel": True,
-                            "reminder_stage": 15,
-                            "action_btn_text": f"🗺️ NAVIGATE ({dur}m)",
-                            "maps_url": res["maps_url"] if res else "https://maps.google.com"
-                        }
-                    elif p_id_val == "update_banner":
-                        from ui.linux.banner.qt_banner import get_update_preset
-                        evt = get_update_preset("v2.0.0 (Test)")
-                    else:
-                        from ui.linux.banner.qt_banner import get_test_preset
-                        evt = dict(get_test_preset(p_id_val))
-
-                    from ui.linux.banner.qt_banner import show_qt_banner
-                    show_qt_banner(evt)
-                except Exception as ex:
-                    logger.error(f"Error triggering test flight banner: {ex}")
-
-            t_btn = QPushButton("🚀 Test Flight", card)
-            t_btn.setObjectName("PrimaryBtn")
-            t_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            t_btn.clicked.connect(lambda chk, i=p_id: _trigger_test_flight(i))
-            c_layout.addWidget(t_btn)
-            h_layout.addWidget(card)
-
-        h_layout.addStretch()
-        h_scroll.setWidget(h_content)
-        hangar_layout.addWidget(h_scroll)
+        self._refresh_hangar()
+        self.h_scroll.setWidget(self.h_content)
+        hangar_layout.addWidget(self.h_scroll)
         self.tabs.addTab(hangar_widget, "🦆 Pilot Hangar")
 
         # --- TAB 3: Preferences ---
@@ -407,9 +383,9 @@ class QtFlightDeckWindow(QMainWindow):
                 chk.setCursor(Qt.CursorShape.PointingHandCursor)
                 chk.setChecked(val in curr_stages)
                 chk.setStyleSheet("""
-                    QPushButton { background: #313244; color: #cdd6f4; border: none; border-radius: 6px; padding: 4px 10px; font-size: 11px; }
-                    QPushButton:hover { background: #45475a; }
-                    QPushButton:checked { background: #cba6f7; color: #11111b; font-weight: bold; }
+                    QPushButton { background: #313244; color: #cdd6f4; border: 1px solid #45475a; border-radius: 6px; padding: 5px 12px; font-size: 11px; }
+                    QPushButton:hover { background: #45475a; border-color: #89b4fa; }
+                    QPushButton:checked { background: #cba6f7; color: #11111b; font-weight: bold; border: 1px solid #cba6f7; }
                 """)
                 def _toggled(checked, v=val, k=config_key):
                     c = set(config.get(k, []))
@@ -469,8 +445,22 @@ class QtFlightDeckWindow(QMainWindow):
         addr_entry.setPlaceholderText("e.g. Piazza Castello, Torino or Via Roma, Torino")
 
         save_addr_btn = QPushButton("💾 Save Location", addr_card)
-        save_addr_btn.setObjectName("PrimaryBtn")
         save_addr_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        save_addr_btn.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #a6e3a1, stop:1 #94e2d5);
+                color: #11111b;
+                font-weight: bold;
+                font-size: 12px;
+                border-radius: 8px;
+                padding: 7px 16px;
+                border: 1px solid #a6e3a1;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #94e2d5, stop:1 #a6e3a1);
+                border: 1px solid #94e2d5;
+            }
+        """)
         def _save_addr():
             val = addr_entry.text().strip()
             config.set("home_address", val)
@@ -507,23 +497,27 @@ class QtFlightDeckWindow(QMainWindow):
                             background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #74c7ec, stop:1 #89b4fa);
                             color: #11111b;
                             font-weight: bold;
-                            border: 1px solid #89b4fa;
+                            font-size: 12px;
+                            border: 1px solid #74c7ec;
                             border-radius: 8px;
-                            padding: 8px 12px;
+                            padding: 8px 14px;
                         }
                     """)
                 else:
                     b.setStyleSheet("""
                         QPushButton {
-                            background: rgba(205, 214, 244, 0.05);
+                            background: #313244;
                             color: #bac2de;
-                            border: 1px solid rgba(205, 214, 244, 0.1);
+                            border: 1px solid #45475a;
                             border-radius: 8px;
-                            padding: 8px 12px;
+                            padding: 8px 14px;
+                            font-size: 12px;
+                            font-weight: 500;
                         }
                         QPushButton:hover {
-                            background: rgba(205, 214, 244, 0.10);
+                            background: #45475a;
                             color: #cdd6f4;
+                            border-color: #89b4fa;
                         }
                     """)
 
@@ -617,11 +611,26 @@ class QtFlightDeckWindow(QMainWindow):
                 logger.error(f"Error testing live departure banner: {e}")
 
         test_dep_btn = QPushButton("🚀 Launch Departure Banner", sim_box)
-        test_dep_btn.setObjectName("PrimaryBtn")
         test_dep_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        test_dep_btn.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #74c7ec, stop:1 #89b4fa);
+                color: #11111b;
+                font-weight: bold;
+                font-size: 12px;
+                border-radius: 8px;
+                padding: 7px 16px;
+                border: 1px solid #74c7ec;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #89b4fa, stop:1 #74c7ec);
+                border: 1px solid #89b4fa;
+            }
+        """)
         test_dep_btn.clicked.connect(_test_polito_banner)
         sim_act_row.addWidget(test_dep_btn)
 
+        sim_box.setVisible(is_debug_mode())
         sim_layout.addLayout(sim_act_row)
         ac_layout.addWidget(sim_box)
 
@@ -653,6 +662,27 @@ class QtFlightDeckWindow(QMainWindow):
         autostart_row.addStretch()
         autostart_row.addWidget(autostart_sw)
         uc_layout.addLayout(autostart_row)
+        uc_layout.addSpacing(6)
+
+        # Debug / Developer Mode Toggle
+        dbg_row = QHBoxLayout()
+        dbg_lbl = QLabel("🐛 Enable Developer & Debug Diagnostics Mode", util_card)
+        dbg_lbl.setStyleSheet("color: #cdd6f4; font-weight: bold; font-size: 13px;")
+
+        dbg_sw = ToggleSwitch(is_debug_mode(), util_card)
+        def _toggle_debug(checked):
+            config.set("debug_mode", checked)
+            sim_box.setVisible(checked)
+            edit_btn.setVisible(checked)
+            log_btn.setVisible(checked)
+            demo_up_btn.setVisible(checked)
+            self._refresh_hangar()
+        dbg_sw.toggled = _toggle_debug
+
+        dbg_row.addWidget(dbg_lbl)
+        dbg_row.addStretch()
+        dbg_row.addWidget(dbg_sw)
+        uc_layout.addLayout(dbg_row)
         uc_layout.addSpacing(10)
         
         sys_row = QHBoxLayout()
@@ -661,11 +691,13 @@ class QtFlightDeckWindow(QMainWindow):
         edit_btn.setObjectName("OutlineBtn")
         edit_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         edit_btn.clicked.connect(lambda chk=False: config.open_config_in_editor())
+        edit_btn.setVisible(is_debug_mode())
 
         log_btn = QPushButton("📄 View Live Log File", util_card)
         log_btn.setObjectName("OutlineBtn")
         log_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         log_btn.clicked.connect(lambda chk=False: open_log_file())
+        log_btn.setVisible(is_debug_mode())
 
         up_btn = AnimatedSpinButton("🔍 Check for Updates", util_card)
         up_btn.setObjectName("OutlineBtn")
@@ -675,10 +707,11 @@ class QtFlightDeckWindow(QMainWindow):
         demo_up_btn.setObjectName("OutlineBtn")
         demo_up_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         demo_up_btn.setToolTip("Preview the live rocket jet download & installation animation sequence")
+        demo_up_btn.setVisible(is_debug_mode())
 
+        sys_row.addWidget(up_btn)
         sys_row.addWidget(edit_btn)
         sys_row.addWidget(log_btn)
-        sys_row.addWidget(up_btn)
         sys_row.addWidget(demo_up_btn)
         uc_layout.addLayout(sys_row)
 
@@ -968,6 +1001,106 @@ class QtFlightDeckWindow(QMainWindow):
 
         self.scroll_layout.addStretch()
         self.scroll.setWidget(self.scroll_content)
+
+    def _refresh_hangar(self):
+        # Clear layout safely
+        while self.h_layout.count():
+            child = self.h_layout.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
+
+        all_pilots = [
+            ("update_banner", "🚀", "Software Update Banner", "System Updates, Releases & Live Package Installer", "Mauve", "#cba6f7", "#89b4fa", "⚡ Test Update", True),
+            ("duck", "🦆", "Aviator Duck", "Google Meet / Zoom / Video Meetings & Online Calls", "Green", "#a6e3a1", "#94e2d5", "🚀 Test Flight", False),
+            ("travel_departure", "🚦", "Multi-Modal Route ETA", "Transit, Driving & Cycling Departure Countdown", "Sapphire", "#74c7ec", "#89b4fa", "🗺️ Test Route", False),
+            ("chef", "👨‍🍳", "Chef Duck & Food", "Dinner / Lunch / Restaurants / Aperitivo & Food Routes", "Peach", "#fab387", "#f2cdcd", "🚀 Test Flight", False),
+            ("captain", "🧑‍✈️", "Jet Airliner Captain", "Airline Flights, Airports, High-Speed Trains & Travel", "Sky", "#89dceb", "#74c7ec", "🚀 Test Flight", False),
+            ("owl", "🦉", "Academic Owl", "University Lectures, Exams, Campus Courses & Study", "Mauve", "#cba6f7", "#b4befe", "🚀 Test Flight", False),
+            ("gym", "🏋️‍♂️", "Athlete Duck & Gym", "Palestra, Gym Workouts, CrossFit, Padel & Sport", "Red", "#f38ba8", "#eba0ac", "🚀 Test Flight", False),
+            ("driver", "🏎️", "Speed Racer Driver", "In-Person Meetings, Doctor Visits & Navigation", "Yellow", "#f9e2af", "#fab387", "🚀 Test Flight", False),
+            ("zen_duck", "🦆🌸", "Zen Duck & Wellness", "Serenis Sessions, Therapy, Yoga & Wellness", "Teal", "#94e2d5", "#a6e3a1", "🚀 Test Flight", False)
+        ]
+
+        dbg = is_debug_mode()
+        pilots = [p for p in all_pilots if not p[8] or dbg]
+
+        for idx, (p_id, p_icon, p_name, p_desc, theme_name, c1, c2, btn_text, _) in enumerate(pilots):
+            card = QFrame(self.h_content)
+            card.setObjectName("Card")
+            c_layout = QHBoxLayout(card)
+            c_layout.setContentsMargins(18, 14, 18, 14)
+            c_layout.setSpacing(14)
+
+            icon_l = QLabel(p_icon, card)
+            icon_l.setStyleSheet("font-size: 26px; border: none;")
+            c_layout.addWidget(icon_l)
+
+            p_box = QVBoxLayout()
+            p_box.setSpacing(2)
+            n_l = QLabel(p_name, card)
+            n_l.setObjectName("CardTitle")
+            sub_html = f"{p_desc}  •  <span style='color:{c1}; font-weight: 600;'>🎨 Catppuccin {theme_name}</span>"
+            d_l = QLabel(sub_html, card)
+            d_l.setObjectName("CardSub")
+            p_box.addWidget(n_l)
+            p_box.addWidget(d_l)
+            c_layout.addLayout(p_box, stretch=1)
+
+            def _trigger_test_flight(p_id_val):
+                try:
+                    if p_id_val == "travel_departure":
+                        from core.services.eta_service import eta_service
+                        t_mode = config.get("transport_mode", "transit")
+                        res = eta_service.calculate_eta("Piazza Castello, Torino", "Politecnico di Torino, Corso Duca degli Abruzzi 24, Torino", mode=t_mode)
+                        dur = res["duration_minutes"] if res else 12
+                        evt = {
+                            "title": "ICT for Smart Mobility (Politecnico di Torino)",
+                            "location": "Corso Duca degli Abruzzi 24, Torino",
+                            "pilot_type": "owl",
+                            "provider": "Politecnico Calendar 📅",
+                            "start_time": datetime.now().astimezone() + timedelta(minutes=dur + 15),
+                            "departure_time": datetime.now().astimezone() + timedelta(minutes=15),
+                            "travel_time_minutes": dur,
+                            "transport_mode": t_mode,
+                            "is_travel": True,
+                            "reminder_stage": 15,
+                            "action_btn_text": f"🗺️ NAVIGATE ({dur}m)",
+                            "maps_url": res["maps_url"] if res else "https://maps.google.com"
+                        }
+                    elif p_id_val == "update_banner":
+                        from ui.linux.banner.qt_banner import get_update_preset
+                        evt = get_update_preset("v2.0.0 (Test)")
+                    else:
+                        from ui.linux.banner.qt_banner import get_test_preset
+                        evt = dict(get_test_preset(p_id_val))
+
+                    from ui.linux.banner.qt_banner import show_qt_banner
+                    show_qt_banner(evt)
+                except Exception as ex:
+                    logger.error(f"Error triggering test flight banner: {ex}")
+
+            t_btn = QPushButton(btn_text, card)
+            t_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            t_btn.setStyleSheet(f"""
+                QPushButton {{
+                    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 {c1}, stop:1 {c2});
+                    color: #11111b;
+                    font-weight: bold;
+                    font-size: 12px;
+                    border-radius: 8px;
+                    padding: 7px 16px;
+                    border: 1px solid {c1};
+                }}
+                QPushButton:hover {{
+                    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 {c2}, stop:1 {c1});
+                    border: 1px solid {c2};
+                }}
+            """)
+            t_btn.clicked.connect(lambda chk, i=p_id: _trigger_test_flight(i))
+            c_layout.addWidget(t_btn)
+            self.h_layout.addWidget(card)
+
+        self.h_layout.addStretch()
 
 
 

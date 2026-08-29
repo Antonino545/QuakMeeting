@@ -80,7 +80,8 @@ class CalDAVCalendarProvider(BaseCalendarProvider):
                     end_time=e_dt or (s_dt + timedelta(hours=1))
                 )
                 meeting.provider = cal_name
-                meeting.uid = uid if uid else None
+                if uid:
+                    meeting.uid = uid
                 meeting.is_all_day = is_all_day
                 if is_all_day and not e_dt:
                     meeting.end_time = s_dt.replace(hour=23, minute=59, second=59)

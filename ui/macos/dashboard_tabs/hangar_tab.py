@@ -22,13 +22,13 @@ class HangarTabController(AppKit.NSObject):
         scroll_view.setDrawsBackground_(False)
 
         pilots = [
-            ("duck", "🦆 Aviator Duck", "Video conferences: Google Meet, Zoom, MS Teams & online meetings.", "Google Green", self.testAviatorDuck_),
-            ("chef", "👨‍🍳 Chef Duck & Food", "Dinners, Lunches, Restaurants, Pizzerias & Apple Maps food routes.", "Coral Food", self.testChefDuck_),
-            ("captain", "🧑‍✈️ Jet Airliner Captain", "Airline Flights, Airports, High-speed trains, Buses & Travel Routes.", "Sky Blue", self.testCaptainJet_),
-            ("owl", "🦉 Academic Owl", "University Lectures, Exams, Campus courses & Study sessions.", "Amethyst Academic", self.testAcademicOwl_),
-            ("gym", "🏋️‍♂️ Athlete Duck & Palestra", "Palestra, Gym workouts, CrossFit, Padel, Tennis, Calcio & Sport training.", "Athletic Crimson", self.testGymDuck_),
-            ("driver", "🏎️ Speed Racer Driver", "In-person appointments, Doctor visits, Office & Real-Time Navigation.", "Emerald Speed", self.testSpeedRacer_),
-            ("zen_duck", "🦆🌸 Zen Duck", "Serenis sessions, Psychological Therapy, Yoga, Wellness & Meditation.", "Teal Zen", self.testZenDuck_)
+            ("duck", "🦆 Aviator Duck", "Video conferences: Google Meet, Zoom, MS Teams & online meetings.", "Catppuccin Green", self.testAviatorDuck_),
+            ("chef", "👨‍🍳 Chef Duck & Food", "Dinners, Lunches, Restaurants, Pizzerias & Apple Maps food routes.", "Catppuccin Peach", self.testChefDuck_),
+            ("captain", "🧑‍✈️ Jet Airliner Captain", "Airline Flights, Airports, High-speed trains, Buses & Travel Routes.", "Catppuccin Sapphire", self.testCaptainJet_),
+            ("owl", "🦉 Academic Owl", "University Lectures, Exams, Campus courses & Study sessions.", "Catppuccin Mauve", self.testAcademicOwl_),
+            ("gym", "🏋️‍♂️ Athlete Duck & Palestra", "Palestra, Gym workouts, CrossFit, Padel, Tennis, Calcio & Sport training.", "Catppuccin Red", self.testGymDuck_),
+            ("driver", "🏎️ Speed Racer Driver", "In-person appointments, Doctor visits, Office & Real-Time Navigation.", "Catppuccin Yellow", self.testSpeedRacer_),
+            ("zen_duck", "🦆🌸 Zen Duck", "Serenis sessions, Psychological Therapy, Yoga, Wellness & Meditation.", "Catppuccin Teal", self.testZenDuck_)
         ]
 
         card_h = 108.0
