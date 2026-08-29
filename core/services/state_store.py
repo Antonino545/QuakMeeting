@@ -69,3 +69,71 @@ class NotifiedStateStore:
 
     def force_save(self) -> None:
         self._save()
+
+
+class BannerHistoryStore:
+    """Persistent storage for all banner notifications sent by QuakMeeting."""
+    def __init__(self, path: str = os.path.expanduser("~/.quakmeeting/banner_history.json")):
+        self.path = path
+        self._history = []
+        self.load()
+
+    def load(self):
+        if os.path.exists(self.path):
+            try:
+                with open(self.path, "r", encoding="utf-8") as f:
+                    self._history = json.load(f)
+            except Exception as e:
+                logger.warning(f"Failed to load banner history from {self.path}: {e}")
+                self._history = []
+        return self._history
+
+    def record_banner_sent(self, event_data: dict, stage=None, status: str = "sent") -> dict:
+        now_iso = datetime.now(timezone.utc).isoformat()
+        start_time_iso = ""
+        st = event_data.get("start_time")
+        if isinstance(st, datetime):
+            start_time_iso = st.isoformat()
+        elif st:
+            start_time_iso = str(st)
+
+        record = {
+            "event_id": str(event_data.get("id") or event_data.get("uid") or ""),
+            "title": str(event_data.get("title") or "Event"),
+            "start_time": start_time_iso,
+            "stage": stage,
+            "pilot_type": event_data.get("pilot_type") or "duck",
+            "provider": event_data.get("provider") or "",
+            "sent_at": now_iso,
+            "status": status
+        }
+        self._history.append(record)
+        if len(self._history) > 500:
+            self._history = self._history[-500:]
+        self._save()
+        return record
+
+    def record_action(self, event_id: str, action: str) -> None:
+        now_iso = datetime.now(timezone.utc).isoformat()
+        for rec in reversed(self._history):
+            if rec.get("event_id") == str(event_id):
+                rec["acknowledged_at"] = now_iso
+                rec["status"] = action
+                self._save()
+                break
+
+    def get_history(self, limit: int = 50):
+        return self._history[-limit:]
+
+    def _save(self) -> None:
+        try:
+            os.makedirs(os.path.dirname(self.path), exist_ok=True)
+            tmp_path = self.path + ".tmp"
+            with open(tmp_path, "w", encoding="utf-8") as f:
+                json.dump(self._history, f, indent=2)
+            os.replace(tmp_path, self.path)
+        except Exception as e:
+            logger.warning(f"Failed to save banner history to {self.path}: {e}")
+
+
+banner_history_store = BannerHistoryStore()

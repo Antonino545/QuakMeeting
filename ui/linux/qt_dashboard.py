@@ -21,7 +21,7 @@ from typing import Optional, List
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QLabel, QPushButton, QHBoxLayout,
     QVBoxLayout, QTabWidget, QScrollArea, QFrame, QLineEdit, QComboBox, QCheckBox,
-    QProgressBar
+    QProgressBar, QStackedWidget, QSizePolicy
 )
 from PyQt6.QtCore import Qt, QTimer, QObject, pyqtSignal
 from PyQt6.QtGui import QColor, QFont, QPixmap, QIcon
@@ -45,14 +45,15 @@ logger = logging.getLogger("QuakMeeting.QtDashboard")
 
 QT_DASHBOARD_QSS = """
 /* Catppuccin Mocha Palette */
-QMainWindow, QWidget#CentralWidget, QTabWidget::pane {
+QMainWindow, QWidget#CentralWidget {
     background-color: #11111b; /* Crust */
     border: none;
 }
 
 QFrame#HeaderBox {
     background-color: #181825; /* Mantle */
-    border-bottom: 1px solid #313244; /* Surface0 */
+    border: 1px solid #313244; /* Surface0 */
+    border-radius: 12px;
 }
 
 QLabel#HeaderTitle {
@@ -76,38 +77,33 @@ QLabel#ActiveBadge {
     font-weight: bold;
 }
 
-QTabWidget::tab-bar {
-    alignment: center;
-}
-
-QTabBar {
+QFrame#NavbarContainer {
     background-color: #181825; /* Mantle capsule container */
     border: 1px solid #313244; /* Surface0 */
     border-radius: 10px;
-    padding: 3px 4px;
-    qproperty-drawBase: 0;
-    qproperty-elideMode: 0;
+    min-height: 38px;
+    max-height: 38px;
 }
 
-QTabBar::tab {
+QPushButton#NavSegmentBtn {
     background-color: transparent;
     color: #a6adc8; /* Subtext0 */
     font-weight: 600;
     font-size: 12.5px;
-    padding: 7px 20px;
-    min-width: 170px;
     border-radius: 7px;
-    border: none;
-    margin: 0px 2px;
+    border: 1px solid transparent;
+    padding: 0px 8px;
+    min-height: 30px;
+    max-height: 30px;
 }
 
-QTabBar::tab:hover {
+QPushButton#NavSegmentBtn:hover {
     color: #cdd6f4; /* Text */
     background-color: rgba(69, 71, 90, 0.45); /* Surface1 subtle glow */
 }
 
-QTabBar::tab:selected {
-    color: #ffffff; /* Text */
+QPushButton#NavSegmentBtn[active="true"] {
+    color: #cdd6f4; /* Text */
     background-color: #313244; /* Surface0 elevated active pill */
     font-weight: 700;
     border: 1px solid #45475a; /* Surface1 hairline */
@@ -274,14 +270,14 @@ class QtFlightDeckWindow(QMainWindow):
         self.setCentralWidget(central_widget)
 
         main_layout = QVBoxLayout(central_widget)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setSpacing(0)
+        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setSpacing(14)
 
-        # 1. Header Box
+        # 1. Header Box (Catppuccin Mocha Card)
         header = QFrame(self)
         header.setObjectName("HeaderBox")
         header_layout = QHBoxLayout(header)
-        header_layout.setContentsMargins(20, 16, 20, 16)
+        header_layout.setContentsMargins(18, 14, 18, 14)
         header_layout.setSpacing(16)
 
         # Mascot Icon with bouncy float & click reaction
@@ -322,17 +318,38 @@ class QtFlightDeckWindow(QMainWindow):
         header_layout.addWidget(sync_btn)
 
         main_layout.addWidget(header)
-        main_layout.addSpacing(16)
 
-        # 2. Tabs
-        self.tabs = QTabWidget(central_widget)
-        self.tabs.setElideMode(Qt.TextElideMode.ElideNone)
-        self.tabs.tabBar().setExpanding(False)
+        # 2. Segmented Capsule Navbar (Catppuccin Mocha macOS Native Design)
+        self.navbar_container = QFrame(central_widget)
+        self.navbar_container.setObjectName("NavbarContainer")
+        navbar_layout = QHBoxLayout(self.navbar_container)
+        navbar_layout.setContentsMargins(3, 3, 3, 3)
+        navbar_layout.setSpacing(4)
+
+        self.nav_buttons = []
+        segments = [
+            ("📅 Today's Agenda", 0),
+            ("🦆 Pilot Hangar", 1),
+            ("⚙️ Preferences && Timing", 2)
+        ]
+        for title, idx in segments:
+            btn = QPushButton(title, self.navbar_container)
+            btn.setObjectName("NavSegmentBtn")
+            btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.clicked.connect(lambda chk=False, i=idx: self.set_active_tab(i))
+            navbar_layout.addWidget(btn)
+            self.nav_buttons.append(btn)
+
+        main_layout.addWidget(self.navbar_container)
+
+        # 3. Stacked Pages
+        self.stacked_widget = QStackedWidget(central_widget)
 
         # --- TAB 1: Today's Agenda ---
         agenda_widget = QWidget()
         agenda_layout = QVBoxLayout(agenda_widget)
-        agenda_layout.setContentsMargins(20, 16, 20, 16)
+        agenda_layout.setContentsMargins(0, 0, 0, 0)
 
         scroll = QScrollArea(agenda_widget)
         scroll.setWidgetResizable(True)
@@ -347,12 +364,12 @@ class QtFlightDeckWindow(QMainWindow):
         self.scroll = scroll
         self._refresh_agenda()
         agenda_layout.addWidget(scroll)
-        self.tabs.addTab(agenda_widget, "📅 Today's Agenda")
+        self.stacked_widget.addWidget(agenda_widget)
 
         # --- TAB 2: Pilot Hangar ---
         hangar_widget = QWidget()
         hangar_layout = QVBoxLayout(hangar_widget)
-        hangar_layout.setContentsMargins(20, 16, 20, 16)
+        hangar_layout.setContentsMargins(0, 0, 0, 0)
 
         self.h_scroll = QScrollArea(hangar_widget)
         self.h_scroll.setWidgetResizable(True)
@@ -367,12 +384,12 @@ class QtFlightDeckWindow(QMainWindow):
         self._refresh_hangar()
         self.h_scroll.setWidget(self.h_content)
         hangar_layout.addWidget(self.h_scroll)
-        self.tabs.addTab(hangar_widget, "🦆 Pilot Hangar")
+        self.stacked_widget.addWidget(hangar_widget)
 
         # --- TAB 3: Preferences ---
         pref_widget = QWidget()
         pref_layout = QVBoxLayout(pref_widget)
-        pref_layout.setContentsMargins(20, 16, 20, 16)
+        pref_layout.setContentsMargins(0, 0, 0, 0)
         pref_layout.setSpacing(14)
 
 
@@ -1098,10 +1115,31 @@ class QtFlightDeckWindow(QMainWindow):
         pref_scroll.setStyleSheet("QScrollArea { background: transparent; }")
         pref_scroll.setWidget(pref_widget)
 
-        self.tabs.addTab(pref_scroll, "⚙️ Preferences && Timing")
+        self.stacked_widget.addWidget(pref_scroll)
 
-        self.tabs.setCurrentIndex(tab_index)
-        main_layout.addWidget(self.tabs)
+        class _TabsFacade:
+            def __init__(self, parent):
+                self._parent = parent
+            def setCurrentIndex(self, idx):
+                self._parent.set_active_tab(idx)
+            def currentIndex(self):
+                return self._parent.current_tab_index
+            def count(self):
+                return 3
+        self.tabs = _TabsFacade(self)
+        self.set_active_tab(tab_index)
+        main_layout.addWidget(self.stacked_widget, stretch=1)
+
+    def set_active_tab(self, index: int):
+        """Switches the active tab and updates navbar segment button states."""
+        self.current_tab_index = index
+        if hasattr(self, 'stacked_widget'):
+            self.stacked_widget.setCurrentIndex(index)
+        for i, btn in enumerate(getattr(self, 'nav_buttons', [])):
+            is_active = (i == index)
+            btn.setProperty("active", "true" if is_active else "false")
+            btn.style().unpolish(btn)
+            btn.style().polish(btn)
 
     def _refresh_agenda(self, meetings=None):
         # Clear layout safely

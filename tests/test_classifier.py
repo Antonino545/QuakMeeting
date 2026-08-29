@@ -72,7 +72,7 @@ class TestEventClassifier(unittest.TestCase):
         )
         self.assertEqual(m_study.pilot_type, PilotType.OWL.value)
         self.assertEqual(m_study.event_type, EventCategory.STUDY.value)
-        self.assertEqual(m_study.provider, "Self-Study Block 📚")
+        self.assertEqual(m_study.provider, "You Need to Study! Do it! 📖")
 
     def test_classroom_and_teacher_extraction(self):
         title = "ICT for smart mobility (VASSIO LUCA) - Aula 5M"
