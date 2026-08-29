@@ -136,6 +136,23 @@ QuakMeeting/
 - **Immediate EventBus Sync**:
   - Changing mode in dropdown or Flight Deck Preferences fires `event_bus.publish("CONFIG_CHANGED")` to immediately update the tray title without delay.
 
+### 6. Cross-Platform UI Parity Invariant
+- **Rule**: Whenever UI components, layout structures, settings cards, or visual styling are added or modified on macOS (`ui/macos/`), always replicate and maintain identical design, hierarchy, and functionality on Linux/Ubuntu (`ui/linux/`), and vice-versa. Both platforms must stay visually consistent under Catppuccin Mocha theme.
+
+---
+
+## 💻 CLI Flags & Runtime Options
+
+| Flag | Description | Example |
+| :--- | :--- | :--- |
+| *(no flags)* | Launches the default platform UI (AppKit on macOS, PyQt6 on Linux/Windows). | `/opt/miniconda3/bin/python3 main.py` |
+| `--qt` | Forces the PyQt6 UI runtime on macOS (useful for development and cross-platform testing). | `/opt/miniconda3/bin/python3 main.py --qt` |
+| `--silent` | Launches in background / menu bar without opening the Flight Deck dashboard window. | `/opt/miniconda3/bin/python3 main.py --silent` |
+| `--test` | Runs a standalone banner test without starting background loops. | `/opt/miniconda3/bin/python3 main.py --test` |
+| `--pilot <name>` | *(With `--test`)* Selects pilot mascot skin (`duck`, `zen`, `captain`, `driver`, `gym`, `chef`, `owl`). | `/opt/miniconda3/bin/python3 main.py --test --pilot duck` |
+| `--stage <0-3>` | *(With `--test`)* Simulates specific reminder stage. | `/opt/miniconda3/bin/python3 main.py --test --stage 0` |
+| `--delay <sec>` | *(With `--test`)* Adds delay countdown before triggering banner. | `/opt/miniconda3/bin/python3 main.py --test --delay 3` |
+
 ---
 
 ## 🧪 Testing Guidelines
@@ -154,3 +171,4 @@ Existing test suites:
 - `tests/test_event_bus.py` (Publish/subscribe event isolation)
 - `tests/test_config_service.py` (Default configuration, fallback handling)
 - `tests/test_arrival_service.py` (Manual & presence arrival state)
+- `tests/test_dashboard_ui.py` (UI rendering and app launcher routing)

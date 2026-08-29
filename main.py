@@ -46,6 +46,7 @@ def main():
     print("=" * 60)
 
     try:
+        force_qt = "--qt" in sys.argv
         if "--test" in sys.argv:
             import time
 
@@ -82,7 +83,7 @@ def main():
             else:
                 print("\n🚀 Running Notification Banner Test...")
 
-            if sys.platform == "darwin":
+            if sys.platform == "darwin" and not force_qt:
                 import AppKit
                 from ui.macos.banner.banner_controller import QuakPitFlyingBanner
                 from ui.macos.banner.banner_view import QuakPitBannerView
@@ -110,7 +111,7 @@ def main():
         logger.info("Initializing QuakMeeting Menu Bar and Flight Deck UI...")
         print(" Launching Menu Bar icon and Flight Deck...")
 
-        if sys.platform == "darwin":
+        if sys.platform == "darwin" and not force_qt:
             from ui.macos.menu_bar_app import QuakMeetingMenuBar
             from ui.macos.dashboard_window import show_dashboard
 
