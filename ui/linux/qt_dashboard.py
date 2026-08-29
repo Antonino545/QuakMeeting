@@ -118,6 +118,7 @@ QPushButton#PrimaryBtn {
     color: #11111b; /* Crust */
     font-size: 12px;
     font-weight: bold;
+    border: none;
     border-radius: 8px;
     padding: 6px 14px;
 }
@@ -131,6 +132,7 @@ QPushButton#OutlineBtn {
     border: 1px solid #45475a; /* Surface1 */
     font-size: 12px;
     font-weight: 600;
+    border: none;
     border-radius: 8px;
     padding: 6px 14px;
 }
@@ -158,7 +160,7 @@ QPushButton#SegmentBtn {
     padding: 6px 12px;
 }
 QPushButton#SegmentBtn:hover {
-    background-color: rgba(255,255,255,0.05);
+    background-color: rgba(205, 214, 244, 0.05);
 }
 QPushButton#SegmentBtn:checked {
     background-color: #313244; /* Surface0 */
@@ -503,7 +505,7 @@ class QtFlightDeckWindow(QMainWindow):
                     b.setStyleSheet("""
                         QPushButton {
                             background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #74c7ec, stop:1 #89b4fa);
-                            color: #cdd6f4;
+                            color: #11111b;
                             font-weight: bold;
                             border: 1px solid #89b4fa;
                             border-radius: 8px;
@@ -513,14 +515,14 @@ class QtFlightDeckWindow(QMainWindow):
                 else:
                     b.setStyleSheet("""
                         QPushButton {
-                            background: rgba(255, 255, 255, 0.05);
+                            background: rgba(205, 214, 244, 0.05);
                             color: #bac2de;
-                            border: 1px solid rgba(255, 255, 255, 0.1);
+                            border: 1px solid rgba(205, 214, 244, 0.1);
                             border-radius: 8px;
                             padding: 8px 12px;
                         }
                         QPushButton:hover {
-                            background: rgba(255, 255, 255, 0.10);
+                            background: rgba(205, 214, 244, 0.10);
                             color: #cdd6f4;
                         }
                     """)
@@ -715,7 +717,7 @@ class QtFlightDeckWindow(QMainWindow):
         install_btn.setStyleSheet("""
             QPushButton {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #74c7ec, stop:1 #89b4fa);
-                color: #cdd6f4;
+                color: #11111b;
                 font-weight: bold;
                 font-size: 12px;
                 border-radius: 8px;
@@ -726,7 +728,7 @@ class QtFlightDeckWindow(QMainWindow):
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #89b4fa, stop:1 #89b4fa);
             }
             QPushButton:disabled {
-                background: rgba(255, 255, 255, 0.08);
+                background: rgba(205, 214, 244, 0.08);
                 color: #6c7086;
             }
         """)
