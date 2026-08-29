@@ -26,6 +26,10 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QTimer, QObject, pyqtSignal
 from PyQt6.QtGui import QColor, QFont, QPixmap, QIcon
 
+from ui.linux.animated_widgets import (
+    BouncingMascotLabel, AnimatedSpinButton, AnimatedUpdateCard, UpdatingHUDWidget
+)
+
 class QtUpdateBridge(QObject):
     update_event = pyqtSignal(str, dict)
 
@@ -190,16 +194,13 @@ class QtFlightDeckWindow(QMainWindow):
         header_layout.setContentsMargins(20, 16, 20, 16)
         header_layout.setSpacing(16)
 
-        # Icon
+        # Mascot Icon with bouncy float & click reaction
         icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "icon.png")
-        icon_lbl = QLabel(header)
+        pix = None
         if os.path.exists(icon_path):
             pix = QPixmap(icon_path).scaled(48, 48, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-            icon_lbl.setPixmap(pix)
-        else:
-            icon_lbl.setText("🦆")
-            icon_lbl.setStyleSheet("font-size: 32px;")
-        header_layout.addWidget(icon_lbl)
+        self.mascot_lbl = BouncingMascotLabel(pix, emoji="🦆", parent=header)
+        header_layout.addWidget(self.mascot_lbl)
 
         # Title / Subtitle
         title_box = QVBoxLayout()
@@ -219,13 +220,13 @@ class QtFlightDeckWindow(QMainWindow):
         badge.setObjectName("ActiveBadge")
         header_layout.addWidget(badge)
 
-        # Sync Button
-        self.sync_btn = QPushButton("🔄 Sync Now", header)
+        # Sync Button with frame-by-frame spinner animation
+        self.sync_btn = AnimatedSpinButton("🔄 Sync Now", header)
         sync_btn = self.sync_btn
         sync_btn.setObjectName("SecondaryBtn")
         sync_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         def _trigger_sync():
-            self.sync_btn.setText("🔄 Syncing...")
+            self.sync_btn.start_spinning("Syncing...")
             threading.Thread(target=calendar_service.sync_now, daemon=True).start()
         sync_btn.clicked.connect(lambda chk=False: _trigger_sync())
         header_layout.addWidget(sync_btn)
@@ -279,7 +280,7 @@ class QtFlightDeckWindow(QMainWindow):
             ("zen_duck", "🦆🌸 Zen Duck", "Serenis / Therapy / Yoga / Wellness", "https://app.serenis.it")
         ]
 
-        for p_id, p_name, p_desc, p_url in pilots:
+        for idx, (p_id, p_name, p_desc, p_url) in enumerate(pilots):
             card = QFrame(h_content)
             card.setObjectName("Card")
             c_layout = QHBoxLayout(card)
@@ -630,32 +631,30 @@ class QtFlightDeckWindow(QMainWindow):
         log_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         log_btn.clicked.connect(lambda chk=False: open_log_file())
 
-        up_btn = QPushButton("🔍 Check for Updates", util_card)
+        up_btn = AnimatedSpinButton("🔍 Check for Updates", util_card)
         up_btn.setObjectName("SecondaryBtn")
         up_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+
+        demo_up_btn = QPushButton("🎬 Test Update Animation", util_card)
+        demo_up_btn.setObjectName("SecondaryBtn")
+        demo_up_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        demo_up_btn.setToolTip("Preview the live rocket jet download & installation animation sequence")
 
         sys_row.addWidget(edit_btn)
         sys_row.addWidget(log_btn)
         sys_row.addWidget(up_btn)
+        sys_row.addWidget(demo_up_btn)
         uc_layout.addLayout(sys_row)
 
-        # Update status card with rich animations and alerts
-        update_status_box = QFrame(util_card)
-        update_status_box.setStyleSheet("""
-            QFrame {
-                background: rgba(255, 255, 255, 0.04);
-                border: 1px solid rgba(255, 255, 255, 0.08);
-                border-radius: 12px;
-                padding: 8px;
-            }
-        """)
+        # Animated Update status card with radar scanning and celebratory states
+        update_status_box = AnimatedUpdateCard(util_card)
         usb_layout = QVBoxLayout(update_status_box)
-        usb_layout.setContentsMargins(12, 10, 12, 10)
+        usb_layout.setContentsMargins(14, 12, 14, 12)
         usb_layout.setSpacing(8)
 
         status_header_row = QHBoxLayout()
         update_icon_lbl = QLabel("🦆", update_status_box)
-        update_icon_lbl.setStyleSheet("font-size: 20px; border: none;")
+        update_icon_lbl.setStyleSheet("font-size: 22px; border: none;")
         status_header_row.addWidget(update_icon_lbl)
 
         update_status_lbl = QLabel(f"QuakMeeting <b>v{updater_service.current_version}</b>  •  <span style='color:#94a3b8;'>Ready</span>", update_status_box)
@@ -669,29 +668,10 @@ class QtFlightDeckWindow(QMainWindow):
         changelog_lbl.setVisible(False)
         usb_layout.addWidget(changelog_lbl)
 
-        # Animated Progress Bar
-        progress_bar = QProgressBar(update_status_box)
-        progress_bar.setRange(0, 100)
-        progress_bar.setValue(0)
-        progress_bar.setTextVisible(True)
-        progress_bar.setStyleSheet("""
-            QProgressBar {
-                border: 1px solid rgba(56, 189, 248, 0.3);
-                border-radius: 8px;
-                text-align: center;
-                color: #ffffff;
-                font-size: 11px;
-                font-weight: bold;
-                background: rgba(15, 23, 42, 0.7);
-                height: 20px;
-            }
-            QProgressBar::chunk {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0284c7, stop:0.5 #38bdf8, stop:1 #818cf8);
-                border-radius: 7px;
-            }
-        """)
-        progress_bar.setVisible(False)
-        usb_layout.addWidget(progress_bar)
+        # Dedicated Animated Updating HUD (Flying Mascot Jet, Phase indicators & Rotating Gears)
+        updating_hud = UpdatingHUDWidget(update_status_box)
+        updating_hud.setVisible(False)
+        usb_layout.addWidget(updating_hud)
 
         # Action Buttons Row
         act_row = QHBoxLayout()
@@ -722,32 +702,42 @@ class QtFlightDeckWindow(QMainWindow):
 
         uc_layout.addWidget(update_status_box)
 
-        # Animated spinner timer for checking state
-        spinner_frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
-        spin_idx = [0]
-        check_timer = QTimer(self)
+        # Interactive animation preview simulation
+        def _run_update_animation_demo():
+            updating_hud.start_downloading("quakmeeting_latest_amd64.deb")
+            demo_up_btn.setEnabled(False)
+            install_btn.setVisible(False)
+            total_size = 28 * 1024 * 1024  # 28 MB simulation
+            
+            def _demo_step(pct):
+                if pct <= 100:
+                    curr_bytes = int((pct / 100.0) * total_size)
+                    updating_hud.set_progress(pct, curr_bytes, total_size)
+                    QTimer.singleShot(40, lambda p=pct+2: _demo_step(p))
+                else:
+                    updating_hud.set_installing()
+                    def _finish_install():
+                        updating_hud.set_installed()
+                        demo_up_btn.setEnabled(True)
+                    QTimer.singleShot(1400, _finish_install)
 
-        def _on_spin():
-            frame = spinner_frames[spin_idx[0] % len(spinner_frames)]
-            spin_idx[0] += 1
-            up_btn.setText(f"{frame} Checking...")
-            update_status_lbl.setText(f"Checking for new releases {frame}")
+            QTimer.singleShot(300, lambda: _demo_step(4))
 
-        check_timer.timeout.connect(_on_spin)
+        demo_up_btn.clicked.connect(_run_update_animation_demo)
 
         def _on_check_clicked():
-            up_btn.setEnabled(False)
-            spin_idx[0] = 0
-            check_timer.start(100)
+            up_btn.start_spinning("Checking...")
+            update_status_box.set_scanning(True)
+            update_icon_lbl.setText("📡")
+            update_status_lbl.setText("<span style='color:#38bdf8;'><b>Scanning GitHub repository for releases...</b></span>")
             updater_service.check_for_updates(background=True)
 
         up_btn.clicked.connect(_on_check_clicked)
 
         def _on_update_avail(version=None, tag_name=None, name=None, body=None, **k):
-            check_timer.stop()
-            up_btn.setText("🔍 Check for Updates")
-            up_btn.setEnabled(True)
+            up_btn.stop_spinning("🔍 Check for Updates")
             v_name = tag_name or version or "New Version"
+            update_status_box.set_update_available(v_name)
             update_icon_lbl.setText("🚀")
             update_status_lbl.setText(f"<b style='color:#38bdf8;'>Update Available: {v_name}</b>  <span style='color:#64748b;'>(Current: v{updater_service.current_version})</span>")
             if body:
@@ -757,60 +747,48 @@ class QtFlightDeckWindow(QMainWindow):
             install_btn.setText(f"⚡ Install {v_name} Now")
             install_btn.setEnabled(True)
             install_btn.setVisible(True)
-            progress_bar.setVisible(False)
 
         def _on_update_complete(has_update=False, current_version=None, error=None, **k):
-            check_timer.stop()
-            up_btn.setText("🔍 Check for Updates")
-            up_btn.setEnabled(True)
             if not has_update:
                 if error:
+                    up_btn.stop_spinning("❌ Check Error", is_success=False, reset_delay_ms=2500)
                     update_icon_lbl.setText("⚠️")
                     update_status_lbl.setText(f"<span style='color:#f87171;'>Update check error: {error[:60]}</span>")
                 else:
+                    up_btn.stop_spinning("✨ Up to date", is_success=True, reset_delay_ms=2500)
+                    update_status_box.set_up_to_date()
                     update_icon_lbl.setText("✨")
-                    update_status_lbl.setText(f"<span style='color:#4ade80;'>You are up to date!</span>  <b>v{current_version or updater_service.current_version}</b>")
+                    update_status_lbl.setText(f"<span style='color:#4ade80;'><b>You are on the latest version!</b></span>  <b>v{current_version or updater_service.current_version}</b>")
                 install_btn.setVisible(False)
                 changelog_lbl.setVisible(False)
-                progress_bar.setVisible(False)
 
         def _on_downloading(file_name=None, **k):
             update_icon_lbl.setText("📥")
             update_status_lbl.setText(f"<b>Downloading update package...</b> <span style='color:#94a3b8;'>({file_name or ''})</span>")
-            progress_bar.setValue(5)
-            progress_bar.setVisible(True)
-            install_btn.setText("⏳ Downloading...")
-            install_btn.setEnabled(False)
+            install_btn.setVisible(False)
+            updating_hud.start_downloading(file_name or "")
 
         def _on_download_progress(percent=0, downloaded=0, total=0, **k):
-            progress_bar.setValue(percent)
-            progress_bar.setVisible(True)
-            mb_down = downloaded / (1024 * 1024)
-            mb_tot = total / (1024 * 1024) if total > 0 else 0
-            if mb_tot > 0:
-                update_status_lbl.setText(f"<b>Downloading:</b> {mb_down:.1f} MB / {mb_tot:.1f} MB ({percent}%)")
-            else:
-                update_status_lbl.setText(f"<b>Downloading:</b> {percent}%")
-            install_btn.setText(f"⏳ Downloading... {percent}%")
+            updating_hud.set_progress(percent, downloaded, total)
 
         def _on_downloaded(target_path=None, **k):
             update_icon_lbl.setText("⚙️")
-            progress_bar.setValue(100)
             update_status_lbl.setText("<b>Installing update...</b> Please grant system permission if prompted.")
-            install_btn.setText("⚙️ Installing...")
+            updating_hud.set_installing()
 
         def _on_installed(**k):
             update_icon_lbl.setText("🎉")
             update_status_lbl.setText("<b style='color:#4ade80;'>Update installed successfully!</b> Relaunching QuakMeeting...")
             install_btn.setVisible(False)
-            progress_bar.setVisible(False)
+            updating_hud.set_installed()
 
         def _on_failed(error=None, **k):
             update_icon_lbl.setText("❌")
             update_status_lbl.setText(f"<span style='color:#f87171;'>Installation failed: {error or 'Unknown error'}</span>")
             install_btn.setText("🔄 Try Again")
             install_btn.setEnabled(True)
-            progress_bar.setVisible(False)
+            install_btn.setVisible(True)
+            updating_hud.setVisible(False)
 
         def _on_install_clicked():
             install_btn.setText("⏳ Preparing download...")
@@ -823,7 +801,7 @@ class QtFlightDeckWindow(QMainWindow):
 
         def _on_bridge_event(event_name: str, data: dict):
             if event_name == "CALENDAR_SYNCED":
-                self.sync_btn.setText("🔄 Sync Now")
+                self.sync_btn.stop_spinning("✅ Synced!", is_success=True, reset_delay_ms=2000)
                 self._refresh_agenda(data.get("meetings"))
             elif event_name == "UPDATE_AVAILABLE":
                 _on_update_avail(**data)
@@ -898,7 +876,7 @@ class QtFlightDeckWindow(QMainWindow):
             empty_box.addWidget(e_msg)
             self.scroll_layout.addLayout(empty_box)
         else:
-            for m in today_meets:
+            for idx, m in enumerate(today_meets):
                 card = QFrame(self.scroll_content)
                 card.setObjectName("Card")
                 c_layout = QHBoxLayout(card)
@@ -979,15 +957,29 @@ def show_qt_dashboard(tab_index: int = 0):
         _dashboard_instance.show()
         _dashboard_instance.raise_()
         _dashboard_instance.activateWindow()
-        logger.info("🟢 Window successfully created and shown!")
+        if hasattr(_dashboard_instance, "mascot_lbl"):
+            _dashboard_instance.mascot_lbl.trigger_bounce()
+        logger.info("🟢 Window successfully created and shown with mascot bounce animation!")
     else:
         logger.info("🟢 Window already exists. Bringing it to the front...")
         _dashboard_instance.tabs.setCurrentIndex(tab_index)
         _dashboard_instance.raise_()
         _dashboard_instance.activateWindow()
+        if hasattr(_dashboard_instance, "mascot_lbl"):
+            _dashboard_instance.mascot_lbl.trigger_bounce()
 
     if is_standalone:
         app.exec()
+
+def close_qt_dashboard():
+    """Safely closes the Flight Deck window if active."""
+    global _dashboard_instance
+    if _dashboard_instance is not None:
+        try:
+            _dashboard_instance.close()
+        except Exception:
+            pass
+        _dashboard_instance = None
 
 if __name__ == "__main__":
     t_idx = int(sys.argv[1]) if len(sys.argv) > 1 and sys.argv[1].isdigit() else 0
