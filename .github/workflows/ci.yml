@@ -63,6 +63,9 @@ jobs:
           sudo apt-get install -y python3-gi python3-pyqt6 gir1.2-edataserver-1.2 gir1.2-ecal-2.0 dpkg-dev
 
       - name: Run Linter & Unit Tests
+        env:
+          PYTHONPATH: /usr/lib/python3/dist-packages
+          QT_QPA_PLATFORM: offscreen
         run: |
           python3 -m pip install --upgrade pip
           pip install ruff PyQt6

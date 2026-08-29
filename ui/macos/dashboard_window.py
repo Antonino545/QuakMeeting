@@ -92,9 +92,14 @@ class DashboardWindowController(AppKit.NSObject):
                 self.tab_segmented.setSelectedSegment_(tab_index)
 
         app = AppKit.NSApp()
-        self.window.makeKeyAndOrderFront_(None)
-        self.window.orderFrontRegardless()
-        app.activateIgnoringOtherApps_(True)
+        if self.window:
+            self.window.makeKeyAndOrderFront_(None)
+            self.window.orderFrontRegardless()
+        if app:
+            try:
+                app.activateIgnoringOtherApps_(True)
+            except Exception:
+                pass
         self.refresh_data()
 
     def _create_window(self):
