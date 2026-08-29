@@ -39,13 +39,27 @@ DEFAULT_CONFIG = {
     "enable_eta_service": True,
     "eta_buffer_minutes": 10,          # Margine di anticipo per raggiungere la fermata/parcheggio
     "debug_mode": False,               # Show developer & diagnostics test banners and tools
+    "default_pilot": "duck",           # Active default mascot ("duck", "owl", "bunny")
+    "force_default_pilot": False,      # If True, always uses default_pilot for all notifications instead of auto-categorization
+    "mascot_customization": {
+        "study": {"animal": "owl", "outfit": "student"},
+        "class": {"animal": "owl", "outfit": "student"},
+        "food": {"animal": "duck", "outfit": "chef"},
+        "travel": {"animal": "duck", "outfit": "captain"},
+        "sport": {"animal": "bunny", "outfit": "gym"},
+        "in_person": {"animal": "squirrel", "outfit": "racer"},
+        "health": {"animal": "bunny", "outfit": "zen"},
+        "general": {"animal": "duck", "outfit": "aviator"}
+    },
     "custom_keywords": {
         "chef": ["cena", "pranzo", "dinner", "lunch", "ristorante", "pizza", "pizzeria", "sushi", "aperitivo", "apericena", "osteria", "trattoria", "cibo", "food", "mangiare", "pub", "burger"],
         "captain": ["flight", "volo", "airport", "aeroporto", "bus", "navetta", "shuttle", "pullman", "ryanair", "easyjet", "wizz", "ita airways", "treno", "frecciarossa", "italo", "stazione", "viaggio", "partenza", "gate", "terminal", "imbarco", "boarding", "taxi", "uber"],
         "owl": ["universit", "uni", "esame", "esami", "lezione", "lezioni", "politecnico", "tesi", "smartgrid", "building", "ict", "satellite", "ricerca operativa", "corso", "aula"],
         "gym": ["palestra", "gym", "workout", "allenamento", "crossfit", "fitness", "sport", "padel", "tennis", "calcio", "calcetto", "partita", "match", "nuoto", "swimming", "running", "corsa", "boxe", "boxing", "basket", "pallavolo", "pesi", "cardio", "training", "maratona", "pilates", "atletica"],
         "driver": ["dentista", "dottore", "visita", "medico", "studio", "ufficio", "appuntamento"],
-        "zen_duck": ["serenis", "terapia", "yoga", "meditazione", "benessere", "relax"]
+        "zen_duck": ["serenis", "terapia", "yoga", "meditazione", "benessere", "relax"],
+        "platypus": ["secret", "mission", "spy", "agent", "undercover", "confidential", "top secret", "perry", "doofenshmirtz"],
+        "squirrel": ["brainstorm", "idea", "quick", "sync", "flash", "agile", "standup", "sprint", "retro", "hackathon", "nut", "squirrel", "speed"]
     }
 }
 

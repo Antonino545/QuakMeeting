@@ -17,6 +17,8 @@ class PilotType(str, Enum):
     DRIVER = "driver"
     ZEN_DUCK = "zen_duck"
     GYM = "gym"
+    PLATYPUS = "platypus"
+    SQUIRREL = "squirrel"
 
 class EventCategory(str, Enum):
     VIDEO_MEETING = "video_meeting"
@@ -96,6 +98,10 @@ class Meeting:
     teacher: Optional[str] = None
     is_arrived: bool = False
     is_quiet_reminder: bool = False
+
+    # Modular Animal & Outfit
+    animal: Optional[str] = None
+    outfit: Optional[str] = None
 
     def __post_init__(self):
         if self.category and not self.event_type:
@@ -191,7 +197,9 @@ class Meeting:
             "classroom": self.classroom,
             "teacher": self.teacher,
             "is_arrived": self.is_arrived,
-            "is_quiet_reminder": self.is_quiet_reminder
+            "is_quiet_reminder": self.is_quiet_reminder,
+            "animal": self.animal,
+            "outfit": self.outfit
         }
 
     def to_serializable_dict(self) -> Dict[str, Any]:
@@ -250,5 +258,7 @@ class Meeting:
             classroom=d.get("classroom"),
             teacher=d.get("teacher"),
             is_arrived=bool(d.get("is_arrived", False)),
-            is_quiet_reminder=bool(d.get("is_quiet_reminder", False))
+            is_quiet_reminder=bool(d.get("is_quiet_reminder", False)),
+            animal=d.get("animal"),
+            outfit=d.get("outfit")
         )

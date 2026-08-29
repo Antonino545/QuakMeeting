@@ -100,5 +100,35 @@ class TestDashboardUI(unittest.TestCase):
             launch_application()
             mock_module.run_qt_tray_app.assert_called_once()
 
+    def test_qt_flight_deck_window_instantiation_and_tabs(self):
+        try:
+            from PyQt6.QtWidgets import QApplication
+            from ui.linux.qt_dashboard import QtFlightDeckWindow, QtMascotMiniWidget
+        except (ImportError, ModuleNotFoundError):
+            self.skipTest("PyQt6 not available for Qt dashboard testing")
+
+        app = QApplication.instance()
+        if app is None:
+            app = QApplication(sys.argv)
+
+        window = QtFlightDeckWindow(tab_index=1)
+        self.assertIsNotNone(window)
+        self.assertTrue(hasattr(window, "_refresh_hangar"))
+        self.assertTrue(hasattr(window, "render_hangar_tab"))
+
+        # Test calling refresh and tab switching methods
+        window.set_active_tab(0)
+        window._refresh_agenda()
+        window.set_active_tab(1)
+        window._refresh_hangar()
+        window.render_hangar_tab()
+        window.set_active_tab(2)
+
+        # Test mini widget
+        mini = QtMascotMiniWidget(animal="owl", outfit="student")
+        self.assertIsNotNone(mini)
+        mini.update_mascot("bunny", "gym")
+        mini.update_animal("duck")
+
 if __name__ == '__main__':
     unittest.main()

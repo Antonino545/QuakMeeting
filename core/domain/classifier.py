@@ -20,10 +20,24 @@ DEFAULT_KEYWORDS = {
     "chef": ["dinner", "lunch", "cena", "pranzo", "restaurant", "ristorante", "pizza", "pizzeria", "sushi", "aperitivo", "apericena", "osteria", "trattoria", "food", "cibo", "eat", "mangiare", "pub", "burger", "barbecue", "bbq", "cocktail"],
     "captain": ["flight", "volo", "airport", "aeroporto", "bus", "navetta", "shuttle", "pullman", "ryanair", "easyjet", "wizz", "ita airways", "train", "treno", "frecciarossa", "italo", "station", "stazione", "travel", "viaggio", "trip", "departure", "partenza", "gate", "terminal", "boarding", "imbarco", "taxi", "uber"],
     "class": ["lecture", "lezione", "lezioni", "course", "corso", "classroom", "aula", "university", "universit", "politecnico", "professor", "prof"],
-    "owl": ["study", "studio", "studying", "homework", "compiti", "ripasso", "revision", "self-study", "exam", "esame", "esami", "thesis", "tesi", "smartgrid", "building", "ict", "satellite", "operations research", "ricerca operativa"],
+    "owl": ["study", "studio", "studiare", "studying", "homework", "compiti", "ripasso", "revision", "self-study", "exam", "esame", "esami", "thesis", "tesi", "smartgrid", "building", "ict", "satellite", "operations research", "ricerca operativa"],
     "gym": ["gym", "palestra", "workout", "allenamento", "crossfit", "fitness", "sport", "padel", "tennis", "calcio", "calcetto", "partita", "match", "nuoto", "swimming", "running", "corsa", "boxe", "boxing", "basket", "pallavolo", "pesi", "cardio", "training", "maratona", "pilates", "atletica"],
     "driver": ["dentist", "dentista", "doctor", "dottore", "visit", "visita", "medical", "medico", "office", "ufficio", "drive", "driving", "appuntamento", "studio"],
-    "zen_duck": ["serenis", "therapy", "terapia", "yoga", "meditation", "meditazione", "mindfulness", "wellness", "benessere", "relax", "spa", "chill"]
+    "zen_duck": ["serenis", "therapy", "terapia", "yoga", "meditation", "meditazione", "mindfulness", "wellness", "benessere", "relax", "spa", "chill"],
+    "platypus": ["secret", "mission", "spy", "agent", "undercover", "confidential", "top secret", "perry", "doofenshmirtz"],
+    "squirrel": ["brainstorm", "idea", "quick", "sync", "flash", "agile", "standup", "sprint", "retro", "hackathon", "nut", "squirrel", "speed"]
+}
+
+LEGACY_PILOT_MAP = {
+    ("duck", "aviator"): "duck",
+    ("duck", "chef"): "chef",
+    ("duck", "captain"): "captain",
+    ("owl", "student"): "owl",
+    ("duck", "gym"): "gym",
+    ("duck", "racer"): "driver",
+    ("duck", "zen"): "zen_duck",
+    ("platypus", "agent"): "platypus",
+    ("squirrel", "acorn"): "squirrel"
 }
 
 
@@ -100,7 +114,7 @@ class EventClassifier:
         if active_url:
             for pattern, provider_name, p_type, btn_text in MEETING_PATTERNS:
                 if re.search(pattern, active_url, re.IGNORECASE):
-                    return Meeting(
+                    res_meeting = Meeting(
                         title=title,
                         start_time=start_time or datetime.now(),
                         end_time=end_time,
@@ -117,13 +131,14 @@ class EventClassifier:
                         classroom=classroom,
                         teacher=teacher
                     )
+                    return cls._apply_forced_pilot_if_needed(res_meeting)
 
         # 2. Check Physical Food / Dinner keywords
         for kw in keywords_dict.get("chef", []):
             if kw in search_blob:
                 maps_dest = location if (location and location != "missing value") else title
                 maps_url = f"https://maps.apple.com/?q={urllib.parse.quote(maps_dest)}"
-                return Meeting(
+                res_meeting = Meeting(
                     title=title,
                     start_time=start_time or datetime.now(),
                     end_time=end_time,
@@ -139,13 +154,14 @@ class EventClassifier:
                     classroom=classroom,
                     teacher=teacher
                 )
+                return cls._apply_forced_pilot_if_needed(res_meeting)
 
         # 3. Check Travel / Flights / Airport / Trains
         for kw in keywords_dict.get("captain", []):
             if kw in search_blob:
                 maps_dest = location if (location and location != "missing value") else title
                 maps_url = f"https://maps.apple.com/?q={urllib.parse.quote(maps_dest)}"
-                return Meeting(
+                res_meeting = Meeting(
                     title=title,
                     start_time=start_time or datetime.now(),
                     end_time=end_time,
@@ -161,6 +177,7 @@ class EventClassifier:
                     classroom=classroom,
                     teacher=teacher
                 )
+                return cls._apply_forced_pilot_if_needed(res_meeting)
 
         # 4. Check Class / Lecture Attendance vs Self-Study Block
         is_class_event = bool(classroom) or bool(teacher) or any(kw in search_blob for kw in keywords_dict.get("class", []))
@@ -171,7 +188,7 @@ class EventClassifier:
             maps_dest = location if is_trav else (f"{title} {classroom or ''}".strip())
             maps_url = f"https://maps.apple.com/?q={urllib.parse.quote(maps_dest)}" if is_trav else "https://calendar.apple.com"
             provider_label = f"Class / Lecture 🏫 {classroom}" if classroom else "Class / Lecture 🏫"
-            return Meeting(
+            res_meeting = Meeting(
                 title=title,
                 start_time=start_time or datetime.now(),
                 end_time=end_time,
@@ -187,12 +204,13 @@ class EventClassifier:
                 classroom=classroom,
                 teacher=teacher
             )
+            return cls._apply_forced_pilot_if_needed(res_meeting)
 
         if is_study_event:
             is_trav = bool(location and location != "missing value" and "online" not in search_blob)
             maps_dest = location if is_trav else title
             maps_url = f"https://maps.apple.com/?q={urllib.parse.quote(maps_dest)}" if is_trav else "https://calendar.apple.com"
-            return Meeting(
+            res_meeting = Meeting(
                 title=title,
                 start_time=start_time or datetime.now(),
                 end_time=end_time,
@@ -208,13 +226,14 @@ class EventClassifier:
                 classroom=classroom,
                 teacher=teacher
             )
+            return cls._apply_forced_pilot_if_needed(res_meeting)
 
         # 5. Check Gym / Palestra / Sport / Workout
         for kw in keywords_dict.get("gym", []):
             if kw in search_blob:
                 maps_dest = location if (location and location != "missing value") else title
                 maps_url = f"https://maps.apple.com/?daddr={urllib.parse.quote(maps_dest)}"
-                return Meeting(
+                res_meeting = Meeting(
                     title=title,
                     start_time=start_time or datetime.now(),
                     end_time=end_time,
@@ -230,13 +249,14 @@ class EventClassifier:
                     classroom=classroom,
                     teacher=teacher
                 )
+                return cls._apply_forced_pilot_if_needed(res_meeting)
 
         # 6. Check In-Person Appointments / Driver
         for kw in keywords_dict.get("driver", []):
             if kw in search_blob:
                 maps_dest = location if (location and location != "missing value") else title
                 maps_url = f"https://maps.apple.com/?daddr={urllib.parse.quote(maps_dest)}"
-                return Meeting(
+                res_meeting = Meeting(
                     title=title,
                     start_time=start_time or datetime.now(),
                     end_time=end_time,
@@ -250,11 +270,12 @@ class EventClassifier:
                     theme_name="Racing Green",
                     is_travel=True
                 )
+                return cls._apply_forced_pilot_if_needed(res_meeting)
 
         # 6. Check Therapy / Zen Duck
         for kw in keywords_dict.get("zen_duck", []):
             if kw in search_blob:
-                return Meeting(
+                res_meeting = Meeting(
                     title=title,
                     start_time=start_time or datetime.now(),
                     end_time=end_time,
@@ -268,11 +289,50 @@ class EventClassifier:
                     theme_name="Zen Teal",
                     is_travel=False
                 )
+                return cls._apply_forced_pilot_if_needed(res_meeting)
 
-        # 7. Generic Physical Event (if non-empty location)
+        # 7. Check Secret Agent Platypus 🕵️‍♂️
+        for kw in keywords_dict.get("platypus", []):
+            if kw in search_blob:
+                res_meeting = Meeting(
+                    title=title,
+                    start_time=start_time or datetime.now(),
+                    end_time=end_time,
+                    location=location,
+                    description=description,
+                    event_type=EventCategory.GENERAL.value,
+                    pilot_type=PilotType.PLATYPUS.value,
+                    provider="Secret Mission 🕵️‍♂️",
+                    action_btn_text="🔍 TOP SECRET BRIEFING",
+                    action_url="https://calendar.apple.com",
+                    theme_name="Teal Agent",
+                    is_travel=False
+                )
+                return cls._apply_forced_pilot_if_needed(res_meeting)
+
+        # 8. Check Hyper Squirrel 🐿️
+        for kw in keywords_dict.get("squirrel", []):
+            if kw in search_blob:
+                res_meeting = Meeting(
+                    title=title,
+                    start_time=start_time or datetime.now(),
+                    end_time=end_time,
+                    location=location,
+                    description=description,
+                    event_type=EventCategory.GENERAL.value,
+                    pilot_type=PilotType.SQUIRREL.value,
+                    provider="Quick Sync 🐿️⚡",
+                    action_btn_text="⚡ JOIN QUICK SYNC",
+                    action_url="https://calendar.apple.com",
+                    theme_name="Hyper Maroon",
+                    is_travel=False
+                )
+                return cls._apply_forced_pilot_if_needed(res_meeting)
+
+        # 9. Generic Physical Event (if non-empty location)
         if location and location != "missing value" and len(location.strip()) > 2:
             maps_url = f"https://maps.apple.com/?daddr={urllib.parse.quote(location)}"
-            return Meeting(
+            res_meeting = Meeting(
                 title=title,
                 start_time=start_time or datetime.now(),
                 end_time=end_time,
@@ -286,20 +346,86 @@ class EventClassifier:
                 theme_name="Racing Green",
                 is_travel=True
             )
+            return cls._apply_forced_pilot_if_needed(res_meeting)
 
-        # 8. General Default Meeting / Reminder
-        return Meeting(
+        # 10. General Default Meeting / Reminder
+        default_pilot_id = cls._get_default_pilot()
+        res_meeting = Meeting(
             title=title,
             start_time=start_time or datetime.now(),
             end_time=end_time,
             location=location,
             description=description,
             event_type=EventCategory.GENERAL.value,
-            pilot_type=PilotType.DUCK.value,
+            pilot_type=default_pilot_id,
             provider="Reminder ⏰",
             action_btn_text="📋 OPEN IN CALENDAR",
             action_url="https://calendar.apple.com",
             theme_name="Sunset Orange",
             is_travel=False
         )
+        return cls._apply_forced_pilot_if_needed(res_meeting)
+
+    @classmethod
+    def _get_default_pilot(cls) -> str:
+        try:
+            from core.services.config_service import config
+            return str(config.get("default_pilot", "duck"))
+        except Exception:
+            return "duck"
+
+    @classmethod
+    def _apply_forced_pilot_if_needed(cls, meeting: Meeting) -> Meeting:
+        try:
+            from core.services.config_service import config
+            customs = config.get("mascot_customization")
+            if not isinstance(customs, dict):
+                customs = {}
+
+            is_specialized = meeting.pilot_type in (PilotType.PLATYPUS.value, PilotType.SQUIRREL.value)
+            cat_key = meeting.event_type or "general"
+
+            CATEGORY_DEFAULT_OUTFITS = {
+                "study": "student",
+                "class": "student",
+                "food": "chef",
+                "travel": "captain",
+                "sport": "gym",
+                "in_person": "racer",
+                "health": "zen",
+                "general": "aviator"
+            }
+
+            if not is_specialized or cat_key != "general":
+                custom_val = customs.get(cat_key)
+                def_outfit = CATEGORY_DEFAULT_OUTFITS.get(cat_key, "aviator")
+                if isinstance(custom_val, dict):
+                    meeting.animal = custom_val.get("animal", "duck")
+                    meeting.outfit = custom_val.get("outfit", def_outfit)
+                    meeting.pilot_type = LEGACY_PILOT_MAP.get(
+                        (meeting.animal, meeting.outfit),
+                        f"{meeting.animal}_{meeting.outfit}"
+                    )
+                elif isinstance(custom_val, str) and custom_val:
+                    meeting.animal = custom_val
+                    meeting.outfit = def_outfit
+                    meeting.pilot_type = LEGACY_PILOT_MAP.get(
+                        (meeting.animal, meeting.outfit),
+                        f"{meeting.animal}_{meeting.outfit}"
+                    )
+                elif not meeting.animal:
+                    meeting.animal = meeting.pilot_type or "duck"
+            elif not meeting.animal:
+                meeting.animal = meeting.pilot_type or "duck"
+
+            if config.get("force_default_pilot", False):
+                def_pilot = str(config.get("default_pilot", "duck"))
+                meeting.animal = def_pilot
+                meeting.pilot_type = LEGACY_PILOT_MAP.get(
+                    (def_pilot, meeting.outfit or "aviator"),
+                    f"{def_pilot}_{meeting.outfit or 'aviator'}"
+                )
+        except Exception:
+            pass
+        return meeting
 

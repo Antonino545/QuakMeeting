@@ -410,6 +410,10 @@ class DashboardWindowController(AppKit.NSObject):
             view = self.settings_tab.render(self, cw, ch, config, self.cached_calendars)
             self.content_container.addSubview_(view)
 
+    def refresh_current_tab(self):
+        self._last_rendered_signature = None
+        self._render_current_tab()
+
 def show_dashboard(tab_index=None):
     def _show():
         controller = DashboardWindowController.sharedController()

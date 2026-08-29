@@ -56,6 +56,8 @@ PILOT_QUOTES = {
     "gym":      "🏋️ GET TO THE GYM!",
     "driver":   "🚗 TIME TO LEAVE, GO GO GO!",
     "zen_duck": "🌸 BREATHE... YOU GOT THIS!",
+    "platypus": "🕵️‍♂️ SECRET MISSION BRIEFING!",
+    "squirrel": "🐿️ NUT-PING! TIME FOR ACTION!",
 }
 
 PILOT_COLORS = {
@@ -66,6 +68,8 @@ PILOT_COLORS = {
     "gym":      Theme.RED,
     "driver":   Theme.PEACH,
     "zen_duck": Theme.TEAL,
+    "platypus": Theme.TEAL,
+    "squirrel": Theme.MAROON,
 }
 
 PROVIDER_DOTS = {
@@ -154,6 +158,24 @@ def get_test_preset(pilot_type: str) -> Dict[str, Any]:
             "pilot_type": "zen_duck",
             "action_btn_text": "🚀 JOIN SESSION",
             "action_url": "https://app.serenis.it/join/test",
+            "start_time": datetime.now().astimezone(),
+            "is_travel": False
+        },
+        "platypus": {
+            "title": "Top Secret Agent Mission Briefing",
+            "provider": "Secret Mission 🕵️‍♂️",
+            "pilot_type": "platypus",
+            "action_btn_text": "🔍 TOP SECRET BRIEFING",
+            "action_url": "https://calendar.apple.com",
+            "start_time": datetime.now().astimezone(),
+            "is_travel": False
+        },
+        "squirrel": {
+            "title": "Sprint Planning & Quick Sync",
+            "provider": "Quick Sync 🐿️⚡",
+            "pilot_type": "squirrel",
+            "action_btn_text": "⚡ JOIN QUICK SYNC",
+            "action_url": "https://calendar.apple.com",
             "start_time": datetime.now().astimezone(),
             "is_travel": False
         }
