@@ -357,7 +357,7 @@ class QtUpdateBannerWindow(QWidget):
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(Theme.get_color('RED', 200) if hover_close else Theme.get_color('TEXT', 22))
         p.drawEllipse(cr)
-        p.setPen(Theme.get_color('TEXT', 220) if hover_close else Theme.SUBTEXT0)
+        p.setPen(Theme.CRUST if hover_close else Theme.SUBTEXT0)
         p.setFont(QFont("Arial", 10, QFont.Weight.Bold))
         p.drawText(cr, Qt.AlignmentFlag.AlignCenter, "✕")
 
@@ -404,7 +404,7 @@ class QtUpdateBannerWindow(QWidget):
                 p.setBrush(fill_g)
                 p.drawRoundedRect(fill_r, 10, 10)
 
-            p.setPen(Theme.TEXT)
+            p.setPen(Theme.CRUST)
             f = QFont("Inter, Arial", 10, QFont.Weight.Bold)
             p.setFont(f)
             if self.install_ready:
@@ -429,7 +429,7 @@ class QtUpdateBannerWindow(QWidget):
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(g)
             p.drawRoundedRect(jr, 10, 10)
-            p.setPen(Theme.TEXT)
+            p.setPen(Theme.CRUST)
             display_text = self.btn_text
         elif not self.has_real_url:
             # Got it styling (blue tint)
@@ -443,7 +443,7 @@ class QtUpdateBannerWindow(QWidget):
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(g)
             p.drawRoundedRect(jr, 10, 10)
-            p.setPen(Theme.TEXT)
+            p.setPen(Theme.CRUST)
             display_text = "✅ Got it"
         else:
             # JOIN styling (yellow/amber gradient, black text)
@@ -474,7 +474,7 @@ class QtUpdateBannerWindow(QWidget):
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(Theme.get_color('SURFACE1', 150) if hover_snz else Theme.SURFACE0)
             p.drawRoundedRect(sr, 10, 10)
-            p.setPen(Theme.get_color('TEXT', 220) if hover_snz else Theme.SUBTEXT0)
+            p.setPen(Theme.CRUST if hover_snz else Theme.SUBTEXT0)
             p.setFont(mf)
             p.drawText(sr, Qt.AlignmentFlag.AlignCenter, "✕ Later")
         else:
@@ -485,7 +485,7 @@ class QtUpdateBannerWindow(QWidget):
                 p.setPen(Qt.PenStyle.NoPen)
                 p.setBrush(Theme.get_color('GREEN', 180) if hover_arr else Theme.SURFACE0)
                 p.drawRoundedRect(ar, 10, 10)
-                p.setPen(Theme.get_color('TEXT', 220) if hover_arr else Theme.SUBTEXT1)
+                p.setPen(Theme.CRUST if hover_arr else Theme.SUBTEXT1)
                 p.setFont(mf)
                 p.drawText(ar, Qt.AlignmentFlag.AlignCenter, "📍 I'm Here")
 
@@ -496,13 +496,13 @@ class QtUpdateBannerWindow(QWidget):
             if self.reminder_stage == 0:
                 p.setBrush(Theme.get_color('TEAL', 220) if hover_snz else Theme.MANTLE)
                 p.drawRoundedRect(sr, 10, 10)
-                p.setPen(Theme.get_color('TEXT', 240) if hover_snz else Theme.BLUE)
+                p.setPen(Theme.CRUST if hover_snz else Theme.BLUE)
                 p.setFont(mf)
                 p.drawText(sr, Qt.AlignmentFlag.AlignCenter, "✅ Got it")
             else:
                 p.setBrush(Theme.get_color('MAUVE', 180) if hover_snz else Theme.SURFACE0)
                 p.drawRoundedRect(sr, 10, 10)
-                p.setPen(Theme.get_color('TEXT', 220) if hover_snz else Theme.SUBTEXT1)
+                p.setPen(Theme.CRUST if hover_snz else Theme.SUBTEXT1)
                 p.setFont(mf)
                 p.drawText(sr, Qt.AlignmentFlag.AlignCenter, "💤 Snooze 2m")
 

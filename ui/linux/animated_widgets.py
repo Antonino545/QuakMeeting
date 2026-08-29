@@ -240,7 +240,7 @@ class UpdatingHUDWidget(QFrame):
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self.setFixedHeight(118)
-        self.setStyleSheet("background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 12px;")
+        self.setStyleSheet("background: rgba(24, 24, 37, 0.6); border: 1px solid rgba(137, 180, 250, 0.25); border-radius: 12px;")
 
         self._phase_index = 1  # 0: Connect, 1: Download, 2: Install, 3: Ready
         self._percent = 0.0
@@ -495,7 +495,7 @@ class ToggleSwitch(QWidget):
         # Catppuccin Mocha colors
         c_off = Theme.SURFACE0 # Surface0
         c_on = Theme.MAUVE  # Mauve
-        c_knob = Theme.TEXT # Text
+        c_knob = Theme.CRUST if self._checked else Theme.TEXT
 
         bg = c_on if self._checked else c_off
         p.setPen(Qt.PenStyle.NoPen)

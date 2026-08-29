@@ -132,7 +132,6 @@ QPushButton#OutlineBtn {
     border: 1px solid #45475a; /* Surface1 */
     font-size: 12px;
     font-weight: 600;
-    border: none;
     border-radius: 8px;
     padding: 6px 14px;
 }
@@ -407,7 +406,7 @@ class QtFlightDeckWindow(QMainWindow):
                 chk.setCursor(Qt.CursorShape.PointingHandCursor)
                 chk.setChecked(val in curr_stages)
                 chk.setStyleSheet("""
-                    QPushButton { background: #313244; color: #a6adc8; border: none; border-radius: 6px; padding: 4px 10px; font-size: 11px; }
+                    QPushButton { background: #313244; color: #cdd6f4; border: none; border-radius: 6px; padding: 4px 10px; font-size: 11px; }
                     QPushButton:hover { background: #45475a; }
                     QPushButton:checked { background: #cba6f7; color: #11111b; font-weight: bold; }
                 """)
