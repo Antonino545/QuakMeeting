@@ -50,13 +50,26 @@ class SettingsTabController(AppKit.NSObject):
         c2_h = 216.0 # Screen Banner & Menu Bar Live Display Dynamics
         c3_h = 164.0 # Sound Chimes
 
-        # Calculate calendar section height dynamically
+        # Calculate calendar section height dynamically based on actual wrapped rows
         cals = self.cached_calendars if self.cached_calendars else get_available_calendars()
         if not self.cached_calendars and cals:
             self.cached_calendars = cals
-        cal_count = len(cals) if cals else 1
-        cal_rows = (cal_count + 1) // 2
-        c4_h = max(118.0, 76.0 + cal_rows * 36.0) # Dynamic Calendars height
+        
+        available_w = card_w - 36.0
+        curr_row_w = 0.0
+        actual_rows = 1 if cals else 1
+        for cal in (cals or []):
+            cal_name = cal.get("name", "Calendar")
+            pill_w = max(120.0, min(240.0, len(cal_name) * 8.5 + 42.0))
+            if curr_row_w > 0.0 and curr_row_w + pill_w > available_w:
+                actual_rows += 1
+                curr_row_w = pill_w + 8.0
+            else:
+                curr_row_w += (pill_w + 8.0)
+
+        pill_h = 28.0
+        pill_gap = 8.0
+        c4_h = 74.0 + actual_rows * 36.0 # Tightly tailored Calendars height with 14px bottom padding
 
         c_up_h = 136.0 # Software Updates & Releases
         c5_h = 200.0 # System, Launch at Login & JSON Config
@@ -613,18 +626,19 @@ class SettingsTabController(AppKit.NSObject):
             card.addSubview_(lbl)
             return
 
-        y_offset = h - 90.0
-        x_offset = 18.0
         pill_h = 28.0
+        pill_gap = 8.0
+        y_offset = h - 68.0 - pill_h
+        x_offset = 18.0
 
         for idx, cal in enumerate(cals):
             cal_name = cal.get("name", "Calendar")
             title = f"📅 {cal_name}"
             pill_w = max(120.0, min(240.0, len(cal_name) * 8.5 + 42.0))
 
-            if x_offset + pill_w > w - 18.0:
+            if x_offset > 18.0 and x_offset + pill_w > w - 18.0:
                 x_offset = 18.0
-                y_offset -= (pill_h + 8.0)
+                y_offset -= (pill_h + pill_gap)
 
             btn = self._create_pill_chip(
                 card,
@@ -639,7 +653,7 @@ class SettingsTabController(AppKit.NSObject):
                 "green"
             )
             btn.setToolTip_(cal_name)
-            x_offset += (pill_w + 8.0)
+            x_offset += (pill_w + pill_gap)
 
     @objc.python_method
     def _build_system_section(self, card, w, h):

@@ -205,7 +205,7 @@ class DashboardWindowController(AppKit.NSObject):
         self.status_lbl.setSelectable_(False)
         header_view.addSubview_(self.status_lbl)
 
-        self.sync_status_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(w - 330, 28, 150, 20))
+        self.sync_status_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(w - 355, 30, 150, 20))
         self.sync_status_lbl.setStringValue_("🔄 Pending")
         self.sync_status_lbl.setFont_(AppKit.NSFont.systemFontOfSize_(11.5))
         self.sync_status_lbl.setTextColor_(Theme.SUBTEXT1)
@@ -216,7 +216,7 @@ class DashboardWindowController(AppKit.NSObject):
         self.sync_status_lbl.setSelectable_(False)
         header_view.addSubview_(self.sync_status_lbl)
 
-        refresh_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(w - 170, 20, 130, 34))
+        refresh_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(w - 190, 23, 130, 34))
         refresh_btn.setTitle_("🔄 Sync Now")
         Theme.style_button(refresh_btn, bg_color=Theme.SURFACE0, text_color=Theme.TEXT, border_color=Theme.SURFACE1, corner_radius=8.0, font_size=12.0, bold=True)
         refresh_btn.setTarget_(self)
