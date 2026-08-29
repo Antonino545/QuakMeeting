@@ -91,13 +91,14 @@ class TestDashboardUI(unittest.TestCase):
             self.fail(f"show_dashboard raised TypeError with positional tab_index: {e}")
 
     def test_app_launcher_respects_qt_flag(self):
-        from unittest.mock import patch
+        from unittest.mock import patch, MagicMock
         from ui.app_launcher import launch_application
 
+        mock_module = MagicMock()
         with patch("sys.argv", ["main.py", "--qt"]), \
-             patch("ui.linux.qt_tray_app.run_qt_tray_app", create=True) as mock_qt_tray:
+             patch.dict("sys.modules", {"ui.linux.qt_tray_app": mock_module}):
             launch_application()
-            mock_qt_tray.assert_called_once()
+            mock_module.run_qt_tray_app.assert_called_once()
 
 if __name__ == '__main__':
     unittest.main()
