@@ -7,6 +7,7 @@ from datetime import datetime
 
 from PyQt6.QtWidgets import QApplication, QSystemTrayIcon, QMenu
 from PyQt6.QtGui import QIcon, QAction, QPainter, QPixmap, QFont, QColor, QPalette
+from ui.linux.theme import Theme
 
 from core.services.config_service import config
 from core.services.calendar_service import calendar_service
@@ -225,13 +226,13 @@ class QuakMeetingTrayApp:
             font_text = QFont("sans-serif", 13, QFont.Weight.Bold)
             painter.setFont(font_text)
             
-            painter.setPen(QColor(0, 0, 0, 200))
+            painter.setPen(Theme.get_color('CRUST', 200))
             painter.drawText(1, 33, 64, 28, Qt.AlignmentFlag.AlignCenter, short_text[:6])
             
             if "NOW" in short_text:
-                painter.setPen(QColor(239, 68, 68))
+                painter.setPen(Theme.RED)
             else:
-                painter.setPen(QColor(255, 255, 255))
+                painter.setPen(Theme.TEXT)
                 
             painter.drawText(0, 32, 64, 28, Qt.AlignmentFlag.AlignCenter, short_text[:6])
             
@@ -303,18 +304,18 @@ def run_qt_tray_app():
 
     app.setStyle("Fusion")
     palette = QPalette()
-    palette.setColor(QPalette.ColorRole.Window, QColor(15, 17, 26))
+    palette.setColor(QPalette.ColorRole.Window, Theme.CRUST)
     palette.setColor(QPalette.ColorRole.WindowText, Qt.GlobalColor.white)
-    palette.setColor(QPalette.ColorRole.Base, QColor(24, 28, 43))
-    palette.setColor(QPalette.ColorRole.AlternateBase, QColor(15, 17, 26))
+    palette.setColor(QPalette.ColorRole.Base, Theme.MANTLE)
+    palette.setColor(QPalette.ColorRole.AlternateBase, Theme.CRUST)
     palette.setColor(QPalette.ColorRole.ToolTipBase, Qt.GlobalColor.white)
     palette.setColor(QPalette.ColorRole.ToolTipText, Qt.GlobalColor.white)
     palette.setColor(QPalette.ColorRole.Text, Qt.GlobalColor.white)
-    palette.setColor(QPalette.ColorRole.Button, QColor(36, 42, 61))
+    palette.setColor(QPalette.ColorRole.Button, Theme.SURFACE0)
     palette.setColor(QPalette.ColorRole.ButtonText, Qt.GlobalColor.white)
     palette.setColor(QPalette.ColorRole.BrightText, Qt.GlobalColor.red)
-    palette.setColor(QPalette.ColorRole.Link, QColor(42, 130, 218))
-    palette.setColor(QPalette.ColorRole.Highlight, QColor(42, 130, 218))
+    palette.setColor(QPalette.ColorRole.Link, Theme.BLUE)
+    palette.setColor(QPalette.ColorRole.Highlight, Theme.BLUE)
     palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.black)
     app.setPalette(palette)
 

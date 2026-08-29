@@ -105,6 +105,7 @@ class Meeting:
 
         from datetime import timezone
         import logging
+        import uuid
         
         # Enforce all datetimes to be UTC aware
         if self.start_time:
@@ -113,6 +114,12 @@ class Meeting:
             self.end_time = self.end_time.astimezone(timezone.utc)
         if self.departure_time:
             self.departure_time = self.departure_time.astimezone(timezone.utc)
+
+        # Generate a deterministic UUID if none is provided to avoid merging different events at the same time
+        if not self.uid:
+            time_str = self.start_time.isoformat() if self.start_time else "unknown_time"
+            unique_str = f"{self.title}_{time_str}_{self.provider}_{self.location}_{self.description}"
+            self.uid = str(uuid.uuid5(uuid.NAMESPACE_URL, unique_str))
 
     def __getitem__(self, key: str) -> Any:
         if hasattr(self, key):

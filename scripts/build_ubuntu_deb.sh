@@ -57,7 +57,7 @@ cat << 'LAUNCHER_EOF' > "$BUILD_ROOT/usr/bin/quakmeeting"
 #!/bin/bash
 export PYTHONUNBUFFERED=1
 cd /opt/quakmeeting
-exec python3 /opt/quakmeeting/main.py "$@"
+exec /usr/bin/python3 /opt/quakmeeting/main.py "$@"
 LAUNCHER_EOF
 chmod +x "$BUILD_ROOT/usr/bin/quakmeeting"
 

@@ -112,7 +112,9 @@ class EventKitCalendarProvider(BaseCalendarProvider):
             )
             
             try:
-                meeting.uid = str(ev.eventIdentifier())
+                ident = ev.eventIdentifier()
+                if ident:
+                    meeting.uid = str(ident)
                 meeting.is_all_day = bool(ev.isAllDay())
             except Exception:
                 pass

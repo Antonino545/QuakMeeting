@@ -32,7 +32,7 @@ class AppIndicatorTrayApp:
         )
         
         self.indicator = AppIndicator3.Indicator.new(
-            "quakmeeting",
+            " " * 60,
             icon_path,
             AppIndicator3.IndicatorCategory.APPLICATION_STATUS
         )
@@ -178,9 +178,9 @@ class AppIndicatorTrayApp:
         max_lookahead_min = int(config.get("max_countdown_lookahead_hours", 3)) * 60
         title = TrayViewModel.get_status_bar_title(primary_m, now, curr_mode, max_lookahead_min)
         if curr_mode == "icon_only" or not primary_m:
-            self.indicator.set_label("", "quakmeeting")
+            self.indicator.set_label("", " " * 60)
         else:
-            self.indicator.set_label(" " + title, "quakmeeting")
+            self.indicator.set_label(" " + title, " " * 60)
 
 
     def set_status_mode(self, mode):
@@ -200,9 +200,9 @@ class AppIndicatorTrayApp:
             title = TrayViewModel.get_status_bar_title(primary_m, now, status_mode, max_lookahead_min)
 
             if status_mode == "icon_only" or not primary_m:
-                self.indicator.set_label("", "quakmeeting")
+                self.indicator.set_label("", " " * 60)
             else:
-                self.indicator.set_label(" " + title, "quakmeeting")
+                self.indicator.set_label(" " + title, " " * 60)
                 
             self.build_menu()
         except Exception as e:

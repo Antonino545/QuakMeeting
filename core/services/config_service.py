@@ -38,6 +38,7 @@ DEFAULT_CONFIG = {
     "transport_mode": "transit",       # "transit" (Mezzi Pubblici), "automobile" (Auto), "walking" (A Piedi), "bicycling" (Bici)
     "enable_eta_service": True,
     "eta_buffer_minutes": 10,          # Margine di anticipo per raggiungere la fermata/parcheggio
+    "debug_mode": False,               # Show developer & diagnostics test banners and tools
     "custom_keywords": {
         "chef": ["cena", "pranzo", "dinner", "lunch", "ristorante", "pizza", "pizzeria", "sushi", "aperitivo", "apericena", "osteria", "trattoria", "cibo", "food", "mangiare", "pub", "burger"],
         "captain": ["flight", "volo", "airport", "aeroporto", "bus", "navetta", "shuttle", "pullman", "ryanair", "easyjet", "wizz", "ita airways", "treno", "frecciarossa", "italo", "stazione", "viaggio", "partenza", "gate", "terminal", "imbarco", "boarding", "taxi", "uber"],
@@ -111,7 +112,19 @@ class ConfigService:
         except Exception as e:
             logger.error(f"Error opening config editor: {e}")
 
+def is_debug_mode() -> bool:
+    """Returns True if debug mode is active via CLI flag, environment variable, or configuration."""
+    import sys
+    if "--debug" in sys.argv:
+        return True
+    if os.environ.get("QUAKMEETING_DEBUG", "").strip().lower() in ("1", "true", "yes", "on"):
+        return True
+    if os.environ.get("DEBUG", "").strip().lower() in ("1", "true", "yes", "on"):
+        return True
+    return bool(config_service.get("debug_mode", False))
+
 # Global singleton instance
 config_service = ConfigService()
 ConfigManager = ConfigService
 config = config_service
+

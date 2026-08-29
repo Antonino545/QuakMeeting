@@ -1,4 +1,5 @@
 from __future__ import annotations
+from ui.linux.theme import Theme
 from typing import Dict, Type
 
 from .base_renderer import BaseQtPilotRenderer
