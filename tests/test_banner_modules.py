@@ -7,11 +7,11 @@ Unit Tests for Modular Banner Components:
 """
 import unittest
 from datetime import datetime, timedelta
+import sys
 
 from ui.common.banner_speech import build_pilot_speech_text
 from ui.common.banner_formatting import compute_countdown_text, format_travel_duration
 from ui.common.banner_particles import BannerParticleEngine
-from ui.macos.banner.banner_layout import BannerLayout
 
 class TestBannerModules(unittest.TestCase):
 
@@ -96,7 +96,9 @@ class TestBannerModules(unittest.TestCase):
         self.assertEqual(len(engine.flame_particles), 0)
         self.assertEqual(len(engine.smoke_particles), 0)
 
+    @unittest.skipIf(sys.platform != "darwin", "macOS specific UI tests")
     def test_banner_layout_geometry(self):
+        from ui.macos.banner.banner_layout import BannerLayout
         layout = BannerLayout(banner_w=535.0, banner_h=126.0)
         rects = layout.get_button_rects(
             banner_x=100.0,
