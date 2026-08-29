@@ -152,8 +152,12 @@ class UpdaterService:
                         logger.info(f"🚀 New QuakMeeting update found: {tag_name} (Current: {self.current_version})")
                         event_bus.publish("UPDATE_AVAILABLE", **release_info)
                         try:
-                            from ui.linux.banner import get_update_preset
-                            event_bus.publish("TRIGGER_BANNER", event_dict=get_update_preset(tag_name, release_info.get("html_url", "")))
+                            if sys.platform == "darwin":
+                                from ui.macos.banner import get_update_preset
+                            else:
+                                from ui.linux.banner import get_update_preset
+                            if get_update_preset:
+                                event_bus.publish("TRIGGER_BANNER", event_dict=get_update_preset(tag_name, release_info.get("html_url", "")))
                         except Exception as b_err:
                             logger.debug(f"Banner trigger on update: {b_err}")
                     else:
@@ -212,6 +216,7 @@ class UpdaterService:
             target_path = os.path.join(temp_dir, file_name)
 
             self.is_downloading = True
+            event_bus.publish("UPDATE_STEP", step_id="download", step_name="Downloading update...")
             event_bus.publish("UPDATE_DOWNLOADING", file_name=file_name, url=download_url)
             try:
                 logger.info(f"Downloading update {file_name} from {download_url}...")
@@ -222,9 +227,12 @@ class UpdaterService:
                         percent = min(100, int((downloaded / total_size) * 100))
                         if on_progress:
                             on_progress(percent, downloaded, total_size)
+                        event_bus.publish("UPDATE_PROGRESS", percent=percent)
                         event_bus.publish("UPDATE_DOWNLOAD_PROGRESS", percent=percent, downloaded=downloaded, total=total_size)
 
                 urllib.request.urlretrieve(download_url, target_path, reporthook=_reporthook)
+                event_bus.publish("UPDATE_STEP", step_id="install", step_name="Installing update package...")
+                event_bus.publish("UPDATE_PROGRESS", percent=100.0)
                 event_bus.publish("UPDATE_DOWNLOADED", target_path=target_path)
 
                 if sys.platform == "darwin":
