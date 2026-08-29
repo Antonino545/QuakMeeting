@@ -46,6 +46,7 @@ def main():
     print("=" * 60)
 
     try:
+        force_qt = "--qt" in sys.argv
         if "--test" in sys.argv:
             import time
 
@@ -82,7 +83,7 @@ def main():
             else:
                 print("\n🚀 Running Notification Banner Test...")
 
-            if sys.platform == "darwin":
+            if sys.platform == "darwin" and not force_qt:
                 import AppKit
                 from ui.macos.banner.banner_controller import QuakPitFlyingBanner
                 from ui.macos.banner.banner_view import QuakPitBannerView
@@ -110,31 +111,12 @@ def main():
         logger.info("Initializing QuakMeeting Menu Bar and Flight Deck UI...")
         print(" Launching Menu Bar icon and Flight Deck...")
 
-        if sys.platform == "darwin":
-            from ui.macos.menu_bar_app import QuakMeetingMenuBar
-            from ui.macos.dashboard_window import show_dashboard
-
+        if sys.platform == "darwin" and not force_qt:
             print("\n 📌 PERMISSION NOTICE:")
             print(" If macOS prompts for Calendar access, select 'ALLOW'.\n")
 
-            app = QuakMeetingMenuBar.alloc().init()
-            if app is None:
-                logger.error("Failed to allocate and initialize QuakMeetingMenuBar!")
-                return
-
-            # The menu bar must subscribe before reminders can be evaluated;
-            # otherwise a startup reminder is recorded as sent with no banner.
-            from core.app_controller import app_controller
-            app_controller.start_background_loop()
-
-            if "--silent" not in sys.argv:
-                show_dashboard()
-
-            logger.info("Entering macOS Application Run Loop...")
-            app.run()
-        else:
-            from ui.app_launcher import launch_application
-            launch_application()
+        from ui.app_launcher import launch_application
+        launch_application()
     except Exception as e:
         logger.exception(f"Fatal error in main application run loop: {e}")
         raise

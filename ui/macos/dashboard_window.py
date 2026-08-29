@@ -10,31 +10,18 @@ from datetime import datetime
 if hasattr(objc, 'ObjCPointerWarning'):
     warnings.filterwarnings("ignore", category=objc.ObjCPointerWarning)
 
-try:
-    from core.config_manager import config
-    from core.calendar_scanner import get_upcoming_meetings, sync_calendar_now, get_available_calendars
-    from core.services.eta_service import eta_service, MODE_ICONS, MODE_LABELS
-    from core.services.event_bus import event_bus
-    from core.services.updater_service import updater_service
-    from core.domain.models import format_duration
-    from core.logger import open_log_file, open_log_folder
-    from ui.macos.banner_window import _run_banner
-    from ui.macos.dashboard_tabs.agenda_tab import AgendaTabController
-    from ui.macos.dashboard_tabs.hangar_tab import HangarTabController
-    from ui.macos.dashboard_tabs.settings_tab import SettingsTabController
-    from ui.macos.theme import Theme, ModernButton
-except ImportError:
-    from config_manager import config
-    from calendar_scanner import get_upcoming_meetings, sync_calendar_now, get_available_calendars
-    from eta_service import eta_service, MODE_ICONS, MODE_LABELS
-    from event_bus import event_bus
-    from models import format_duration
-    from logger import open_log_file, open_log_folder
-    from banner_window import _run_banner
-    from dashboard_tabs.agenda_tab import AgendaTabController
-    from dashboard_tabs.hangar_tab import HangarTabController
-    from dashboard_tabs.settings_tab import SettingsTabController
-    from theme import Theme, ModernButton
+from core.services.config_service import config
+from core.services.calendar_service import calendar_service
+from core.services.eta_service import eta_service, MODE_ICONS, MODE_LABELS
+from core.services.event_bus import event_bus
+from core.services.updater_service import updater_service
+from core.domain.models import format_duration, Meeting
+from core.logger import open_log_file, open_log_folder
+from ui.macos.banner_window import _run_banner
+from ui.macos.dashboard_tabs.agenda_tab import AgendaTabController
+from ui.macos.dashboard_tabs.hangar_tab import HangarTabController
+from ui.macos.dashboard_tabs.settings_tab import SettingsTabController
+from ui.macos.theme import Theme, ModernButton
 
 class DashboardWindowDelegate(AppKit.NSObject):
     def init(self):
@@ -80,7 +67,7 @@ class DashboardWindowController(AppKit.NSObject):
 
     def _prewarm_calendars(self):
         try:
-            self.cached_calendars = get_available_calendars()
+            self.cached_calendars = calendar_service.get_available_calendars()
         except Exception:
             pass
 
@@ -311,7 +298,8 @@ class DashboardWindowController(AppKit.NSObject):
         self.refresh_data(force=True)
 
     def refresh_data(self, force=False):
-        self.meetings = get_upcoming_meetings(force_refresh=False)
+        raw_meetings = calendar_service.get_upcoming_meetings(force_refresh=False)
+        self.meetings = [m.to_dict() if isinstance(m, Meeting) else m for m in raw_meetings]
         now = datetime.now().astimezone()
 
         today_meetings = [m for m in self.meetings if m.get("start_time") and m["start_time"].astimezone().date() == now.date()]
@@ -343,8 +331,9 @@ class DashboardWindowController(AppKit.NSObject):
 
             def worker():
                 try:
-                    meetings = sync_calendar_now()
-                    cals = get_available_calendars()
+                    raw = calendar_service.sync_now()
+                    meetings = [m.to_dict() if isinstance(m, Meeting) else m for m in raw]
+                    cals = calendar_service.get_available_calendars()
                 except Exception as e:
                     print(f"Sync error: {e}")
                     meetings = self.meetings

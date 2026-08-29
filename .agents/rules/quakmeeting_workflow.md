@@ -21,6 +21,7 @@ Read this file before changing the project. For deeper reference, use [docs/PROJ
 - `core/domain/` contains data types and pure domain logic. Keep it independent of AppKit, Qt, and provider APIs.
 - `core/providers/` fetch calendar data. `core/services/` owns caching, ETA, reminder evaluation, persistence, and the event bus.
 - `ui/macos/` is PyObjC/AppKit/Quartz only; `ui/linux/` is PyQt6/AppIndicator only. Put shared presentation logic in `ui/common/`.
+- **Cross-Platform UI Parity Invariant**: Whenever UI features, components, layout designs, preferences tabs, or visual styles are modified on macOS (`ui/macos/`), replicate the equivalent design, layout hierarchy, and features on Ubuntu/Linux (`ui/linux/`), and vice-versa. Both desktop platforms must maintain visual styling and functional parity (Catppuccin Mocha theme, cards, controls, action buttons, and status indicators).
 - Use `EventBus` to communicate from services to UI. Do not update UI from the background controller directly.
 - UI handlers must accept the full published payload, including `event_dict`; event publishers and subscribers must stay compatible.
 

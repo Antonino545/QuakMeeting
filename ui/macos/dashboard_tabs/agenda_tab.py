@@ -6,10 +6,7 @@ import time
 from datetime import datetime
 from core.domain.models import format_duration
 from core.services.eta_service import MODE_ICONS
-try:
-    from ui.macos.theme import Theme
-except ImportError:
-    from theme import Theme
+from ui.macos.theme import Theme
 
 class AgendaTabController(AppKit.NSObject):
     def init(self):

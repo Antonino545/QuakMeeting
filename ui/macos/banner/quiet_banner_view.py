@@ -1,10 +1,7 @@
 import AppKit
 import objc
 from datetime import datetime
-try:
-    from ui.macos.theme import Theme
-except ImportError:
-    from theme import Theme
+from ui.macos.theme import Theme
 
 class QuietReminderView(AppKit.NSView):
     def initWithFrame_meetingData_controller_(self, frame, meeting_data, controller):

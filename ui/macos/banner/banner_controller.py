@@ -15,6 +15,7 @@ from typing import Dict, Any, Optional, Callable
 from core.services.config_service import config
 from .banner_view import QuakPitBannerView
 from .quiet_banner_view import QuietReminderView
+from .update_banner_view import MacUpdateBannerView
 
 logger = logging.getLogger("QuakMeeting.BannerController")
 
@@ -27,6 +28,7 @@ class QuakPitFlyingBanner(AppKit.NSObject):
         self.on_close_callback = on_close_callback
         self.window = None
         self.timer = None
+        self.is_paused = False
         self.action_url = meeting_data.get("action_url") or meeting_data.get("meeting_url")
         return self
 
@@ -45,7 +47,24 @@ class QuakPitFlyingBanner(AppKit.NSObject):
         is_quiet = self.meeting_data.get("is_quiet_reminder", False)
         is_update = self.meeting_data.get("is_update_banner", False)
 
-        if is_quiet or is_update:
+        if is_update:
+            window_w = 512.0
+            window_h = 160.0
+            x_pos = screen_rect.origin.x + screen_rect.size.width - window_w - 24.0
+            final_y = screen_rect.origin.y + screen_rect.size.height - window_h - 40.0
+            start_y = screen_rect.origin.y + screen_rect.size.height + 20.0
+
+            self.x_pos = x_pos
+            self.final_y = final_y
+            self.curr_y = start_y
+            self.window_w = window_w
+            self.window_h = window_h
+            self.screen_top = screen_rect.origin.y + screen_rect.size.height
+            self.is_closing = False
+            self.is_animating_in = True
+
+            frame = AppKit.NSMakeRect(x_pos, start_y, window_w, window_h)
+        elif is_quiet:
             window_w = 360.0
             window_h = 84.0
             x_pos = screen_rect.origin.x + screen_rect.size.width - window_w - 24.0
@@ -103,16 +122,29 @@ class QuakPitFlyingBanner(AppKit.NSObject):
         )
         self.window.setCollectionBehavior_(behavior)
 
-        if is_quiet or is_update:
+        if is_update:
+            self.banner_view = MacUpdateBannerView.alloc().initWithFrame_meetingData_controller_(
+                AppKit.NSMakeRect(0, 0, window_w, window_h),
+                self.meeting_data,
+                self
+            )
+            # Auto dismiss after 10 seconds for update banner if not in install mode
+            AppKit.NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
+                10.0,
+                self,
+                objc.selector(self.dismissIfIdleAction_, signature=b"v@:@"),
+                None,
+                False
+            )
+        elif is_quiet:
             self.banner_view = QuietReminderView.alloc().initWithFrame_meetingData_controller_(
                 AppKit.NSMakeRect(0, 0, window_w, window_h),
                 self.meeting_data,
                 self
             )
-            # Auto dismiss after 10 seconds for update, 6 seconds for quiet
-            dismiss_time = 10.0 if is_update else 6.0
+            # Auto dismiss after 6 seconds for quiet reminder
             AppKit.NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
-                dismiss_time,
+                6.0,
                 self,
                 objc.selector(self.dismissAction_, signature=b"v@:@"),
                 None,
@@ -225,7 +257,21 @@ class QuakPitFlyingBanner(AppKit.NSObject):
     def dismissAction_(self, sender):
         self.dismiss()
 
+    @objc.IBAction
+    def dismissIfIdleAction_(self, sender):
+        if hasattr(self, "banner_view") and getattr(self.banner_view, "install_mode", False):
+            return
+        if getattr(self, "is_paused", False):
+            return
+        self.dismiss()
+
     def dismiss(self) -> None:
+        if self.meeting_data.get("is_update_banner") and not getattr(self, "is_closing", False):
+            self.is_closing = True
+            return
+        self.finish_dismiss()
+
+    def finish_dismiss(self) -> None:
         if self.timer:
             self.timer.invalidate()
             self.timer = None

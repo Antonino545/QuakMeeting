@@ -74,6 +74,7 @@ Orchestrates business use cases.
 - **`reminder_engine.py`**: Evaluates when to fire notifications. It differentiates between standard events (fires relative to `start_time`) and travel events (fires relative to `departure_time`).
 - **`eta_service.py`**: Handles routing links (e.g. Apple Maps) and calculates transit/walking buffers.
 - **`event_bus.py`**: Decouples UI updates from background logic. Components publish events (e.g., `CALENDAR_UPDATED`, `CONFIG_CHANGED`) that the UI subscribes to.
+- **`updater_service.py`**: Checks GitHub Releases for new releases, fetches platform packages (.dmg/.zip on macOS, .deb on Ubuntu), performs in-place upgrades, and publishes update progress events.
 - **`app_controller.py`**: The central orchestrator that launches a background thread to poll services (Calendar, Reminders) without blocking the UI main loop.
 
 ### 4. UI Layer (`ui/`)
@@ -87,12 +88,12 @@ Cross-platform presentation layer structured by operating system:
   - **`menu_bar_app.py`**: AppKit `NSStatusItem` menu bar controller.
   - **`dashboard_window.py`**: Native `NSWindow` Flight Deck HUD with custom segmented capsule pill switcher.
   - **`dashboard_tabs/`**: Dedicated native tab views (`agenda_tab.py`, `hangar_tab.py`, `settings_tab.py`).
-  - **`banner/`**: Quartz 2D animated HUD banners with modular pilot renderers.
+  - **`banner/`**: Quartz 2D animated HUD banners (`banner_view.py`), quiet notifications (`quiet_banner_view.py`), and software update banners (`update_banner_view.py`).
 - **`ui/linux/`**: Native Linux / Ubuntu UI using PyQt6 (Wayland / X11):
   - **`theme.py`**: Native `QColor` and RGBA string converters derived directly from `ui.common.theme.CatppuccinMocha`.
   - **`qt_tray_app.py`**: PyQt6 `QSystemTrayIcon` with custom Catppuccin context menu.
   - **`qt_dashboard.py`**: PyQt6 Flight Deck window with capsule pill switcher and solid Catppuccin cards.
-  - **`banner/`**: PyQt6 Wayland/X11 animated overlay banner with modular pilot renderers.
+  - **`banner/`**: PyQt6 Wayland/X11 animated overlay banner (`qt_duck_banner.py`) and software update banners (`qt_update_banner.py`).
 - **`ui/app_launcher.py`**: Platform-aware UI dispatcher and entrypoint.
 
 ---
@@ -124,6 +125,17 @@ The UI follows strict multiplatform parity where both macOS AppKit and Linux PyQ
 | :---: | :---: |
 | ![macOS Settings](../assets/screenshots/macos_settings.png) | ![Linux Qt Settings](../assets/screenshots/qt_settings.png) |
 
+#### 4. 🚀 Software Update Banner & In-Banner Upgrader
+*Cross-platform animated update notification with dynamic neon sweep border, live download/installation progress tracking, and automatic relaunch.*
+
+| macOS (AppKit) — Update Prompt | Linux (PyQt6) — Update Prompt |
+| :---: | :---: |
+| ![macOS Update Banner](../assets/screenshots/macos_update_banner.png) | ![Linux Qt Update Banner](../assets/screenshots/qt_update_banner.png) |
+
+| macOS (AppKit) — Live Downloading Progress | macOS (AppKit) — Installation Complete & Relaunch |
+| :---: | :---: |
+| ![macOS Downloading](../assets/screenshots/macos_update_downloading.png) | ![macOS Installed](../assets/screenshots/macos_update_installed.png) |
+
 ---
 
 ## ⚙️ Lifecycle & Threading Model
@@ -134,7 +146,16 @@ Querying calendars (especially via EventKit) can be slow.
 - `app_controller.py` polls `CalendarService.sync_now()` in the background every 30-60 seconds.
 - When fresh data is retrieved, the disk cache is atomically replaced, and a `CALENDAR_UPDATED` event is fired over the `event_bus`, causing the UI to gracefully refresh.
 
-### 2. Application Entry & Loop (`main.py`)
+### 2. In-Place Automatic Update Lifecycle
+- `updater_service.py` checks GitHub Releases in the background.
+- When a new version is released, it publishes `TRIGGER_BANNER` with `is_update_banner: True`.
+- On both macOS and Linux, the update banner slides onto the screen with a rotating Blue-to-Mauve gradient border.
+- Clicking **`⚡ UPDATE NOW`** switches into active installation mode:
+  1. Downloads release asset while publishing `UPDATE_PROGRESS` events.
+  2. Replaces `/Applications/QuakMeeting.app` (macOS) or installs via `dpkg` (Linux).
+  3. Displays `✅ Update Installed! Relaunching...` and smoothly relaunches the application.
+
+### 3. Application Entry & Loop (`main.py`)
 - `main.py` detects the platform (`sys.platform`).
 - Starts the `AppController` background loop.
 - Initializes the specific UI loop (`NSApplication.sharedApplication().run()` for macOS or `QApplication.exec()` for Linux).

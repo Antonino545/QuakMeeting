@@ -88,6 +88,7 @@ class QuakMeetingMenuBar(AppKit.NSObject):
 
         # Subscribe to EventBus
         event_bus.subscribe("REMINDER_TRIGGERED", self._on_reminder_triggered)
+        event_bus.subscribe("TRIGGER_BANNER", self._on_trigger_banner)
         event_bus.subscribe("CALENDAR_SYNCED", self._on_calendar_synced)
         event_bus.subscribe("CONFIG_CHANGED", self._on_config_changed)
         event_bus.subscribe("AGENDA_UPDATED", self._on_agenda_updated)
@@ -226,6 +227,18 @@ class QuakMeetingMenuBar(AppKit.NSObject):
             logger.warning("Ignoring REMINDER_TRIGGERED event without meeting data.")
             return
         show_banner_async(m_dict)
+
+    def _on_trigger_banner(
+        self,
+        event_dict: Optional[Dict[str, Any]] = None,
+        **kwargs,
+    ) -> None:
+        """Display an arbitrary or update banner from the EventBus payload."""
+        payload = event_dict or kwargs
+        if not payload:
+            logger.warning("Ignoring TRIGGER_BANNER event without payload.")
+            return
+        show_banner_async(payload)
 
     def _on_calendar_synced(self, meetings: List[Any]) -> None:
         self._check_startup_catch_up(meetings)
@@ -573,6 +586,22 @@ class QuakMeetingMenuBar(AppKit.NSObject):
     def run(self):
         self.app.run()
 
+def run_menu_bar_app():
+    """Initializes and runs the native macOS menu bar status item and event loop."""
+    import sys
+    app_instance = QuakMeetingMenuBar.alloc().init()
+    if app_instance is None:
+        logger.error("Failed to allocate and initialize QuakMeetingMenuBar!")
+        return
+
+    from core.app_controller import app_controller
+    app_controller.start_background_loop()
+
+    if "--silent" not in sys.argv and "--autostart" not in sys.argv:
+        show_dashboard()
+
+    logger.info("Entering macOS Application Run Loop...")
+    app_instance.run()
+
 if __name__ == "__main__":
-    menu_app = QuakMeetingMenuBar.alloc().init()
-    menu_app.run()
+    run_menu_bar_app()
