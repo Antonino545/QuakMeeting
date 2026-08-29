@@ -177,8 +177,17 @@ class QuakPitBannerView(AppKit.NSView):
 
     def _build_pilot_speech_text(self) -> str:
         """Constructs funny context-aware quote for the pilot speech bubble."""
+        is_self_study = (
+            self.meeting_data.get("event_type") == "study"
+            or "STUDY" in (self.provider or "").upper()
+            or "STUDIARE" in (self.title or "").upper()
+            or (not self.classroom and "STUDY" in (self.title or "").upper())
+        )
+
         if self.is_late:
             if self.pilot_type == "owl":
+                if is_self_study:
+                    return "🚨 YOU NEED TO STUDY! DO IT! 📖"
                 if self.classroom:
                     return f"🚨 CLASS STARTED IN {self.classroom.upper()}! SPRINT!"
                 return "🚨 PROFESSOR IS STARTING! YOU'RE LATE!"
@@ -196,6 +205,8 @@ class QuakPitBannerView(AppKit.NSView):
                 return "QUAAK! 🚨 YOU ARE LATE! RUN!"
         else:
             if self.pilot_type == "owl":
+                if is_self_study:
+                    return "Time to study! You need to study, do it! 📖"
                 if self.classroom:
                     return f"Class in {self.classroom} soon! 📚"
                 return "Class starting soon! 🦉"
@@ -216,6 +227,12 @@ class QuakPitBannerView(AppKit.NSView):
         countdown_text = "⏰ Upcoming Alert"
         is_urgent = False
         mode_icon = MODE_ICONS.get(self.transport_mode, "🚆")
+        is_self_study = (
+            self.meeting_data.get("event_type") == "study"
+            or "STUDY" in (self.provider or "").upper()
+            or "STUDIARE" in (self.title or "").upper()
+            or (not self.classroom and "STUDY" in (self.title or "").upper())
+        )
 
         if self.start_time:
             now = datetime.now().astimezone()
@@ -239,7 +256,18 @@ class QuakPitBannerView(AppKit.NSView):
             elif diff > 0:
                 mins = int(diff // 60)
                 secs = int(diff % 60)
-                if self.classroom:
+                if is_self_study:
+                    if mins >= 15:
+                        countdown_text = f"📖 In {mins}m • Study Time"
+                    elif mins >= 5:
+                        countdown_text = f"⏳ In {mins}m • Open Books"
+                    elif mins >= 1:
+                        countdown_text = f"⚡ In {mins}m • Time to Study!"
+                        is_urgent = True
+                    else:
+                        countdown_text = f"⏳ In {secs}s • Study Starting!"
+                        is_urgent = True
+                elif self.classroom:
                     if mins >= 10:
                         countdown_text = f"🎓 Lesson in {mins}m • {self.classroom}"
                     elif mins >= 1:
@@ -269,7 +297,12 @@ class QuakPitBannerView(AppKit.NSView):
                         is_urgent = True
             elif diff > -1800:
                 late_mins = abs(int(diff // 60))
-                countdown_text = f"🔴 LATE BY {late_mins}m • IN PROGRESS" if late_mins > 0 else "🔴 IN PROGRESS NOW"
+                if self.pilot_type == "owl" and is_self_study:
+                    countdown_text = f"🚨 STUDY OVERDUE BY {late_mins}m • DO IT!" if late_mins > 0 else "📖 TIME TO STUDY • DO IT!"
+                elif self.classroom:
+                    countdown_text = f"🔴 LATE BY {late_mins}m • {self.classroom}" if late_mins > 0 else f"🔴 CLASS STARTED • {self.classroom}"
+                else:
+                    countdown_text = f"🔴 LATE BY {late_mins}m • IN PROGRESS" if late_mins > 0 else "🔴 IN PROGRESS NOW"
                 is_urgent = True
 
         self._cached_countdown_text = countdown_text

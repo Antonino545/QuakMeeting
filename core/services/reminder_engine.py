@@ -11,7 +11,7 @@ from core.domain.models import Meeting
 from core.services.event_bus import event_bus, EventBus
 from core.services.config_service import config_service, ConfigService
 from core.services.arrival_service import arrival_service, ArrivalService
-from core.services.state_store import NotifiedStateStore
+from core.services.state_store import NotifiedStateStore, banner_history_store
 from core.logger import setup_logging
 
 logger = logging.getLogger("QuakMeeting.ReminderEngine")
@@ -241,6 +241,7 @@ class ReminderEngine:
                             stage_label = "at start (0m)" if stage == 0 else f"{stage}m ahead"
                             logger.info(f"🔔 >>> TRIGGER BANNER [{stage_label}] for \"{m.title}\" ({m.provider}, at {start_str}, diff={diff_min:+.1f}m)")
 
+                        banner_history_store.record_banner_sent(m_triggered.to_dict(), stage=stage)
                         self.bus.publish("REMINDER_TRIGGERED", meeting=m_triggered, stage=stage, event_dict=m_triggered.to_dict())
                         break
 
@@ -267,6 +268,7 @@ class ReminderEngine:
                         stage_label = "at start (0m)" if fallback_stage == 0 else f"imminent ({fallback_stage}m)"
                         logger.info(f"🔔 >>> TRIGGER IMMEDIATE BANNER [{stage_label}] for \"{m.title}\" ({m.provider}, at {start_str}, diff={diff_min:+.1f}m)")
 
+                    banner_history_store.record_banner_sent(m_triggered.to_dict(), stage=fallback_stage)
                     self.bus.publish("REMINDER_TRIGGERED", meeting=m_triggered, stage=fallback_stage, event_dict=m_triggered.to_dict())
                     matched_stage = fallback_stage
 
@@ -281,6 +283,7 @@ class ReminderEngine:
                         m_start_triggered.reminder_stage = 0
                         triggered_events.append((m_start_triggered, 0))
                         logger.info(f"🔔 >>> TRIGGER START BANNER [at start (0m)] for \"{m.title}\" (Travel event starting, diff={start_diff_min:+.1f}m)")
+                        banner_history_store.record_banner_sent(m_start_triggered.to_dict(), stage=0)
                         self.bus.publish("REMINDER_TRIGGERED", meeting=m_start_triggered, stage=0, event_dict=m_start_triggered.to_dict())
                         matched_stage = 0
 

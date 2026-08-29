@@ -22,7 +22,7 @@ try:
     from ui.macos.dashboard_tabs.agenda_tab import AgendaTabController
     from ui.macos.dashboard_tabs.hangar_tab import HangarTabController
     from ui.macos.dashboard_tabs.settings_tab import SettingsTabController
-    from ui.macos.theme import Theme
+    from ui.macos.theme import Theme, ModernButton
 except ImportError:
     from config_manager import config
     from calendar_scanner import get_upcoming_meetings, sync_calendar_now, get_available_calendars
@@ -34,7 +34,7 @@ except ImportError:
     from dashboard_tabs.agenda_tab import AgendaTabController
     from dashboard_tabs.hangar_tab import HangarTabController
     from dashboard_tabs.settings_tab import SettingsTabController
-    from theme import Theme
+    from theme import Theme, ModernButton
 
 class DashboardWindowDelegate(AppKit.NSObject):
     def init(self):
@@ -90,8 +90,9 @@ class DashboardWindowController(AppKit.NSObject):
 
         if tab_index is not None and 0 <= tab_index <= 2:
             self.current_tab = tab_index
-            if hasattr(self, 'tab_segmented') and self.tab_segmented:
-                self.tab_segmented.setSelectedSegment_(tab_index)
+            if hasattr(self, 'tab_buttons') and self.tab_buttons:
+                for b in self.tab_buttons:
+                    self._update_tab_button_style(b, is_active=(b.tag() == self.current_tab))
 
         app = AppKit.NSApp()
         if self.window:
@@ -216,9 +217,16 @@ class DashboardWindowController(AppKit.NSObject):
         self.sync_status_lbl.setSelectable_(False)
         header_view.addSubview_(self.sync_status_lbl)
 
-        refresh_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(w - 190, 23, 130, 34))
-        refresh_btn.setTitle_("🔄 Sync Now")
-        Theme.style_button(refresh_btn, bg_color=Theme.SURFACE0, text_color=Theme.TEXT, border_color=Theme.SURFACE1, corner_radius=8.0, font_size=12.0, bold=True)
+        refresh_btn = Theme.create_button(
+            AppKit.NSMakeRect(w - 190, 23, 130, 34),
+            title="🔄 Sync Now",
+            bg_color=Theme.SURFACE0,
+            text_color=Theme.TEXT,
+            border_color=Theme.SURFACE1,
+            corner_radius=8.0,
+            font_size=12.0,
+            bold=True
+        )
         refresh_btn.setTarget_(self)
         refresh_btn.setAction_("onRefreshClicked:")
         header_view.addSubview_(refresh_btn)
@@ -226,18 +234,77 @@ class DashboardWindowController(AppKit.NSObject):
         parent.addSubview_(header_view)
 
     def _build_tab_selector(self, parent, w, h):
-        self.tab_segmented = AppKit.NSSegmentedControl.alloc().initWithFrame_(AppKit.NSMakeRect(20, h - 160, w - 40, 32))
-        self.tab_segmented.setSegmentCount_(3)
-        self.tab_segmented.setLabel_forSegment_("📅 Today's Agenda", 0)
-        self.tab_segmented.setLabel_forSegment_("🦆 Pilot Hangar", 1)
-        self.tab_segmented.setLabel_forSegment_("⚙️ Preferences & Timing", 2)
-        self.tab_segmented.setSelectedSegment_(0)
-        self.tab_segmented.setTarget_(self)
-        self.tab_segmented.setAction_("onTabChanged:")
-        parent.addSubview_(self.tab_segmented)
+        bar_x = 20.0
+        bar_y = h - 162.0
+        bar_w = w - 40.0
+        bar_h = 36.0
 
-    def onTabChanged_(self, sender):
-        self.current_tab = sender.selectedSegment()
+        self.navbar_container = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(bar_x, bar_y, bar_w, bar_h))
+        self.navbar_container.setWantsLayer_(True)
+        self.navbar_container.layer().setBackgroundColor_(Theme.MANTLE.CGColor())
+        self.navbar_container.layer().setCornerRadius_(10.0)
+        self.navbar_container.layer().setBorderWidth_(1.0)
+        self.navbar_container.layer().setBorderColor_(Theme.SURFACE0.CGColor())
+        self.navbar_container.layer().setMasksToBounds_(True)
+
+        tab_items = [
+            ("📅 Today's Agenda", 0),
+            ("🦆 Pilot Hangar", 1),
+            ("⚙️ Preferences & Timing", 2)
+        ]
+
+        padding = 3.0
+        gap = 4.0
+        seg_w = (bar_w - padding * 2 - gap * (len(tab_items) - 1)) / len(tab_items)
+        seg_h = bar_h - padding * 2
+
+        self.tab_buttons = []
+        for title, idx in tab_items:
+            x_pos = padding + idx * (seg_w + gap)
+            btn = ModernButton.alloc().initWithFrame_(AppKit.NSMakeRect(x_pos, padding, seg_w, seg_h))
+            btn.setButtonType_(AppKit.NSButtonTypeMomentaryPushIn)
+            btn.setBordered_(False)
+            btn.setFocusRingType_(AppKit.NSFocusRingTypeNone)
+            btn.setWantsLayer_(True)
+            btn.setTag_(idx)
+            btn.setTitle_(title)
+            btn.setTarget_(self)
+            btn.setAction_("onTabButtonClicked:")
+            self._update_tab_button_style(btn, is_active=(idx == self.current_tab))
+            self.navbar_container.addSubview_(btn)
+            self.tab_buttons.append(btn)
+
+        parent.addSubview_(self.navbar_container)
+
+    def _update_tab_button_style(self, btn, is_active: bool):
+        if is_active:
+            btn.layer().setBackgroundColor_(Theme.SURFACE0.CGColor())
+            btn.layer().setBorderWidth_(1.0)
+            btn.layer().setBorderColor_(Theme.SURFACE1.CGColor())
+            btn.layer().setCornerRadius_(7.0)
+            fg = Theme.TEXT
+            fnt = AppKit.NSFont.boldSystemFontOfSize_(12.5)
+        else:
+            btn.layer().setBackgroundColor_(AppKit.NSColor.clearColor().CGColor())
+            btn.layer().setBorderWidth_(0.0)
+            btn.layer().setCornerRadius_(7.0)
+            fg = Theme.SUBTEXT0
+            fnt = AppKit.NSFont.systemFontOfSize_weight_(12.5, AppKit.NSFontWeightMedium)
+
+        pstyle = AppKit.NSMutableParagraphStyle.alloc().init()
+        pstyle.setAlignment_(AppKit.NSTextAlignmentCenter)
+        attrs = {
+            AppKit.NSForegroundColorAttributeName: fg,
+            AppKit.NSFontAttributeName: fnt,
+            AppKit.NSParagraphStyleAttributeName: pstyle
+        }
+        attr_title = AppKit.NSAttributedString.alloc().initWithString_attributes_(btn.title(), attrs)
+        btn.setAttributedTitle_(attr_title)
+
+    def onTabButtonClicked_(self, sender):
+        self.current_tab = sender.tag()
+        for b in self.tab_buttons:
+            self._update_tab_button_style(b, is_active=(b.tag() == self.current_tab))
         self._render_current_tab()
 
     def onRefreshClicked_(self, sender):
@@ -277,13 +344,17 @@ class DashboardWindowController(AppKit.NSObject):
             def worker():
                 try:
                     meetings = sync_calendar_now()
+                    cals = get_available_calendars()
                 except Exception as e:
                     print(f"Sync error: {e}")
                     meetings = self.meetings
+                    cals = self.cached_calendars
 
                 def on_complete():
                     self.is_loading = False
                     self.meetings = meetings
+                    if cals:
+                        self.cached_calendars = cals
                     n = datetime.now().astimezone()
                     t_meets = [m for m in self.meetings if m.get("start_time") and m["start_time"].astimezone().date() == n.date()]
                     t_up = [m for m in t_meets if (m.get("end_time") and m["end_time"] > n) or (m.get("start_time") and m["start_time"] > n)]

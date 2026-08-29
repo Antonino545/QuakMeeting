@@ -1,5 +1,51 @@
 import AppKit
+import objc
 from ui.common.theme import CatppuccinMocha
+
+class ModernButton(AppKit.NSButton):
+    """Modern macOS Button with pointing hand cursor, hover feedback, and tactile click animation."""
+    def resetCursorRects(self):
+        self.addCursorRect_cursor_(self.bounds(), AppKit.NSCursor.pointingHandCursor())
+
+    def updateTrackingAreas(self):
+        objc.super(ModernButton, self).updateTrackingAreas()
+        if hasattr(self, "_tracking_area") and self._tracking_area:
+            self.removeTrackingArea_(self._tracking_area)
+        self._tracking_area = AppKit.NSTrackingArea.alloc().initWithRect_options_owner_userInfo_(
+            self.bounds(),
+            AppKit.NSTrackingMouseEnteredAndExited | AppKit.NSTrackingActiveAlways | AppKit.NSTrackingInVisibleRect,
+            self,
+            None
+        )
+        self.addTrackingArea_(self._tracking_area)
+
+    def mouseEntered_(self, event):
+        if self.layer() and self.isEnabled():
+            AppKit.NSAnimationContext.beginGrouping()
+            AppKit.NSAnimationContext.currentContext().setDuration_(0.15)
+            self.animator().setAlphaValue_(0.85)
+            AppKit.NSAnimationContext.endGrouping()
+
+    def mouseExited_(self, event):
+        if self.layer() and self.isEnabled():
+            AppKit.NSAnimationContext.beginGrouping()
+            AppKit.NSAnimationContext.currentContext().setDuration_(0.15)
+            self.animator().setAlphaValue_(1.0)
+            AppKit.NSAnimationContext.endGrouping()
+
+    def mouseDown_(self, event):
+        if self.isEnabled():
+            AppKit.NSAnimationContext.beginGrouping()
+            AppKit.NSAnimationContext.currentContext().setDuration_(0.06)
+            self.animator().setAlphaValue_(0.55)
+            AppKit.NSAnimationContext.endGrouping()
+        objc.super(ModernButton, self).mouseDown_(event)
+        if self.isEnabled():
+            AppKit.NSAnimationContext.beginGrouping()
+            AppKit.NSAnimationContext.currentContext().setDuration_(0.15)
+            self.animator().setAlphaValue_(1.0)
+            AppKit.NSAnimationContext.endGrouping()
+
 
 class Theme:
     """Catppuccin Mocha Color Palette for macOS AppKit."""
@@ -46,10 +92,20 @@ class Theme:
         return cls.get_color(name, alpha).CGColor()
 
     @classmethod
+    def create_button(cls, frame, title="", bg_color=None, text_color=None, border_color=None, corner_radius=7.0, font_size=12.0, bold=False):
+        """Instantiates a ModernButton with pointing hand cursor, hover and click animations."""
+        btn = ModernButton.alloc().initWithFrame_(frame)
+        btn.setTitle_(title)
+        cls.style_button(btn, bg_color=bg_color, text_color=text_color, border_color=border_color, corner_radius=corner_radius, font_size=font_size, bold=bold)
+        return btn
+
+    @classmethod
     def style_button(cls, btn, bg_color=None, text_color=None, border_color=None, corner_radius=7.0, font_size=12.0, bold=False):
         """Applies solid Catppuccin layer-backed styling to NSButton."""
         btn.setWantsLayer_(True)
         btn.setBordered_(False)
+        btn.setFocusRingType_(AppKit.NSFocusRingTypeNone)
+        btn.setButtonType_(AppKit.NSButtonTypeMomentaryPushIn)
         bg = bg_color if bg_color is not None else cls.SURFACE0
         btn.layer().setBackgroundColor_(bg.CGColor() if hasattr(bg, 'CGColor') else bg)
         btn.layer().setCornerRadius_(corner_radius)

@@ -201,8 +201,17 @@ class QtDuckBannerWindow(QWidget):
 
     def _build_pilot_speech_text(self) -> str:
         """Constructs context-aware quote for the pilot speech bubble."""
+        is_self_study = (
+            self.event_data.get("event_type") == "study"
+            or "STUDY" in (self.provider or "").upper()
+            or "STUDIARE" in (self.title or "").upper()
+            or (not self.classroom and "STUDY" in (self.title or "").upper())
+        )
+
         if self.is_late:
             if self.pilot_type == "owl":
+                if is_self_study:
+                    return "🚨 YOU NEED TO STUDY! DO IT! 📖"
                 if self.classroom:
                     return f"🚨 CLASS STARTED IN {self.classroom.upper()}! SPRINT!"
                 return "🚨 PROFESSOR IS STARTING! YOU'RE LATE!"
@@ -220,6 +229,8 @@ class QtDuckBannerWindow(QWidget):
                 return "QUAAK! 🚨 YOU ARE LATE! RUN!"
         else:
             if self.pilot_type == "owl":
+                if is_self_study:
+                    return "Time to study! You need to study, do it! 📖"
                 if self.classroom:
                     return f"Class in {self.classroom} soon! 📚"
                 return "Class starting soon! 🦉"
@@ -240,6 +251,12 @@ class QtDuckBannerWindow(QWidget):
         countdown_text = "⏰ Upcoming Alert"
         is_urgent = False
         mode_icon = MODE_ICONS.get(self.transport_mode, "🚆")
+        is_self_study = (
+            self.event_data.get("event_type") == "study"
+            or "STUDY" in (self.provider or "").upper()
+            or "STUDIARE" in (self.title or "").upper()
+            or (not self.classroom and "STUDY" in (self.title or "").upper())
+        )
 
         if self.start_time:
             now = datetime.now().astimezone()
@@ -265,7 +282,18 @@ class QtDuckBannerWindow(QWidget):
             elif diff > 0:
                 mins = int(diff // 60)
                 secs = int(diff % 60)
-                if self.classroom:
+                if is_self_study:
+                    if mins >= 15:
+                        countdown_text = f"📖 In {mins}m • Study Time"
+                    elif mins >= 5:
+                        countdown_text = f"⏳ In {mins}m • Open Books"
+                    elif mins >= 1:
+                        countdown_text = f"⚡ In {mins}m • Time to Study!"
+                        is_urgent = True
+                    else:
+                        countdown_text = f"⏳ In {secs}s • Study Starting!"
+                        is_urgent = True
+                elif self.classroom:
                     if mins >= 10:
                         countdown_text = f"🎓 Lesson in {mins}m • {self.classroom}"
                     elif mins >= 1:
@@ -295,7 +323,12 @@ class QtDuckBannerWindow(QWidget):
                         is_urgent = True
             elif diff > -1800:
                 late_mins = abs(int(diff // 60))
-                countdown_text = f"🔴 LATE BY {late_mins}m • IN PROGRESS" if late_mins > 0 else "🔴 IN PROGRESS NOW"
+                if self.pilot_type == "owl" and is_self_study:
+                    countdown_text = f"🚨 STUDY OVERDUE BY {late_mins}m • DO IT!" if late_mins > 0 else "📖 TIME TO STUDY • DO IT!"
+                elif self.classroom:
+                    countdown_text = f"🔴 LATE BY {late_mins}m • {self.classroom}" if late_mins > 0 else f"🔴 CLASS STARTED • {self.classroom}"
+                else:
+                    countdown_text = f"🔴 LATE BY {late_mins}m • IN PROGRESS" if late_mins > 0 else "🔴 IN PROGRESS NOW"
                 is_urgent = True
 
         self._cached_countdown_text = countdown_text
@@ -553,14 +586,30 @@ class QtDuckBannerWindow(QWidget):
         self.pressed_button = None
         self.update()
 
+        meeting_id = str(self.event_data.get("id") or self.event_data.get("uid") or "")
+
         if clicked == "close" and rects["close_hit"].contains(pos):
+            try:
+                from core.services.state_store import banner_history_store
+                banner_history_store.record_action(meeting_id, "dismissed")
+            except Exception:
+                pass
             self._dismiss()
         elif clicked == "action" and rects["action"].contains(pos):
+            try:
+                from core.services.state_store import banner_history_store
+                banner_history_store.record_action(meeting_id, "action_clicked")
+            except Exception:
+                pass
             if self.has_real_url:
                 webbrowser.open(self.action_url)
             self._dismiss()
         elif clicked == "arrived" and rects["arrived"].contains(pos):
-            meeting_id = self.event_data.get("id")
+            try:
+                from core.services.state_store import banner_history_store
+                banner_history_store.record_action(meeting_id, "arrived")
+            except Exception:
+                pass
             if meeting_id:
                 try:
                     from core.services.event_bus import event_bus
@@ -569,8 +618,12 @@ class QtDuckBannerWindow(QWidget):
                     pass
             self._dismiss()
         elif clicked == "snooze1" and rects["snooze1"].contains(pos):
+            try:
+                from core.services.state_store import banner_history_store
+                banner_history_store.record_action(meeting_id, "snoozed" if self.reminder_stage != 0 else "arrived")
+            except Exception:
+                pass
             if self.reminder_stage == 0:
-                meeting_id = self.event_data.get("id")
                 if meeting_id:
                     try:
                         from core.services.event_bus import event_bus
@@ -585,7 +638,11 @@ class QtDuckBannerWindow(QWidget):
                     pass
             self._dismiss()
         elif clicked == "snooze2" and rects["snooze2"].contains(pos):
-            meeting_id = self.event_data.get("id")
+            try:
+                from core.services.state_store import banner_history_store
+                banner_history_store.record_action(meeting_id, "arrived")
+            except Exception:
+                pass
             if meeting_id:
                 try:
                     from core.services.event_bus import event_bus
@@ -594,6 +651,11 @@ class QtDuckBannerWindow(QWidget):
                     pass
             self._dismiss()
         elif clicked == "card" and rects["card"].contains(pos):
+            try:
+                from core.services.state_store import banner_history_store
+                banner_history_store.record_action(meeting_id, "card_clicked")
+            except Exception:
+                pass
             if self.has_real_url:
                 webbrowser.open(self.action_url)
             self._dismiss()

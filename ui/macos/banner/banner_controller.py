@@ -159,6 +159,13 @@ class QuakPitFlyingBanner(AppKit.NSObject):
             threading.Thread(target=_play, daemon=True).start()
 
     def trigger_action(self) -> None:
+        m_id = str(self.meeting_data.get("id") or self.meeting_data.get("uid") or "")
+        try:
+            from core.services.state_store import banner_history_store
+            banner_history_store.record_action(m_id, "action_clicked")
+        except Exception:
+            pass
+
         if self.meeting_data.get("is_update_banner"):
             from core.services.updater_service import updater_service
             updater_service.download_and_install_update(background=True)
@@ -169,6 +176,7 @@ class QuakPitFlyingBanner(AppKit.NSObject):
     def trigger_arrived(self) -> None:
         try:
             from core.services.reminder_engine import reminder_engine
+            from core.services.state_store import banner_history_store
             from core.domain.models import Meeting
             if isinstance(self.meeting_data, Meeting):
                 m_id = self.meeting_data.id
@@ -178,11 +186,19 @@ class QuakPitFlyingBanner(AppKit.NSObject):
                 time_str = m_start.strftime("%Y%m%d%H%M") if hasattr(m_start, "strftime") else "000000000000"
                 m_id = f"{m_title}_{time_str}"
             reminder_engine.mark_arrived(m_id)
+            banner_history_store.record_action(m_id, "arrived")
         except Exception as e:
             logger.error(f"Error marking arrived: {e}")
         self.dismiss()
 
     def trigger_snooze(self, duration_seconds: int = None) -> None:
+        m_id = str(self.meeting_data.get("id") or self.meeting_data.get("uid") or "")
+        try:
+            from core.services.state_store import banner_history_store
+            banner_history_store.record_action(m_id, "snoozed")
+        except Exception:
+            pass
+
         snooze_sec = duration_seconds if duration_seconds else int(config.get("default_snooze_seconds", 120))
         m_copy = dict(self.meeting_data)
         self.dismiss()
@@ -196,6 +212,12 @@ class QuakPitFlyingBanner(AppKit.NSObject):
     def trigger_acknowledge(self) -> None:
         """User explicitly acknowledged the event-time reminder."""
         title = self.meeting_data.get("title", "Event") if isinstance(self.meeting_data, dict) else getattr(self.meeting_data, "title", "Event")
+        m_id = str(self.meeting_data.get("id") or self.meeting_data.get("uid") or "")
+        try:
+            from core.services.state_store import banner_history_store
+            banner_history_store.record_action(m_id, "acknowledged")
+        except Exception:
+            pass
         logger.info(f"User acknowledged reminder for: '{title}'")
         self.dismiss()
 

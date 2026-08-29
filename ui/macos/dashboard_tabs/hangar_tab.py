@@ -13,11 +13,22 @@ class HangarTabController(AppKit.NSObject):
     def init(self):
         self = objc.super(HangarTabController, self).init()
         self.dashboard_controller = None
+        self._cached_view = None
+        self._cached_sig = None
         return self
+
+    @objc.python_method
+    def invalidate_cache(self):
+        self._cached_view = None
+        self._cached_sig = None
 
     @objc.python_method
     def render(self, container, w, h):
         self.dashboard_controller = container
+
+        sig = (round(w), round(h))
+        if self._cached_view is not None and self._cached_sig == sig:
+            return self._cached_view
 
         scroll_view = AppKit.NSScrollView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 0, w, h))
         scroll_view.setHasVerticalScroller_(True)
@@ -97,9 +108,16 @@ class HangarTabController(AppKit.NSObject):
         }
         btn_accent = color_map.get(p_id, Theme.GREEN)
 
-        test_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(w - 180, (h - 38) * 0.5, 160, 38))
-        test_btn.setTitle_("🚀 Test Flight")
-        Theme.style_button(test_btn, bg_color=btn_accent, text_color=Theme.CRUST, border_color=None, corner_radius=8.0, font_size=13.0, bold=True)
+        test_btn = Theme.create_button(
+            AppKit.NSMakeRect(w - 180, (h - 38) * 0.5, 160, 38),
+            title="🚀 Test Flight",
+            bg_color=btn_accent,
+            text_color=Theme.CRUST,
+            border_color=None,
+            corner_radius=8.0,
+            font_size=13.0,
+            bold=True
+        )
         test_btn.setTarget_(self)
         test_btn.setAction_(p_action.__name__.rstrip('_') + ":")
         card.addSubview_(test_btn)

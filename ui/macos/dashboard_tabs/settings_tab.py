@@ -9,9 +9,9 @@ from core.services.updater_service import updater_service
 from core.autostart import is_autostart_enabled, enable_autostart, disable_autostart
 from core.logger import open_log_file, open_log_folder
 try:
-    from ui.macos.theme import Theme
+    from ui.macos.theme import Theme, ModernButton
 except ImportError:
-    from theme import Theme
+    from theme import Theme, ModernButton
 
 class SettingsTabController(AppKit.NSObject):
     def init(self):
@@ -19,7 +19,14 @@ class SettingsTabController(AppKit.NSObject):
         self.dashboard_controller = None
         self.config = None
         self.cached_calendars = []
+        self._cached_view = None
+        self._cached_sig = None
         return self
+
+    @objc.python_method
+    def invalidate_cache(self):
+        self._cached_view = None
+        self._cached_sig = None
 
     @objc.python_method
     def refresh_data(self, force=False):
@@ -31,7 +38,16 @@ class SettingsTabController(AppKit.NSObject):
         self.dashboard_controller = container
         self.config = config
         self.cached_calendars = cached_calendars
-        return self._render_settings_tab(w, h)
+        
+        cals_count = len(cached_calendars or [])
+        sig = (round(w), round(h), cals_count)
+        if self._cached_view is not None and self._cached_sig == sig:
+            return self._cached_view
+
+        view = self._render_settings_tab(w, h)
+        self._cached_view = view
+        self._cached_sig = sig
+        return view
 
     # TAB 3: PREFERENCES & TIMING SETTINGS
     # -------------------------------------------------------------
@@ -218,10 +234,11 @@ class SettingsTabController(AppKit.NSObject):
 
     @objc.python_method
     def _create_pill_chip(self, parent, title, tag, is_checked, action_name, x, y, width=54.0, height=26.0, accent_type="mauve"):
-        """Creates a modern dark pill chip toggle button."""
-        btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(x, y, width, height))
+        """Creates a modern dark pill chip toggle button with pointing hand cursor."""
+        btn = ModernButton.alloc().initWithFrame_(AppKit.NSMakeRect(x, y, width, height))
         btn.setButtonType_(AppKit.NSButtonTypePushOnPushOff)
         btn.setBordered_(False)
+        btn.setFocusRingType_(AppKit.NSFocusRingTypeNone)
         btn.setWantsLayer_(True)
         btn.layer().setCornerRadius_(7.0)
         btn.layer().setMasksToBounds_(True)
@@ -297,26 +314,18 @@ class SettingsTabController(AppKit.NSObject):
         ]
         x_pre = 250.0
         for p_title, p_action, p_w in presets:
-            p_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(x_pre, r0_y - 10, p_w, 26))
-            p_btn.setButtonType_(AppKit.NSButtonTypeMomentaryPushIn)
-            p_btn.setBordered_(False)
-            p_btn.setWantsLayer_(True)
-            p_btn.layer().setCornerRadius_(7.0)
-            p_btn.layer().setBackgroundColor_(AppKit.NSColor.colorWithSRGBRed_green_blue_alpha_(0.18, 0.19, 0.28, 0.9).CGColor())
-            p_btn.layer().setBorderWidth_(1.0)
-            p_btn.layer().setBorderColor_(AppKit.NSColor.colorWithSRGBRed_green_blue_alpha_(0.35, 0.38, 0.52, 0.9).CGColor())
+            p_btn = Theme.create_button(
+                AppKit.NSMakeRect(x_pre, r0_y - 10, p_w, 26),
+                title=p_title,
+                bg_color=AppKit.NSColor.colorWithSRGBRed_green_blue_alpha_(0.18, 0.19, 0.28, 0.9),
+                text_color=AppKit.NSColor.colorWithSRGBRed_green_blue_alpha_(0.85, 0.88, 0.98, 1.0),
+                border_color=AppKit.NSColor.colorWithSRGBRed_green_blue_alpha_(0.35, 0.38, 0.52, 0.9),
+                corner_radius=7.0,
+                font_size=11.5,
+                bold=True
+            )
             p_btn.setTarget_(self)
             p_btn.setAction_(p_action)
-
-            pstyle = AppKit.NSMutableParagraphStyle.alloc().init()
-            pstyle.setAlignment_(AppKit.NSTextAlignmentCenter)
-            attrs = {
-                AppKit.NSFontAttributeName: AppKit.NSFont.boldSystemFontOfSize_(11.5),
-                AppKit.NSForegroundColorAttributeName: AppKit.NSColor.colorWithSRGBRed_green_blue_alpha_(0.85, 0.88, 0.98, 1.0),
-                AppKit.NSParagraphStyleAttributeName: pstyle
-            }
-            attr_str = AppKit.NSAttributedString.alloc().initWithString_attributes_(p_title, attrs)
-            p_btn.setAttributedTitle_(attr_str)
             card.addSubview_(p_btn)
             x_pre += (p_w + 8.0)
 
@@ -326,6 +335,10 @@ class SettingsTabController(AppKit.NSObject):
         r1_y = h - 142.0
         self._add_row_label(card, "📹 Video Meetings", "Alert ahead of meeting start (0m is always on)", r1_y, 220)
 
+        self.meeting_stage_chips = []
+        self.general_stage_chips = []
+        self.travel_stage_chips = []
+
         curr_meeting_stages = set(self.config.get("meeting_reminder_stages", [20, 10, 5, 2, 0]))
         meeting_opts = [(30, "30m"), (20, "20m"), (15, "15m"), (10, "10m"), (5, "5m"), (2, "2m")]
 
@@ -333,7 +346,8 @@ class SettingsTabController(AppKit.NSObject):
         for val, label in meeting_opts:
             btn_w = 58.0
             is_chk = val in curr_meeting_stages
-            self._create_pill_chip(card, label, val, is_chk, "onToggleMeetingStage:", x_btn, r1_y - 10, btn_w, 26, "mauve")
+            chip = self._create_pill_chip(card, label, val, is_chk, "onToggleMeetingStage:", x_btn, r1_y - 10, btn_w, 26, "mauve")
+            self.meeting_stage_chips.append(chip)
             x_btn += (btn_w + 6.0)
 
         self._add_row_divider(card, h - 168.0, w)
@@ -348,7 +362,8 @@ class SettingsTabController(AppKit.NSObject):
         for val, label in meeting_opts:
             btn_w = 58.0
             is_chk = val in curr_general_stages
-            self._create_pill_chip(card, label, val, is_chk, "onToggleGeneralStage:", x_btn, r2_y - 10, btn_w, 26, "blue")
+            chip = self._create_pill_chip(card, label, val, is_chk, "onToggleGeneralStage:", x_btn, r2_y - 10, btn_w, 26, "blue")
+            self.general_stage_chips.append(chip)
             x_btn += (btn_w + 6.0)
 
         self._add_row_divider(card, h - 226.0, w)
@@ -364,7 +379,8 @@ class SettingsTabController(AppKit.NSObject):
         for val, label in travel_opts:
             btn_w = 58.0
             is_chk = val in curr_travel_stages
-            self._create_pill_chip(card, label, val, is_chk, "onToggleTravelStage:", x_btn, r3_y - 10, btn_w, 26, "peach")
+            chip = self._create_pill_chip(card, label, val, is_chk, "onToggleTravelStage:", x_btn, r3_y - 10, btn_w, 26, "peach")
+            self.travel_stage_chips.append(chip)
             x_btn += (btn_w + 6.0)
 
         self._add_row_divider(card, h - 284.0, w)
@@ -421,9 +437,16 @@ class SettingsTabController(AppKit.NSObject):
         self.home_addr_field.setFocusRingType_(AppKit.NSFocusRingTypeNone)
         card.addSubview_(self.home_addr_field)
 
-        self.home_save_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(645, r1_y - 12, 85, 30))
-        self.home_save_btn.setTitle_("💾 Save")
-        Theme.style_button(self.home_save_btn, bg_color=Theme.GREEN, text_color=Theme.CRUST, border_color=None, corner_radius=7.0, font_size=11.5, bold=True)
+        self.home_save_btn = Theme.create_button(
+            AppKit.NSMakeRect(645, r1_y - 12, 85, 30),
+            title="💾 Save",
+            bg_color=Theme.GREEN,
+            text_color=Theme.CRUST,
+            border_color=None,
+            corner_radius=7.0,
+            font_size=11.5,
+            bold=True
+        )
         self.home_save_btn.setTarget_(self)
         self.home_save_btn.setAction_("onSaveHomeAddress:")
         card.addSubview_(self.home_save_btn)
@@ -593,9 +616,16 @@ class SettingsTabController(AppKit.NSObject):
                 self.sound_popup.selectItem_(item)
         card.addSubview_(self.sound_popup)
 
-        play_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(485, r2_y - 12, 120, 28))
-        play_btn.setTitle_("▶ Play Tone")
-        Theme.style_button(play_btn, bg_color=Theme.SAPPHIRE, text_color=Theme.CRUST, border_color=None, corner_radius=7.0, font_size=11.5, bold=True)
+        play_btn = Theme.create_button(
+            AppKit.NSMakeRect(485, r2_y - 12, 120, 28),
+            title="▶ Play Tone",
+            bg_color=Theme.SAPPHIRE,
+            text_color=Theme.CRUST,
+            border_color=None,
+            corner_radius=7.0,
+            font_size=11.5,
+            bold=True
+        )
         play_btn.setTarget_(self)
         play_btn.setAction_("onPlaySoundPreview:")
         card.addSubview_(play_btn)
@@ -685,30 +715,54 @@ class SettingsTabController(AppKit.NSObject):
         btn_w = 170.0
 
         # 4 Sleek Action Buttons
-        open_json_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(18, y, btn_w, 32))
-        open_json_btn.setTitle_("📝 Edit Rules")
-        Theme.style_button(open_json_btn, bg_color=Theme.SURFACE0, text_color=Theme.TEXT, border_color=Theme.SURFACE1, corner_radius=7.0, font_size=12.0)
+        open_json_btn = Theme.create_button(
+            AppKit.NSMakeRect(18, y, btn_w, 32),
+            title="📝 Edit Rules",
+            bg_color=Theme.SURFACE0,
+            text_color=Theme.TEXT,
+            border_color=Theme.SURFACE1,
+            corner_radius=7.0,
+            font_size=12.0
+        )
         open_json_btn.setTarget_(self)
         open_json_btn.setAction_("onOpenConfigEditor:")
         card.addSubview_(open_json_btn)
 
-        reload_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(18 + (btn_w + 12.0) * 1, y, btn_w, 32))
-        reload_btn.setTitle_("🔄 Reload Rules")
-        Theme.style_button(reload_btn, bg_color=Theme.SURFACE0, text_color=Theme.TEXT, border_color=Theme.SURFACE1, corner_radius=7.0, font_size=12.0)
+        reload_btn = Theme.create_button(
+            AppKit.NSMakeRect(18 + (btn_w + 12.0) * 1, y, btn_w, 32),
+            title="🔄 Reload Rules",
+            bg_color=Theme.SURFACE0,
+            text_color=Theme.TEXT,
+            border_color=Theme.SURFACE1,
+            corner_radius=7.0,
+            font_size=12.0
+        )
         reload_btn.setTarget_(self)
         reload_btn.setAction_("onReloadConfig:")
         card.addSubview_(reload_btn)
 
-        view_logs_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(18 + (btn_w + 12.0) * 2, y, btn_w, 32))
-        view_logs_btn.setTitle_("📄 View Logs")
-        Theme.style_button(view_logs_btn, bg_color=Theme.SURFACE0, text_color=Theme.TEXT, border_color=Theme.SURFACE1, corner_radius=7.0, font_size=12.0)
+        view_logs_btn = Theme.create_button(
+            AppKit.NSMakeRect(18 + (btn_w + 12.0) * 2, y, btn_w, 32),
+            title="📄 View Logs",
+            bg_color=Theme.SURFACE0,
+            text_color=Theme.TEXT,
+            border_color=Theme.SURFACE1,
+            corner_radius=7.0,
+            font_size=12.0
+        )
         view_logs_btn.setTarget_(self)
         view_logs_btn.setAction_("onOpenLogs:")
         card.addSubview_(view_logs_btn)
 
-        folder_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(18 + (btn_w + 12.0) * 3, y, btn_w, 32))
-        folder_btn.setTitle_("📂 Log Folder")
-        Theme.style_button(folder_btn, bg_color=Theme.SURFACE0, text_color=Theme.TEXT, border_color=Theme.SURFACE1, corner_radius=7.0, font_size=12.0)
+        folder_btn = Theme.create_button(
+            AppKit.NSMakeRect(18 + (btn_w + 12.0) * 3, y, btn_w, 32),
+            title="📂 Log Folder",
+            bg_color=Theme.SURFACE0,
+            text_color=Theme.TEXT,
+            border_color=Theme.SURFACE1,
+            corner_radius=7.0,
+            font_size=12.0
+        )
         folder_btn.setTarget_(self)
         folder_btn.setAction_("onOpenLogFolder:")
         card.addSubview_(folder_btn)
@@ -739,18 +793,31 @@ class SettingsTabController(AppKit.NSObject):
         btn_w = 180.0
 
         # Check for updates button
-        check_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(18, y, btn_w, 32))
-        check_btn.setTitle_("🔍 Check for Updates")
-        Theme.style_button(check_btn, bg_color=Theme.SURFACE0, text_color=Theme.TEXT, border_color=Theme.SURFACE1, corner_radius=7.0, font_size=12.0)
+        check_btn = Theme.create_button(
+            AppKit.NSMakeRect(18, y, btn_w, 32),
+            title="🔍 Check for Updates",
+            bg_color=Theme.SURFACE0,
+            text_color=Theme.TEXT,
+            border_color=Theme.SURFACE1,
+            corner_radius=7.0,
+            font_size=12.0
+        )
         check_btn.setTarget_(self)
         check_btn.setAction_("onCheckForUpdatesMac:")
         card.addSubview_(check_btn)
         self.mac_check_update_btn = check_btn
 
         # Install update button (hidden by default unless update available)
-        install_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(18 + btn_w + 14.0, y, 220, 32))
-        install_btn.setTitle_("⚡ Install Update Now")
-        Theme.style_button(install_btn, bg_color=Theme.BLUE, text_color=Theme.CRUST, border_color=None, corner_radius=7.0, font_size=12.0, bold=True)
+        install_btn = Theme.create_button(
+            AppKit.NSMakeRect(18 + btn_w + 14.0, y, 220, 32),
+            title="⚡ Install Update Now",
+            bg_color=Theme.BLUE,
+            text_color=Theme.CRUST,
+            border_color=None,
+            corner_radius=7.0,
+            font_size=12.0,
+            bold=True
+        )
         install_btn.setTarget_(self)
         install_btn.setAction_("onInstallUpdateMac:")
         install_btn.setHidden_(True)
@@ -860,27 +927,51 @@ class SettingsTabController(AppKit.NSObject):
             self.mac_install_update_btn.setEnabled_(False)
         updater_service.download_and_install_update(background=True)
 
+    @objc.python_method
+    def _refresh_stage_chips_ui(self):
+        """Refreshes all stage pill toggle chips to match current config."""
+        meeting_stages = set(self.config.get("meeting_reminder_stages", []))
+        for btn in getattr(self, "meeting_stage_chips", []):
+            is_on = btn.tag() in meeting_stages
+            btn.setState_(AppKit.NSControlStateValueOn if is_on else AppKit.NSControlStateValueOff)
+            self._update_pill_chip_style(btn, is_on, "mauve")
+
+        general_stages = set(self.config.get("general_reminder_stages", []))
+        for btn in getattr(self, "general_stage_chips", []):
+            is_on = btn.tag() in general_stages
+            btn.setState_(AppKit.NSControlStateValueOn if is_on else AppKit.NSControlStateValueOff)
+            self._update_pill_chip_style(btn, is_on, "blue")
+
+        travel_stages = set(self.config.get("travel_reminder_stages", []))
+        for btn in getattr(self, "travel_stage_chips", []):
+            is_on = btn.tag() in travel_stages
+            btn.setState_(AppKit.NSControlStateValueOn if is_on else AppKit.NSControlStateValueOff)
+            self._update_pill_chip_style(btn, is_on, "peach")
+
     # Setting Handlers
     @objc.IBAction
     def onApplyPresetRelaxed_(self, sender):
         self.config.set("meeting_reminder_stages", [15, 5, 0])
         self.config.set("general_reminder_stages", [15, 5, 0])
         self.config.set("travel_reminder_stages", [30, 15, 0])
-        self.refresh_data(force=True)
+        self._refresh_stage_chips_ui()
+        self.refresh_data(force=False)
 
     @objc.IBAction
     def onApplyPresetStandard_(self, sender):
         self.config.set("meeting_reminder_stages", [20, 10, 5, 2, 0])
         self.config.set("general_reminder_stages", [20, 10, 5, 2, 0])
         self.config.set("travel_reminder_stages", [45, 30, 15, 5, 2, 0])
-        self.refresh_data(force=True)
+        self._refresh_stage_chips_ui()
+        self.refresh_data(force=False)
 
     @objc.IBAction
     def onApplyPresetIntensive_(self, sender):
         self.config.set("meeting_reminder_stages", [30, 20, 15, 10, 5, 2, 0])
         self.config.set("general_reminder_stages", [30, 20, 15, 10, 5, 2, 0])
         self.config.set("travel_reminder_stages", [60, 45, 30, 15, 5, 2, 0])
-        self.refresh_data(force=True)
+        self._refresh_stage_chips_ui()
+        self.refresh_data(force=False)
 
     @objc.IBAction
     def onToggleMeetingStage_(self, sender):
