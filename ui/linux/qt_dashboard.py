@@ -389,9 +389,9 @@ class QtFlightDeckWindow(QMainWindow):
             row_layout = QVBoxLayout()
             row_layout.setSpacing(4)
             lbl = QLabel(f"<b>{title}</b>", timing_card)
-            lbl.setStyleSheet("color: #e2e8f0; font-size: 12px;")
+            lbl.setStyleSheet("color: #cdd6f4; font-size: 12px;")
             desc_lbl = QLabel(desc, timing_card)
-            desc_lbl.setStyleSheet("color: #94a3b8; font-size: 11px;")
+            desc_lbl.setStyleSheet("color: #a6adc8; font-size: 11px;")
             row_layout.addWidget(lbl)
             row_layout.addWidget(desc_lbl)
 
@@ -458,7 +458,7 @@ class QtFlightDeckWindow(QMainWindow):
 
         # 1. Starting Address Row
         addr_row_lbl = QLabel("<b>🏠 Starting Address (Origin)</b>", addr_card)
-        addr_row_lbl.setStyleSheet("color: #e2e8f0; font-size: 12px;")
+        addr_row_lbl.setStyleSheet("color: #cdd6f4; font-size: 12px;")
         ac_layout.addWidget(addr_row_lbl)
 
         entry_row = QHBoxLayout()
@@ -482,7 +482,7 @@ class QtFlightDeckWindow(QMainWindow):
 
         # 2. Preferred Transport Mode
         mode_lbl = QLabel("<b>🚦 Transport Mode for Route Calculation</b>", addr_card)
-        mode_lbl.setStyleSheet("color: #e2e8f0; font-size: 12px; margin-top: 4px;")
+        mode_lbl.setStyleSheet("color: #cdd6f4; font-size: 12px; margin-top: 4px;")
         ac_layout.addWidget(mode_lbl)
 
         mode_row = QHBoxLayout()
@@ -502,10 +502,10 @@ class QtFlightDeckWindow(QMainWindow):
                 if k == active_key:
                     b.setStyleSheet("""
                         QPushButton {
-                            background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0284c7, stop:1 #2563eb);
-                            color: #ffffff;
+                            background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #74c7ec, stop:1 #89b4fa);
+                            color: #cdd6f4;
                             font-weight: bold;
-                            border: 1px solid #38bdf8;
+                            border: 1px solid #89b4fa;
                             border-radius: 8px;
                             padding: 8px 12px;
                         }
@@ -514,14 +514,14 @@ class QtFlightDeckWindow(QMainWindow):
                     b.setStyleSheet("""
                         QPushButton {
                             background: rgba(255, 255, 255, 0.05);
-                            color: #cbd5e1;
+                            color: #bac2de;
                             border: 1px solid rgba(255, 255, 255, 0.1);
                             border-radius: 8px;
                             padding: 8px 12px;
                         }
                         QPushButton:hover {
                             background: rgba(255, 255, 255, 0.10);
-                            color: #f8fafc;
+                            color: #cdd6f4;
                         }
                     """)
 
@@ -545,7 +545,7 @@ class QtFlightDeckWindow(QMainWindow):
         # 3. Departure Buffer Margin
         buf_row = QHBoxLayout()
         buf_lbl = QLabel("<b>⏳ Departure Buffer Margin</b> (station transit / parking time):", addr_card)
-        buf_lbl.setStyleSheet("color: #e2e8f0; font-size: 12px;")
+        buf_lbl.setStyleSheet("color: #cdd6f4; font-size: 12px;")
 
         buf_combo = QComboBox(addr_card)
         buf_combo.addItems(["5 minutes", "10 minutes (Recommended)", "15 minutes", "20 minutes"])
@@ -569,18 +569,18 @@ class QtFlightDeckWindow(QMainWindow):
 
         # 4. Live Route Simulation & Banner Test Row
         sim_box = QFrame(addr_card)
-        sim_box.setStyleSheet("background: rgba(56, 189, 248, 0.06); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 10px; padding: 6px;")
+        sim_box.setStyleSheet("background: rgba(137, 180, 250, 0.06); border: 1px solid rgba(137, 180, 250, 0.2); border-radius: 10px; padding: 6px;")
         sim_layout = QVBoxLayout(sim_box)
         sim_layout.setContentsMargins(10, 8, 10, 8)
         sim_layout.setSpacing(6)
 
         sim_title = QLabel("🧪 Live Route & Departure Banner Test (Politecnico di Torino)", sim_box)
-        sim_title.setStyleSheet("color: #38bdf8; font-weight: bold; font-size: 12px; border: none;")
+        sim_title.setStyleSheet("color: #89b4fa; font-weight: bold; font-size: 12px; border: none;")
         sim_layout.addWidget(sim_title)
 
         sim_act_row = QHBoxLayout()
         sim_info_lbl = QLabel("Calculate real-time transit & launch a live on-screen flight banner:", sim_box)
-        sim_info_lbl.setStyleSheet("color: #94a3b8; font-size: 11px; border: none;")
+        sim_info_lbl.setStyleSheet("color: #a6adc8; font-size: 11px; border: none;")
         sim_act_row.addWidget(sim_info_lbl, stretch=1)
 
         def _test_polito_banner():
@@ -691,14 +691,14 @@ class QtFlightDeckWindow(QMainWindow):
         update_icon_lbl.setStyleSheet("font-size: 22px; border: none;")
         status_header_row.addWidget(update_icon_lbl)
 
-        update_status_lbl = QLabel(f"QuakMeeting <b>v{updater_service.current_version}</b>  •  <span style='color:#94a3b8;'>Ready</span>", update_status_box)
-        update_status_lbl.setStyleSheet("color: #f1f5f9; font-size: 13px; border: none;")
+        update_status_lbl = QLabel(f"QuakMeeting <b>v{updater_service.current_version}</b>  •  <span style='color:#a6adc8;'>Ready</span>", update_status_box)
+        update_status_lbl.setStyleSheet("color: #cdd6f4; font-size: 13px; border: none;")
         status_header_row.addWidget(update_status_lbl, stretch=1)
         usb_layout.addLayout(status_header_row)
 
         changelog_lbl = QLabel("", update_status_box)
         changelog_lbl.setWordWrap(True)
-        changelog_lbl.setStyleSheet("color: #cbd5e1; font-size: 11px; border: none; padding-left: 2px;")
+        changelog_lbl.setStyleSheet("color: #bac2de; font-size: 11px; border: none; padding-left: 2px;")
         changelog_lbl.setVisible(False)
         usb_layout.addWidget(changelog_lbl)
 
@@ -714,8 +714,8 @@ class QtFlightDeckWindow(QMainWindow):
         install_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         install_btn.setStyleSheet("""
             QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0284c7, stop:1 #2563eb);
-                color: #ffffff;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #74c7ec, stop:1 #89b4fa);
+                color: #cdd6f4;
                 font-weight: bold;
                 font-size: 12px;
                 border-radius: 8px;
@@ -723,11 +723,11 @@ class QtFlightDeckWindow(QMainWindow):
                 border: none;
             }
             QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #38bdf8, stop:1 #3b82f6);
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #89b4fa, stop:1 #89b4fa);
             }
             QPushButton:disabled {
                 background: rgba(255, 255, 255, 0.08);
-                color: #64748b;
+                color: #6c7086;
             }
         """)
         install_btn.setVisible(False)
@@ -763,7 +763,7 @@ class QtFlightDeckWindow(QMainWindow):
             up_btn.start_spinning("Checking...")
             update_status_box.set_scanning(True)
             update_icon_lbl.setText("📡")
-            update_status_lbl.setText("<span style='color:#38bdf8;'><b>Scanning GitHub repository for releases...</b></span>")
+            update_status_lbl.setText("<span style='color:#89b4fa;'><b>Scanning GitHub repository for releases...</b></span>")
             updater_service.check_for_updates(background=True)
 
         up_btn.clicked.connect(_on_check_clicked)
@@ -773,7 +773,7 @@ class QtFlightDeckWindow(QMainWindow):
             v_name = tag_name or version or "New Version"
             update_status_box.set_update_available(v_name)
             update_icon_lbl.setText("🚀")
-            update_status_lbl.setText(f"<b style='color:#38bdf8;'>Update Available: {v_name}</b>  <span style='color:#64748b;'>(Current: v{updater_service.current_version})</span>")
+            update_status_lbl.setText(f"<b style='color:#89b4fa;'>Update Available: {v_name}</b>  <span style='color:#6c7086;'>(Current: v{updater_service.current_version})</span>")
             if body:
                 summary = body.strip().split("\n")[0][:120]
                 changelog_lbl.setText(f"<i>✨ {summary}</i>")
@@ -787,18 +787,18 @@ class QtFlightDeckWindow(QMainWindow):
                 if error:
                     up_btn.stop_spinning("❌ Check Error", is_success=False, reset_delay_ms=2500)
                     update_icon_lbl.setText("⚠️")
-                    update_status_lbl.setText(f"<span style='color:#f87171;'>Update check error: {error[:60]}</span>")
+                    update_status_lbl.setText(f"<span style='color:#f38ba8;'>Update check error: {error[:60]}</span>")
                 else:
                     up_btn.stop_spinning("✨ Up to date", is_success=True, reset_delay_ms=2500)
                     update_status_box.set_up_to_date()
                     update_icon_lbl.setText("✨")
-                    update_status_lbl.setText(f"<span style='color:#4ade80;'><b>You are on the latest version!</b></span>  <b>v{current_version or updater_service.current_version}</b>")
+                    update_status_lbl.setText(f"<span style='color:#a6e3a1;'><b>You are on the latest version!</b></span>  <b>v{current_version or updater_service.current_version}</b>")
                 install_btn.setVisible(False)
                 changelog_lbl.setVisible(False)
 
         def _on_downloading(file_name=None, **k):
             update_icon_lbl.setText("📥")
-            update_status_lbl.setText(f"<b>Downloading update package...</b> <span style='color:#94a3b8;'>({file_name or ''})</span>")
+            update_status_lbl.setText(f"<b>Downloading update package...</b> <span style='color:#a6adc8;'>({file_name or ''})</span>")
             install_btn.setVisible(False)
             updating_hud.start_downloading(file_name or "")
 
@@ -812,13 +812,13 @@ class QtFlightDeckWindow(QMainWindow):
 
         def _on_installed(**k):
             update_icon_lbl.setText("🎉")
-            update_status_lbl.setText("<b style='color:#4ade80;'>Update installed successfully!</b> Relaunching QuakMeeting...")
+            update_status_lbl.setText("<b style='color:#a6e3a1;'>Update installed successfully!</b> Relaunching QuakMeeting...")
             install_btn.setVisible(False)
             updating_hud.set_installed()
 
         def _on_failed(error=None, **k):
             update_icon_lbl.setText("❌")
-            update_status_lbl.setText(f"<span style='color:#f87171;'>Installation failed: {error or 'Unknown error'}</span>")
+            update_status_lbl.setText(f"<span style='color:#f38ba8;'>Installation failed: {error or 'Unknown error'}</span>")
             install_btn.setText("🔄 Try Again")
             install_btn.setEnabled(True)
             install_btn.setVisible(True)
@@ -903,7 +903,7 @@ class QtFlightDeckWindow(QMainWindow):
             e_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
             e_msg = QLabel("No Meetings Scheduled for Today\nEnjoy your clear agenda or add events to your calendar.")
-            e_msg.setStyleSheet("font-size: 15px; font-weight: bold; color: #cbd5e1; border: none;")
+            e_msg.setStyleSheet("font-size: 15px; font-weight: bold; color: #bac2de; border: none;")
             e_msg.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
             empty_box.addWidget(e_icon)
@@ -939,11 +939,11 @@ class QtFlightDeckWindow(QMainWindow):
                 t_l = QLabel(m.title, card)
                 t_l.setObjectName("CardTitle")
 
-                sub_txt = f"<b style='color:#38bdf8;'>{st} - {et}{dur_str}</b>  •  {m.provider}"
+                sub_txt = f"<b style='color:#89b4fa;'>{st} - {et}{dur_str}</b>  •  {m.provider}"
                 if m.is_travel and m.departure_time:
-                    sub_txt += f"  •  <span style='color:#fbbf24;'>🚗 Leave at {m.departure_time.astimezone().strftime('%H:%M')}</span>"
+                    sub_txt += f"  •  <span style='color:#f9e2af;'>🚗 Leave at {m.departure_time.astimezone().strftime('%H:%M')}</span>"
                 if m.classroom:
-                    sub_txt += f"  •  <span style='color:#c084fc;'>🏫 {m.classroom}</span>"
+                    sub_txt += f"  •  <span style='color:#cba6f7;'>🏫 {m.classroom}</span>"
 
                 s_l = QLabel(sub_txt, card)
                 s_l.setObjectName("CardSub")

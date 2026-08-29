@@ -319,13 +319,13 @@ class QtUpdateBannerWindow(QWidget):
         pill_x = cx + 14.0
 
         p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(QColor(30, 34, 50, 255))
+        p.setBrush(Theme.SURFACE0)
         p.drawRoundedRect(QRectF(pill_x, py, pill_text_w, pill_h), 11, 11)
         # dot
         p.setBrush(dot_color)
         p.drawEllipse(QRectF(pill_x + 8, py + 7, 8, 8))
         # text
-        p.setPen(QColor(200, 210, 230))
+        p.setPen(Theme.TEXT)
         p.drawText(QRectF(pill_x + 22, py, pill_text_w - 22, pill_h),
                    Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
                    prov_label)
@@ -333,8 +333,8 @@ class QtUpdateBannerWindow(QWidget):
         # Status pill (LATE / IN PROGRESS)
         if self.is_late:
             status_text = "🔴 LATE • IN PROGRESS"
-            status_bg   = QColor(180, 30, 30, 220)
-            status_fg   = QColor(255, 200, 200)
+            status_bg   = Theme.get_color('RED', 220)
+            status_fg   = Theme.CRUST
         else:
             status_text = ""
             status_bg   = QColor(0, 0, 0, 0)
@@ -355,14 +355,14 @@ class QtUpdateBannerWindow(QWidget):
         cr = self._close_rect()
         hover_close = self._hover == "close"
         p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(QColor(239, 68, 68, 200) if hover_close else QColor(255, 255, 255, 22))
+        p.setBrush(Theme.get_color('RED', 200) if hover_close else Theme.get_color('TEXT', 22))
         p.drawEllipse(cr)
-        p.setPen(QColor(255, 255, 255, 220) if hover_close else QColor(150, 160, 180))
+        p.setPen(Theme.get_color('TEXT', 220) if hover_close else Theme.SUBTEXT0)
         p.setFont(QFont("Arial", 10, QFont.Weight.Bold))
         p.drawText(cr, Qt.AlignmentFlag.AlignCenter, "✕")
 
         # ── Row 2: Title ──
-        p.setPen(QColor(248, 250, 252))
+        p.setPen(Theme.TEXT)
         tf = QFont("Inter, Arial", 15)
         tf.setWeight(QFont.Weight.Bold)
         p.setFont(tf)
@@ -382,7 +382,7 @@ class QtUpdateBannerWindow(QWidget):
         elif self.classroom:
             sub_parts.append(f"🏫 {self.classroom}")
         sub_text = "  •  ".join(sub_parts) if sub_parts else self.provider
-        p.setPen(QColor(148, 163, 184))
+        p.setPen(Theme.SUBTEXT0)
         sf = QFont("Inter, Arial", 10)
         p.setFont(sf)
         p.drawText(QRectF(cx + 14, cy + 68, CARD_W - 28, 20),
@@ -422,10 +422,10 @@ class QtUpdateBannerWindow(QWidget):
             g = QLinearGradient(jr.topLeft(), jr.topRight())
             if hover_join:
                 g.setColorAt(0, Theme.BLUE)
-                g.setColorAt(1, QColor(37, 99, 235, 255))
+                g.setColorAt(1, Theme.MAUVE)
             else:
-                g.setColorAt(0, QColor(2, 132, 199, 255))
-                g.setColorAt(1, QColor(29, 78, 216, 255))
+                g.setColorAt(0, Theme.SAPPHIRE)
+                g.setColorAt(1, Theme.BLUE)
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(g)
             p.drawRoundedRect(jr, 10, 10)
@@ -436,10 +436,10 @@ class QtUpdateBannerWindow(QWidget):
             g = QLinearGradient(jr.topLeft(), jr.topRight())
             if hover_join:
                 g.setColorAt(0, Theme.BLUE)
-                g.setColorAt(1, QColor(14, 116, 144, 255))
+                g.setColorAt(1, Theme.TEAL)
             else:
-                g.setColorAt(0, QColor(14, 116, 144, 255))
-                g.setColorAt(1, QColor(8, 47, 73, 255))
+                g.setColorAt(0, Theme.TEAL)
+                g.setColorAt(1, Theme.GREEN)
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(g)
             p.drawRoundedRect(jr, 10, 10)
@@ -449,15 +449,15 @@ class QtUpdateBannerWindow(QWidget):
             # JOIN styling (yellow/amber gradient, black text)
             g = QLinearGradient(jr.topLeft(), jr.topRight())
             if hover_join:
-                g.setColorAt(0, QColor(253, 230, 70))
-                g.setColorAt(1, QColor(251, 146, 60))
+                g.setColorAt(0, Theme.YELLOW)
+                g.setColorAt(1, Theme.PEACH)
             else:
-                g.setColorAt(0, QColor(234, 179, 8))
-                g.setColorAt(1, QColor(245, 158, 11))
+                g.setColorAt(0, Theme.YELLOW)
+                g.setColorAt(1, Theme.PEACH)
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(g)
             p.drawRoundedRect(jr, 10, 10)
-            p.setPen(QColor(15, 15, 15))
+            p.setPen(Theme.CRUST)
             display_text = self.btn_text
 
         bf = QFont("Inter, Arial", 11)
@@ -472,9 +472,9 @@ class QtUpdateBannerWindow(QWidget):
             sr = self._snooze_rect()
             hover_snz = self._hover == "snooze"
             p.setPen(Qt.PenStyle.NoPen)
-            p.setBrush(QColor(255, 255, 255, 30) if hover_snz else QColor(30, 34, 50, 255))
+            p.setBrush(Theme.get_color('SURFACE1', 150) if hover_snz else Theme.SURFACE0)
             p.drawRoundedRect(sr, 10, 10)
-            p.setPen(QColor(255, 255, 255, 220) if hover_snz else QColor(148, 163, 184))
+            p.setPen(Theme.get_color('TEXT', 220) if hover_snz else Theme.SUBTEXT0)
             p.setFont(mf)
             p.drawText(sr, Qt.AlignmentFlag.AlignCenter, "✕ Later")
         else:
@@ -483,9 +483,9 @@ class QtUpdateBannerWindow(QWidget):
                 ar = self._arrive_rect()
                 hover_arr = self._hover == "arrive"
                 p.setPen(Qt.PenStyle.NoPen)
-                p.setBrush(QColor(34, 197, 94, 180) if hover_arr else QColor(30, 34, 50, 255))
+                p.setBrush(Theme.get_color('GREEN', 180) if hover_arr else Theme.SURFACE0)
                 p.drawRoundedRect(ar, 10, 10)
-                p.setPen(QColor(255, 255, 255, 220) if hover_arr else QColor(180, 200, 230))
+                p.setPen(Theme.get_color('TEXT', 220) if hover_arr else Theme.SUBTEXT1)
                 p.setFont(mf)
                 p.drawText(ar, Qt.AlignmentFlag.AlignCenter, "📍 I'm Here")
 
@@ -494,22 +494,22 @@ class QtUpdateBannerWindow(QWidget):
             hover_snz = self._hover == "snooze"
             p.setPen(Qt.PenStyle.NoPen)
             if self.reminder_stage == 0:
-                p.setBrush(QColor(14, 116, 144, 220) if hover_snz else QColor(15, 23, 42, 255))
+                p.setBrush(Theme.get_color('TEAL', 220) if hover_snz else Theme.MANTLE)
                 p.drawRoundedRect(sr, 10, 10)
-                p.setPen(QColor(255, 255, 255, 240) if hover_snz else Theme.BLUE)
+                p.setPen(Theme.get_color('TEXT', 240) if hover_snz else Theme.BLUE)
                 p.setFont(mf)
                 p.drawText(sr, Qt.AlignmentFlag.AlignCenter, "✅ Got it")
             else:
-                p.setBrush(QColor(99, 102, 241, 180) if hover_snz else QColor(30, 34, 50, 255))
+                p.setBrush(Theme.get_color('MAUVE', 180) if hover_snz else Theme.SURFACE0)
                 p.drawRoundedRect(sr, 10, 10)
-                p.setPen(QColor(255, 255, 255, 220) if hover_snz else QColor(180, 200, 230))
+                p.setPen(Theme.get_color('TEXT', 220) if hover_snz else Theme.SUBTEXT1)
                 p.setFont(mf)
                 p.drawText(sr, Qt.AlignmentFlag.AlignCenter, "💤 Snooze 2m")
 
     # ── Tow cable ─────────────────────────────────────────────────────────────
 
     def _draw_cable(self, p: QPainter):
-        pen = QPen(QColor(180, 200, 240, 160), 1.4)
+        pen = QPen(Theme.get_color('TEXT', 160), 1.4)
         p.setPen(pen)
         p.drawLine(
             int(CARD_X + CARD_W), int(CARD_Y + CARD_H // 2),
@@ -532,7 +532,7 @@ class QtUpdateBannerWindow(QWidget):
 
     def _draw_bubble(self, p: QPainter, px: float, py: float):
         is_late_q = self.is_late or "LATE" in self.quote_text or "RUN" in self.quote_text
-        bg = QColor(200, 30, 30, 230) if is_late_q else QColor(16, 18, 28, 220)
+        bg = Theme.get_color('RED', 230) if is_late_q else Theme.get_color('MANTLE', 220)
 
         f = QFont("Inter, Arial", 8)
         f.setWeight(QFont.Weight.ExtraBold)

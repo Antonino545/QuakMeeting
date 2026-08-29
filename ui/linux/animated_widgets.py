@@ -216,9 +216,9 @@ class AnimatedUpdateCard(QFrame):
             w = float(self.width())
             sweep_x = self._scan_phase * w
             sweep_grad = QLinearGradient(sweep_x - 80, 0, sweep_x + 80, 0)
-            sweep_grad.setColorAt(0.0, QColor(56, 189, 248, 0))
-            sweep_grad.setColorAt(0.5, QColor(56, 189, 248, 240))
-            sweep_grad.setColorAt(1.0, QColor(56, 189, 248, 0))
+            sweep_grad.setColorAt(0.0, Theme.get_color('BLUE', 0))
+            sweep_grad.setColorAt(0.5, Theme.get_color('BLUE', 240))
+            sweep_grad.setColorAt(1.0, Theme.get_color('BLUE', 0))
 
             painter.setPen(QPen(sweep_grad, 2.5))
             painter.drawLine(int(max(0, sweep_x - 80)), 1, int(min(w, sweep_x + 80)), 1)
@@ -341,21 +341,21 @@ class UpdatingHUDWidget(QFrame):
 
             if i < self._phase_index:
                 # Completed step (emerald green)
-                bg_col = QColor(16, 185, 129, 45)
-                border_col = QColor(16, 185, 129, 140)
-                text_col = QColor(52, 211, 153)
+                bg_col = Theme.get_color('GREEN', 45)
+                border_col = Theme.get_color('GREEN', 140)
+                text_col = Theme.GREEN
                 label = "✓ " + name.split(" ", 1)[-1]
             elif i == self._phase_index:
                 # Active step (electric cyan with breathing pulse)
                 pulse = 0.5 + 0.5 * math.sin(self._tick * 0.15)
-                bg_col = QColor(2, 132, 199, int(60 + pulse * 45))
-                border_col = QColor(56, 189, 248, int(160 + pulse * 95))
+                bg_col = Theme.get_color('SAPPHIRE', int(60 + pulse * 45))
+                border_col = Theme.get_color('BLUE', int(160 + pulse * 95))
                 text_col = Theme.TEXT
                 label = name
             else:
                 # Pending step (dim grey)
-                bg_col = QColor(255, 255, 255, 10)
-                border_col = QColor(255, 255, 255, 25)
+                bg_col = Theme.get_color('TEXT', 10)
+                border_col = Theme.get_color('TEXT', 25)
                 text_col = Theme.SUBTEXT0
                 label = name
 
@@ -375,8 +375,8 @@ class UpdatingHUDWidget(QFrame):
         track_rect = QRectF(track_x, track_y, track_w, track_h)
 
         # Background track
-        painter.setPen(QPen(QColor(56, 189, 248, 60), 1.0))
-        painter.setBrush(QColor(15, 23, 42, 230))
+        painter.setPen(QPen(Theme.get_color('BLUE', 60), 1.0))
+        painter.setBrush(Theme.get_color('MANTLE', 230))
         painter.drawRoundedRect(track_rect, 8.0, 8.0)
 
         # Filled Chunk
@@ -386,9 +386,9 @@ class UpdatingHUDWidget(QFrame):
             fill_rect = QRectF(track_x + 1.0, track_y + 1.0, fill_w - 2.0, track_h - 2.0)
 
             chunk_grad = QLinearGradient(track_x, 0, track_x + fill_w, 0)
-            chunk_grad.setColorAt(0.0, QColor(2, 132, 199))
+            chunk_grad.setColorAt(0.0, Theme.SAPPHIRE)
             chunk_grad.setColorAt(0.7, Theme.BLUE)
-            chunk_grad.setColorAt(1.0, QColor(99, 102, 241))
+            chunk_grad.setColorAt(1.0, Theme.MAUVE)
 
             painter.setPen(Qt.PenStyle.NoPen)
             painter.setBrush(chunk_grad)
@@ -407,9 +407,9 @@ class UpdatingHUDWidget(QFrame):
         flame_path.closeSubpath()
 
         flame_grad = QLinearGradient(jet_cx - 8.0, 0, jet_cx - 8.0 - flame_len, 0)
-        flame_grad.setColorAt(0.0, QColor(253, 224, 71, 230))
-        flame_grad.setColorAt(0.6, QColor(249, 115, 22, 180))
-        flame_grad.setColorAt(1.0, QColor(239, 68, 68, 0))
+        flame_grad.setColorAt(0.0, Theme.get_color('YELLOW', 230))
+        flame_grad.setColorAt(0.6, Theme.get_color('PEACH', 180))
+        flame_grad.setColorAt(1.0, Theme.get_color('RED', 0))
 
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(flame_grad)
