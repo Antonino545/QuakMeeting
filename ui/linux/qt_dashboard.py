@@ -270,6 +270,7 @@ class QtFlightDeckWindow(QMainWindow):
         h_layout.setSpacing(12)
 
         pilots = [
+            ("update_banner", "🚀 Software Update Banner", "System Updates & New Releases", "https://github.com/Antonino545/QuakMeeting/releases"),
             ("duck", "🦆 Aviator Duck", "Google Meet / Zoom / Video Meetings", "https://meet.google.com/test"),
             ("travel_departure", "🚦 Multi-Modal Route ETA", "Transit, Driving & Cycling Departure Countdown", "https://maps.google.com"),
             ("chef", "👨‍🍳 Chef Duck", "Dinner / Lunch / Restaurants / Aperitivo", "https://maps.google.com/?q=Pizzeria"),
@@ -318,6 +319,9 @@ class QtFlightDeckWindow(QMainWindow):
                             "action_btn_text": f"🗺️ NAVIGATE ({dur}m)",
                             "maps_url": res["maps_url"] if res else "https://maps.google.com"
                         }
+                    elif p_id_val == "update_banner":
+                        from ui.linux.banner.qt_banner import get_update_preset
+                        evt = get_update_preset("v2.0.0 (Test)")
                     else:
                         from ui.linux.banner.qt_banner import get_test_preset
                         evt = dict(get_test_preset(p_id_val))
