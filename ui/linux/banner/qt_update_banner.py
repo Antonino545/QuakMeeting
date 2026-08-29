@@ -299,19 +299,7 @@ class QtUpdateBannerWindow(QWidget):
         
         p.drawRoundedRect(card, CARD_R, CARD_R)
 
-        # ── Optional: Animated gear for Update Banner ──
-        if self.is_update_banner:
-            p.save()
-            gear_x = cx + CARD_W - 55.0
-            gear_y = cy + CARD_H - 35.0
-            p.translate(gear_x, gear_y)
-            speed_mult = 5.0 if getattr(self, "install_mode", False) else 1.0
-            p.rotate((self.tick * 3 * speed_mult) % 360)
-            p.setFont(QFont("sans-serif", 32))
-            p.setPen(QColor(56, 189, 248, 40))
-            p.drawText(QRectF(-20, -20, 40, 40), Qt.AlignmentFlag.AlignCenter, "⚙️")
-            p.restore()
-
+        # Gear removed by user request
         # ── Row 1: Provider pill + Status pill + Close ──
         py = cy + 12.0
 
