@@ -3,6 +3,7 @@ Base Pilot Renderer interface for QuakMeeting Qt Banner.
 Defines abstract drawing hooks for vehicle and character rendering using PyQt6 QPainter.
 """
 from __future__ import annotations
+from ui.linux.theme import Theme
 import math
 from abc import ABC, abstractmethod
 
@@ -28,18 +29,18 @@ class BaseQtPilotRenderer(ABC):
 
     def draw_propeller(self, p: QPainter, nx: float, ny: float, tick: int) -> None:
         p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(self._c(225, 240, 255, 64))
+        p.setBrush(Theme.get_color('TEXT', 64))
         p.drawEllipse(QRectF(nx - 4, ny - 18, 8, 36))
         angle = tick * 0.70
         dx = math.cos(angle) * 3.5
         dy = math.sin(angle) * 18.0
-        pen = QPen(self._c(235, 242, 255, 230), 3.2, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
+        pen = QPen(Theme.get_color('ROSEWATER', 230), 3.2, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
         p.setPen(pen)
         p.drawLine(QPointF(nx + dx, ny - dy), QPointF(nx - dx, ny + dy))
         p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(self._c(56, 66, 90))
+        p.setBrush(Theme.SURFACE1)
         p.drawEllipse(QRectF(nx - 3.5, ny - 4.5, 9, 9))
-        p.setBrush(self._c(255, 255, 255, 200))
+        p.setBrush(Theme.get_color('ROSEWATER', 200))
         p.drawEllipse(QRectF(nx - 1, ny - 1.5, 3, 3))
 
     @abstractmethod

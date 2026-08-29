@@ -1,4 +1,5 @@
 from __future__ import annotations
+from ui.linux.theme import Theme
 import math
 
 try:
@@ -23,7 +24,7 @@ class QtDuckRenderer(BaseQtPilotRenderer):
         tail.lineTo(px - 56, py + 24)
         tail.lineTo(px - 42, py - 2)
         tail.closeSubpath()
-        p.setBrush(self._c(230, 56, 51))
+        p.setBrush(Theme.RED)
         p.setPen(Qt.PenStyle.NoPen)
         p.drawPath(tail)
 
@@ -37,9 +38,9 @@ class QtDuckRenderer(BaseQtPilotRenderer):
         p.drawPath(deco)
 
         # Cream vintage fuselage
-        p.setBrush(self._c(250, 240, 209))
+        p.setBrush(Theme.ROSEWATER)
         p.drawEllipse(QRectF(px - 44, py - 13, 76, 28))
-        p.setBrush(self._c(225, 199, 158, 153))
+        p.setBrush(Theme.get_color('PEACH', 153))
         p.drawEllipse(QRectF(px - 42, py - 15, 72, 16))
 
         stripe = QPainterPath()
@@ -48,25 +49,25 @@ class QtDuckRenderer(BaseQtPilotRenderer):
         stripe.lineTo(px + 22, py - 6)
         stripe.lineTo(px - 36, py - 6)
         stripe.closeSubpath()
-        p.setBrush(self._c(225, 51, 46))
+        p.setBrush(Theme.RED)
         p.drawPath(stripe)
 
-        p.setPen(QPen(self._c(89, 64, 38, 217), 1.4))
+        p.setPen(QPen(Theme.get_color('SURFACE0', 217), 1.4))
         p.setBrush(Qt.BrushStyle.NoBrush)
         p.drawEllipse(QRectF(px - 44, py - 13, 76, 28))
         p.setPen(Qt.PenStyle.NoPen)
 
         # Cockpit + windshield
-        p.setBrush(self._c(38, 46, 64))
+        p.setBrush(Theme.SURFACE0)
         p.drawEllipse(QRectF(px - 14, py, 26, 16))
         glass = QPainterPath()
         glass.moveTo(px + 10, py + 1)
         glass.cubicTo(px + 8, py + 12, px + 2, py + 16, px - 2, py + 17)
         glass.lineTo(px - 8, py + 1)
         glass.closeSubpath()
-        p.setBrush(self._c(166, 225, 250, 191))
+        p.setBrush(Theme.get_color('SKY', 191))
         p.drawPath(glass)
-        p.setPen(QPen(self._c(255, 255, 255, 229), 1.2))
+        p.setPen(QPen(Theme.get_color('ROSEWATER', 229), 1.2))
         p.setBrush(Qt.BrushStyle.NoBrush)
         p.drawPath(glass)
         p.setPen(Qt.PenStyle.NoPen)
@@ -81,27 +82,27 @@ class QtDuckRenderer(BaseQtPilotRenderer):
         scarf.lineTo(px - 45, py - 1 + w2)
         scarf.cubicTo(px - 38, py + 3 + w2, px - 32, py + w1, px - 26, py + 2 + w1)
         scarf.closeSubpath()
-        p.setBrush(self._c(235, 46, 46))
+        p.setBrush(Theme.RED)
         p.drawPath(scarf)
-        p.setPen(QPen(self._c(255, 217, 64), 1.6))
+        p.setPen(QPen(Theme.PEACH, 1.6))
         p.drawLine(QPointF(px - 46, py + 4 + w2), QPointF(px - 49, py + 3 + w2))
         p.drawLine(QPointF(px - 45, py + 1.5 + w2), QPointF(px - 48, py + 0.5 + w2))
         p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(self._c(217, 38, 38))
+        p.setBrush(Theme.SURFACE2)
         p.drawEllipse(QRectF(px - 9, py + 2, 11, 7))
 
         # Duck head + blush
-        p.setBrush(self._c(235, 166, 38))
+        p.setBrush(Theme.PEACH)
         p.drawEllipse(QRectF(px - 7, py + 2, 19, 18))
-        p.setBrush(self._c(255, 209, 61))
+        p.setBrush(Theme.PEACH)
         p.drawEllipse(QRectF(px - 8, py + 3, 20, 20))
-        p.setBrush(self._c(255, 235, 128, 178))
+        p.setBrush(Theme.get_color('YELLOW', 178))
         p.drawEllipse(QRectF(px - 5, py + 9, 14, 13))
-        p.setBrush(self._c(255, 107, 107, 115))
+        p.setBrush(Theme.get_color('RED', 115))
         p.drawEllipse(QRectF(px - 3, py + 5, 7, 5))
 
         # Eye + catchlights
-        p.setBrush(self._c(26, 26, 31))
+        p.setBrush(Theme.MANTLE)
         p.drawEllipse(QRectF(px + 2.5, py + 12, 5.0, 5.5))
         p.setBrush(Qt.GlobalColor.white)
         p.drawEllipse(QRectF(px + 4.2, py + 14.2, 2.2, 2.2))
@@ -113,9 +114,9 @@ class QtDuckRenderer(BaseQtPilotRenderer):
         beak.cubicTo(px + 10, py + 13, px + 15, py + 12, px + 18, py + 9.5)
         beak.cubicTo(px + 15, py + 7, px + 10, py + 6, px + 5, py + 5.5)
         beak.closeSubpath()
-        p.setBrush(self._c(255, 122, 5))
+        p.setBrush(Theme.PEACH)
         p.drawPath(beak)
-        p.setPen(QPen(self._c(255, 184, 64, 217), 1.2))
+        p.setPen(QPen(Theme.get_color('PEACH', 217), 1.2))
         p.drawLine(QPointF(px + 7, py + 11), QPointF(px + 14, py + 9.5))
         p.setPen(Qt.PenStyle.NoPen)
 
@@ -126,16 +127,16 @@ class QtDuckRenderer(BaseQtPilotRenderer):
         cap.lineTo(px + 6, py + 18)
         cap.cubicTo(px, py + 18, px - 5, py + 14, px - 8, py + 12)
         cap.closeSubpath()
-        p.setBrush(self._c(97, 56, 31))
+        p.setBrush(Theme.SURFACE0)
         p.drawPath(cap)
-        p.setBrush(self._c(64, 38, 20))
+        p.setBrush(Theme.BASE)
         p.drawRect(QRectF(px - 8, py + 12.5, 18, 3.5))
 
         # Gold goggles
-        p.setPen(QPen(self._c(235, 199, 64), 2.4))
-        p.setBrush(self._c(128, 217, 250, 217))
+        p.setPen(QPen(Theme.PEACH, 2.4))
+        p.setBrush(Theme.get_color('SKY', 217))
         p.drawEllipse(QRectF(px - 1.5, py + 10, 12, 11))
-        p.setPen(QPen(self._c(255, 255, 255, 217), 1.4))
+        p.setPen(QPen(Theme.get_color('ROSEWATER', 217), 1.4))
         p.drawLine(QPointF(px + 3, py + 18), QPointF(px + 7, py + 13))
         p.setPen(Qt.PenStyle.NoPen)
 
@@ -146,7 +147,7 @@ class QtDuckRenderer(BaseQtPilotRenderer):
         wing.lineTo(px + 8, py - 24)
         wing.lineTo(px - 12, py - 24)
         wing.closeSubpath()
-        p.setBrush(self._c(230, 56, 51))
+        p.setBrush(Theme.RED)
         p.drawPath(wing)
         p.setPen(QPen(Qt.GlobalColor.white, 2.0))
         p.drawLine(QPointF(px - 12, py - 24), QPointF(px + 8, py - 24))
