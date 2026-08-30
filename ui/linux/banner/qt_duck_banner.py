@@ -44,7 +44,7 @@ class QtDuckBannerWindow(QWidget):
     CARD_X = 10.0
     CARD_Y = 55.0
 
-    WIN_W = 750
+    WIN_W = 1000
     WIN_H = 195
 
     PLANE_CX = CARD_X + 615.0
@@ -124,6 +124,12 @@ class QtDuckBannerWindow(QWidget):
         self._palette = self._build_theme_palette()
         self._init_cached_resources()
 
+        # Dynamic window width to accommodate extra-long quotes
+        f = QFont("Inter, Arial", 8, QFont.Weight.ExtraBold)
+        fm = QFontMetrics(f)
+        bubble_w = (fm.horizontalAdvance(self._cached_speech_text) + 24.0) if self._cached_speech_text else 0.0
+        needed_w = int(max(self.WIN_W, (self.CARD_X + self.CARD_W + 10.0) + bubble_w + 30.0))
+
         # Screen setup
         screen = QApplication.primaryScreen()
         geo = screen.availableGeometry() if screen else QRect(0, 0, 1920, 1080)
@@ -131,7 +137,7 @@ class QtDuckBannerWindow(QWidget):
         self.screen_x = geo.x()
         self.screen_y = geo.y()
 
-        self.win_w = self.WIN_W
+        self.win_w = needed_w
         self.win_h = self.WIN_H
         self.setFixedSize(self.win_w, self.win_h)
 
@@ -869,7 +875,7 @@ class QtDuckBannerWindow(QWidget):
         f = QFont("Inter, Arial", 8, QFont.Weight.ExtraBold)
         p.setFont(f)
         fm = p.fontMetrics()
-        bw = fm.horizontalAdvance(text) + 20.0
+        bw = fm.horizontalAdvance(text) + 24.0
         bh = 26.0
 
         # Ensure the speech bubble never overlaps the close button or left card area

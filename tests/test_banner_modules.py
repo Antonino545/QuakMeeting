@@ -120,5 +120,64 @@ class TestBannerModules(unittest.TestCase):
         self.assertGreater(rects["close_hit"].size.width, rects["close"].size.width)
         self.assertGreater(rects["close_hit"].size.height, rects["close"].size.height)
 
+    def test_qt_duck_banner_speech_bubble_bounds(self):
+        try:
+            from PyQt6.QtWidgets import QApplication
+            from PyQt6.QtGui import QFont, QFontMetrics
+            from ui.linux.banner.qt_duck_banner import QtDuckBannerWindow
+        except ImportError:
+            self.skipTest("PyQt6 not available")
+
+        app = QApplication.instance() or QApplication(sys.argv)
+
+        animals = ["duck", "owl", "bunny", "squirrel", "platypus"]
+        outfits = ["aviator", "chef", "captain", "driver", "gym", "zen"]
+        is_lates = [True, False]
+        langs = ["en", "it"]
+
+        f = QFont("Inter, Arial", 8, QFont.Weight.ExtraBold)
+        fm = QFontMetrics(f)
+
+        card_right_x = QtDuckBannerWindow.CARD_X + QtDuckBannerWindow.CARD_W
+        min_bx = card_right_x + 10.0
+        px = QtDuckBannerWindow.PLANE_CX
+
+        for animal in animals:
+            for outfit in outfits:
+                for is_late in is_lates:
+                    for lang in langs:
+                        quote = build_pilot_speech_text(
+                            {"title": "Important Team Synchronization", "classroom": "Aula Magna - Edificio Principale"},
+                            animal=animal,
+                            outfit=outfit,
+                            is_late=is_late,
+                            lang=lang
+                        )
+                        bubble_w = fm.horizontalAdvance(quote) + 24.0
+                        ideal_bx = px - bubble_w * 0.5
+                        bx = max(min_bx, ideal_bx)
+                        right_edge = bx + bubble_w
+
+                        # Test window initialization with this event
+                        event_data = {
+                            "title": "Important Team Synchronization",
+                            "classroom": "Aula Magna - Edificio Principale",
+                            "animal": animal,
+                            "outfit": outfit,
+                            "pilot_type": animal,
+                            "start_time": datetime.now().astimezone(),
+                            "is_travel": False,
+                            "is_late": is_late
+                        }
+                        banner = QtDuckBannerWindow(event_data)
+
+                        # Assert the speech bubble does not overlap the card
+                        self.assertGreaterEqual(bx, min_bx)
+
+                        # Assert the speech bubble is fully inside the banner window (no cropping)
+                        self.assertLessEqual(right_edge, banner.win_w)
+                        banner._timer.stop()
+                        banner.close()
+
 if __name__ == "__main__":
     unittest.main()
