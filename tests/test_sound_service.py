@@ -78,7 +78,7 @@ class TestSoundService(unittest.TestCase):
     @patch("core.services.sound_service.subprocess.run")
     def test_play_chime_disabled_in_config(self, mock_run, mock_vol):
         config.set("sound_enabled", False)
-        play_chime()
+        play_chime(sync=True)
         mock_vol.assert_not_called()
         mock_run.assert_not_called()
 
@@ -86,12 +86,8 @@ class TestSoundService(unittest.TestCase):
     @patch("core.services.sound_service.subprocess.run")
     def test_play_chime_skips_when_volume_off(self, mock_run, mock_vol):
         config.set("sound_enabled", True)
-        # Directly test the synchronous playback logic inside thread by testing condition
-        play_chime()
-        # Since is_system_volume_on returns False, subprocess.run should not be called with player
-        # Let thread execute
-        import time
-        time.sleep(0.05)
+        play_chime(sync=True)
+        mock_vol.assert_called_once()
         mock_run.assert_not_called()
 
 

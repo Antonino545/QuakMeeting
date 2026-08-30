@@ -95,9 +95,9 @@ def is_system_volume_on() -> bool:
     return True
 
 
-def play_chime(sound_name: Optional[str] = None) -> None:
+def play_chime(sound_name: Optional[str] = None, sync: bool = False) -> None:
     """
-    Plays notification chime asynchronously if sound is enabled and system volume is on.
+    Plays notification chime asynchronously (or synchronously if sync=True) if sound is enabled and system volume is on.
     """
     if not config.get("sound_enabled", True):
         return
@@ -162,4 +162,7 @@ def play_chime(sound_name: Optional[str] = None) -> None:
         except Exception as e:
             logger.debug(f"Error during chime playback: {e}")
 
-    threading.Thread(target=_play_async, daemon=True).start()
+    if sync:
+        _play_async()
+    else:
+        threading.Thread(target=_play_async, daemon=True).start()

@@ -911,7 +911,7 @@ class QtFlightDeckWindow(QMainWindow):
         uc_layout.setContentsMargins(18, 14, 18, 14)
         uc_layout.setSpacing(10)
 
-        uc_title = QLabel("⚙️ System, Language & Diagnostics", util_card)
+        uc_title = QLabel("⚙️ System, Language & Diagnostics" if is_debug_mode() else "⚙️ System & Language", util_card)
         uc_title.setObjectName("CardTitle")
         uc_layout.addWidget(uc_title)
 
@@ -1012,6 +1012,7 @@ class QtFlightDeckWindow(QMainWindow):
             log_btn.setVisible(checked)
             demo_up_btn.setVisible(checked)
             dbg_container.setVisible(checked)
+            uc_title.setText("⚙️ System, Language & Diagnostics" if checked else "⚙️ System & Language")
             self._refresh_hangar()
         dbg_sw.toggled = _toggle_debug
 

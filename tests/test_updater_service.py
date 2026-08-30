@@ -7,6 +7,8 @@ from core.services.updater_service import UpdaterService
 class TestUpdaterService(unittest.TestCase):
     def setUp(self):
         self.updater = UpdaterService()
+        self.updater.is_checking = False
+        self.updater.latest_release_info = None
 
     def test_parse_semver(self):
         self.assertEqual(self.updater.parse_semver("v1.2.3"), (1, 2, 3))

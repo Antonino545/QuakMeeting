@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import QApplication, QSystemTrayIcon, QMenu
 from PyQt6.QtGui import QIcon, QAction, QPainter, QPixmap, QFont, QColor, QPalette
 from ui.linux.theme import Theme
 
-from core.services.config_service import config
+from core.services.config_service import config, is_debug_mode
 from core.services.calendar_service import calendar_service
 from core.services.reminder_engine import reminder_engine
 from core.services.updater_service import updater_service
@@ -163,10 +163,11 @@ class QuakMeetingTrayApp:
 
         menu.addMenu(mode_menu)
 
-        logs_act = QAction("📄 View Logs & Diagnostics...", menu)
-        logs_act.triggered.connect(lambda chk=False: open_log_file())
-        menu.addAction(logs_act)
-        menu.addSeparator()
+        if is_debug_mode():
+            logs_act = QAction("📄 View Logs & Diagnostics...", menu)
+            logs_act.triggered.connect(lambda chk=False: open_log_file())
+            menu.addAction(logs_act)
+            menu.addSeparator()
 
         update_info = updater_service.latest_release_info
         if update_info and update_info.get("has_update"):
