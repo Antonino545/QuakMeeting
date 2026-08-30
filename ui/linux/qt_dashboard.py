@@ -997,6 +997,21 @@ class QtFlightDeckWindow(QMainWindow):
         uc_layout.addLayout(autostart_row)
         uc_layout.addSpacing(6)
 
+        mute_lessons_row = QHBoxLayout()
+        mute_lessons_lbl = QLabel("🤫 Mute banner chime during university lessons & classes", util_card)
+        mute_lessons_lbl.setStyleSheet("color: #cdd6f4; font-weight: bold; font-size: 13px;")
+
+        mute_lessons_sw = ToggleSwitch(config.get("mute_during_lessons", True), util_card)
+        def _toggle_mute_lessons(checked):
+            config.set("mute_during_lessons", checked)
+        mute_lessons_sw.toggled = _toggle_mute_lessons
+
+        mute_lessons_row.addWidget(mute_lessons_lbl)
+        mute_lessons_row.addStretch()
+        mute_lessons_row.addWidget(mute_lessons_sw)
+        uc_layout.addLayout(mute_lessons_row)
+        uc_layout.addSpacing(6)
+
         # Debug / Developer Mode Toggle (Visible only when debug mode is enabled or active)
         dbg_container = QWidget(util_card)
         dbg_row = QHBoxLayout(dbg_container)

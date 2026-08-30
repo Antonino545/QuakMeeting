@@ -248,5 +248,31 @@ class CalendarService:
             logger.error(f"Error fetching calendars list: {e}")
             return list(self._cached_calendars)
 
+    def is_in_lesson(self, current_time: Optional[datetime] = None) -> bool:
+        """Checks if the user is currently attending an active lecture/lesson or study session."""
+        from datetime import timezone
+        now = (current_time or datetime.now(timezone.utc)).astimezone(timezone.utc)
+        meetings = self.get_upcoming_meetings()
+        for m in meetings:
+            if m.is_all_day:
+                continue
+            is_lesson = (
+                m.event_type in ("class", "study") or
+                m.category in ("class", "study") or
+                bool(m.classroom) or
+                bool(m.teacher)
+            )
+            if not is_lesson:
+                continue
+
+            if m.start_time and m.end_time:
+                if m.start_time <= now <= m.end_time:
+                    return True
+            elif m.start_time:
+                diff = (now - m.start_time).total_seconds() / 60.0
+                if 0 <= diff <= 45:
+                    return True
+        return False
+
 # Global singleton instance
 calendar_service = CalendarService()

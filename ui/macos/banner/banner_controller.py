@@ -174,7 +174,9 @@ class QuakPitFlyingBanner(AppKit.NSObject):
         AppKit.NSRunLoop.currentRunLoop().addTimer_forMode_(self.timer, AppKit.NSRunLoopCommonModes)
 
     def play_chime(self) -> None:
-        play_chime()
+        if self.is_quiet:
+            return
+        play_chime(event_dict=self.meeting_data)
 
     def trigger_action(self) -> None:
         m_id = str(self.meeting_data.get("id") or self.meeting_data.get("uid") or "")

@@ -27,6 +27,7 @@ DEFAULT_CONFIG = {
     "max_countdown_lookahead_hours": 3, # Maximum hours ahead to show live countdown (caps at 3h instead of 24h)
     "sound_enabled": True,
     "sound_name": "Glass",    # "Glass", "Hero", "Ping", "Pop", "Submarine"
+    "mute_during_lessons": True,       # Mute chime when in a university lecture or class
     "ignored_calendars": [
         "Festività in Italia",
         "Birthdays",

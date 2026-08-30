@@ -92,15 +92,46 @@ def is_system_volume_on() -> bool:
         except Exception:
             pass
 
-    return True
+def is_lesson_event(event_dict: Optional[dict]) -> bool:
+    """Checks if an event payload represents an academic class, lecture, or study session."""
+    if not event_dict or not isinstance(event_dict, dict):
+        return False
+    ev_type = event_dict.get("event_type") or event_dict.get("category") or ""
+    if ev_type in ("class", "study"):
+        return True
+    if event_dict.get("classroom") or event_dict.get("teacher"):
+        return True
+    return False
 
 
-def play_chime(sound_name: Optional[str] = None, sync: bool = False) -> None:
+def play_chime(
+    sound_name: Optional[str] = None,
+    sync: bool = False,
+    event_dict: Optional[dict] = None
+) -> None:
     """
-    Plays notification chime asynchronously (or synchronously if sync=True) if sound is enabled and system volume is on.
+    Plays notification chime asynchronously (or synchronously if sync=True) if sound is enabled,
+    system volume is on, and sound is not suppressed during university lessons.
     """
     if not config.get("sound_enabled", True):
         return
+
+    if event_dict and event_dict.get("is_quiet_reminder"):
+        logger.debug("Quiet reminder; skipping chime.")
+        return
+
+    if config.get("mute_during_lessons", True):
+        if is_lesson_event(event_dict):
+            logger.info("Chime muted: current event is a university lecture/lesson (mute_during_lessons enabled).")
+            return
+
+        try:
+            from core.services.calendar_service import calendar_service
+            if calendar_service.is_in_lesson():
+                logger.info("Chime muted: user is currently attending a lecture/lesson (mute_during_lessons enabled).")
+                return
+        except Exception as e:
+            logger.debug(f"Could not check active lesson status: {e}")
 
     def _play_async():
         try:

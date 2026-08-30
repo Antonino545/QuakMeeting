@@ -22,6 +22,7 @@ QuakMeeting stores all user preferences, timing thresholds, routing configuratio
 | `max_countdown_lookahead_hours`| `int` | `3` | Maximum hours ahead to show live countdown in the menu bar. Events further out show a clean start time. |
 | `sound_enabled` | `bool` | `true` | Whether to play a system sound when the banner appears. |
 | `sound_name` | `string` | `"Glass"` | System sound name to play (`"Glass"`, `"Hero"`, `"Ping"`, `"Pop"`, `"Submarine"`). |
+| `mute_during_lessons` | `bool` | `true` | Automatically mute banner chime when attending a university lecture/lesson or when the event is a class. |
 | `ignored_calendars` | `list[str]` | `[...]` | Exact names of calendars to exclude from scanning (e.g., `"Birthdays"`, `"Holidays"`). |
 | `calendar_urls` | `list[str]` | `[]` | URLs for remote ICS / CalDAV feeds, primarily used on Linux. |
 | `home_address` | `string` | `""` | Origin address for ETA calculations (e.g., `"Corso Duca degli Abruzzi 24, Torino"`). |

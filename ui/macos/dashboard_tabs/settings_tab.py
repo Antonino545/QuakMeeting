@@ -82,7 +82,7 @@ class SettingsTabController(AppKit.NSObject):
 
         c3_h = 74.0 + actual_rows * 36.0  # Included System Calendars
         is_dbg = is_debug_mode()
-        c4_h = 300.0 if is_dbg else 236.0  # System, Language & (Diagnostics if Debug)
+        c4_h = 336.0 if is_dbg else 272.0  # System, Language & (Diagnostics if Debug)
 
         content_h = c1_h + c2_h + c3_h + c4_h + gap * 5 + 20.0
         doc_view = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 0, w, content_h))
@@ -579,11 +579,26 @@ class SettingsTabController(AppKit.NSObject):
         self.autostart_sw.setCallback_(self.onToggleAutostartSwitch)
         card.addSubview_(self.autostart_sw)
 
+        # 3. Mute during lessons toggle row
+        mute_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 158, w - 80, 20))
+        mute_lbl.setStringValue_("🤫 Mute banner chime during university lessons & classes")
+        mute_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.5))
+        mute_lbl.setTextColor_(Theme.TEXT)
+        mute_lbl.setBezeled_(False)
+        mute_lbl.setDrawsBackground_(False)
+        mute_lbl.setEditable_(False)
+        card.addSubview_(mute_lbl)
+
+        self.mute_lessons_sw = ModernToggleSwitch.alloc().initWithFrame_(AppKit.NSMakeRect(w - 62, h - 160, 44, 24))
+        self.mute_lessons_sw.setChecked_(self.config.get("mute_during_lessons", True))
+        self.mute_lessons_sw.setCallback_(self.onToggleMuteLessonsSwitch)
+        card.addSubview_(self.mute_lessons_sw)
+
         from core.services.language_service import t
 
         if is_dbg:
-            # 3. Debug mode toggle row
-            dbg_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 158, w - 80, 20))
+            # 4. Debug mode toggle row
+            dbg_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 192, w - 80, 20))
             dbg_lbl.setStringValue_("🐛 Enable Developer & Debug Diagnostics Mode")
             dbg_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.5))
             dbg_lbl.setTextColor_(Theme.TEXT)
@@ -592,13 +607,13 @@ class SettingsTabController(AppKit.NSObject):
             dbg_lbl.setEditable_(False)
             card.addSubview_(dbg_lbl)
 
-            self.debug_sw = ModernToggleSwitch.alloc().initWithFrame_(AppKit.NSMakeRect(w - 62, h - 160, 44, 24))
+            self.debug_sw = ModernToggleSwitch.alloc().initWithFrame_(AppKit.NSMakeRect(w - 62, h - 194, 44, 24))
             self.debug_sw.setChecked_(is_debug_mode())
             self.debug_sw.setCallback_(self.onToggleDebugSwitch)
             card.addSubview_(self.debug_sw)
 
-            # 4. Action Buttons Row (Debug: 5 buttons)
-            y_btns = h - 206.0
+            # 5. Action Buttons Row (Debug: 5 buttons)
+            y_btns = h - 240.0
             btn_w = (w - 36.0 - 32.0) / 5.0
 
             self.mac_check_update_btn = Theme.create_button(
@@ -668,7 +683,7 @@ class SettingsTabController(AppKit.NSObject):
             card.addSubview_(license_btn)
         else:
             # 4. Action Buttons Row (Normal Mode: Clean 2 buttons)
-            y_btns = h - 168.0
+            y_btns = h - 202.0
             btn_w = (w - 36.0 - 12.0) / 2.0
 
             self.mac_check_update_btn = Theme.create_button(
@@ -797,6 +812,10 @@ class SettingsTabController(AppKit.NSObject):
             success = disable_autostart()
             if not success and hasattr(self, 'autostart_sw'):
                 self.autostart_sw.setChecked_(True)
+
+    @objc.python_method
+    def onToggleMuteLessonsSwitch(self, is_on):
+        self.config.set("mute_during_lessons", is_on)
 
     @objc.python_method
     def onToggleDebugSwitch(self, is_on):
