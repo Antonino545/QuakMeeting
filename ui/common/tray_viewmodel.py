@@ -119,15 +119,17 @@ class TrayViewModel:
         return f"  •  ⏱️ {icon} ~{dur_str} {tr_suffix}"
 
     @staticmethod
-    def format_next_event_label(icon_prefix, start_str, title, travel_minutes=None, departure_time=None, lang: Optional[str] = None):
-        """Formats the tray menu next-event label: '🦆 Next: 09:00 — Meeting (🚗 ~25m • Leave at 08:30)'"""
+    def format_next_event_label(icon_prefix, start_str, title, travel_minutes=None, departure_time=None, transport_mode="transit", default_mode="transit", lang: Optional[str] = None):
+        """Formats the tray menu next-event label: '🦆 Next: 09:00 — Meeting (🚆 ~25m • Leave at 08:30)'"""
         active_lang = lang or get_active_language()
         base_label = t("next_event_label", lang=active_lang, time=start_str, title=title)
+        mode = transport_mode or default_mode
+        icon = MODE_ICONS_TRAY.get(mode, "🚗")
         if travel_minutes and isinstance(departure_time, datetime):
             dur_str = format_duration(travel_minutes)
             leave_str = t("leave_at", lang=active_lang, time=departure_time.astimezone().strftime('%H:%M'))
-            return f"{icon_prefix} {base_label} (🚗 ~{dur_str} • {leave_str})"
+            return f"{icon_prefix} {base_label} ({icon} ~{dur_str} • {leave_str})"
         elif travel_minutes:
             dur_str = format_duration(travel_minutes)
-            return f"{icon_prefix} {base_label} (🚗 ~{dur_str})"
+            return f"{icon_prefix} {base_label} ({icon} ~{dur_str})"
         return f"{icon_prefix} {base_label}"

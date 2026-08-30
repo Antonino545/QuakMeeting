@@ -263,6 +263,8 @@ class QuakMeetingMenuBar(AppKit.NSObject):
 
     def _on_config_changed(self, key: Optional[str] = None, **kwargs) -> None:
         self._last_menu_signature = None
+        if key in ("transport_mode", "home_address", "eta_buffer_minutes", "enable_eta_service", "custom_keywords", "ignored_calendars", None):
+            threading.Thread(target=calendar_service.sync_now, daemon=True).start()
         self.performSelectorOnMainThread_withObject_waitUntilDone_(
             "refreshMenuOnMainThread:",
             None,
@@ -335,8 +337,9 @@ class QuakMeetingMenuBar(AppKit.NSObject):
 
             travel_min = next_m.get("travel_time_minutes")
             dep_dt = next_m.get("departure_time")
+            t_mode = next_m.get("transport_mode") or config.get("transport_mode", "transit")
 
-            next_label = TrayViewModel.format_next_event_label(icon_prefix, start_str, m_title, travel_min, dep_dt)
+            next_label = TrayViewModel.format_next_event_label(icon_prefix, start_str, m_title, travel_min, dep_dt, transport_mode=t_mode)
 
             item_next = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
                 next_label, None, ""

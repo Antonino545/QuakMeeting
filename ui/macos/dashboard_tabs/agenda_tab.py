@@ -132,7 +132,7 @@ class AgendaTabController(AppKit.NSObject):
 
         if m.get("travel_time_minutes"):
             dur_str = format_duration(m["travel_time_minutes"])
-            t_mode = m.get("transport_mode", self.config.get("transport_mode", "transit"))
+            t_mode = m.get("transport_mode") or self.config.get("transport_mode", "transit")
             icon = MODE_ICONS.get(t_mode, "🚗")
             dep_dt = m.get("departure_time")
             if isinstance(dep_dt, datetime):
