@@ -62,7 +62,7 @@ class SettingsTabController(AppKit.NSObject):
         gap = 14.0
 
         c1_h = 362.0  # Notification Lead Times & Staged Reminders
-        c2_h = 246.0  # Home / Departure Address & Multi-Modal Route ETA
+        c2_h = 274.0  # Home / Departure Address & Multi-Modal Route ETA
 
         # Calculate calendar section height dynamically based on wrapped rows
         cals = self.cached_calendars if self.cached_calendars else calendar_service.get_available_calendars()
@@ -333,7 +333,7 @@ class SettingsTabController(AppKit.NSObject):
         )
 
         # 1. Starting Address (Origin)
-        t1 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 74, w - 36, 18))
+        t1 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 68, w - 36, 18))
         t1.setStringValue_(t("settings_starting_address"))
         t1.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.0))
         t1.setTextColor_(Theme.TEXT)
@@ -344,7 +344,7 @@ class SettingsTabController(AppKit.NSObject):
 
         curr_addr = str(self.config.get("home_address", "") or "")
         field_w = w - 36.0 - 146.0
-        self.home_addr_field = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 108, field_w, 28))
+        self.home_addr_field = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 100, field_w, 28))
         self.home_addr_field.setStringValue_(curr_addr)
         self.home_addr_field.setPlaceholderString_(t("settings_address_placeholder"))
         self.home_addr_field.setFont_(AppKit.NSFont.systemFontOfSize_(12))
@@ -361,7 +361,7 @@ class SettingsTabController(AppKit.NSObject):
         card.addSubview_(self.home_addr_field)
 
         self.home_save_btn = Theme.create_gradient_button(
-            AppKit.NSMakeRect(18 + field_w + 8.0, h - 108, 138.0, 28.0),
+            AppKit.NSMakeRect(18 + field_w + 8.0, h - 100, 138.0, 28.0),
             title=t("settings_save_location"),
             start_color=Theme.GREEN,
             end_color=Theme.TEAL,
@@ -374,8 +374,18 @@ class SettingsTabController(AppKit.NSObject):
         self.home_save_btn.setAction_("onSaveHomeAddress:")
         card.addSubview_(self.home_save_btn)
 
+        # 💡 Clear Address Formatting Guide Hint (Street, Number, City, CAP, Country)
+        self.home_addr_hint = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 124, w - 36, 16))
+        self.home_addr_hint.setStringValue_(t("settings_address_format_hint"))
+        self.home_addr_hint.setFont_(AppKit.NSFont.systemFontOfSize_(11.0))
+        self.home_addr_hint.setTextColor_(Theme.SUBTEXT0)
+        self.home_addr_hint.setBezeled_(False)
+        self.home_addr_hint.setDrawsBackground_(False)
+        self.home_addr_hint.setEditable_(False)
+        card.addSubview_(self.home_addr_hint)
+
         # 2. Transport Mode for Route Calculation
-        t2 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 138, w - 36, 18))
+        t2 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 152, w - 36, 18))
         t2.setStringValue_(t("settings_transport_calc"))
         t2.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.0))
         t2.setTextColor_(Theme.TEXT)
@@ -396,7 +406,7 @@ class SettingsTabController(AppKit.NSObject):
         btn_m_w = (w - 36.0 - 24.0) / 4.0
 
         for m_key, m_label in modes:
-            m_btn = ModernButton.alloc().initWithFrame_(AppKit.NSMakeRect(x_m, h - 176, btn_m_w, 30))
+            m_btn = ModernButton.alloc().initWithFrame_(AppKit.NSMakeRect(x_m, h - 190, btn_m_w, 30))
             m_btn.setTitle_(m_label)
             m_btn.setWantsLayer_(True)
             m_btn.setBordered_(False)
@@ -413,7 +423,7 @@ class SettingsTabController(AppKit.NSObject):
         self._update_transport_mode_buttons_ui(curr_mode)
 
         # 3. Departure Buffer Margin
-        t3 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 216, w - 240, 18))
+        t3 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 238, w - 240, 18))
         t3.setStringValue_(t("settings_departure_buffer"))
         t3.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.0))
         t3.setTextColor_(Theme.TEXT)
@@ -423,7 +433,7 @@ class SettingsTabController(AppKit.NSObject):
         card.addSubview_(t3)
 
         buf_val = self.config.get("eta_buffer_minutes", 10)
-        self.buf_popup = AppKit.NSPopUpButton.alloc().initWithFrame_pullsDown_(AppKit.NSMakeRect(w - 240, h - 220, 222, 26), False)
+        self.buf_popup = AppKit.NSPopUpButton.alloc().initWithFrame_pullsDown_(AppKit.NSMakeRect(w - 240, h - 242, 222, 26), False)
         self.buf_popup.setFont_(AppKit.NSFont.systemFontOfSize_(12.0))
         self.buf_popup.setTarget_(self)
         self.buf_popup.setAction_("onSelectETABuffer:")
@@ -960,14 +970,67 @@ class SettingsTabController(AppKit.NSObject):
     @objc.IBAction
     def onSaveHomeAddress_(self, sender):
         if hasattr(self, 'home_addr_field') and self.home_addr_field:
+            from core.services.eta_service import validate_address
             addr = str(self.home_addr_field.stringValue() or "").strip()
+
+            is_valid, err_code = validate_address(addr)
+            if not is_valid:
+                # Highlight error state
+                self.home_addr_field.layer().setBorderColor_(Theme.RED.CGColor())
+                if hasattr(self, 'home_addr_hint') and self.home_addr_hint:
+                    self.home_addr_hint.setStringValue_(t("settings_address_error_invalid"))
+                    self.home_addr_hint.setTextColor_(Theme.RED)
+                if hasattr(self, 'home_save_btn') and self.home_save_btn:
+                    self.home_save_btn.setTitle_(t("settings_address_error_btn"))
+
+                def _reset_err_ui():
+                    try:
+                        if hasattr(self, 'home_addr_field') and self.home_addr_field:
+                            self.home_addr_field.layer().setBorderColor_(Theme.SURFACE0.CGColor())
+                        if hasattr(self, 'home_addr_hint') and self.home_addr_hint:
+                            self.home_addr_hint.setStringValue_(t("settings_address_format_hint"))
+                            self.home_addr_hint.setTextColor_(Theme.SUBTEXT0)
+                        if hasattr(self, 'home_save_btn') and self.home_save_btn:
+                            self.home_save_btn.setTitle_(t("settings_save_location"))
+                    except Exception:
+                        pass
+
+                def _delayed_err_reset():
+                    time.sleep(3.5)
+                    AppKit.NSOperationQueue.mainQueue().addOperationWithBlock_(_reset_err_ui)
+
+                threading.Thread(target=_delayed_err_reset, daemon=True).start()
+                return
+
+            # Address is valid: save to config and publish event
             self.config.set("home_address", addr)
+            try:
+                event_bus.publish("CONFIG_CHANGED", key="home_address", value=addr)
+            except Exception:
+                pass
+
+            self.home_addr_field.layer().setBorderColor_(Theme.GREEN.CGColor())
+            if hasattr(self, 'home_addr_hint') and self.home_addr_hint:
+                self.home_addr_hint.setStringValue_(t("settings_address_format_hint"))
+                self.home_addr_hint.setTextColor_(Theme.SUBTEXT0)
+
             if hasattr(self, 'home_save_btn') and self.home_save_btn:
-                self.home_save_btn.setTitle_("✓ Saved")
-                def reset_btn():
+                self.home_save_btn.setTitle_(f"✓ {t('saved')}")
+
+                def _reset_save_ui():
+                    try:
+                        if hasattr(self, 'home_save_btn') and self.home_save_btn:
+                            self.home_save_btn.setTitle_(t("settings_save_location"))
+                        if hasattr(self, 'home_addr_field') and self.home_addr_field:
+                            self.home_addr_field.layer().setBorderColor_(Theme.SURFACE0.CGColor())
+                    except Exception:
+                        pass
+
+                def _delayed_save_reset():
                     time.sleep(1.5)
-                    AppKit.NSOperationQueue.mainQueue().addOperationWithBlock_(lambda: self.home_save_btn.setTitle_("💾 Save Location"))
-                threading.Thread(target=reset_btn, daemon=True).start()
+                    AppKit.NSOperationQueue.mainQueue().addOperationWithBlock_(_reset_save_ui)
+
+                threading.Thread(target=_delayed_save_reset, daemon=True).start()
             self.refresh_data(force=True)
 
     @objc.IBAction

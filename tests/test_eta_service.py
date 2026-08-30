@@ -176,5 +176,23 @@ class TestETAService(unittest.TestCase):
         self.assertEqual(MODE_LABELS["transit"], "Public Transit")
         self.assertEqual(MODE_LABELS["automobile"], "Driving")
 
+    def test_validate_address_formats(self):
+        from core.services.eta_service import validate_address
+
+        # Valid cases
+        self.assertEqual(validate_address("")[0], True)
+        self.assertEqual(validate_address("   ")[0], True)
+        self.assertEqual(validate_address("Corso Duca degli Abruzzi 24, Torino")[0], True)
+        self.assertEqual(validate_address("Via Roma 10, 10121 Torino, Italia")[0], True)
+        self.assertEqual(validate_address("Baker Street 221B, London")[0], True)
+        self.assertEqual(validate_address("Piazza San Carlo, Torino")[0], True)
+
+        # Invalid cases
+        self.assertEqual(validate_address("via")[0], False)
+        self.assertEqual(validate_address("Torino")[0], False)
+        self.assertEqual(validate_address("12345")[0], False)
+        self.assertEqual(validate_address("Via Roma")[0], False) # missing number or city
+        self.assertEqual(validate_address("abc")[0], False)
+
 if __name__ == "__main__":
     unittest.main()
