@@ -76,6 +76,7 @@ Orchestrates business use cases.
 - **`event_bus.py`**: Decouples UI updates from background logic. Components publish events (e.g., `CALENDAR_UPDATED`, `CONFIG_CHANGED`) that the UI subscribes to.
 - **`updater_service.py`**: Checks GitHub Releases for new releases, fetches platform packages (.dmg/.zip on macOS, .deb on Ubuntu), performs in-place upgrades, and publishes update progress events.
 - **`language_service.py`**: Internationalization and localization service with OS language auto-detection (macOS `AppKit.NSLocale` & Linux `$LANG`), user language override, and centralized bilingual translations (English & Italian).
+- **`sound_service.py`**: Audio and volume service managing notification chime playback with system volume and mute state detection across macOS and Linux.
 - **`app_controller.py`**: The central orchestrator that launches a background thread to poll services (Calendar, Reminders) without blocking the UI main loop.
 
 ### 4. UI Layer (`ui/`)

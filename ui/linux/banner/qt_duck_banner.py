@@ -23,6 +23,7 @@ from ui.linux.theme import Theme
 from ui.common.banner_speech import build_pilot_speech_text
 from ui.common.banner_particles import BannerParticleEngine
 from ui.common.banner_formatting import compute_countdown_text, MODE_ICONS
+from core.services.sound_service import play_chime
 from .renderers import get_pilot_renderer
 
 
@@ -155,6 +156,8 @@ class QtDuckBannerWindow(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setMouseTracking(True)
         self.move(int(self.win_x), int(self.base_y))
+
+        play_chime()
 
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._step)

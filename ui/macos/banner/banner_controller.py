@@ -13,6 +13,7 @@ import logging
 from typing import Dict, Any, Optional, Callable
 
 from core.services.config_service import config
+from core.services.sound_service import play_chime
 from .banner_view import QuakPitBannerView
 from .quiet_banner_view import QuietReminderView
 from .update_banner_view import MacUpdateBannerView
@@ -173,22 +174,7 @@ class QuakPitFlyingBanner(AppKit.NSObject):
         AppKit.NSRunLoop.currentRunLoop().addTimer_forMode_(self.timer, AppKit.NSRunLoopCommonModes)
 
     def play_chime(self) -> None:
-        if config.get("sound_enabled", True):
-            sound_name = config.get("sound_name", "Glass")
-
-            def _play():
-                try:
-                    sound_path = f"/System/Library/Sounds/{sound_name}.aiff"
-                    subprocess.run(["afplay", sound_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                except Exception:
-                    try:
-                        snd = AppKit.NSSound.soundNamed_(sound_name)
-                        if snd:
-                            snd.play()
-                    except Exception:
-                        pass
-
-            threading.Thread(target=_play, daemon=True).start()
+        play_chime()
 
     def trigger_action(self) -> None:
         m_id = str(self.meeting_data.get("id") or self.meeting_data.get("uid") or "")
