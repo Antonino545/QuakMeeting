@@ -5,6 +5,8 @@ from core.services.calendar_service import calendar_service
 from core.services.reminder_engine import reminder_engine
 from core.services.updater_service import updater_service
 from core.services.event_bus import event_bus
+from core.services.device_presence_service import device_presence_service
+from core.services.study_focus_guardian import study_focus_guardian
 
 logger = logging.getLogger("QuakMeeting.AppController")
 
@@ -19,11 +21,14 @@ class AppController:
         if self.is_running:
             return
         self.is_running = True
+        # Start local device sync server (for iPhone/iPad Shortcuts)
+        device_presence_service.start()
         self._thread = threading.Thread(target=self._loop, daemon=True)
         self._thread.start()
 
     def stop_background_loop(self):
         self.is_running = False
+        device_presence_service.stop()
 
     def _loop(self):
         logger.info("Started background AppController loop.")

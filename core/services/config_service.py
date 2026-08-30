@@ -40,6 +40,17 @@ DEFAULT_CONFIG = {
     "enable_eta_service": True,
     "eta_buffer_minutes": 10,          # Margine di anticipo per raggiungere la fermata/parcheggio
     "debug_mode": False,               # Show developer & diagnostics test banners and tools
+    # Device Sync & Study Focus Guardian Settings (Mac ↔ iPhone / iPad)
+    "device_sync_enabled": True,       # Enables local REST HTTP server for device sync
+    "device_sync_port": 8765,          # Port for device pings & Shortcuts
+    "device_sync_token": "",           # Optional authentication token
+    "study_guardian_enabled": True,    # Enables study distraction detection & banners
+    "study_distraction_cooldown_minutes": 5, # Minimum minutes between distraction banners
+    "ipad_activity_ttl_minutes": 15,   # Minutes an iPad study heartbeat remains active
+    # Visual AI Attention Guardian Settings (Computer Vision on Mac / Ubuntu)
+    "visual_guardian_enabled": True,   # Enables webcam attention analysis during Study events
+    "visual_sample_interval_seconds": 4.0, # Seconds between camera snapshots (ultra low power)
+    "visual_distraction_threshold_frames": 3, # Consecutive distracted frames before banner (~12s)
     "default_pilot": "duck",           # Active default mascot ("duck", "owl", "bunny")
     "force_default_pilot": False,      # If True, always uses default_pilot for all notifications instead of auto-categorization
     "mascot_customization": {

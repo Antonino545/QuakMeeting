@@ -74,6 +74,9 @@ Orchestrates business use cases.
 - **`reminder_engine.py`**: Evaluates when to fire notifications. It differentiates between standard events (fires relative to `start_time`) and travel events (fires relative to `departure_time`).
 - **`eta_service.py`**: Handles routing links (e.g. Apple Maps) and calculates transit/walking buffers.
 - **`event_bus.py`**: Decouples UI updates from background logic. Components publish events (e.g., `CALENDAR_UPDATED`, `CONFIG_CHANGED`) that the UI subscribes to.
+- **`visual_attention_service.py`**: 🧠 Cross-platform Visual AI component. On macOS, uses native `VNDetectFaceRectanglesRequest` and `VNDetectHumanHandPoseRequest` on the Apple Neural Engine to extract live 3D head pitch/yaw and wrist elevation (in milliseconds). It accurately distinguishes safe iPad studying from phone distractions. On Ubuntu, falls back to OpenCV V4L2.
+- **`study_focus_guardian.py`**: Listens to the Visual AI state and ensures distraction banners only fire if the user is currently in a scheduled calendar event marked as "Study".
+- **`device_presence_service.py`**: Hosts the local JSON API (`http://localhost:8765/api/visual-status`) for lightweight live HTML5 webcam streaming and diagnostic HUDs.
 - **`updater_service.py`**: Checks GitHub Releases for new releases, fetches platform packages (.dmg/.zip on macOS, .deb on Ubuntu), performs in-place upgrades, and publishes update progress events.
 - **`language_service.py`**: Internationalization and localization service with OS language auto-detection (macOS `AppKit.NSLocale` & Linux `$LANG`), user language override, and centralized bilingual translations (English & Italian).
 - **`app_controller.py`**: The central orchestrator that launches a background thread to poll services (Calendar, Reminders) without blocking the UI main loop.

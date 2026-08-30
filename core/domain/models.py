@@ -38,6 +38,57 @@ class TransportMode(str, Enum):
     WALKING = "walking"           # Walking 🚶‍♂️
     BICYCLING = "bicycling"       # Cycling 🚲
 
+
+class DeviceType(str, Enum):
+    IPHONE = "iphone"
+    IPAD = "ipad"
+    MAC = "mac"
+    UNKNOWN = "unknown"
+
+
+class DeviceState(str, Enum):
+    STUDYING = "studying"
+    DISTRACTED = "distracted"
+    ACTIVE = "active"
+    IDLE = "idle"
+
+
+class VisualAttentionState(str, Enum):
+    FOCUSED_SCREEN = "focused_screen"         # User is looking straight at computer screen
+    FOCUSED_DESK_IPAD = "focused_desk_ipad"   # User is looking down at iPad / desk notes (studying)
+    DISTRACTED_PHONE = "distracted_phone"     # User is looking steeply down / holding phone
+    LOOKING_AWAY = "looking_away"             # User turned head far left/right
+    AWAY_NO_FACE = "away_no_face"             # User stepped away from computer
+
+
+@dataclass
+class DeviceActivity:
+    device_type: str
+    state: str
+    device_id: Optional[str] = None
+    app_name: Optional[str] = None
+    timestamp: Optional[datetime] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+    def __post_init__(self):
+        from datetime import timezone
+        if self.timestamp is None:
+            self.timestamp = datetime.now(timezone.utc)
+        elif self.timestamp.tzinfo is None:
+            self.timestamp = self.timestamp.astimezone(timezone.utc)
+        self.device_type = (self.device_type or "unknown").lower()
+        self.state = (self.state or "active").lower()
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "device_type": self.device_type,
+            "state": self.state,
+            "device_id": self.device_id,
+            "app_name": self.app_name,
+            "timestamp": self.timestamp.isoformat() if self.timestamp else None,
+            "metadata": self.metadata or {}
+        }
+
 def format_duration(minutes: Optional[int], long_form: bool = False) -> str:
     """
     Converts a duration in minutes into a human-readable string with hours and minutes.
@@ -167,6 +218,18 @@ class Meeting:
     @property
     def is_past(self) -> bool:
         return not self.is_upcoming
+
+    @property
+    def is_study_event(self) -> bool:
+        """Determines if the meeting represents a study/academic session."""
+        cat = (self.event_type or self.category or "").lower()
+        pilot = (self.pilot_type or "").lower()
+        if cat in ("study", "class") or pilot == "owl":
+            return True
+        # Check keywords in title
+        title_lower = (self.title or "").lower()
+        study_kws = ["study", "studying", "studio", "studiare", "homework", "compiti", "ripasso", "revision", "exam", "esame", "tesi", "thesis"]
+        return any(kw in title_lower for kw in study_kws)
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert Meeting to dictionary format for backward compatibility and JSON serialization."""
