@@ -7,6 +7,8 @@ from typing import Optional, Dict, Any
 from core.domain.models import format_duration
 from core.services.language_service import t, get_active_language
 
+MODE_ICONS_TRAY = {"transit": "🚆", "automobile": "🚗", "walking": "🚶", "bicycling": "🚲"}
+
 class TrayViewModel:
     @staticmethod
     def get_status_bar_title(next_m: Any, now: datetime, mode: str, max_lookahead_min: int, lang: Optional[str] = None) -> str:
@@ -100,3 +102,26 @@ class TrayViewModel:
                     return f"{icon_prefix} {start_str} {title_short}"
 
             return f"{icon_prefix} {start_str} {title_short}"
+
+    @staticmethod
+    def format_travel_info(travel_minutes, departure_time, transport_mode="transit", default_mode="transit"):
+        """Formats the travel info suffix: '  •  ⏱️ 🚗 ~25m (Leave at 08:30)'"""
+        if not travel_minutes:
+            return ""
+        dur_str = format_duration(travel_minutes)
+        mode = transport_mode or default_mode
+        icon = MODE_ICONS_TRAY.get(mode, "🚗")
+        if isinstance(departure_time, datetime):
+            return f"  •  ⏱️ {icon} ~{dur_str} (Leave at {departure_time.astimezone().strftime('%H:%M')})"
+        return f"  •  ⏱️ {icon} ~{dur_str} travel"
+
+    @staticmethod
+    def format_next_event_label(icon_prefix, start_str, title, travel_minutes=None, departure_time=None):
+        """Formats the tray menu next-event label: '🦆 Next: 09:00 — Meeting (🚗 ~25m • Leave at 08:30)'"""
+        if travel_minutes and isinstance(departure_time, datetime):
+            dur_str = format_duration(travel_minutes)
+            return f"{icon_prefix} Next: {start_str} — {title} (🚗 ~{dur_str} • Leave at {departure_time.astimezone().strftime('%H:%M')})"
+        elif travel_minutes:
+            dur_str = format_duration(travel_minutes)
+            return f"{icon_prefix} Next: {start_str} — {title} (🚗 ~{dur_str})"
+        return f"{icon_prefix} Next: {start_str} — {title}"

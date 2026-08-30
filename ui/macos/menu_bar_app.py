@@ -331,15 +331,7 @@ class QuakMeetingMenuBar(AppKit.NSObject):
             travel_min = next_m.get("travel_time_minutes")
             dep_dt = next_m.get("departure_time")
 
-            # Track the most immediate relevant event (could be currently active or next future)
-            if travel_min and isinstance(dep_dt, datetime):
-                dur_str = format_duration(travel_min)
-                next_label = f"{icon_prefix} Next: {start_str} — {m_title} (🚗 ~{dur_str} • Leave at {dep_dt.astimezone().strftime('%H:%M')})"
-            elif travel_min:
-                dur_str = format_duration(travel_min)
-                next_label = f"{icon_prefix} Next: {start_str} — {m_title} (🚗 ~{dur_str})"
-            else:
-                next_label = f"{icon_prefix} Next: {start_str} — {m_title}"
+            next_label = TrayViewModel.format_next_event_label(icon_prefix, start_str, m_title, travel_min, dep_dt)
 
             item_next = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
                 next_label, None, ""

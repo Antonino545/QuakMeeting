@@ -1400,7 +1400,6 @@ class QtFlightDeckWindow(QMainWindow):
                 if not action_url and m.location and m.location != "missing value":
                     import urllib.parse
                     action_url = f"https://www.google.com/maps/search/?api=1&query={urllib.parse.quote(m.location)}"
-                    m.action_url = action_url
 
                 has_real_url = bool(action_url and action_url.strip() and action_url != "https://calendar.apple.com")
                 if has_real_url:

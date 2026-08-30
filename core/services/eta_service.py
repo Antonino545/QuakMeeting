@@ -156,7 +156,7 @@ class ETAService:
 
             try:
                 # OSRM Driving base query
-                osrm_url = f"http://router.project-osrm.org/route/v1/driving/{lon1},{lat1};{lon2},{lat2}?overview=false"
+                osrm_url = f"https://router.project-osrm.org/route/v1/driving/{lon1},{lat1};{lon2},{lat2}?overview=false"
                 headers = {"User-Agent": "QuakMeeting-macOS/1.0"}
                 req = urllib.request.Request(osrm_url, headers=headers)
                 with urllib.request.urlopen(req, timeout=4) as resp:

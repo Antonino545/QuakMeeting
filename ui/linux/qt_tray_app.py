@@ -111,14 +111,7 @@ class QuakMeetingTrayApp:
             travel_min = getattr(nx, "travel_time_minutes", 0)
             dep_dt = getattr(nx, "departure_time", None)
 
-            if travel_min and isinstance(dep_dt, datetime):
-                dur_str = format_duration(travel_min)
-                next_label = f"{icon_prefix} Next: {st} — {m_title} (🚗 ~{dur_str} • Leave at {dep_dt.strftime('%H:%M')})"
-            elif travel_min:
-                dur_str = format_duration(travel_min)
-                next_label = f"{icon_prefix} Next: {st} — {m_title} (🚗 ~{dur_str})"
-            else:
-                next_label = f"{icon_prefix} Next: {st} — {m_title}"
+            next_label = TrayViewModel.format_next_event_label(icon_prefix, st, m_title, travel_min, dep_dt)
 
             header_act = QAction(next_label, menu)
             header_act.setEnabled(False)

@@ -88,6 +88,9 @@ def generate_launchagent_plist(app_path: Optional[str] = None) -> str:
     if not app_path:
         app_path = _get_target_app_path()
 
+    from xml.sax.saxutils import escape as xml_escape
+    safe_path = xml_escape(app_path)
+
     return f"""<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -98,7 +101,7 @@ def generate_launchagent_plist(app_path: Optional[str] = None) -> str:
     <array>
         <string>/usr/bin/open</string>
         <string>-a</string>
-        <string>{app_path}</string>
+        <string>{safe_path}</string>
         <string>--args</string>
         <string>--silent</string>
         <string>--autostart</string>

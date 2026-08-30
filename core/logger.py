@@ -19,7 +19,9 @@ def _show_macos_error_dialog(title: str, message: str) -> None:
     """Displays a native macOS alert modal if a critical startup crash occurs."""
     try:
         import subprocess
-        script = f'display alert "{title}" message "{message}" as critical buttons {{"OK"}} default button "OK"'
+        safe_title = title.replace('\\', '\\\\').replace('"', '\\"')
+        safe_message = message.replace('\\', '\\\\').replace('"', '\\"')
+        script = f'display alert "{safe_title}" message "{safe_message}" as critical buttons {{"OK"}} default button "OK"'
         subprocess.run(["osascript", "-e", script], capture_output=True, timeout=5)
     except Exception:
         pass

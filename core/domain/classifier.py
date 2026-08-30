@@ -8,6 +8,8 @@ from datetime import datetime
 from typing import Dict, Any, Tuple, Optional, List, Union
 from .models import Meeting, PilotType, EventCategory
 
+_KW_REGEX_CACHE: Dict[str, re.Pattern] = {}
+
 MEETING_PATTERNS = [
     (r"https://meet\.google\.com/[a-z0-9-]+", "Google Meet 🟢", "duck", "🚀 JOIN GOOGLE MEET"),
     (r"https://[a-zA-Z0-9-]+\.zoom\.us/[jsw]/[0-9a-zA-Z?=&_-]+", "Zoom Meeting 🔷", "duck", "🚀 JOIN ZOOM MEETING"),
@@ -148,9 +150,12 @@ class EventClassifier:
 
     @staticmethod
     def _matches_kw(kw: str, text: str) -> bool:
-        if len(kw) <= 5 or not kw.isalnum():
-            return bool(re.search(r'\b' + re.escape(kw) + r'\b', text, re.IGNORECASE))
-        return kw in text
+        """Match keyword using word-boundary regex with compiled pattern cache."""
+        pattern = _KW_REGEX_CACHE.get(kw)
+        if pattern is None:
+            pattern = re.compile(r'\b' + re.escape(kw) + r'\b', re.IGNORECASE)
+            _KW_REGEX_CACHE[kw] = pattern
+        return bool(pattern.search(text))
 
     @classmethod
     def classify(cls, title: str, location: str = "", description: str = "",
@@ -165,9 +170,9 @@ class EventClassifier:
         if custom_keywords and isinstance(custom_keywords, dict):
             for k, v in custom_keywords.items():
                 if k in keywords_dict and isinstance(v, list):
-                    keywords_dict[k] = list(set(keywords_dict[k] + v))
+                    keywords_dict[k] = list(set(keywords_dict[k] + [kw.lower() for kw in v]))
                 elif isinstance(v, list):
-                    keywords_dict[k] = v
+                    keywords_dict[k] = [kw.lower() for kw in v]
 
         classroom, teacher = cls.extract_classroom_and_teacher(title, location, description)
         search_blob = f"{title} {location} {description} {meeting_url or ''}".lower()

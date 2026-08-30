@@ -1,7 +1,7 @@
 """
 Calendar Service for QuakMeeting.
 Coordinates in-memory and disk caching, provider querying, background sync, and ETA route enrichment.
-Strictly retrieves only current and upcoming events for Today and Tomorrow.
+Strictly retrieves only current and upcoming events for Today.
 """
 import os
 import json
