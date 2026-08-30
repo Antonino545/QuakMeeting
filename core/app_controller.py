@@ -14,6 +14,7 @@ class AppController:
         self.is_running = False
         self._thread = None
         self._loop_count = 0
+        self._stop_event = threading.Event()
 
     def start_background_loop(self):
         if self.is_running:
@@ -24,6 +25,7 @@ class AppController:
 
     def stop_background_loop(self):
         self.is_running = False
+        self._stop_event.set()
 
     def _loop(self):
         logger.info("Started background AppController loop.")
@@ -49,6 +51,6 @@ class AppController:
             except Exception as e:
                 logger.error(f"Error in background AppController loop: {e}", exc_info=True)
 
-            time.sleep(15)
+            self._stop_event.wait(15)
 
 app_controller = AppController()

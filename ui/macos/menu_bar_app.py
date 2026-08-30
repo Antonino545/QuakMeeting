@@ -16,7 +16,7 @@ from core.domain.models import Meeting, format_duration
 from core.services.calendar_service import calendar_service
 from core.services.reminder_engine import reminder_engine
 from core.services.event_bus import event_bus
-from core.services.config_service import config
+from core.services.config_service import config, is_debug_mode
 from core.services.updater_service import updater_service
 from core.logger import setup_logging, logger, open_log_file, open_log_folder
 from ui.macos.banner import show_banner_async, _run_banner
@@ -183,12 +183,13 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         help_menu_item = AppKit.NSMenuItem.alloc().init()
         help_menu = AppKit.NSMenu.alloc().initWithTitle_("Help")
 
-        help_log = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "View Log File (quakmeeting.log)", "openLogFileAction:", "l"
-        )
-        help_log.setTarget_(self)
-        help_menu.addItem_(help_log)
-        help_menu.addItem_(AppKit.NSMenuItem.separatorItem())
+        if is_debug_mode():
+            help_log = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+                "View Log File (quakmeeting.log)", "openLogFileAction:", "l"
+            )
+            help_log.setTarget_(self)
+            help_menu.addItem_(help_log)
+            help_menu.addItem_(AppKit.NSMenuItem.separatorItem())
 
         help_doc = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
             "QuakMeeting Guide & GitHub", "openHelp:", ""
@@ -330,15 +331,7 @@ class QuakMeetingMenuBar(AppKit.NSObject):
             travel_min = next_m.get("travel_time_minutes")
             dep_dt = next_m.get("departure_time")
 
-            # Track the most immediate relevant event (could be currently active or next future)
-            if travel_min and isinstance(dep_dt, datetime):
-                dur_str = format_duration(travel_min)
-                next_label = f"{icon_prefix} Next: {start_str} — {m_title} (🚗 ~{dur_str} • Leave at {dep_dt.astimezone().strftime('%H:%M')})"
-            elif travel_min:
-                dur_str = format_duration(travel_min)
-                next_label = f"{icon_prefix} Next: {start_str} — {m_title} (🚗 ~{dur_str})"
-            else:
-                next_label = f"{icon_prefix} Next: {start_str} — {m_title}"
+            next_label = TrayViewModel.format_next_event_label(icon_prefix, start_str, m_title, travel_min, dep_dt)
 
             item_next = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
                 next_label, None, ""
@@ -487,11 +480,12 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         item_display_mode.setSubmenu_(mode_menu)
         self.menu.addItem_(item_display_mode)
 
-        item_logs = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "📄 View Logs & Diagnostics...", "openLogFileAction:", "l"
-        )
-        item_logs.setTarget_(self)
-        self.menu.addItem_(item_logs)
+        if is_debug_mode():
+            item_logs = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+                "📄 View Logs & Diagnostics...", "openLogFileAction:", "l"
+            )
+            item_logs.setTarget_(self)
+            self.menu.addItem_(item_logs)
 
         self.menu.addItem_(AppKit.NSMenuItem.separatorItem())
 

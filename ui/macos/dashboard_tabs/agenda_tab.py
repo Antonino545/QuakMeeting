@@ -145,7 +145,6 @@ class AgendaTabController(AppKit.NSObject):
         if not action_url and loc and loc != "missing value":
             import urllib.parse
             action_url = f"https://maps.apple.com/?q={urllib.parse.quote(loc)}"
-            m["action_url"] = action_url
 
         has_real_url = bool(action_url and action_url.strip() and action_url != "https://calendar.apple.com")
 

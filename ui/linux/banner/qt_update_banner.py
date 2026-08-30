@@ -15,6 +15,7 @@ except ImportError:
     pass
 
 from ui.linux.theme import Theme
+from core.services.sound_service import play_chime
 
 # ── Constants for Update Banner ──
 CARD_W = 500
@@ -87,6 +88,8 @@ class QtUpdateBannerWindow(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setMouseTracking(True)
         self.move(int(self.win_x), int(self.win_y))
+
+        play_chime()
 
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._step)

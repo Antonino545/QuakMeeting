@@ -10,7 +10,7 @@ gi.require_version('AppIndicator3', '0.1')
 gi.require_version('Gtk', '3.0')
 from gi.repository import AppIndicator3, Gtk, GLib
 
-from core.services.config_service import config
+from core.services.config_service import config, is_debug_mode
 from core.services.calendar_service import calendar_service
 from core.services.reminder_engine import reminder_engine
 from core.services.updater_service import updater_service
@@ -148,10 +148,11 @@ class AppIndicatorTrayApp:
             
         menu.append(item_mode)
 
-        item_logs = Gtk.MenuItem(label="📄 View Logs & Diagnostics...")
-        item_logs.connect("activate", lambda _: open_log_file())
-        menu.append(item_logs)
-        menu.append(Gtk.SeparatorMenuItem())
+        if is_debug_mode():
+            item_logs = Gtk.MenuItem(label="📄 View Logs & Diagnostics...")
+            item_logs.connect("activate", lambda _: open_log_file())
+            menu.append(item_logs)
+            menu.append(Gtk.SeparatorMenuItem())
 
         update_info = updater_service.latest_release_info
         if update_info and update_info.get("has_update"):

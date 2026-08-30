@@ -337,14 +337,22 @@ class UpdaterService:
             elif package_path.endswith(".AppImage"):
                 os.chmod(package_path, 0o755)
                 event_bus.publish("UPDATE_INSTALLED")
-                relaunch_cmd = (
+                # Kill old instances first, then launch the AppImage safely
+                # using a list-form Popen to avoid shell injection via filename
+                kill_cmd = (
                     "sleep 1.2; "
                     "pkill -f 'quakmeeting' 2>/dev/null || true; "
                     "pkill -f 'qt_dashboard' 2>/dev/null || true; "
-                    "sleep 0.6; "
-                    f"'{package_path}' > /dev/null 2>&1 &"
+                    "sleep 0.6"
                 )
-                subprocess.Popen(["bash", "-c", relaunch_cmd], start_new_session=True)
+                subprocess.Popen(["bash", "-c", kill_cmd], start_new_session=True)
+                time.sleep(2.5)
+                subprocess.Popen(
+                    [package_path],
+                    start_new_session=True,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
                 os._exit(0)
                 return True
         except Exception as e:

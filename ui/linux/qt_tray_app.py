@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import QApplication, QSystemTrayIcon, QMenu
 from PyQt6.QtGui import QIcon, QAction, QPainter, QPixmap, QFont, QColor, QPalette
 from ui.linux.theme import Theme
 
-from core.services.config_service import config
+from core.services.config_service import config, is_debug_mode
 from core.services.calendar_service import calendar_service
 from core.services.reminder_engine import reminder_engine
 from core.services.updater_service import updater_service
@@ -111,14 +111,7 @@ class QuakMeetingTrayApp:
             travel_min = getattr(nx, "travel_time_minutes", 0)
             dep_dt = getattr(nx, "departure_time", None)
 
-            if travel_min and isinstance(dep_dt, datetime):
-                dur_str = format_duration(travel_min)
-                next_label = f"{icon_prefix} Next: {st} — {m_title} (🚗 ~{dur_str} • Leave at {dep_dt.strftime('%H:%M')})"
-            elif travel_min:
-                dur_str = format_duration(travel_min)
-                next_label = f"{icon_prefix} Next: {st} — {m_title} (🚗 ~{dur_str})"
-            else:
-                next_label = f"{icon_prefix} Next: {st} — {m_title}"
+            next_label = TrayViewModel.format_next_event_label(icon_prefix, st, m_title, travel_min, dep_dt)
 
             header_act = QAction(next_label, menu)
             header_act.setEnabled(False)
@@ -163,10 +156,11 @@ class QuakMeetingTrayApp:
 
         menu.addMenu(mode_menu)
 
-        logs_act = QAction("📄 View Logs & Diagnostics...", menu)
-        logs_act.triggered.connect(lambda chk=False: open_log_file())
-        menu.addAction(logs_act)
-        menu.addSeparator()
+        if is_debug_mode():
+            logs_act = QAction("📄 View Logs & Diagnostics...", menu)
+            logs_act.triggered.connect(lambda chk=False: open_log_file())
+            menu.addAction(logs_act)
+            menu.addSeparator()
 
         update_info = updater_service.latest_release_info
         if update_info and update_info.get("has_update"):

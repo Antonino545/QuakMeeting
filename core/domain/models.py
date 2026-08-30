@@ -123,7 +123,7 @@ class Meeting:
 
         # Generate a deterministic UUID if none is provided to avoid merging different events at the same time
         if not self.uid:
-            time_str = self.start_time.isoformat() if self.start_time else "unknown_time"
+            time_str = self.start_time.strftime("%Y%m%dT%H%M") if self.start_time else "unknown_time"
             unique_str = f"{self.title}_{time_str}_{self.provider}_{self.location}_{self.description}"
             self.uid = str(uuid.uuid5(uuid.NAMESPACE_URL, unique_str))
 

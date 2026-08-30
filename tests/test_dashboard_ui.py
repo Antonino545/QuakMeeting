@@ -130,5 +130,29 @@ class TestDashboardUI(unittest.TestCase):
         mini.update_mascot("bunny", "gym")
         mini.update_animal("duck")
 
+    def test_qt_tray_debug_menu_visibility(self):
+        try:
+            from PyQt6.QtWidgets import QApplication
+            from ui.linux.qt_tray_app import QuakMeetingTrayApp
+            from core.services.config_service import config
+        except (ImportError, ModuleNotFoundError):
+            self.skipTest("PyQt6 not available for Qt tray app testing")
+
+        app = QApplication.instance() or QApplication(sys.argv)
+        with unittest.mock.patch("core.services.updater_service.updater_service.check_for_updates"):
+            tray_app = QuakMeetingTrayApp(app)
+
+        # 1. Non-debug mode: logs action should not be present
+        with unittest.mock.patch("ui.linux.qt_tray_app.is_debug_mode", return_value=False):
+            tray_app.build_menu()
+            action_texts = [act.text() for act in tray_app.tray.contextMenu().actions()]
+            self.assertNotIn("📄 View Logs & Diagnostics...", action_texts)
+
+        # 2. Debug mode: logs action should be present
+        with unittest.mock.patch("ui.linux.qt_tray_app.is_debug_mode", return_value=True):
+            tray_app.build_menu()
+            action_texts = [act.text() for act in tray_app.tray.contextMenu().actions()]
+            self.assertIn("📄 View Logs & Diagnostics...", action_texts)
+
 if __name__ == '__main__':
     unittest.main()

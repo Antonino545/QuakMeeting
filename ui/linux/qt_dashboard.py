@@ -911,7 +911,7 @@ class QtFlightDeckWindow(QMainWindow):
         uc_layout.setContentsMargins(18, 14, 18, 14)
         uc_layout.setSpacing(10)
 
-        uc_title = QLabel("⚙️ System, Language & Diagnostics", util_card)
+        uc_title = QLabel("⚙️ System, Language & Diagnostics" if is_debug_mode() else "⚙️ System & Language", util_card)
         uc_title.setObjectName("CardTitle")
         uc_layout.addWidget(uc_title)
 
@@ -997,6 +997,21 @@ class QtFlightDeckWindow(QMainWindow):
         uc_layout.addLayout(autostart_row)
         uc_layout.addSpacing(6)
 
+        mute_lessons_row = QHBoxLayout()
+        mute_lessons_lbl = QLabel("🤫 Mute banner chime during university lessons & classes", util_card)
+        mute_lessons_lbl.setStyleSheet("color: #cdd6f4; font-weight: bold; font-size: 13px;")
+
+        mute_lessons_sw = ToggleSwitch(config.get("mute_during_lessons", True), util_card)
+        def _toggle_mute_lessons(checked):
+            config.set("mute_during_lessons", checked)
+        mute_lessons_sw.toggled = _toggle_mute_lessons
+
+        mute_lessons_row.addWidget(mute_lessons_lbl)
+        mute_lessons_row.addStretch()
+        mute_lessons_row.addWidget(mute_lessons_sw)
+        uc_layout.addLayout(mute_lessons_row)
+        uc_layout.addSpacing(6)
+
         # Debug / Developer Mode Toggle (Visible only when debug mode is enabled or active)
         dbg_container = QWidget(util_card)
         dbg_row = QHBoxLayout(dbg_container)
@@ -1012,6 +1027,7 @@ class QtFlightDeckWindow(QMainWindow):
             log_btn.setVisible(checked)
             demo_up_btn.setVisible(checked)
             dbg_container.setVisible(checked)
+            uc_title.setText("⚙️ System, Language & Diagnostics" if checked else "⚙️ System & Language")
             self._refresh_hangar()
         dbg_sw.toggled = _toggle_debug
 
@@ -1399,7 +1415,6 @@ class QtFlightDeckWindow(QMainWindow):
                 if not action_url and m.location and m.location != "missing value":
                     import urllib.parse
                     action_url = f"https://www.google.com/maps/search/?api=1&query={urllib.parse.quote(m.location)}"
-                    m.action_url = action_url
 
                 has_real_url = bool(action_url and action_url.strip() and action_url != "https://calendar.apple.com")
                 if has_real_url:

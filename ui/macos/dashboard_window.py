@@ -5,7 +5,10 @@ import os
 import time
 import threading
 import warnings
+import logging
 from datetime import datetime
+
+logger = logging.getLogger("QuakMeeting.DashboardWindow")
 
 if hasattr(objc, 'ObjCPointerWarning'):
     warnings.filterwarnings("ignore", category=objc.ObjCPointerWarning)
@@ -22,6 +25,7 @@ from ui.macos.dashboard_tabs.agenda_tab import AgendaTabController
 from ui.macos.dashboard_tabs.hangar_tab import HangarTabController
 from ui.macos.dashboard_tabs.settings_tab import SettingsTabController
 from ui.macos.theme import Theme, ModernButton
+from ui.common.tray_viewmodel import TrayViewModel
 
 class DashboardWindowDelegate(AppKit.NSObject):
     def init(self):
@@ -308,16 +312,8 @@ class DashboardWindowController(AppKit.NSObject):
         if today_upcoming:
             next_m = today_upcoming[0]
             s_str = next_m["start_time"].astimezone().strftime("%H:%M") if next_m.get("start_time") else "--:--"
-            travel_info = ""
-            if next_m.get("travel_time_minutes"):
-                dur_str = format_duration(next_m["travel_time_minutes"])
-                t_mode = next_m.get("transport_mode", config.get("transport_mode", "transit"))
-                icon = MODE_ICONS.get(t_mode, "🚗")
-                dep_dt = next_m.get("departure_time")
-                if isinstance(dep_dt, datetime):
-                    travel_info = f"  •  ⏱️ {icon} ~{dur_str} (Leave at {dep_dt.astimezone().strftime('%H:%M')})"
-                else:
-                    travel_info = f"  •  ⏱️ {icon} ~{dur_str} travel"
+            t_mode = next_m.get("transport_mode", config.get("transport_mode", "transit"))
+            travel_info = TrayViewModel.format_travel_info(next_m.get("travel_time_minutes"), next_m.get("departure_time"), t_mode)
             self.status_lbl.setStringValue_(f"🟢 Scanner Active  •  {len(today_meetings)} events today  •  Next: {s_str}{travel_info}")
         else:
             self.status_lbl.setStringValue_("🟢 Scanner Active  •  No upcoming events for today")
@@ -329,15 +325,18 @@ class DashboardWindowController(AppKit.NSObject):
             if not self.meetings:
                 self._render_current_tab()
 
+            fallback_meetings = list(self.meetings)
+            fallback_cals = self.cached_calendars
+
             def worker():
                 try:
                     raw = calendar_service.sync_now()
                     meetings = [m.to_dict() if isinstance(m, Meeting) else m for m in raw]
                     cals = calendar_service.get_available_calendars()
                 except Exception as e:
-                    print(f"Sync error: {e}")
-                    meetings = self.meetings
-                    cals = self.cached_calendars
+                    logger.error(f"Sync error: {e}", exc_info=True)
+                    meetings = fallback_meetings
+                    cals = fallback_cals
 
                 def on_complete():
                     self.is_loading = False
@@ -351,16 +350,8 @@ class DashboardWindowController(AppKit.NSObject):
                     if t_up:
                         nx = t_up[0]
                         st = nx["start_time"].astimezone().strftime("%H:%M") if nx.get("start_time") else "--:--"
-                        tr_info = ""
-                        if nx.get("travel_time_minutes"):
-                            dur_s = format_duration(nx["travel_time_minutes"])
-                            tm = nx.get("transport_mode", config.get("transport_mode", "transit"))
-                            ic = MODE_ICONS.get(tm, "🚗")
-                            dp = nx.get("departure_time")
-                            if isinstance(dp, datetime):
-                                tr_info = f"  •  ⏱️ {ic} ~{dur_s} (Leave at {dp.astimezone().strftime('%H:%M')})"
-                            else:
-                                tr_info = f"  •  ⏱️ {ic} ~{dur_s} travel"
+                        tm = nx.get("transport_mode", config.get("transport_mode", "transit"))
+                        tr_info = TrayViewModel.format_travel_info(nx.get("travel_time_minutes"), nx.get("departure_time"), tm)
                         self.status_lbl.setStringValue_(f"🟢 Scanner Active  •  {len(t_meets)} events today  •  Next: {st}{tr_info}")
                     else:
                         self.status_lbl.setStringValue_("🟢 Scanner Active  •  No upcoming events for today")
