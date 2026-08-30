@@ -24,6 +24,7 @@ from ui.macos.banner_window import _run_banner
 from ui.macos.dashboard_tabs.agenda_tab import AgendaTabController
 from ui.macos.dashboard_tabs.hangar_tab import HangarTabController
 from ui.macos.dashboard_tabs.settings_tab import SettingsTabController
+from core.services.language_service import t, get_active_language
 from ui.macos.theme import Theme, ModernButton
 from ui.common.tray_viewmodel import TrayViewModel
 
@@ -64,6 +65,8 @@ class DashboardWindowController(AppKit.NSObject):
         self.agenda_tab = AgendaTabController.alloc().init()
         self.hangar_tab = HangarTabController.alloc().init()
         self.settings_tab = SettingsTabController.alloc().init()
+
+        event_bus.subscribe("CONFIG_CHANGED", self._on_config_changed)
 
         threading.Thread(target=self._prewarm_calendars, daemon=True).start()
         self._create_window()
@@ -177,18 +180,18 @@ class DashboardWindowController(AppKit.NSObject):
             icon_lbl.setSelectable_(False)
             header_view.addSubview_(icon_lbl)
 
-        title_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(76, 36, 350, 30))
-        title_lbl.setStringValue_("QuakMeeting — Flight Deck")
-        title_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(18))
-        title_lbl.setTextColor_(Theme.TEXT)
-        title_lbl.setBezeled_(False)
-        title_lbl.setDrawsBackground_(False)
-        title_lbl.setEditable_(False)
-        title_lbl.setSelectable_(False)
-        header_view.addSubview_(title_lbl)
+        self.title_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(76, 36, 350, 30))
+        self.title_lbl.setStringValue_(f"QuakMeeting — {t('flight_deck')}")
+        self.title_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(18))
+        self.title_lbl.setTextColor_(Theme.TEXT)
+        self.title_lbl.setBezeled_(False)
+        self.title_lbl.setDrawsBackground_(False)
+        self.title_lbl.setEditable_(False)
+        self.title_lbl.setSelectable_(False)
+        header_view.addSubview_(self.title_lbl)
 
         self.status_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(76, 14, 450, 22))
-        self.status_lbl.setStringValue_("🟢 Scanner Active  •  Loading events...")
+        self.status_lbl.setStringValue_(f"🟢 {t('scanner_active_no_events')}")
         self.status_lbl.setFont_(AppKit.NSFont.systemFontOfSize_(12.0))
         self.status_lbl.setTextColor_(Theme.SUBTEXT0)
         self.status_lbl.setBezeled_(False)
@@ -198,7 +201,7 @@ class DashboardWindowController(AppKit.NSObject):
         header_view.addSubview_(self.status_lbl)
 
         self.sync_status_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(w - 355, 30, 150, 20))
-        self.sync_status_lbl.setStringValue_("🔄 Pending")
+        self.sync_status_lbl.setStringValue_(f"🔄 {t('sync_pending')}")
         self.sync_status_lbl.setFont_(AppKit.NSFont.systemFontOfSize_(11.5))
         self.sync_status_lbl.setTextColor_(Theme.SUBTEXT1)
         self.sync_status_lbl.setAlignment_(AppKit.NSTextAlignmentRight)
@@ -208,9 +211,9 @@ class DashboardWindowController(AppKit.NSObject):
         self.sync_status_lbl.setSelectable_(False)
         header_view.addSubview_(self.sync_status_lbl)
 
-        refresh_btn = Theme.create_button(
+        self.refresh_btn = Theme.create_button(
             AppKit.NSMakeRect(w - 190, 23, 130, 34),
-            title="🔄 Sync Now",
+            title=f"🔄 {t('sync_now')}",
             bg_color=Theme.SURFACE0,
             text_color=Theme.TEXT,
             border_color=Theme.SURFACE1,
@@ -218,9 +221,9 @@ class DashboardWindowController(AppKit.NSObject):
             font_size=12.0,
             bold=True
         )
-        refresh_btn.setTarget_(self)
-        refresh_btn.setAction_("onRefreshClicked:")
-        header_view.addSubview_(refresh_btn)
+        self.refresh_btn.setTarget_(self)
+        self.refresh_btn.setAction_("onRefreshClicked:")
+        header_view.addSubview_(self.refresh_btn)
 
         parent.addSubview_(header_view)
 
@@ -239,9 +242,9 @@ class DashboardWindowController(AppKit.NSObject):
         self.navbar_container.layer().setMasksToBounds_(True)
 
         tab_items = [
-            ("📅 Today's Agenda", 0),
-            ("🦆 Pilot Hangar", 1),
-            ("⚙️ Preferences & Timing", 2)
+            ("📅 " + t("tab_agenda"), 0),
+            ("🦆 " + t("tab_hangar"), 1),
+            ("⚙️ " + t("tab_settings"), 2)
         ]
 
         padding = 3.0
@@ -314,9 +317,9 @@ class DashboardWindowController(AppKit.NSObject):
             s_str = next_m["start_time"].astimezone().strftime("%H:%M") if next_m.get("start_time") else "--:--"
             t_mode = next_m.get("transport_mode", config.get("transport_mode", "transit"))
             travel_info = TrayViewModel.format_travel_info(next_m.get("travel_time_minutes"), next_m.get("departure_time"), t_mode)
-            self.status_lbl.setStringValue_(f"🟢 Scanner Active  •  {len(today_meetings)} events today  •  Next: {s_str}{travel_info}")
+            self.status_lbl.setStringValue_(t("scanner_active_events", count=len(today_meetings), time=s_str, travel=travel_info))
         else:
-            self.status_lbl.setStringValue_("🟢 Scanner Active  •  No upcoming events for today")
+            self.status_lbl.setStringValue_(f"🟢 {t('scanner_active_no_events')}")
 
         self._render_current_tab()
 
@@ -352,14 +355,54 @@ class DashboardWindowController(AppKit.NSObject):
                         st = nx["start_time"].astimezone().strftime("%H:%M") if nx.get("start_time") else "--:--"
                         tm = nx.get("transport_mode", config.get("transport_mode", "transit"))
                         tr_info = TrayViewModel.format_travel_info(nx.get("travel_time_minutes"), nx.get("departure_time"), tm)
-                        self.status_lbl.setStringValue_(f"🟢 Scanner Active  •  {len(t_meets)} events today  •  Next: {st}{tr_info}")
+                        self.status_lbl.setStringValue_(t("scanner_active_events", count=len(t_meets), time=st, travel=tr_info))
                     else:
-                        self.status_lbl.setStringValue_("🟢 Scanner Active  •  No upcoming events for today")
+                        self.status_lbl.setStringValue_(f"🟢 {t('scanner_active_no_events')}")
                     self._render_current_tab()
 
                 AppKit.NSOperationQueue.mainQueue().addOperationWithBlock_(on_complete)
 
             threading.Thread(target=worker, daemon=True).start()
+
+    def _on_config_changed(self, key=None, **kwargs):
+        if key in ("language", "mascot_outfit", "transport_mode", "ignored_calendars", None):
+            self.invalidate_caches()
+            self.performSelectorOnMainThread_withObject_waitUntilDone_(
+                "refreshUIOnMainThread:",
+                None,
+                False
+            )
+
+    @objc.IBAction
+    def refreshUIOnMainThread_(self, sender):
+        self._update_localized_ui()
+        self.refresh_data(force=False)
+
+    def _update_localized_ui(self):
+        if hasattr(self, "title_lbl") and self.title_lbl:
+            self.title_lbl.setStringValue_(f"QuakMeeting — {t('flight_deck')}")
+        if hasattr(self, "refresh_btn") and self.refresh_btn:
+            self.refresh_btn.setTitle_(f"🔄 {t('sync_now')}")
+
+        tab_titles = [
+            "📅 " + t("tab_agenda"),
+            "🦆 " + t("tab_hangar"),
+            "⚙️ " + t("tab_settings")
+        ]
+        if hasattr(self, "tab_buttons") and self.tab_buttons:
+            for idx, btn in enumerate(self.tab_buttons):
+                if idx < len(tab_titles):
+                    btn.setTitle_(tab_titles[idx])
+                    self._update_tab_button_style(btn, is_active=(btn.tag() == self.current_tab))
+
+    def invalidate_caches(self):
+        self._last_rendered_signature = None
+        if hasattr(self.agenda_tab, "invalidate_cache"):
+            self.agenda_tab.invalidate_cache()
+        if hasattr(self.hangar_tab, "invalidate_cache"):
+            self.hangar_tab.invalidate_cache()
+        if hasattr(self.settings_tab, "invalidate_cache"):
+            self.settings_tab.invalidate_cache()
 
     def _render_current_tab(self):
         if not self.content_container:
@@ -369,18 +412,18 @@ class DashboardWindowController(AppKit.NSObject):
         
         last_sync = calendar_service.last_sync_time
         status = calendar_service.last_sync_status
-        sync_str = last_sync.strftime("%H:%M:%S") if last_sync else "Never"
+        sync_str = last_sync.strftime("%H:%M:%S") if last_sync else t("sync_pending")
         
         if status == "Error":
-            self.sync_status_lbl.setStringValue_(f"❌ Failed (Last: {sync_str})")
+            self.sync_status_lbl.setStringValue_(f"❌ {t('sync_failed', time=sync_str)}")
             self.sync_status_lbl.setTextColor_(AppKit.NSColor.colorWithRed_green_blue_alpha_(0.9, 0.4, 0.4, 1.0))
         else:
-            self.sync_status_lbl.setStringValue_(f"✅ Sync: {sync_str}")
+            self.sync_status_lbl.setStringValue_(f"✅ {t('sync_success', time=sync_str)}")
             self.sync_status_lbl.setTextColor_(AppKit.NSColor.colorWithRed_green_blue_alpha_(0.68, 0.72, 0.85, 1.0))
 
         m_sig = tuple((m.get("title"), str(m.get("start_time")), m.get("travel_time_minutes")) for m in self.meetings)
         sync_time_str = calendar_service.last_sync_time.isoformat() if calendar_service.last_sync_time else ""
-        current_sig = (self.current_tab, self.is_loading, len(self.meetings), m_sig, sync_time_str)
+        current_sig = (self.current_tab, self.is_loading, len(self.meetings), m_sig, sync_time_str, get_active_language())
         if self._last_rendered_signature == current_sig:
             return
         self._last_rendered_signature = current_sig
@@ -402,7 +445,7 @@ class DashboardWindowController(AppKit.NSObject):
             self.content_container.addSubview_(view)
 
     def refresh_current_tab(self):
-        self._last_rendered_signature = None
+        self.invalidate_caches()
         self._render_current_tab()
 
 def show_dashboard(tab_index=None):

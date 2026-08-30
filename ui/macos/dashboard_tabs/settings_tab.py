@@ -7,6 +7,7 @@ from core.services.calendar_service import calendar_service
 from core.services.event_bus import event_bus
 from core.services.updater_service import updater_service
 from core.services.config_service import is_debug_mode
+from core.services.language_service import t, get_active_language
 from core.autostart import is_autostart_enabled, enable_autostart, disable_autostart
 from core.logger import open_log_file, open_log_folder
 from ui.macos.theme import Theme, ModernButton, ModernToggleSwitch
@@ -38,7 +39,7 @@ class SettingsTabController(AppKit.NSObject):
         self.cached_calendars = cached_calendars
         
         cals_count = len(cached_calendars or [])
-        sig = (round(w), round(h), cals_count)
+        sig = (round(w), round(h), cals_count, get_active_language())
         if self._cached_view is not None and self._cached_sig == sig:
             return self._cached_view
 
@@ -224,14 +225,14 @@ class SettingsTabController(AppKit.NSObject):
     def _build_timing_card(self, card, w, h):
         self._add_section_header(
             card,
-            "⏱️ Notification Lead Times & Staged Reminders",
-            "Select reminder alert windows to receive progressive notifications ahead of time.",
+            t("settings_timing_title"),
+            t("settings_timing_subtitle"),
             h, w
         )
 
         # Quick Presets Row
         pre_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 84, 110, 20))
-        pre_lbl.setStringValue_("⚡ Quick Presets:")
+        pre_lbl.setStringValue_(t("settings_quick_presets"))
         pre_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(11.5))
         pre_lbl.setTextColor_(Theme.SUBTEXT0)
         pre_lbl.setBezeled_(False)
@@ -240,9 +241,9 @@ class SettingsTabController(AppKit.NSObject):
         card.addSubview_(pre_lbl)
 
         presets = [
-            ("🧘 Relaxed", "onApplyPresetRelaxed:", 92.0),
-            ("⚡ Standard", "onApplyPresetStandard:", 98.0),
-            ("🚨 Intensive", "onApplyPresetIntensive:", 104.0)
+            (t("preset_relaxed"), "onApplyPresetRelaxed:", 92.0),
+            (t("preset_standard"), "onApplyPresetStandard:", 98.0),
+            (t("preset_intensive"), "onApplyPresetIntensive:", 104.0)
         ]
         x_pre = 135.0
         for p_title, p_action, p_w in presets:
@@ -272,14 +273,14 @@ class SettingsTabController(AppKit.NSObject):
 
         # 1. Video Meetings
         def _add_sub_header(title, desc, y_t, y_d):
-            t = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, y_t, w - 36, 18))
-            t.setStringValue_(title)
-            t.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.0))
-            t.setTextColor_(Theme.TEXT)
-            t.setBezeled_(False)
-            t.setDrawsBackground_(False)
-            t.setEditable_(False)
-            card.addSubview_(t)
+            t_f = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, y_t, w - 36, 18))
+            t_f.setStringValue_(title)
+            t_f.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.0))
+            t_f.setTextColor_(Theme.TEXT)
+            t_f.setBezeled_(False)
+            t_f.setDrawsBackground_(False)
+            t_f.setEditable_(False)
+            card.addSubview_(t_f)
 
             d = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, y_d, w - 36, 16))
             d.setStringValue_(desc)
@@ -291,7 +292,7 @@ class SettingsTabController(AppKit.NSObject):
             card.addSubview_(d)
 
         # Video Meetings Row
-        _add_sub_header("📹 Video Meetings", "Alert ahead of meeting start (0m is always on)", h - 124, h - 140)
+        _add_sub_header(t("settings_video_meetings"), t("settings_video_meetings_desc"), h - 124, h - 140)
         curr_meeting_stages = set(self.config.get("meeting_reminder_stages", [20, 10, 5, 2, 0]))
         x_chip = 18.0
         for val, label in meeting_opts:
@@ -302,7 +303,7 @@ class SettingsTabController(AppKit.NSObject):
         self._add_hairline_divider(card, h - 184, w)
 
         # General Events Row
-        _add_sub_header("📅 General Events", "Alert ahead of start time (0m is always on)", h - 208, h - 224)
+        _add_sub_header(t("settings_general_events"), t("settings_general_events_desc"), h - 208, h - 224)
         curr_general_stages = set(self.config.get("general_reminder_stages", [20, 10, 5, 2, 0]))
         x_chip = 18.0
         for val, label in meeting_opts:
@@ -313,7 +314,7 @@ class SettingsTabController(AppKit.NSObject):
         self._add_hairline_divider(card, h - 268, w)
 
         # Travel & Trips Row
-        _add_sub_header("🚗 Travel & Trips", "Alert ahead of leave time (0m is always on)", h - 292, h - 308)
+        _add_sub_header(t("settings_travel_trips"), t("settings_travel_trips_desc"), h - 292, h - 308)
         curr_travel_stages = set(self.config.get("travel_reminder_stages", [45, 30, 15, 5, 2, 0]))
         x_chip = 18.0
         for val, label in travel_opts:
@@ -326,14 +327,14 @@ class SettingsTabController(AppKit.NSObject):
     def _build_eta_card(self, card, w, h):
         self._add_section_header(
             card,
-            "📍 Home / Departure Address & Multi-Modal Route ETA",
-            "Calculates real-time travel duration and departure times for Public Transit, Driving, Walking, or Cycling.",
+            t("settings_eta_title"),
+            t("settings_eta_subtitle"),
             h, w
         )
 
         # 1. Starting Address (Origin)
         t1 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 74, w - 36, 18))
-        t1.setStringValue_("🏠 Starting Address (Origin)")
+        t1.setStringValue_(t("settings_starting_address"))
         t1.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.0))
         t1.setTextColor_(Theme.TEXT)
         t1.setBezeled_(False)
@@ -345,7 +346,7 @@ class SettingsTabController(AppKit.NSObject):
         field_w = w - 36.0 - 146.0
         self.home_addr_field = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 108, field_w, 28))
         self.home_addr_field.setStringValue_(curr_addr)
-        self.home_addr_field.setPlaceholderString_("e.g. Piazza Castello, Torino or Via Roma, Torino")
+        self.home_addr_field.setPlaceholderString_(t("settings_address_placeholder"))
         self.home_addr_field.setFont_(AppKit.NSFont.systemFontOfSize_(12))
         self.home_addr_field.setTextColor_(Theme.TEXT)
         self.home_addr_field.setTarget_(self)
@@ -361,7 +362,7 @@ class SettingsTabController(AppKit.NSObject):
 
         self.home_save_btn = Theme.create_gradient_button(
             AppKit.NSMakeRect(18 + field_w + 8.0, h - 108, 138.0, 28.0),
-            title="💾 Save Location",
+            title=t("settings_save_location"),
             start_color=Theme.GREEN,
             end_color=Theme.TEAL,
             text_color=Theme.CRUST,
@@ -375,7 +376,7 @@ class SettingsTabController(AppKit.NSObject):
 
         # 2. Transport Mode for Route Calculation
         t2 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 138, w - 36, 18))
-        t2.setStringValue_("🚦 Transport Mode for Route Calculation")
+        t2.setStringValue_(t("settings_transport_calc"))
         t2.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.0))
         t2.setTextColor_(Theme.TEXT)
         t2.setBezeled_(False)
@@ -384,10 +385,10 @@ class SettingsTabController(AppKit.NSObject):
         card.addSubview_(t2)
 
         modes = [
-            ("transit", "🚆 Public Transit"),
-            ("automobile", "🚗 Driving"),
-            ("bicycling", "🚲 Cycling"),
-            ("walking", "🚶 Walking")
+            ("transit", t("settings_public_transit")),
+            ("automobile", t("settings_driving_mode")),
+            ("bicycling", t("settings_cycling_mode")),
+            ("walking", t("settings_walking_mode"))
         ]
         curr_mode = self.config.get("transport_mode", "transit")
         self.mode_buttons = {}
@@ -413,7 +414,7 @@ class SettingsTabController(AppKit.NSObject):
 
         # 3. Departure Buffer Margin
         t3 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 216, w - 240, 18))
-        t3.setStringValue_("⏳ Departure Buffer Margin (station transit / parking time):")
+        t3.setStringValue_(t("settings_departure_buffer"))
         t3.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.0))
         t3.setTextColor_(Theme.TEXT)
         t3.setBezeled_(False)
@@ -427,7 +428,7 @@ class SettingsTabController(AppKit.NSObject):
         self.buf_popup.setTarget_(self)
         self.buf_popup.setAction_("onSelectETABuffer:")
         for opt_title, opt_val in [
-            ("5 minutes", 5), ("10 minutes (Recommended)", 10), ("15 minutes", 15), ("20 minutes", 20)
+            (t("buffer_5m"), 5), (t("buffer_10m_rec"), 10), (t("buffer_15m"), 15), (t("buffer_20m"), 20)
         ]:
             item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(opt_title, None, "")
             item.setRepresentedObject_(opt_val)
@@ -468,8 +469,8 @@ class SettingsTabController(AppKit.NSObject):
     def _build_calendars_card(self, card, w, h, cals=None):
         self._add_section_header(
             card,
-            "📅 Included macOS Calendars",
-            "Select which local, iCloud, or Google calendars to actively monitor for reminders.",
+            t("settings_calendars_title"),
+            t("settings_calendars_subtitle"),
             h, w
         )
 
@@ -478,7 +479,7 @@ class SettingsTabController(AppKit.NSObject):
 
         if not cals:
             lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 86, w - 36, 22))
-            lbl.setStringValue_("All calendar sources are currently monitored.")
+            lbl.setStringValue_(t("settings_all_cals_monitored"))
             lbl.setFont_(AppKit.NSFont.systemFontOfSize_(12))
             lbl.setTextColor_(Theme.SUBTEXT0)
             lbl.setBezeled_(False)
@@ -522,14 +523,14 @@ class SettingsTabController(AppKit.NSObject):
         is_dbg = is_debug_mode()
         self._add_section_header(
             card,
-            "⚙️ System, Language & Diagnostics" if is_dbg else "⚙️ System & Language",
+            t("settings_system_lang_diag") if is_dbg else t("settings_system_lang"),
             "",
             h, w
         )
 
         # 1. Language Selector Row
         lang_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 54, w - 80, 18))
-        lang_lbl.setStringValue_("🌐 Language / Lingua dell'Applicazione:")
+        lang_lbl.setStringValue_(t("settings_lang_selector_label"))
         lang_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.5))
         lang_lbl.setTextColor_(Theme.TEXT)
         lang_lbl.setBezeled_(False)
@@ -538,9 +539,9 @@ class SettingsTabController(AppKit.NSObject):
         card.addSubview_(lang_lbl)
 
         langs = [
-            ("system", "🌐 System (Auto)"),
-            ("en", "🇬🇧 English"),
-            ("it", "🇮🇹 Italiano")
+            ("system", "🌐 " + t("system_language")),
+            ("en", t("language_en")),
+            ("it", t("language_it"))
         ]
         curr_lang = self.config.get("language", "system")
         self.lang_buttons = {}
@@ -566,7 +567,7 @@ class SettingsTabController(AppKit.NSObject):
 
         # 2. Autostart toggle row
         auto_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 124, w - 80, 20))
-        auto_lbl.setStringValue_("🚀 Launch QuakMeeting automatically at macOS login")
+        auto_lbl.setStringValue_(t("settings_autostart_mac"))
         auto_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.5))
         auto_lbl.setTextColor_(Theme.TEXT)
         auto_lbl.setBezeled_(False)
@@ -581,7 +582,7 @@ class SettingsTabController(AppKit.NSObject):
 
         # 3. Mute during lessons toggle row
         mute_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 158, w - 80, 20))
-        mute_lbl.setStringValue_("🤫 Mute banner chime during university lessons & classes")
+        mute_lbl.setStringValue_(t("settings_mute_lessons"))
         mute_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.5))
         mute_lbl.setTextColor_(Theme.TEXT)
         mute_lbl.setBezeled_(False)
@@ -594,12 +595,10 @@ class SettingsTabController(AppKit.NSObject):
         self.mute_lessons_sw.setCallback_(self.onToggleMuteLessonsSwitch)
         card.addSubview_(self.mute_lessons_sw)
 
-        from core.services.language_service import t
-
         if is_dbg:
             # 4. Debug mode toggle row
             dbg_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 192, w - 80, 20))
-            dbg_lbl.setStringValue_("🐛 Enable Developer & Debug Diagnostics Mode")
+            dbg_lbl.setStringValue_(t("settings_debug_mode"))
             dbg_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.5))
             dbg_lbl.setTextColor_(Theme.TEXT)
             dbg_lbl.setBezeled_(False)
@@ -618,7 +617,7 @@ class SettingsTabController(AppKit.NSObject):
 
             self.mac_check_update_btn = Theme.create_button(
                 AppKit.NSMakeRect(18, y_btns, btn_w, 30),
-                title="🔍 Check Updates",
+                title=f"🔍 {t('check_updates')}",
                 bg_color=Theme.SURFACE0,
                 text_color=Theme.TEXT,
                 border_color=Theme.SURFACE1,
@@ -632,7 +631,7 @@ class SettingsTabController(AppKit.NSObject):
 
             edit_btn = Theme.create_button(
                 AppKit.NSMakeRect(18 + (btn_w + 8.0) * 1, y_btns, btn_w, 30),
-                title="📝 Config JSON",
+                title=t("settings_config_json"),
                 bg_color=Theme.SURFACE0,
                 text_color=Theme.TEXT,
                 border_color=Theme.SURFACE1,
@@ -645,7 +644,7 @@ class SettingsTabController(AppKit.NSObject):
 
             view_logs_btn = Theme.create_button(
                 AppKit.NSMakeRect(18 + (btn_w + 8.0) * 2, y_btns, btn_w, 30),
-                title="📄 View Logs",
+                title=t("settings_view_logs"),
                 bg_color=Theme.SURFACE0,
                 text_color=Theme.TEXT,
                 border_color=Theme.SURFACE1,
@@ -658,7 +657,7 @@ class SettingsTabController(AppKit.NSObject):
 
             folder_btn = Theme.create_button(
                 AppKit.NSMakeRect(18 + (btn_w + 8.0) * 3, y_btns, btn_w, 30),
-                title="📂 Log Folder",
+                title=t("settings_log_folder"),
                 bg_color=Theme.SURFACE0,
                 text_color=Theme.TEXT,
                 border_color=Theme.SURFACE1,
@@ -688,7 +687,7 @@ class SettingsTabController(AppKit.NSObject):
 
             self.mac_check_update_btn = Theme.create_button(
                 AppKit.NSMakeRect(18, y_btns, btn_w, 30),
-                title="🔍 Check for Updates",
+                title=f"🔍 {t('check_updates')}",
                 bg_color=Theme.SURFACE0,
                 text_color=Theme.TEXT,
                 border_color=Theme.SURFACE1,
@@ -731,7 +730,7 @@ class SettingsTabController(AppKit.NSObject):
         update_box.addSubview_(self.mac_update_icon)
 
         self.mac_update_status_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(46, 14, w - 240, 20))
-        self.mac_update_status_lbl.setStringValue_(f"QuakMeeting v{updater_service.current_version}  •  Ready")
+        self.mac_update_status_lbl.setStringValue_(t("settings_update_ready", version=updater_service.current_version))
         self.mac_update_status_lbl.setFont_(AppKit.NSFont.systemFontOfSize_(12.5))
         self.mac_update_status_lbl.setTextColor_(Theme.TEXT)
         self.mac_update_status_lbl.setBezeled_(False)
@@ -741,7 +740,7 @@ class SettingsTabController(AppKit.NSObject):
 
         self.mac_install_update_btn = Theme.create_gradient_button(
             AppKit.NSMakeRect(w - 36 - 190, 8, 176, 32),
-            title="⚡ Install Update Now",
+            title=t("settings_install_update_now"),
             start_color=Theme.SAPPHIRE,
             end_color=Theme.BLUE,
             text_color=Theme.CRUST,
@@ -846,8 +845,13 @@ class SettingsTabController(AppKit.NSObject):
                     event_bus.publish("CONFIG_CHANGED", key="language", value=k)
                 except Exception:
                     pass
-                self.invalidate_cache()
-                self.refresh_data(force=True)
+                if self.dashboard_controller and hasattr(self.dashboard_controller, "invalidate_caches"):
+                    self.dashboard_controller.invalidate_caches()
+                else:
+                    self.invalidate_cache()
+                if self.dashboard_controller and hasattr(self.dashboard_controller, "_update_localized_ui"):
+                    self.dashboard_controller._update_localized_ui()
+                self.refresh_data(force=False)
                 break
 
     @objc.python_method

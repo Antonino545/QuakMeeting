@@ -8,26 +8,80 @@ from ui.macos.banner.renderers.modular_renderer import ModularPilotRenderer
 from ui.macos.theme import Theme
 from core.services.config_service import config
 from core.services.event_bus import event_bus
+from core.services.language_service import t, get_active_language
 
-ANIMALS = [
-    ("duck", "🦆 Aviator Duck"),
-    ("owl", "🦉 Academic Owl"),
-    ("bunny", "🐰 Clever Bunny"),
-    ("platypus", "🕵️‍♂️ Secret Platypus"),
-    ("squirrel", "🐿️ Hyper Squirrel")
+def get_animals():
+    return [
+        ("duck", t("animal_duck")),
+        ("owl", t("animal_owl")),
+        ("bunny", t("animal_bunny")),
+        ("platypus", t("animal_platypus")),
+        ("squirrel", t("animal_squirrel"))
+    ]
+
+CATEGORIES_DEF = [
+    ("study", "cat_study_title", "cat_study_desc", "student", "owl", Theme.MAUVE),
+    ("food", "cat_food_title", "cat_food_desc", "chef", "duck", Theme.PEACH),
+    ("travel", "cat_travel_title", "cat_travel_desc", "captain", "duck", Theme.SAPPHIRE),
+    ("sport", "cat_sport_title", "cat_sport_desc", "gym", "bunny", Theme.RED),
+    ("in_person", "cat_in_person_title", "cat_in_person_desc", "racer", "squirrel", Theme.YELLOW),
+    ("health", "cat_health_title", "cat_health_desc", "zen", "bunny", Theme.TEAL),
+    ("general", "cat_general_title", "cat_general_desc", "aviator", "duck", Theme.GREEN)
 ]
 
-CATEGORIES = [
-    ("study", "🎓 University & Study Sessions", "Lectures, exams, self-study, homework & thesis.", "student", "owl", Theme.MAUVE),
-    ("food", "🍕 Dining, Lunch & Restaurants", "Dinners, lunch dates, pizzerias & food routes.", "chef", "duck", Theme.PEACH),
-    ("travel", "✈️ Travel, Flights & Trains", "Airports, flights, high-speed trains & trips.", "captain", "duck", Theme.SAPPHIRE),
-    ("sport", "🏋️ Gym, Palestra & Sports", "Workouts, crossfit, padel, tennis & running.", "gym", "bunny", Theme.RED),
-    ("in_person", "🏎️ In-Person & Commute", "Doctor visits, dentist & real-time navigation.", "racer", "squirrel", Theme.YELLOW),
-    ("health", "🌸 Wellness & Therapy", "Serenis sessions, yoga, meditation & calm.", "zen", "bunny", Theme.TEAL),
-    ("general", "⏰ General Meetings & Reminders", "Video conferences (Meet, Zoom, Teams) & alerts.", "aviator", "duck", Theme.GREEN)
-]
+def get_categories():
+    return [
+        (k, t(t_key), t(d_key), fo, da, col)
+        for (k, t_key, d_key, fo, da, col) in CATEGORIES_DEF
+    ]
 
 def get_combo_title(animal: str, outfit: str) -> str:
+    active_lang = get_active_language()
+    if active_lang == "it":
+        titles_it = {
+            ("bunny", "student"): "🎓 Coniglio Studente",
+            ("bunny", "chef"): "👨‍🍳 Coniglio Pasticcere",
+            ("bunny", "captain"): "🧑‍✈️ Primo Ufficiale Coniglio",
+            ("bunny", "agent"): "🕵️ Agente Coniglio Segreto",
+            ("bunny", "gym"): "🏋️ Coniglio Atleta Cardio",
+            ("bunny", "racer"): "🏎️ Coniglio Pilota Turbo",
+            ("bunny", "zen"): "🌸 Coniglio Meditazione Zen",
+            ("bunny", "aviator"): "🪖 Coniglio Aviatore",
+            ("owl", "student"): "🎓 Gufo Rettore Accademico",
+            ("owl", "chef"): "👨‍🍳 Gufo Gourmet Chef",
+            ("owl", "captain"): "🧑‍✈️ Comandante di Flotta Gufo",
+            ("owl", "agent"): "🕵️ Agente Operativo Gufo",
+            ("owl", "gym"): "🏋️ Gufo Powerlifter",
+            ("owl", "racer"): "🏎️ Gufo Notturno Speedster",
+            ("owl", "zen"): "🌸 Gufo della Quiete Zen",
+            ("owl", "aviator"): "🪖 Asso dello Squadrone Gufo",
+            ("duck", "student"): "🎓 Anatra con Lode Accademica",
+            ("duck", "chef"): "👨‍🍳 Master Chef Anatra",
+            ("duck", "captain"): "🧑‍✈️ Comandante di Linea Anatra",
+            ("duck", "agent"): "🕵️ Spia Sotto Copertura Anatra",
+            ("duck", "gym"): "🏋️ Anatra Bodybuilder",
+            ("duck", "racer"): "🏎️ Anatra Gran Premio",
+            ("duck", "zen"): "🌸 Anatra Zen dello Stagno",
+            ("duck", "aviator"): "🪖 Classico Quak Aviatore",
+            ("platypus", "agent"): "🕵️ Agente Perry Ornitorinco",
+            ("platypus", "student"): "🎓 Ornitorinco Studioso",
+            ("platypus", "chef"): "👨‍🍳 Master Chef Ornitorinco",
+            ("platypus", "captain"): "🧑‍✈️ Comandante Ornitorinco",
+            ("platypus", "gym"): "🏋️ Ornitorinco Atleta",
+            ("platypus", "racer"): "🏎️ Pilota Auto Spia Ornitorinco",
+            ("platypus", "zen"): "🌸 Ornitorinco Zen",
+            ("platypus", "aviator"): "🪖 Ornitorinco Aviatore",
+            ("squirrel", "agent"): "🕵️ Scoiattolo Agente Segreto",
+            ("squirrel", "student"): "🎓 Scoiattolo Genio Studente",
+            ("squirrel", "chef"): "👨‍🍳 Scoiattolo Chef delle Ghiande",
+            ("squirrel", "captain"): "🧑‍✈️ Capitano del Cielo Scoiattolo",
+            ("squirrel", "gym"): "🏋️ Scoiattolo Cardio Hyper",
+            ("squirrel", "racer"): "🏎️ Scoiattolo Turbo Speed",
+            ("squirrel", "zen"): "🌸 Scoiattolo Calmo Zen",
+            ("squirrel", "aviator"): "🪖 Esploratore Aviatore Scoiattolo"
+        }
+        return titles_it.get((animal, outfit), f"✨ Pilota {animal.capitalize()} {outfit.capitalize()}")
+
     titles = {
         ("bunny", "student"): "🎓 Scholar Bunny Pilot",
         ("bunny", "chef"): "👨‍🍳 Pastry Chef Bunny",
@@ -140,7 +194,7 @@ class HangarTabController(AppKit.NSObject):
         self.popups = {}
 
         customs = config.get("mascot_customization", {})
-        sig = (round(w), round(h), str(customs), bool(config.get("force_default_pilot", False)))
+        sig = (round(w), round(h), str(customs), bool(config.get("force_default_pilot", False)), get_active_language())
         if self._cached_view is not None and self._cached_sig == sig:
             return self._cached_view
 
@@ -151,7 +205,8 @@ class HangarTabController(AppKit.NSObject):
         card_h = 100.0
         gap = 12.0
         header_h = 52.0
-        n_cards = len(CATEGORIES)
+        categories = get_categories()
+        n_cards = len(categories)
         content_h = max(h, 20.0 + header_h + 16.0 + n_cards * card_h + (n_cards - 1) * gap + 24.0)
         content_view = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 0, w - 16, content_h))
 
@@ -161,7 +216,7 @@ class HangarTabController(AppKit.NSObject):
 
         # 2. Category Cards
         start_y = content_h - 20.0 - header_h - 16.0 - card_h
-        for idx, (cat_key, cat_title, cat_desc, fixed_outfit, def_animal, cat_color) in enumerate(CATEGORIES):
+        for idx, (cat_key, cat_title, cat_desc, fixed_outfit, def_animal, cat_color) in enumerate(categories):
             c_y = start_y - idx * (card_h + gap)
             current_setting = customs.get(cat_key, {})
             current_animal = current_setting.get("animal", def_animal) if isinstance(current_setting, dict) else (current_setting or def_animal)
@@ -188,7 +243,7 @@ class HangarTabController(AppKit.NSObject):
 
         # Title on Left
         title_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, (h - 22) * 0.5, 360, 22))
-        title_lbl.setStringValue_("🦆 Animal Mascot Customization")
+        title_lbl.setStringValue_(t("hangar_header_title"))
         title_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(13.5))
         title_lbl.setTextColor_(Theme.TEXT)
         title_lbl.setBezeled_(False)
@@ -199,7 +254,7 @@ class HangarTabController(AppKit.NSObject):
         # Actions on Right: Surprise Me, Reset Presets
         surprise_btn = Theme.create_button(
             AppKit.NSMakeRect(w - 248, (h - 28) * 0.5, 114, 28),
-            title="🎲 Surprise Me",
+            title=t("hangar_surprise_me"),
             bg_color=Theme.SURFACE0,
             text_color=Theme.TEXT,
             border_color=Theme.SURFACE1,
@@ -213,7 +268,7 @@ class HangarTabController(AppKit.NSObject):
 
         reset_btn = Theme.create_button(
             AppKit.NSMakeRect(w - 126, (h - 28) * 0.5, 114, 28),
-            title="🔄 Reset Presets",
+            title=t("hangar_reset_presets"),
             bg_color=Theme.SURFACE0,
             text_color=Theme.SUBTEXT0,
             border_color=Theme.SURFACE1,
@@ -265,7 +320,7 @@ class HangarTabController(AppKit.NSObject):
 
         combo_name = get_combo_title(cur_animal, fixed_outfit)
         sub_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(106, 8, text_w, 48))
-        sub_lbl.setStringValue_(f"{cat_desc}\n✨ Active Pilot: {combo_name}")
+        sub_lbl.setStringValue_(f"{cat_desc}\n✨ {t('hangar_active_pilot_label')}: {combo_name}")
         sub_lbl.setFont_(AppKit.NSFont.systemFontOfSize_(10.5))
         sub_lbl.setTextColor_(Theme.SUBTEXT0)
         sub_lbl.setBezeled_(False)
@@ -281,7 +336,7 @@ class HangarTabController(AppKit.NSObject):
         ctrl_y = (h - ctrl_h) * 0.5 - 2.0
 
         animal_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(w - 262, ctrl_y + ctrl_h + 4.0, 150, 16))
-        animal_lbl.setStringValue_("Animal Mascot:")
+        animal_lbl.setStringValue_(t("hangar_animal_mascot"))
         animal_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(10.5))
         animal_lbl.setTextColor_(Theme.SUBTEXT1)
         animal_lbl.setBezeled_(False)
@@ -289,12 +344,13 @@ class HangarTabController(AppKit.NSObject):
         animal_lbl.setEditable_(False)
         card.addSubview_(animal_lbl)
 
+        animals = get_animals()
         animal_popup = AppKit.NSPopUpButton.alloc().initWithFrame_pullsDown_(
             AppKit.NSMakeRect(w - 262, ctrl_y, 150, ctrl_h), False
         )
-        for a_id, a_label in ANIMALS:
+        for a_id, a_label in animals:
             animal_popup.addItemWithTitle_(a_label)
-        a_idx = next((i for i, (a_id, _) in enumerate(ANIMALS) if a_id == cur_animal), 0)
+        a_idx = next((i for i, (a_id, _) in enumerate(animals) if a_id == cur_animal), 0)
         animal_popup.selectItemAtIndex_(a_idx)
         animal_popup.setIdentifier_(cat_key)
         animal_popup.setTarget_(self)
@@ -305,7 +361,7 @@ class HangarTabController(AppKit.NSObject):
         # Test Flight Button (aligned horizontally to animal_popup)
         test_btn = Theme.create_button(
             AppKit.NSMakeRect(w - 104, ctrl_y, 90, ctrl_h),
-            title="🚀 Test",
+            title=t("hangar_test_btn"),
             bg_color=accent_color,
             text_color=Theme.CRUST,
             border_color=None,
@@ -324,9 +380,10 @@ class HangarTabController(AppKit.NSObject):
     def onAnimalSelectionChanged_(self, sender):
         cat_key = str(sender.identifier())
         sel_idx = sender.indexOfSelectedItem()
-        sel_animal = ANIMALS[sel_idx][0]
+        animals = get_animals()
+        sel_animal = animals[sel_idx][0]
 
-        fixed_outfit = next((fo for k, _, _, fo, _, _ in CATEGORIES if k == cat_key), "aviator")
+        fixed_outfit = next((fo for k, _, _, fo, _, _ in CATEGORIES_DEF if k == cat_key), "aviator")
 
         customs = config.get("mascot_customization", {})
         if not isinstance(customs, dict):
@@ -354,21 +411,22 @@ class HangarTabController(AppKit.NSObject):
         customs = config.get("mascot_customization", {})
         if not isinstance(customs, dict):
             customs = {}
-        all_a = [a[0] for a in ANIMALS]
-        for cat_key, _, _, fixed_outfit, _, _ in CATEGORIES:
+        animals = get_animals()
+        all_a = [a[0] for a in animals]
+        for cat_key, _, _, fixed_outfit, _, _ in CATEGORIES_DEF:
             chosen_a = random.choice(all_a)
             customs[cat_key] = {
                 "animal": chosen_a,
                 "outfit": fixed_outfit
             }
             if cat_key in self.popups:
-                a_idx = next((i for i, (a_id, _) in enumerate(ANIMALS) if a_id == chosen_a), 0)
+                a_idx = next((i for i, (a_id, _) in enumerate(animals) if a_id == chosen_a), 0)
                 self.popups[cat_key].selectItemAtIndex_(a_idx)
             if cat_key in self.mini_canvases:
                 self.mini_canvases[cat_key].updateAnimal_(chosen_a)
             if cat_key in self.subtitle_labels:
                 lbl, desc, outfit = self.subtitle_labels[cat_key]
-                lbl.setStringValue_(f"{desc}\n✨ Active Pilot: {get_combo_title(chosen_a, outfit)}")
+                lbl.setStringValue_(f"{desc}\n✨ {t('hangar_active_pilot_label')}: {get_combo_title(chosen_a, outfit)}")
 
         config.set("mascot_customization", customs)
         event_bus.publish("CONFIG_CHANGED", key="mascot_customization", value=customs)
@@ -387,17 +445,18 @@ class HangarTabController(AppKit.NSObject):
             "health": {"animal": "bunny", "outfit": "zen"},
             "general": {"animal": "duck", "outfit": "aviator"}
         }
-        for cat_key, _, _, fixed_outfit, def_animal, _ in CATEGORIES:
+        animals = get_animals()
+        for cat_key, _, _, fixed_outfit, def_animal, _ in CATEGORIES_DEF:
             pair = defaults.get(cat_key, {"animal": def_animal, "outfit": fixed_outfit})
             chosen_a = pair.get("animal", def_animal)
             if cat_key in self.popups:
-                a_idx = next((i for i, (a_id, _) in enumerate(ANIMALS) if a_id == chosen_a), 0)
+                a_idx = next((i for i, (a_id, _) in enumerate(animals) if a_id == chosen_a), 0)
                 self.popups[cat_key].selectItemAtIndex_(a_idx)
             if cat_key in self.mini_canvases:
                 self.mini_canvases[cat_key].updateAnimal_(chosen_a)
             if cat_key in self.subtitle_labels:
                 lbl, desc, outfit = self.subtitle_labels[cat_key]
-                lbl.setStringValue_(f"{desc}\n✨ Active Pilot: {get_combo_title(chosen_a, outfit)}")
+                lbl.setStringValue_(f"{desc}\n✨ {t('hangar_active_pilot_label')}: {get_combo_title(chosen_a, outfit)}")
 
         config.set("mascot_customization", defaults)
         event_bus.publish("CONFIG_CHANGED", key="mascot_customization", value=defaults)
@@ -410,8 +469,8 @@ class HangarTabController(AppKit.NSObject):
         cat_key = str(sender.identifier())
         customs = config.get("mascot_customization", {})
         setting = customs.get(cat_key, {})
-        def_animal = next((da for k, _, _, _, da, _ in CATEGORIES if k == cat_key), "duck")
-        fixed_outfit = next((fo for k, _, _, fo, _, _ in CATEGORIES if k == cat_key), "aviator")
+        def_animal = next((da for k, _, _, _, da, _ in CATEGORIES_DEF if k == cat_key), "duck")
+        fixed_outfit = next((fo for k, _, _, fo, _, _ in CATEGORIES_DEF if k == cat_key), "aviator")
 
         animal = setting.get("animal", def_animal) if isinstance(setting, dict) else (setting or def_animal)
         outfit = fixed_outfit

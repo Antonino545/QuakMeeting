@@ -101,10 +101,11 @@ QuakMeeting/
 
 ## 📌 Critical Design Decisions & Rules
 
-### 1. Cross-Platform Runtime & macOS Mach-O Embedding
+### 1. Cross-Platform Runtime, macOS Mach-O Embedding & TCC Code Signing
 - **Rule**: Code must be cross-platform using `sys.platform` checks. Linux uses standard Python entry points (e.g., Wayland/Qt/AppIndicator) while macOS requires a specialized build.
 - **macOS Exception (Mach-O)**: When building `QuakMeeting.app`, the launcher stub in `build_macos_app.py` compiles a native C Mach-O binary that loads `libpython3.13.dylib` via `dlopen`/`dlsym` and invokes `Py_Main` in-process.
 - **Why (macOS)**: Calling `execv` to a shell script or external interpreter breaks macOS bundle association and causes the top macOS menu bar (`QuakMeeting`, `Edit`, `Window`, `Help`) to disappear.
+- **TCC Permission Persistence**: macOS codesigning must include an explicit Designated Requirement (`-r '=designated => identifier "com.quakmeeting.app"'`). Without this, ad-hoc codesigning binds permissions to the binary's `cdhash`, which causes macOS TCC to prompt for Calendar permissions after every update or rebuild.
 
 ### 2. Strict Today-Only Calendar Filter
 - **Rule**: `CalendarService` only fetches and evaluates events scheduled for **Today** (`00:00:00` to `23:59:59`).

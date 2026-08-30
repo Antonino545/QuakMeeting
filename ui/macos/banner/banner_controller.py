@@ -30,6 +30,8 @@ class QuakPitFlyingBanner(AppKit.NSObject):
         self.window = None
         self.timer = None
         self.is_paused = False
+        self.is_quiet = bool(meeting_data.get("is_quiet_reminder", False))
+        self.is_update = bool(meeting_data.get("is_update_banner", False))
         self.action_url = meeting_data.get("action_url") or meeting_data.get("meeting_url")
         return self
 

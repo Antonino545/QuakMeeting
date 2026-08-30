@@ -6,6 +6,7 @@ import time
 from datetime import datetime
 from core.domain.models import format_duration
 from core.services.eta_service import MODE_ICONS
+from core.services.language_service import t, get_active_language
 from ui.macos.theme import Theme
 
 class AgendaTabController(AppKit.NSObject):
@@ -13,7 +14,14 @@ class AgendaTabController(AppKit.NSObject):
         self = objc.super(AgendaTabController, self).init()
         self.dashboard_controller = None
         self.config = None
+        self._cached_view = None
+        self._cached_sig = None
         return self
+
+    @objc.python_method
+    def invalidate_cache(self):
+        self._cached_view = None
+        self._cached_sig = None
 
     @objc.python_method
     def render(self, container, w, h, meetings, is_loading, config):
@@ -31,7 +39,7 @@ class AgendaTabController(AppKit.NSObject):
             loading_view.addSubview_(spinner)
 
             load_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(20, (h - 32) * 0.5 - 34, w - 40, 48))
-            load_lbl.setStringValue_("🦆 Syncing your macOS Calendars...\nDetecting schedules, Apple Maps routes, and meeting links...")
+            load_lbl.setStringValue_(f"🦆 {t('agenda_today_flights')}...\n{t('scanner_active_no_events')}")
             load_lbl.setFont_(AppKit.NSFont.systemFontOfSize_(13.5))
             load_lbl.setTextColor_(AppKit.NSColor.colorWithRed_green_blue_alpha_(0.72, 0.78, 0.92, 1.0))
             load_lbl.setAlignment_(AppKit.NSTextAlignmentCenter)
@@ -60,7 +68,7 @@ class AgendaTabController(AppKit.NSObject):
 
         if not today_list:
             empty_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(20, content_h - 100, w - 40, 50))
-            empty_lbl.setStringValue_("🧘‍♂️ No events scheduled for today in enabled calendars.\nRelax or add an event in Apple Calendar!")
+            empty_lbl.setStringValue_(f"🧘‍♂️ {t('agenda_no_flights')}\n{t('all_caught_up')}")
             empty_lbl.setFont_(AppKit.NSFont.systemFontOfSize_(14))
             empty_lbl.setTextColor_(Theme.SUBTEXT0)
             empty_lbl.setAlignment_(AppKit.NSTextAlignmentCenter)
@@ -152,7 +160,8 @@ class AgendaTabController(AppKit.NSObject):
             btn_title = m.get("action_btn_text", "🚀 JOIN")
             travel_min = m.get("travel_time_minutes")
             if "MAPS" in btn_title or "MAPPE" in btn_title or "maps.apple.com" in action_url:
-                btn_short = f"🗺️ Maps (~{format_duration(travel_min)})" if travel_min else "🗺️ Maps"
+                maps_lbl = t("agenda_maps_button")
+                btn_short = f"{maps_lbl} (~{format_duration(travel_min)})" if travel_min else maps_lbl
             elif "ZOOM" in btn_title or "zoom.us" in action_url:
                 btn_short = "🔷 Zoom"
             elif "TEAMS" in btn_title or "teams.microsoft" in action_url:
@@ -160,7 +169,7 @@ class AgendaTabController(AppKit.NSObject):
             elif "serenis" in action_url:
                 btn_short = "🛋️ Serenis"
             else:
-                btn_short = "🚀 Join"
+                btn_short = t("agenda_join_button")
 
             action_btn = Theme.create_button(
                 AppKit.NSMakeRect(w - 142, 20, 126, 34),
@@ -177,9 +186,10 @@ class AgendaTabController(AppKit.NSObject):
             action_btn.setTag_(idx)
             card.addSubview_(action_btn)
 
+            copy_title = "📋 " + t("copy")
             copy_btn = Theme.create_button(
                 AppKit.NSMakeRect(w - 238, 20, 90, 34),
-                title="📋 Copy",
+                title=copy_title,
                 bg_color=Theme.SURFACE0,
                 text_color=Theme.TEXT,
                 border_color=Theme.SURFACE1,
@@ -209,8 +219,8 @@ class AgendaTabController(AppKit.NSObject):
                 pasteboard = AppKit.NSPasteboard.generalPasteboard()
                 pasteboard.clearContents()
                 pasteboard.setString_forType_(url, AppKit.NSPasteboardTypeString)
-                sender.setTitle_("✓ Copied!")
+                sender.setTitle_("✓ " + t("saved"))
                 def reset():
                     time.sleep(1.5)
-                    AppKit.NSOperationQueue.mainQueue().addOperationWithBlock_(lambda: sender.setTitle_("📋 Copy"))
+                    AppKit.NSOperationQueue.mainQueue().addOperationWithBlock_(lambda: sender.setTitle_("📋 " + t("copy")))
                 threading.Thread(target=reset, daemon=True).start()
