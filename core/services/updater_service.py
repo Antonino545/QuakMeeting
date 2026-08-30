@@ -285,13 +285,8 @@ class UpdaterService:
 
             event_bus.publish("UPDATE_INSTALLED")
             time.sleep(1.0)
-            # Relaunch newly installed version cleanly by killing previous instances
-            relaunch_cmd = (
-                "sleep 1.2; "
-                "pkill -f 'QuakMeeting' 2>/dev/null || true; "
-                "sleep 0.5; "
-                "open /Applications/QuakMeeting.app &"
-            )
+            # Relaunch newly installed version cleanly on macOS
+            relaunch_cmd = "sleep 1.0; open /Applications/QuakMeeting.app &"
             subprocess.Popen(["bash", "-c", relaunch_cmd], start_new_session=True)
             os._exit(0)
             return True
@@ -311,13 +306,18 @@ class UpdaterService:
                         logger.info("✅ Update package installed successfully via dpkg!")
                         event_bus.publish("UPDATE_INSTALLED")
                         time.sleep(1.0)
-                        # Gracefully kill all old running QuakMeeting instances (tray daemon & dashboard) and launch new version
+                        # Wait for current process to terminate, then launch the updated package
+                        current_pid = os.getpid()
                         relaunch_cmd = (
-                            "sleep 1.2; "
-                            "pkill -f 'quakmeeting' 2>/dev/null || true; "
-                            "pkill -f 'qt_dashboard' 2>/dev/null || true; "
-                            "sleep 0.6; "
-                            "/usr/bin/quakmeeting > /dev/null 2>&1 &"
+                            f"tail --pid={current_pid} -f /dev/null 2>/dev/null || sleep 1.5; "
+                            "sleep 0.5; "
+                            "if command -v gtk-launch >/dev/null 2>&1 && [ -f /usr/share/applications/quakmeeting.desktop ]; then "
+                            "  gtk-launch quakmeeting.desktop >/dev/null 2>&1 & "
+                            "elif [ -x /usr/bin/quakmeeting ]; then "
+                            "  /usr/bin/quakmeeting >/dev/null 2>&1 & "
+                            "elif [ -f /opt/quakmeeting/main.py ]; then "
+                            "  /usr/bin/python3 /opt/quakmeeting/main.py >/dev/null 2>&1 & "
+                            "fi"
                         )
                         subprocess.Popen(["bash", "-c", relaunch_cmd], start_new_session=True)
                         os._exit(0)
@@ -337,22 +337,13 @@ class UpdaterService:
             elif package_path.endswith(".AppImage"):
                 os.chmod(package_path, 0o755)
                 event_bus.publish("UPDATE_INSTALLED")
-                # Kill old instances first, then launch the AppImage safely
-                # using a list-form Popen to avoid shell injection via filename
-                kill_cmd = (
-                    "sleep 1.2; "
-                    "pkill -f 'quakmeeting' 2>/dev/null || true; "
-                    "pkill -f 'qt_dashboard' 2>/dev/null || true; "
-                    "sleep 0.6"
+                current_pid = os.getpid()
+                relaunch_cmd = (
+                    f"tail --pid={current_pid} -f /dev/null 2>/dev/null || sleep 1.5; "
+                    f"sleep 0.5; "
+                    f"\"{package_path}\" >/dev/null 2>&1 &"
                 )
-                subprocess.Popen(["bash", "-c", kill_cmd], start_new_session=True)
-                time.sleep(2.5)
-                subprocess.Popen(
-                    [package_path],
-                    start_new_session=True,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
+                subprocess.Popen(["bash", "-c", relaunch_cmd], start_new_session=True)
                 os._exit(0)
                 return True
         except Exception as e:
