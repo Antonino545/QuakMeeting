@@ -203,7 +203,7 @@ def get_update_preset(version_str: str = "New Version", release_url: str = "") -
 CARD_W    = 535
 CARD_H    = 126
 CARD_R    = 18
-WIN_W     = 750
+WIN_W     = 1000
 WIN_H     = 195
 CARD_X    = 10
 CARD_Y    = 55
