@@ -3,8 +3,7 @@ name: CI Test & Build
 on:
   push:
     branches:
-      - test
-      - 'feature/**'
+      - main
   pull_request:
     branches:
       - main
