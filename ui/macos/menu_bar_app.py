@@ -18,6 +18,7 @@ from core.services.reminder_engine import reminder_engine
 from core.services.event_bus import event_bus
 from core.services.config_service import config, is_debug_mode
 from core.services.updater_service import updater_service
+from core.services.language_service import t, get_active_language, init_system_locale_listener
 from core.logger import setup_logging, logger, open_log_file, open_log_folder
 from ui.macos.banner import show_banner_async, _run_banner
 from ui.macos.dashboard_window import show_dashboard
@@ -69,6 +70,9 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         # 1. macOS Top Menu Bar (App Menu, Edit, Window, Help)
         self._setup_main_menubar()
 
+        # Initialize dynamic macOS locale change listener
+        init_system_locale_listener()
+
         # 2. macOS System Status Bar Item (Top Right tray icon & dropdown)
         self.status_bar = AppKit.NSStatusBar.systemStatusBar()
         self.status_item = self.status_bar.statusItemWithLength_(AppKit.NSVariableStatusItemLength)
@@ -109,44 +113,44 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         app_menu = AppKit.NSMenu.alloc().initWithTitle_("QuakMeeting")
 
         about_item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "About QuakMeeting", "openAbout:", ""
+            t("about_quakmeeting"), "openAbout:", ""
         )
         about_item.setTarget_(self)
         app_menu.addItem_(about_item)
         app_menu.addItem_(AppKit.NSMenuItem.separatorItem())
 
         pref_item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "Preferences (Flight Deck)...", "openDashboard:", ","
+            t("preferences_menu"), "openDashboard:", ","
         )
         pref_item.setTarget_(self)
         app_menu.addItem_(pref_item)
 
         sync_item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "Sync Calendars Now", "refreshCalendar:", "r"
+            t("sync_calendars"), "refreshCalendar:", "r"
         )
         sync_item.setTarget_(self)
         app_menu.addItem_(sync_item)
         app_menu.addItem_(AppKit.NSMenuItem.separatorItem())
 
         hide_item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "Hide QuakMeeting", "hide:", "h"
+            t("hide_app"), "hide:", "h"
         )
         app_menu.addItem_(hide_item)
 
         hide_others = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "Hide Others", "hideOtherApplications:", "h"
+            t("hide_others"), "hideOtherApplications:", "h"
         )
         hide_others.setKeyEquivalentModifierMask_(AppKit.NSEventModifierFlagCommand | AppKit.NSEventModifierFlagOption)
         app_menu.addItem_(hide_others)
 
         show_all = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "Show All", "unhideAllApplications:", ""
+            t("show_all"), "unhideAllApplications:", ""
         )
         app_menu.addItem_(show_all)
         app_menu.addItem_(AppKit.NSMenuItem.separatorItem())
 
         quit_item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "Quit QuakMeeting", "terminate:", "q"
+            t("quit"), "terminate:", "q"
         )
         app_menu.addItem_(quit_item)
         app_menu_item.setSubmenu_(app_menu)
@@ -154,34 +158,34 @@ class QuakMeetingMenuBar(AppKit.NSObject):
 
         # --- EDIT MENU (Enables standard cut, copy, paste, select all) ---
         edit_menu_item = AppKit.NSMenuItem.alloc().init()
-        edit_menu = AppKit.NSMenu.alloc().initWithTitle_("Edit")
-        edit_menu.addItemWithTitle_action_keyEquivalent_("Undo", "undo:", "z")
-        edit_menu.addItemWithTitle_action_keyEquivalent_("Redo", "redo:", "Z")
+        edit_menu = AppKit.NSMenu.alloc().initWithTitle_(t("edit_menu"))
+        edit_menu.addItemWithTitle_action_keyEquivalent_(t("undo"), "undo:", "z")
+        edit_menu.addItemWithTitle_action_keyEquivalent_(t("redo"), "redo:", "Z")
         edit_menu.addItem_(AppKit.NSMenuItem.separatorItem())
-        edit_menu.addItemWithTitle_action_keyEquivalent_("Cut", "cut:", "x")
-        edit_menu.addItemWithTitle_action_keyEquivalent_("Copy", "copy:", "c")
-        edit_menu.addItemWithTitle_action_keyEquivalent_("Paste", "paste:", "v")
-        edit_menu.addItemWithTitle_action_keyEquivalent_("Select All", "selectAll:", "a")
+        edit_menu.addItemWithTitle_action_keyEquivalent_(t("cut"), "cut:", "x")
+        edit_menu.addItemWithTitle_action_keyEquivalent_(t("copy"), "copy:", "c")
+        edit_menu.addItemWithTitle_action_keyEquivalent_(t("paste"), "paste:", "v")
+        edit_menu.addItemWithTitle_action_keyEquivalent_(t("select_all"), "selectAll:", "a")
         edit_menu_item.setSubmenu_(edit_menu)
         main_menu.addItem_(edit_menu_item)
 
         # --- WINDOW MENU ---
         win_menu_item = AppKit.NSMenuItem.alloc().init()
-        win_menu = AppKit.NSMenu.alloc().initWithTitle_("Window")
+        win_menu = AppKit.NSMenu.alloc().initWithTitle_(t("window_menu"))
 
         dash_win_item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "Open Flight Deck", "openDashboard:", "o"
+            t("flight_deck"), "openDashboard:", "o"
         )
         dash_win_item.setTarget_(self)
         win_menu.addItem_(dash_win_item)
-        win_menu.addItemWithTitle_action_keyEquivalent_("Minimize", "performMiniaturize:", "m")
-        win_menu.addItemWithTitle_action_keyEquivalent_("Close Window", "performClose:", "w")
+        win_menu.addItemWithTitle_action_keyEquivalent_(t("minimize"), "performMiniaturize:", "m")
+        win_menu.addItemWithTitle_action_keyEquivalent_(t("close"), "performClose:", "w")
         win_menu_item.setSubmenu_(win_menu)
         main_menu.addItem_(win_menu_item)
 
         # --- HELP MENU ---
         help_menu_item = AppKit.NSMenuItem.alloc().init()
-        help_menu = AppKit.NSMenu.alloc().initWithTitle_("Help")
+        help_menu = AppKit.NSMenu.alloc().initWithTitle_(t("help_menu"))
 
         if is_debug_mode():
             help_log = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
@@ -259,6 +263,8 @@ class QuakMeetingMenuBar(AppKit.NSObject):
 
     def _on_config_changed(self, key: Optional[str] = None, **kwargs) -> None:
         self._last_menu_signature = None
+        if key in ("transport_mode", "home_address", "eta_buffer_minutes", "enable_eta_service", "custom_keywords", "ignored_calendars", None):
+            threading.Thread(target=calendar_service.sync_now, daemon=True).start()
         self.performSelectorOnMainThread_withObject_waitUntilDone_(
             "refreshMenuOnMainThread:",
             None,
@@ -267,6 +273,7 @@ class QuakMeetingMenuBar(AppKit.NSObject):
 
     @objc.IBAction
     def refreshMenuOnMainThread_(self, sender):
+        self._setup_main_menubar()
         self.build_menu()
 
     # _format_status_title is now handled by TrayViewModel
@@ -292,7 +299,7 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         # State signature diffing to avoid unnecessary menu rebuilding
         m_sigs = tuple((m.get("title"), str(m.get("start_time")), m.get("pilot_type")) for m in today_upcoming[:6] + tomorrow_upcoming[:6])
         minute_str = now.strftime("%H:%M")
-        new_signature = (minute_str, len(today_upcoming), len(tomorrow_upcoming), status_mode, m_sigs)
+        new_signature = (minute_str, len(today_upcoming), len(tomorrow_upcoming), status_mode, m_sigs, get_active_language())
 
         if self._last_menu_signature == new_signature:
             return
@@ -311,7 +318,7 @@ class QuakMeetingMenuBar(AppKit.NSObject):
 
         # 1. Open Flight Deck
         item_dash = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "🦆 Open Flight Deck", "openDashboard:", "o"
+            f"🦆 {t('flight_deck')}", "openDashboard:", "o"
         )
         item_dash.setTarget_(self)
         self.menu.addItem_(item_dash)
@@ -330,8 +337,9 @@ class QuakMeetingMenuBar(AppKit.NSObject):
 
             travel_min = next_m.get("travel_time_minutes")
             dep_dt = next_m.get("departure_time")
+            t_mode = next_m.get("transport_mode") or config.get("transport_mode", "transit")
 
-            next_label = TrayViewModel.format_next_event_label(icon_prefix, start_str, m_title, travel_min, dep_dt)
+            next_label = TrayViewModel.format_next_event_label(icon_prefix, start_str, m_title, travel_min, dep_dt, transport_mode=t_mode)
 
             item_next = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
                 next_label, None, ""
@@ -341,7 +349,7 @@ class QuakMeetingMenuBar(AppKit.NSObject):
 
             action_url = next_m.get("action_url") or next_m.get("meeting_url")
             if action_url:
-                btn_title = f"   {next_m.get('action_btn_text', '🚀 Join Now')}"
+                btn_title = f"   {next_m.get('action_btn_text', t('banner_join_flight'))}"
                 item_join = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
                     btn_title, "openNextMeeting:", "j"
                 )
@@ -355,7 +363,7 @@ class QuakMeetingMenuBar(AppKit.NSObject):
                 self.status_item.button().setTitle_(fallback_title)
 
             item_none = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-                "✨ No remaining events today", None, ""
+                f"✨ {t('no_remaining_today')}", None, ""
             )
             item_none.setEnabled_(False)
             self.menu.addItem_(item_none)
@@ -365,7 +373,7 @@ class QuakMeetingMenuBar(AppKit.NSObject):
 
         # 3. Upcoming Today List
         if len(today_upcoming) > 1:
-            item_header = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("📅 Today's Events:", None, "")
+            item_header = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(f"📅 {t('events_today_header')}", None, "")
             item_header.setEnabled_(False)
             self.menu.addItem_(item_header)
 
@@ -395,7 +403,7 @@ class QuakMeetingMenuBar(AppKit.NSObject):
             self.menu.addItem_(AppKit.NSMenuItem.separatorItem())
 
         if tomorrow_upcoming:
-            item_header_tmrw = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("🗓️ Tomorrow:", None, "")
+            item_header_tmrw = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(f"🗓️ {t('tomorrow_header')}", None, "")
             item_header_tmrw.setEnabled_(False)
             self.menu.addItem_(item_header_tmrw)
 
@@ -428,26 +436,26 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         if updater_service.latest_release_info and updater_service.latest_release_info.get("has_update"):
             v_tag = updater_service.latest_release_info.get("tag_name") or "New Version"
             item_up = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-                f"🚀 Update Available ({v_tag}) - Install...", "onInstallUpdateAction:", "u"
+                t("update_available_menu", version=v_tag), "onInstallUpdateAction:", "u"
             )
             item_up.setTarget_(self)
             self.menu.addItem_(item_up)
             self.menu.addItem_(AppKit.NSMenuItem.separatorItem())
 
         item_sync = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "🔄 Sync Calendars", "refreshCalendar:", "r"
+            f"🔄 {t('sync_calendars')}", "refreshCalendar:", "r"
         )
         item_sync.setTarget_(self)
         self.menu.addItem_(item_sync)
 
         item_settings = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "⚙️ Settings & Preferences...", "openSettings:", ","
+            f"⚙️ {t('preferences')}", "openSettings:", ","
         )
         item_settings.setTarget_(self)
         self.menu.addItem_(item_settings)
 
         item_check = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "🔍 Check for Updates...", "onCheckUpdatesAction:", ""
+            f"🔍 {t('check_updates')}", "onCheckUpdatesAction:", ""
         )
         item_check.setTarget_(self)
         self.menu.addItem_(item_check)
@@ -491,7 +499,7 @@ class QuakMeetingMenuBar(AppKit.NSObject):
 
         # 5. Quit
         item_quit = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "❌ Quit QuakMeeting", "quitApp:", "q"
+            f"❌ {t('quit')}", "quitApp:", "q"
         )
         item_quit.setTarget_(self)
         self.menu.addItem_(item_quit)

@@ -157,7 +157,14 @@ def build_bundle():
     <key>CFBundleShortVersionString</key>
     <string>{app_version}</string>
     <key>CFBundleVersion</key>
-    <string>1</string>
+    <string>{app_version}</string>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleLocalizations</key>
+    <array>
+        <string>en</string>
+        <string>it</string>
+    </array>
     <key>LSMinimumSystemVersion</key>
     <string>11.0</string>
     <key>LSUIElement</key>
@@ -175,6 +182,10 @@ def build_bundle():
 """
     with open(os.path.join(CONTENTS_DIR, "Info.plist"), "w", encoding="utf-8") as f:
         f.write(info_plist_content)
+
+    # 4b. Create localization directories (.lproj) so macOS recognizes bilingual support
+    os.makedirs(os.path.join(RESOURCES_DIR, "en.lproj"), exist_ok=True)
+    os.makedirs(os.path.join(RESOURCES_DIR, "it.lproj"), exist_ok=True)
 
     # 5. Create Launcher Bash executable in MacOS/QuakMeeting.sh (debug fallback only)
     launcher_content = """#!/bin/bash
@@ -392,11 +403,16 @@ int main(int argc, char **argv) {
     subprocess.run(["clang", "-O2", "-Wall", c_path, "-o", launcher_path], check=True)
     os.remove(c_path)
 
-    # 5d. Remove quarantine extended attributes and apply ad-hoc codesign
+    # 5d. Remove quarantine extended attributes and apply ad-hoc codesign with designated requirement
     try:
         subprocess.run(["xattr", "-cr", APP_DIR], check=False)
-        subprocess.run(["codesign", "--force", "--deep", "-s", "-", "-i", "com.quakmeeting.app", APP_DIR], check=False)
-        print(f"  ✓ Applied ad-hoc codesign signature (id: com.quakmeeting.app) to {APP_NAME}")
+        subprocess.run([
+            "codesign", "--force", "--deep", "-s", "-",
+            "-i", "com.quakmeeting.app",
+            "-r", '=designated => identifier "com.quakmeeting.app"',
+            APP_DIR
+        ], check=False)
+        print(f"  ✓ Applied ad-hoc codesign signature with designated requirement (id: com.quakmeeting.app) to {APP_NAME}")
     except Exception as cs_err:
         print(f"  Note on codesign: {cs_err}")
 

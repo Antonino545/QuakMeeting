@@ -132,7 +132,118 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "provider_health": "Wellness & Health 🧘",
         "provider_in_person": "Appointment / Errand 📍",
         "provider_quick": "Quick Sync / Brainstorm 🐿️",
-        "provider_calendar": "Calendar Alert ⏰"
+        "provider_calendar": "Calendar Alert ⏰",
+
+        # Additional UI & Menus
+        "sync_now": "Sync Now",
+        "sync_calendars": "Sync Calendars",
+        "sync_pending": "Pending",
+        "sync_success": "Sync: {time}",
+        "sync_failed": "Failed (Last: {time})",
+        "scanner_active_events": "Scanner Active  •  {count} events today  •  Next: {time}{travel}",
+        "scanner_active_no_events": "Scanner Active  •  No upcoming events for today",
+        "events_today_header": "Today's Events:",
+        "tomorrow_header": "Tomorrow:",
+        "no_remaining_today": "No remaining events today",
+        "update_available_menu": "🚀 Update Available ({version}) - Install...",
+        "preferences_menu": "Flight Config (Preferences)...",
+        "about_quakmeeting": "About QuakMeeting",
+        "hide_app": "Hide QuakMeeting",
+        "hide_others": "Hide Others",
+        "show_all": "Show All",
+        "window_menu": "Window",
+        "help_menu": "Help",
+        "edit_menu": "Edit",
+        "undo": "Undo",
+        "redo": "Redo",
+        "cut": "Cut",
+        "copy": "Copy",
+        "paste": "Paste",
+        "select_all": "Select All",
+        "minimize": "Minimize",
+        "leave_at": "Leave at {time}",
+        "travel_suffix": "travel",
+        "next_event_label": "Next: {time} — {title}",
+
+        # Settings Card 1: Timing & Stages
+        "settings_timing_title": "⏱️ Notification Lead Times & Staged Reminders",
+        "settings_timing_subtitle": "Select reminder alert windows to receive progressive notifications ahead of time.",
+        "settings_quick_presets": "⚡ Quick Presets:",
+        "preset_relaxed": "🧘 Relaxed",
+        "preset_standard": "⚡ Standard",
+        "preset_intensive": "🚨 Intensive",
+        "settings_video_meetings": "📹 Video Meetings",
+        "settings_video_meetings_desc": "Alert ahead of meeting start (0m is always on)",
+        "settings_general_events": "📅 General Events",
+        "settings_general_events_desc": "Alert ahead of start time (0m is always on)",
+        "settings_travel_trips": "🚗 Travel & Trips",
+        "settings_travel_trips_desc": "Alert ahead of leave time (0m is always on)",
+
+        # Settings Card 2: ETA & Departure Address
+        "settings_eta_title": "📍 Home / Departure Address & Multi-Modal Route ETA",
+        "settings_eta_subtitle": "Calculates real-time travel duration and departure times for Public Transit, Driving, Walking, or Cycling.",
+        "settings_starting_address": "🏠 Starting Address (Origin)",
+        "settings_address_placeholder": "e.g. Corso Duca degli Abruzzi 24, 10129 Torino, Italy",
+        "settings_address_format_hint": "💡 Format: Street & Number, City, Postal Code, Country (e.g. Corso Duca degli Abruzzi 24, 10129 Torino, Italy)",
+        "settings_address_incomplete_warning": "⚠️ Please specify street, number, and city for accurate transit ETA.",
+        "settings_address_error_invalid": "❌ Invalid address format. Required: Street, Number, City (e.g. Corso Duca degli Abruzzi 24, 10129 Torino)",
+        "settings_address_error_btn": "❌ Invalid Format",
+        "settings_save_location": "💾 Save Location",
+        "settings_transport_calc": "🚦 Transport Mode for Route Calculation",
+        "settings_public_transit": "🚆 Public Transit",
+        "settings_driving_mode": "🚗 Driving",
+        "settings_cycling_mode": "🚲 Cycling",
+        "settings_walking_mode": "🚶 Walking",
+        "settings_departure_buffer": "⏳ Departure Buffer Margin (station transit / parking time):",
+        "buffer_5m": "5 minutes",
+        "buffer_10m_rec": "10 minutes (Recommended)",
+        "buffer_15m": "15 minutes",
+        "buffer_20m": "20 minutes",
+
+        # Settings Card 3: Calendars
+        "settings_calendars_title": "📅 Included System Calendars",
+        "settings_calendars_subtitle": "Select which local, iCloud, or Google calendars to actively monitor for reminders.",
+        "settings_all_cals_monitored": "All calendar sources are currently monitored.",
+
+        # Settings Card 4: System & Diagnostics
+        "settings_system_lang_diag": "⚙️ System, Language & Diagnostics",
+        "settings_system_lang": "⚙️ System & Language",
+        "settings_lang_selector_label": "🌐 Language / Lingua dell'Applicazione:",
+        "settings_autostart_mac": "🚀 Launch QuakMeeting automatically at macOS login",
+        "settings_mute_lessons": "🤫 Mute banner chime during university lessons & classes",
+        "settings_debug_mode": "🐛 Enable Developer & Debug Diagnostics Mode",
+        "settings_config_json": "📝 Config JSON",
+        "settings_view_logs": "📄 View Logs",
+        "settings_log_folder": "📂 Log Folder",
+        "settings_update_ready": "QuakMeeting v{version}  •  Ready",
+        "settings_install_update_now": "⚡ Install Update Now",
+
+        # Hangar Tab
+        "hangar_header_title": "🦆 Animal Mascot Customization",
+        "hangar_surprise_me": "🎲 Surprise Me",
+        "hangar_reset_presets": "🔄 Reset Presets",
+        "hangar_animal_mascot": "Animal Mascot:",
+        "hangar_active_pilot_label": "Active Pilot",
+        "hangar_test_btn": "🚀 Test",
+        "animal_duck": "🦆 Aviator Duck",
+        "animal_owl": "🦉 Academic Owl",
+        "animal_bunny": "🐰 Clever Bunny",
+        "animal_platypus": "🕵️‍♂️ Secret Platypus",
+        "animal_squirrel": "🐿️ Hyper Squirrel",
+        "cat_study_title": "🎓 University & Study Sessions",
+        "cat_study_desc": "Lectures, exams, self-study, homework & thesis.",
+        "cat_food_title": "🍕 Dining, Lunch & Restaurants",
+        "cat_food_desc": "Dinners, lunch dates, pizzerias & food routes.",
+        "cat_travel_title": "✈️ Travel, Flights & Trains",
+        "cat_travel_desc": "Airports, flights, high-speed trains & trips.",
+        "cat_sport_title": "🏋️ Gym, Palestra & Sports",
+        "cat_sport_desc": "Workouts, crossfit, padel, tennis & running.",
+        "cat_in_person_title": "🏎️ In-Person & Commute",
+        "cat_in_person_desc": "Doctor visits, dentist & real-time navigation.",
+        "cat_health_title": "🌸 Wellness & Therapy",
+        "cat_health_desc": "Serenis sessions, yoga, meditation & calm.",
+        "cat_general_title": "⏰ General Meetings & Reminders",
+        "cat_general_desc": "Video conferences (Meet, Zoom, Teams) & alerts."
     },
 
     "it": {
@@ -256,26 +367,196 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "provider_health": "Salute & Benessere 🧘",
         "provider_in_person": "Appuntamento / Visita 📍",
         "provider_quick": "Confronto Veloce / Idea 🐿️",
-        "provider_calendar": "Avviso Calendario ⏰"
+        "provider_calendar": "Avviso Calendario ⏰",
+
+        # Additional UI & Menus
+        "sync_now": "Sincronizza Ora",
+        "sync_calendars": "Sincronizza Calendari",
+        "sync_pending": "In attesa",
+        "sync_success": "Sync: {time}",
+        "sync_failed": "Errore (Ultimo: {time})",
+        "scanner_active_events": "Scanner Attivo  •  {count} eventi oggi  •  Prossimo: {time}{travel}",
+        "scanner_active_no_events": "Scanner Attivo  •  Nessun prossimo evento per oggi",
+        "events_today_header": "Eventi di Oggi:",
+        "tomorrow_header": "Domani:",
+        "no_remaining_today": "Nessun altro evento oggi",
+        "update_available_menu": "🚀 Aggiornamento Disponibile ({version}) - Installa...",
+        "preferences_menu": "Configurazione Volo (Preferenze)...",
+        "about_quakmeeting": "Informazioni su QuakMeeting",
+        "hide_app": "Nascondi QuakMeeting",
+        "hide_others": "Nascondi Altre",
+        "show_all": "Mostra Tutte",
+        "window_menu": "Finestra",
+        "help_menu": "Aiuto",
+        "edit_menu": "Modifica",
+        "undo": "Annulla",
+        "redo": "Ripristina",
+        "cut": "Taglia",
+        "copy": "Copia",
+        "paste": "Incolla",
+        "select_all": "Seleziona Tutto",
+        "minimize": "Riduci a icona",
+        "leave_at": "Partenza alle {time}",
+        "travel_suffix": "viaggio",
+        "next_event_label": "Prossimo: {time} — {title}",
+
+        # Settings Card 1: Timing & Stages
+        "settings_timing_title": "⏱️ Tempi di Preavviso & Notifiche Scaglionate",
+        "settings_timing_subtitle": "Seleziona le finestre di avviso per ricevere notifiche progressive in anticipo.",
+        "settings_quick_presets": "⚡ Profili Rapidi:",
+        "preset_relaxed": "🧘 Rilassato",
+        "preset_standard": "⚡ Standard",
+        "preset_intensive": "🚨 Intensivo",
+        "settings_video_meetings": "📹 Riunioni Video",
+        "settings_video_meetings_desc": "Avviso prima dell'inizio della riunione (0m sempre attivo)",
+        "settings_general_events": "📅 Eventi Generali",
+        "settings_general_events_desc": "Avviso prima dell'orario di inizio (0m sempre attivo)",
+        "settings_travel_trips": "🚗 Viaggi & Spostamenti",
+        "settings_travel_trips_desc": "Avviso prima dell'orario di partenza (0m sempre attivo)",
+
+        # Settings Card 2: ETA & Departure Address
+        "settings_eta_title": "📍 Indirizzo di Partenza & Calcolo Percorsi (ETA)",
+        "settings_eta_subtitle": "Calcola durata del tragitto e orario di partenza in tempo reale per Mezzi Pubblici, Auto, A Piedi o Bici.",
+        "settings_starting_address": "🏠 Indirizzo di Partenza (Origine)",
+        "settings_address_placeholder": "es. Corso Duca degli Abruzzi 24, 10129 Torino, Italia",
+        "settings_address_format_hint": "💡 Formato: Via e Civico, Città, CAP, Stato (es. Corso Duca degli Abruzzi 24, 10129 Torino, Italia)",
+        "settings_address_incomplete_warning": "⚠️ Inserisci via, numero civico e città per un calcolo accurato dell'ETA.",
+        "settings_address_error_invalid": "❌ Formato indirizzo non valido. Richiesto: Via, Civico, Città (es. Corso Duca degli Abruzzi 24, 10129 Torino)",
+        "settings_address_error_btn": "❌ Formato Errato",
+        "settings_save_location": "💾 Salva Posizione",
+        "settings_transport_calc": "🚦 Mezzo di Trasporto per il Calcolo del Percorso",
+        "settings_public_transit": "🚆 Mezzi Pubblici",
+        "settings_driving_mode": "🚗 Automobile",
+        "settings_cycling_mode": "🚲 Bicicletta",
+        "settings_walking_mode": "🚶 A Piedi",
+        "settings_departure_buffer": "⏳ Margine di Anticipo Partenza (tempo per parcheggio / stazione):",
+        "buffer_5m": "5 minuti",
+        "buffer_10m_rec": "10 minuti (Consigliato)",
+        "buffer_15m": "15 minuti",
+        "buffer_20m": "20 minuti",
+
+        # Settings Card 3: Calendars
+        "settings_calendars_title": "📅 Calendari di Sistema Inclusi",
+        "settings_calendars_subtitle": "Seleziona quali calendari locali, iCloud o Google monitorare per i promemoria.",
+        "settings_all_cals_monitored": "Tutti i calendari disponibili sono attualmente monitorati.",
+
+        # Settings Card 4: System & Diagnostics
+        "settings_system_lang_diag": "⚙️ Sistema, Lingua & Diagnostica",
+        "settings_system_lang": "⚙️ Sistema & Lingua",
+        "settings_lang_selector_label": "🌐 Lingua dell'Applicazione / Language:",
+        "settings_autostart_mac": "🚀 Avvia QuakMeeting automaticamente all'accesso macOS",
+        "settings_mute_lessons": "🤫 Silenzia il suono del banner durante le lezioni universitarie",
+        "settings_debug_mode": "🐛 Abilita Modalità Sviluppatore & Diagnostica Debug",
+        "settings_config_json": "📝 Config JSON",
+        "settings_view_logs": "📄 Visualizza Log",
+        "settings_log_folder": "📂 Cartella Log",
+        "settings_update_ready": "QuakMeeting v{version}  •  Pronto",
+        "settings_install_update_now": "⚡ Installa Aggiornamento Ora",
+
+        # Hangar Tab
+        "hangar_header_title": "🦆 Personalizzazione Mascotte",
+        "hangar_surprise_me": "🎲 A Sorpresa",
+        "hangar_reset_presets": "🔄 Ripristina Predefiniti",
+        "hangar_animal_mascot": "Mascotte Animale:",
+        "hangar_active_pilot_label": "Pilota Attivo",
+        "hangar_test_btn": "🚀 Prova",
+        "animal_duck": "🦆 Anatra Aviatrice",
+        "animal_owl": "🦉 Gufo Accademico",
+        "animal_bunny": "🐰 Coniglio Ingegnoso",
+        "animal_platypus": "🕵️‍♂️ Ornitorinco Segreto",
+        "animal_squirrel": "🐿️ Scoiattolo Hyper",
+        "cat_study_title": "🎓 Università & Sessioni di Studio",
+        "cat_study_desc": "Lezioni, esami, studio individuale, compiti e tesi.",
+        "cat_food_title": "🍕 Pranzo, Cena & Ristoranti",
+        "cat_food_desc": "Cene, pranzi, pizzerie e percorsi cibo.",
+        "cat_travel_title": "✈️ Viaggi, Voli & Treni",
+        "cat_travel_desc": "Aeroporti, voli aerei, treni ad alta velocità e viaggi.",
+        "cat_sport_title": "🏋️ Palestra, Fitness & Sport",
+        "cat_sport_desc": "Allenamenti, crossfit, padel, tennis e corsa.",
+        "cat_in_person_title": "🏎️ Appuntamenti di Persona & Spostamenti",
+        "cat_in_person_desc": "Visite mediche, dentista e navigazione in tempo reale.",
+        "cat_health_title": "🌸 Benessere & Terapia",
+        "cat_health_desc": "Sedute Serenis, yoga, meditazione e relax.",
+        "cat_general_title": "⏰ Riunioni Generali & Promemoria",
+        "cat_general_desc": "Videoconferenze (Meet, Zoom, Teams) e promemoria."
     }
 }
+
+_locale_observer = None
+
+def init_system_locale_listener():
+    """Listens for macOS system language/locale change notifications to dynamically update UI."""
+    global _locale_observer
+    if _locale_observer is not None:
+        return
+    try:
+        import Foundation
+        import objc
+        from core.services.event_bus import event_bus
+
+        class SystemLocaleObserver(Foundation.NSObject):
+            def localeDidChange_(self, notification):
+                from core.services.config_service import config
+                if config.get("language", "system") == "system":
+                    logger.info("macOS System Locale changed, publishing CONFIG_CHANGED for language.")
+                    event_bus.publish("CONFIG_CHANGED", key="language", value="system")
+
+        _locale_observer = SystemLocaleObserver.alloc().init()
+        center = Foundation.NSNotificationCenter.defaultCenter()
+        center.addObserver_selector_name_object_(
+            _locale_observer,
+            objc.selector(_locale_observer.localeDidChange_, signature=b"v@:@"),
+            Foundation.NSCurrentLocaleDidChangeNotification,
+            None
+        )
+    except Exception as e:
+        logger.debug(f"Could not register system locale observer: {e}")
 
 
 def detect_system_language() -> str:
     """Detects the operating system's preferred language code ('it' or 'en')."""
-    # 1. macOS native preferred language detection via PyObjC
+    # 1. macOS NSUserDefaults AppleLanguages
+    try:
+        import Foundation
+        user_defaults = Foundation.NSUserDefaults.standardUserDefaults()
+        apple_langs = user_defaults.objectForKey_("AppleLanguages")
+        if apple_langs and len(apple_langs) > 0:
+            first_lang = str(apple_langs[0]).lower()
+            if first_lang.startswith("it") or "it_" in first_lang or "it-" in first_lang:
+                return "it"
+            elif first_lang.startswith("en") or "en_" in first_lang or "en-" in first_lang:
+                return "en"
+    except Exception:
+        pass
+
+    # 2. macOS native preferred language detection via PyObjC
     try:
         import AppKit
         langs = AppKit.NSLocale.preferredLanguages()
         if langs and len(langs) > 0:
             primary = str(langs[0]).lower()
-            if primary.startswith("it"):
+            if primary.startswith("it") or "it_" in primary or "it-" in primary:
                 return "it"
-            return "en"
+            elif primary.startswith("en") or "en_" in primary or "en-" in primary:
+                return "en"
     except Exception:
         pass
 
-    # 2. Linux environment / locale detection
+    # 3. macOS currentLocale languageCode
+    try:
+        import AppKit
+        loc = AppKit.NSLocale.currentLocale()
+        if loc:
+            code = loc.languageCode() if hasattr(loc, "languageCode") else None
+            if code and str(code).lower().startswith("it"):
+                return "it"
+            ident = loc.localeIdentifier() if hasattr(loc, "localeIdentifier") else None
+            if ident and str(ident).lower().startswith("it"):
+                return "it"
+    except Exception:
+        pass
+
+    # 4. Linux environment / locale detection
     for env_var in ["LC_ALL", "LC_MESSAGES", "LANG", "LANGUAGE"]:
         val = os.environ.get(env_var)
         if val:
@@ -285,7 +566,7 @@ def detect_system_language() -> str:
             if val_low.startswith("en") or "en_" in val_low or "en-" in val_low:
                 return "en"
 
-    # 3. Python standard locale
+    # 5. Python standard locale
     try:
         loc = locale.getlocale()
         if loc and loc[0]:

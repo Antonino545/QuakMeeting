@@ -627,7 +627,7 @@ class QtFlightDeckWindow(QMainWindow):
         entry_row = QHBoxLayout()
         addr_entry = QLineEdit(addr_card)
         addr_entry.setText(config.get("home_address", "") or "")
-        addr_entry.setPlaceholderText("e.g. Piazza Castello, Torino or Via Roma, Torino")
+        addr_entry.setPlaceholderText("e.g. Corso Duca degli Abruzzi 24, 10129 Torino, Italy")
 
         save_addr_btn = QPushButton("💾 Save Location", addr_card)
         save_addr_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -646,9 +646,27 @@ class QtFlightDeckWindow(QMainWindow):
                 border: 1px solid #94e2d5;
             }
         """)
+
+        hint_lbl = QLabel("💡 Format: Street & Number, City, Postal Code, Country (e.g. Corso Duca degli Abruzzi 24, 10129 Torino, Italy)", addr_card)
+        hint_lbl.setStyleSheet("color: #a6adc8; font-size: 11px; margin-top: 2px;")
+
         def _save_addr():
             val = addr_entry.text().strip()
             config.set("home_address", val)
+            try:
+                event_bus.publish("CONFIG_CHANGED", key="home_address", value=val)
+            except Exception:
+                pass
+            if val and (len(val) < 5 or len(val.split()) < 2):
+                hint_lbl.setText("⚠️ Please specify street, number, and city for accurate transit ETA.")
+                hint_lbl.setStyleSheet("color: #fab387; font-size: 11px; margin-top: 2px;")
+                QTimer.singleShot(3500, lambda: (
+                    hint_lbl.setText("💡 Format: Street & Number, City, Postal Code, Country (e.g. Corso Duca degli Abruzzi 24, 10129 Torino, Italy)"),
+                    hint_lbl.setStyleSheet("color: #a6adc8; font-size: 11px; margin-top: 2px;")
+                ))
+            else:
+                hint_lbl.setText("💡 Format: Street & Number, City, Postal Code, Country (e.g. Corso Duca degli Abruzzi 24, 10129 Torino, Italy)")
+                hint_lbl.setStyleSheet("color: #a6adc8; font-size: 11px; margin-top: 2px;")
             save_addr_btn.setText("✓ Saved")
             QTimer.singleShot(1500, lambda: save_addr_btn.setText("💾 Save Location"))
         save_addr_btn.clicked.connect(_save_addr)
@@ -656,6 +674,7 @@ class QtFlightDeckWindow(QMainWindow):
         entry_row.addWidget(addr_entry, stretch=1)
         entry_row.addWidget(save_addr_btn)
         ac_layout.addLayout(entry_row)
+        ac_layout.addWidget(hint_lbl)
 
         # 2. Preferred Transport Mode
         mode_lbl = QLabel("<b>🚦 Transport Mode for Route Calculation</b>", addr_card)

@@ -74,7 +74,37 @@ class TestUpdaterService(unittest.TestCase):
             self.assertTrue(success)
             self.assertTrue(len(installed_events) >= 1)
             mock_popen.assert_called_once()
+    def test_mocked_install_macos_update(self):
+        from unittest.mock import patch, MagicMock
+        from core.services.event_bus import event_bus
+
+        installed_events = []
+        event_bus.subscribe("UPDATE_INSTALLED", lambda **k: installed_events.append(True))
+
+        mock_run_res = MagicMock(returncode=0, stdout="", stderr="")
+        with patch("subprocess.run", return_value=mock_run_res) as mock_run, \
+             patch("subprocess.Popen") as mock_popen, \
+             patch("os._exit") as mock_exit, \
+             patch("os.path.exists", return_value=True), \
+             patch("os.makedirs"), \
+             patch("shutil.rmtree"), \
+             patch("shutil.copytree"), \
+             patch("time.sleep"):
+            success = self.updater._install_macos_update("/tmp/mock_package.dmg", "/tmp/temp_dir")
+            self.assertTrue(success)
+            self.assertTrue(len(installed_events) >= 1)
+            mock_popen.assert_called_once()
             mock_exit.assert_called_once_with(0)
+
+            # Verify codesign was called with the explicit designated requirement
+            codesign_called = False
+            for call_args in mock_run.call_args_list:
+                args = call_args[0][0]
+                if "codesign" in args:
+                    codesign_called = True
+                    self.assertIn("-r", args)
+                    self.assertIn('=designated => identifier "com.quakmeeting.app"', args)
+            self.assertTrue(codesign_called)
 
 if __name__ == "__main__":
     unittest.main()

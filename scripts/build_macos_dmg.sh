@@ -33,10 +33,10 @@ mkdir -p "$TEMP_DMG_DIR"
 cp -R "$APP_PATH" "$TEMP_DMG_DIR/"
 ln -s /Applications "$TEMP_DMG_DIR/Applications"
 
-# Clear quarantine flags and ad-hoc sign the bundle
-echo "✍️ Applying ad-hoc codesign signature..."
+# Clear quarantine flags and ad-hoc sign the bundle with designated requirement
+echo "✍️ Applying ad-hoc codesign signature with designated requirement..."
 xattr -cr "$TEMP_DMG_DIR/QuakMeeting.app" 2>/dev/null || true
-codesign --force --deep -s - -i "com.quakmeeting.app" "$TEMP_DMG_DIR/QuakMeeting.app" 2>/dev/null || true
+codesign --force --deep -s - -i "com.quakmeeting.app" -r '=designated => identifier "com.quakmeeting.app"' "$TEMP_DMG_DIR/QuakMeeting.app" 2>/dev/null || true
 
 # 3. Create DMG using hdiutil
 echo "💽 Creating disk image: $OUTPUT_DMG..."

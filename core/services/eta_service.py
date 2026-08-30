@@ -40,6 +40,36 @@ APPLE_MAPS_FLAGS = {
     "bicycling": "b"     # Biking
 }
 
+def validate_address(address: str) -> Tuple[bool, Optional[str]]:
+    """
+    Validates departure/destination address format.
+    Returns (is_valid, error_code).
+    Expected format: Street / Via + House Number + City (e.g. 'Via Roma 10, Torino' or 'Corso Duca 24, 10129 Torino, Italy').
+    Empty address is considered valid (clears departure address).
+    """
+    if not address or not address.strip():
+        return True, None
+
+    clean = address.strip()
+    if len(clean) < 6:
+        return False, "too_short"
+
+    tokens = clean.replace(",", " ").replace(".", " ").split()
+    if len(tokens) < 2:
+        return False, "missing_city_or_street"
+
+    # Must have at least one alphabetic word (street/city) of len >= 2
+    alpha_tokens = [t for t in tokens if any(c.isalpha() for c in t) and len(t) >= 2]
+    if len(alpha_tokens) < 2:
+        return False, "missing_details"
+
+    # Check if there is at least a digit (house number or CAP) or at least 3 descriptive words (e.g. "Piazza Castello Torino")
+    has_digit = any(c.isdigit() for c in clean)
+    if not has_digit and len(alpha_tokens) < 3:
+        return False, "missing_number_or_cap"
+
+    return True, None
+
 class ETAService:
     """Calculates multi-modal route durations and builds Apple Maps navigation links."""
     _instance = None

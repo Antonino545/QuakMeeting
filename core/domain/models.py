@@ -88,7 +88,7 @@ class Meeting:
     # Travel & ETA Metadata
     travel_time_minutes: Optional[int] = None
     travel_distance_km: Optional[float] = None
-    transport_mode: str = "transit"
+    transport_mode: Optional[str] = None
     departure_time: Optional[datetime] = None
     origin_address: Optional[str] = None
     eta_text: Optional[str] = None
@@ -251,7 +251,7 @@ class Meeting:
             category=d.get("category"),
             travel_time_minutes=d.get("travel_time_minutes"),
             travel_distance_km=d.get("travel_distance_km"),
-            transport_mode=d.get("transport_mode", "transit"),
+            transport_mode=d.get("transport_mode"),
             departure_time=dep_dt,
             origin_address=d.get("origin_address"),
             eta_text=d.get("eta_text"),
