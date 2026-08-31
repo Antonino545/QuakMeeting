@@ -91,7 +91,27 @@ class TestEventClassifier(unittest.TestCase):
         )
         self.assertEqual(m_study.pilot_type, PilotType.OWL.value)
         self.assertEqual(m_study.event_type, EventCategory.STUDY.value)
-        self.assertEqual(m_study.provider, "You Need to Study! Do it! 📖")
+        self.assertEqual(m_study.provider, "Study Session 📖")
+
+        # 3. OR Study & LP/MILP Modeling Template -> EventCategory.STUDY
+        m_or_study = self.classifier.classify(
+            title="OR Study: Intro & LP/MILP Modeling Template",
+            location="",
+            description=""
+        )
+        self.assertEqual(m_or_study.pilot_type, PilotType.OWL.value)
+        self.assertEqual(m_or_study.event_type, EventCategory.STUDY.value)
+        self.assertEqual(m_or_study.provider, "Study Session 📖")
+
+        # 4. Self study with space and location -> EventCategory.STUDY
+        m_self_study = self.classifier.classify(
+            title="Self study for ICT course",
+            location="Aula 5M",
+            description=""
+        )
+        self.assertEqual(m_self_study.pilot_type, PilotType.OWL.value)
+        self.assertEqual(m_self_study.event_type, EventCategory.STUDY.value)
+        self.assertEqual(m_self_study.provider, "Study Session 📖")
 
     def test_classroom_and_teacher_extraction(self):
         title = "ICT for smart mobility (VASSIO LUCA) - Aula 5M"

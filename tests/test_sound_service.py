@@ -95,9 +95,10 @@ class TestSoundService(unittest.TestCase):
         mock_vol.assert_called_once()
         mock_run.assert_not_called()
 
+    @patch("core.services.calendar_service.calendar_service.is_in_lesson", return_value=False)
     @patch("core.services.sound_service.is_system_volume_on", return_value=True)
     @patch("core.services.sound_service.subprocess.run")
-    def test_play_chime_muted_when_event_is_lesson(self, mock_run, mock_vol):
+    def test_play_chime_plays_when_not_in_lesson(self, mock_run, mock_vol, mock_in_lesson):
         config.set("sound_enabled", True)
         config.set("mute_during_lessons", True)
         lesson_event = {
@@ -106,7 +107,8 @@ class TestSoundService(unittest.TestCase):
             "classroom": "Aula 3B"
         }
         play_chime(sync=True, event_dict=lesson_event)
-        mock_run.assert_not_called()
+        mock_vol.assert_called_once()
+        mock_run.assert_called_once()
 
     @patch("core.services.calendar_service.calendar_service.is_in_lesson", return_value=True)
     @patch("core.services.sound_service.is_system_volume_on", return_value=True)

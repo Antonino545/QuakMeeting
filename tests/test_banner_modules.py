@@ -73,6 +73,25 @@ class TestBannerModules(unittest.TestCase):
         self.assertIn("3m", text_soon)
         self.assertTrue(urgent_soon)
 
+        # Study session countdown formatting (English & Italian)
+        start_study = now + timedelta(minutes=20, seconds=5)
+        text_study, _ = compute_countdown_text(
+            {"event_type": "study"}, start_study, None, None, False, "transit", "Aula 5M", "owl", "Study Session 📖", "OR Study: Intro & LP/MILP Modeling Template", lang="en"
+        )
+        self.assertIn("Study Time", text_study)
+        self.assertNotIn("Lesson", text_study)
+
+        text_study_soon, _ = compute_countdown_text(
+            {"event_type": "study"}, now + timedelta(minutes=7), None, None, False, "transit", None, "owl", "Study Session 📖", "Self study", lang="en"
+        )
+        self.assertIn("Open Books", text_study_soon)
+
+        text_study_urgent, is_urg = compute_countdown_text(
+            {"event_type": "study"}, now + timedelta(minutes=2), None, None, False, "transit", None, "owl", "Study Session 📖", "OR Study: Intro & LP/MILP Modeling Template", lang="en"
+        )
+        self.assertIn("Time to Study", text_study_urgent)
+        self.assertTrue(is_urg)
+
         # Travel duration helper
         self.assertEqual(format_travel_duration(15), "15 min")
         self.assertEqual(format_travel_duration(75), "1h 15m")
