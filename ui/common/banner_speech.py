@@ -31,9 +31,16 @@ def build_pilot_speech_text(
 
     is_self_study = (
         meeting_data.get("event_type") == "study"
+        or meeting_data.get("category") == "study"
         or "STUDY" in (provider or "").upper()
         or "STUDIARE" in (title or "").upper()
-        or (not classroom and "STUDY" in (title or "").upper())
+        or "STUDIO" in (title or "").upper()
+        or "STUDY" in (title or "").upper()
+        or "SELF STUDY" in (title or "").upper()
+        or "SELF-STUDY" in (title or "").upper()
+        or "RIPASSO" in (title or "").upper()
+        or "COMPITI" in (title or "").upper()
+        or "HOMEWORK" in (title or "").upper()
     )
 
     if active_lang == "it":

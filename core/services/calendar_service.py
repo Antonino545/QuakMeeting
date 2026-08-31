@@ -250,20 +250,24 @@ class CalendarService:
             return list(self._cached_calendars)
 
     def is_in_lesson(self, current_time: Optional[datetime] = None) -> bool:
-        """Checks if the user is currently attending an active lecture/lesson or study session."""
+        """Checks if the user is currently attending an active university lecture/lesson."""
         from datetime import timezone
         now = (current_time or datetime.now(timezone.utc)).astimezone(timezone.utc)
         meetings = self.get_upcoming_meetings()
         for m in meetings:
             if m.is_all_day:
                 continue
-            is_lesson = (
-                m.event_type in ("class", "study") or
-                m.category in ("class", "study") or
+            # Self-study sessions should not mute banner sounds
+            if m.event_type == "study" or m.category == "study":
+                continue
+
+            is_class = (
+                m.event_type == "class" or
+                m.category == "class" or
                 bool(m.classroom) or
                 bool(m.teacher)
             )
-            if not is_lesson:
+            if not is_class:
                 continue
 
             if m.start_time and m.end_time:

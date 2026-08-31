@@ -40,15 +40,15 @@ DEFAULT_KEYWORDS = {
         "lecture", "classes", "course", "classroom", "seminar", "workshop", "tutorial",
         "lab", "laboratory", "university", "college", "professor", "prof", "academic",
         "lezione", "lezioni", "corso", "aula", "seminario", "laboratorio", "universit",
-        "politecnico", "professore", "docente"
+        "politecnico", "professore", "docente", "smartgrid", "building", "ict", "satellite",
+        "operations research", "ricerca operativa"
     ],
     "owl": [
-        "study", "studying", "homework", "assignment", "revision", "self-study", "exam",
-        "test", "quiz", "midterm", "final exam", "thesis", "dissertation", "library",
-        "research", "paper", "reading", "textbook", "smartgrid", "building", "ict", "satellite",
-        "operations research", "studio", "studiare", "compiti", "ripasso", "esame", "esami",
-        "parziale", "esonero", "tesi", "tesina", "laurea", "biblioteca", "ricerca", "dispense",
-        "esercitazione", "appunti", "ricerca operativa"
+        "study", "studying", "homework", "assignment", "revision", "self-study", "self study", "selfstudy",
+        "or study", "exam", "test", "quiz", "midterm", "final exam", "thesis", "dissertation", "library",
+        "research", "paper", "reading", "textbook", "studio", "studiare", "studio individuale", "studio autonomo",
+        "compiti", "ripasso", "esame", "esami", "parziale", "esonero", "tesi", "tesina", "laurea",
+        "biblioteca", "ricerca", "dispense", "esercitazione", "appunti", "preparazione esame", "exam prep"
     ],
     "gym": [
         "gym", "workout", "fitness", "training", "exercise", "crossfit", "bodybuilding",
@@ -247,9 +247,31 @@ class EventClassifier:
                 )
                 return cls._apply_forced_pilot_if_needed(res_meeting)
 
-        # 4. Check Class / Lecture Attendance vs Self-Study Block
-        is_class_event = bool(classroom) or bool(teacher) or any(cls._matches_kw(kw, search_blob) for kw in keywords_dict.get("class", []))
+        # 4. Check Self-Study Block vs Class / Lecture Attendance
         is_study_event = any(cls._matches_kw(kw, search_blob) for kw in keywords_dict.get("owl", []))
+        is_class_event = bool(classroom) or bool(teacher) or any(cls._matches_kw(kw, search_blob) for kw in keywords_dict.get("class", []))
+
+        if is_study_event:
+            is_trav = bool(location and location != "missing value" and "online" not in search_blob)
+            maps_dest = location if is_trav else title
+            maps_url = f"https://maps.apple.com/?q={urllib.parse.quote(maps_dest)}" if is_trav else "https://calendar.apple.com"
+            res_meeting = Meeting(
+                title=title,
+                start_time=start_time or datetime.now(),
+                end_time=end_time,
+                location=location,
+                description=description,
+                event_type=EventCategory.STUDY.value,
+                pilot_type=PilotType.OWL.value,
+                provider="Study Session 📖",
+                action_btn_text=f"🗺️ {location}" if is_trav else "⚡ TIME TO STUDY! DO IT 📖",
+                action_url=maps_url,
+                theme_name="Academic Purple",
+                is_travel=is_trav,
+                classroom=classroom,
+                teacher=teacher
+            )
+            return cls._apply_forced_pilot_if_needed(res_meeting)
 
         if is_class_event:
             is_trav = bool(location and location != "missing value" and "online" not in search_blob)
@@ -266,28 +288,6 @@ class EventClassifier:
                 pilot_type=PilotType.OWL.value,
                 provider=provider_label,
                 action_btn_text=f"🗺️ {classroom or 'CAMPUS'}" if is_trav else "🏫 CLASSROOM & NOTES",
-                action_url=maps_url,
-                theme_name="Academic Purple",
-                is_travel=is_trav,
-                classroom=classroom,
-                teacher=teacher
-            )
-            return cls._apply_forced_pilot_if_needed(res_meeting)
-
-        if is_study_event:
-            is_trav = bool(location and location != "missing value" and "online" not in search_blob)
-            maps_dest = location if is_trav else title
-            maps_url = f"https://maps.apple.com/?q={urllib.parse.quote(maps_dest)}" if is_trav else "https://calendar.apple.com"
-            res_meeting = Meeting(
-                title=title,
-                start_time=start_time or datetime.now(),
-                end_time=end_time,
-                location=location,
-                description=description,
-                event_type=EventCategory.STUDY.value,
-                pilot_type=PilotType.OWL.value,
-                provider="You Need to Study! Do it! 📖",
-                action_btn_text=f"🗺️ {location}" if is_trav else "⚡ TIME TO STUDY! DO IT 📖",
                 action_url=maps_url,
                 theme_name="Academic Purple",
                 is_travel=is_trav,

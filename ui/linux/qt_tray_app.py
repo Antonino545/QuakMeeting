@@ -110,7 +110,7 @@ class QuakMeetingTrayApp:
 
             travel_min = getattr(nx, "travel_time_minutes", 0)
             dep_dt = getattr(nx, "departure_time", None)
-            t_mode = getattr(nx, "transport_mode", None) or self.config.get("transport_mode", "transit")
+            t_mode = getattr(nx, "transport_mode", None) or config.get("transport_mode", "transit")
 
             next_label = TrayViewModel.format_next_event_label(icon_prefix, st, m_title, travel_min, dep_dt, transport_mode=t_mode)
 

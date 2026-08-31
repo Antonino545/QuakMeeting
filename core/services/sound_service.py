@@ -92,16 +92,16 @@ def is_system_volume_on() -> bool:
         except Exception:
             pass
 
-def is_lesson_event(event_dict: Optional[dict]) -> bool:
-    """Checks if an event payload represents an academic class, lecture, or study session."""
-    if not event_dict or not isinstance(event_dict, dict):
+def is_in_lesson_now(event_dict: Optional[dict] = None) -> bool:
+    """Checks if the user is currently attending an active lecture/lesson."""
+    try:
+        if event_dict and (event_dict.get("is_test_banner") or "TEST FLIGHT" in str(event_dict.get("action_btn_text", ""))):
+            return False
+        from core.services.calendar_service import calendar_service
+        return calendar_service.is_in_lesson()
+    except Exception as e:
+        logger.debug(f"Could not check active lesson status: {e}")
         return False
-    ev_type = event_dict.get("event_type") or event_dict.get("category") or ""
-    if ev_type in ("class", "study"):
-        return True
-    if event_dict.get("classroom") or event_dict.get("teacher"):
-        return True
-    return False
 
 
 def play_chime(
@@ -111,7 +111,7 @@ def play_chime(
 ) -> None:
     """
     Plays notification chime asynchronously (or synchronously if sync=True) if sound is enabled,
-    system volume is on, and sound is not suppressed during university lessons.
+    system volume is on, and the user is not currently attending a university lecture/lesson.
     """
     if not config.get("sound_enabled", True):
         return
@@ -121,17 +121,9 @@ def play_chime(
         return
 
     if config.get("mute_during_lessons", True):
-        if is_lesson_event(event_dict):
-            logger.info("Chime muted: current event is a university lecture/lesson (mute_during_lessons enabled).")
+        if is_in_lesson_now(event_dict):
+            logger.info("Chime muted: user is currently attending a lecture/lesson (mute_during_lessons enabled).")
             return
-
-        try:
-            from core.services.calendar_service import calendar_service
-            if calendar_service.is_in_lesson():
-                logger.info("Chime muted: user is currently attending a lecture/lesson (mute_during_lessons enabled).")
-                return
-        except Exception as e:
-            logger.debug(f"Could not check active lesson status: {e}")
 
     def _play_async():
         try:
