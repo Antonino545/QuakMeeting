@@ -138,11 +138,11 @@ class TestETAService(unittest.TestCase):
     @patch("core.services.eta_service.ETAService._calculate_apple_maps_eta", return_value=None)
     @patch("urllib.request.urlopen")
     def test_calculate_eta_walking_and_bicycling(self, mock_urlopen, mock_apple_eta):
-        # 1. Walking: 5.0 km at 5 km/h -> 60 min
+        # 1. Walking: 5.0 km (5000m, 3600 sec) -> 60 min
         geo_resp_1 = io.BytesIO(json.dumps([{"lat": "45.0", "lon": "7.0"}]).encode("utf-8"))
         geo_resp_2 = io.BytesIO(json.dumps([{"lat": "45.1", "lon": "7.1"}]).encode("utf-8"))
         osrm_resp_walk = io.BytesIO(json.dumps({
-            "routes": [{"duration": 600, "distance": 5000}]
+            "routes": [{"duration": 3600, "distance": 5000}]
         }).encode("utf-8"))
 
         mock_urlopen.side_effect = [geo_resp_1, geo_resp_2, osrm_resp_walk]

@@ -261,6 +261,60 @@ class ETAService:
             logger.debug(f"Geocoding error for '{address}': {e}")
         return None
 
+    def _query_opensource_route(self, coords_orig: Tuple[float, float], coords_dest: Tuple[float, float], mode: str) -> Optional[Tuple[int, float]]:
+        """Queries open-source OpenStreetMap / OSRM routing network with profile-specific endpoints."""
+        lat1, lon1 = coords_orig
+        lat2, lon2 = coords_dest
+
+        # Map to OpenStreetMap Deutschland routing profiles
+        profile = "routed-car"
+        if mode == "walking":
+            profile = "routed-foot"
+        elif mode == "bicycling":
+            profile = "routed-bike"
+
+        candidate_urls = [
+            f"https://routing.openstreetmap.de/{profile}/route/v1/driving/{lon1},{lat1};{lon2},{lat2}?overview=false",
+            f"https://router.project-osrm.org/route/v1/driving/{lon1},{lat1};{lon2},{lat2}?overview=false"
+        ]
+
+        headers = {"User-Agent": "QuakMeeting/1.0 (https://github.com/Antonino545/QuakMeeting)"}
+
+        for url in candidate_urls:
+            try:
+                req = urllib.request.Request(url, headers=headers)
+                with urllib.request.urlopen(req, timeout=4) as resp:
+                    route_data = json.loads(resp.read().decode("utf-8"))
+                    if route_data.get("routes") and len(route_data["routes"]) > 0:
+                        raw_sec = route_data["routes"][0]["duration"]
+                        dist_m = route_data["routes"][0]["distance"]
+                        distance_km = round(dist_m / 1000.0, 1)
+
+                        if mode == "automobile":
+                            # Urban driving traffic multiplier + parking/traffic lights
+                            duration_minutes = max(5, round((raw_sec / 60.0) * 1.35 + 4))
+                        elif mode == "transit":
+                            # Real-world public transit factor: bus/tram headways + station walks + stops
+                            duration_minutes = max(15, round((raw_sec / 60.0) * 1.8 + 12))
+                        elif mode == "walking":
+                            if "routed-foot" in url:
+                                duration_minutes = max(2, round(raw_sec / 60.0))
+                            else:
+                                duration_minutes = max(2, round((distance_km / 5.0) * 60.0))
+                        elif mode == "bicycling":
+                            if "routed-bike" in url:
+                                duration_minutes = max(2, round(raw_sec / 60.0 + 2))
+                            else:
+                                duration_minutes = max(2, round((distance_km / 15.0) * 60.0 + 2))
+                        else:
+                            duration_minutes = max(5, round(raw_sec / 60.0))
+
+                        return duration_minutes, distance_km
+            except Exception as e:
+                logger.debug(f"Open-source routing query error for {url}: {e}")
+
+        return None
+
     def calculate_eta(self, origin: str, destination: str, mode: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """
         Calculates travel duration (minutes) and distance (km) for the specified mode.
@@ -285,34 +339,17 @@ class ETAService:
             lat1, lon1 = coords_orig
             lat2, lon2 = coords_dest
 
-            # 1. First attempt: Native Apple Maps live ETA via MapKit (macOS)
+            # 1. On macOS: Native Apple Maps live ETA via MapKit
             apple_eta = self._calculate_apple_maps_eta(coords_orig, coords_dest, selected_mode)
             if apple_eta:
                 duration_minutes, distance_km = apple_eta
             else:
-                # 2. Fallback: OSRM driving query + calibrated multi-modal factors
-                try:
-                    osrm_url = f"https://router.project-osrm.org/route/v1/driving/{lon1},{lat1};{lon2},{lat2}?overview=false"
-                    headers = {"User-Agent": "QuakMeeting-macOS/1.0"}
-                    req = urllib.request.Request(osrm_url, headers=headers)
-                    with urllib.request.urlopen(req, timeout=4) as resp:
-                        route_data = json.loads(resp.read().decode("utf-8"))
-                        if route_data.get("routes") and len(route_data["routes"]) > 0:
-                            drive_sec = route_data["routes"][0]["duration"]
-                            dist_m = route_data["routes"][0]["distance"]
-                            distance_km = round(dist_m / 1000.0, 1)
-
-                            if selected_mode == "automobile":
-                                duration_minutes = max(5, round((drive_sec / 60.0) * 1.35 + 4))
-                            elif selected_mode == "transit":
-                                duration_minutes = max(15, round((drive_sec / 60.0) * 1.8 + 12))
-                            elif selected_mode == "walking":
-                                duration_minutes = max(2, round((distance_km / 5.0) * 60.0))
-                            elif selected_mode == "bicycling":
-                                duration_minutes = max(2, round((distance_km / 15.0) * 60.0))
-                except Exception as e:
-                    logger.debug(f"OSRM routing query error: {e}")
-                    # 3. Fallback: Haversine distance
+                # 2. On Linux / Ubuntu (or macOS fallback): Open-source OpenStreetMap / OSRM multi-modal router
+                os_eta = self._query_opensource_route(coords_orig, coords_dest, selected_mode)
+                if os_eta:
+                    duration_minutes, distance_km = os_eta
+                else:
+                    # 3. Offline geometry fallback: Haversine distance
                     dlat = math.radians(lat2 - lat1)
                     dlon = math.radians(lon2 - lon1)
                     a = math.sin(dlat / 2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2)**2
