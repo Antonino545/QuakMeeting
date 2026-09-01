@@ -26,6 +26,7 @@ QuakMeeting stores all user preferences, timing thresholds, routing configuratio
 | `ignored_calendars` | `list[str]` | `[...]` | Exact names of calendars to exclude from scanning (e.g., `"Birthdays"`, `"Holidays"`). |
 | `calendar_urls` | `list[str]` | `[]` | URLs for remote ICS / CalDAV feeds, primarily used on Linux. |
 | `home_address` | `string` | `""` | Origin address for ETA calculations (e.g., `"Corso Duca degli Abruzzi 24, Torino"`). |
+| `exam_location` | `string` | `""` | Default campus or university address automatically assigned to all exam events (e.g., `"Politecnico di Torino, Corso Duca degli Abruzzi 24"`). |
 | `transport_mode` | `string` | `"transit"` | Default travel mode (`"transit"`, `"automobile"`, `"walking"`, `"bicycling"`). |
 | `enable_eta_service` | `bool` | `true` | Whether to calculate departure times and routing links via Apple Maps / Google Maps. |
 | `eta_buffer_minutes` | `int` | `10` | Buffer minutes added before departure to account for reaching transit stop/parking. |

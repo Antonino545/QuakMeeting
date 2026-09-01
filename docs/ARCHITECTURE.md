@@ -60,8 +60,8 @@ flowchart TD
 
 ### 1. Domain (`core/domain/`)
 Contains pure Python data classes and enums. 
-- **`models.py`**: The central `Meeting` dataclass holding event info, travel metadata, and UI theme attributes. Includes logic for duration formatting.
-- **`classifier.py`**: Heuristic keyword matching engine to automatically assign pilots (Duck, Captain, Chef, etc.) and categories based on event titles.
+- **`models.py`**: The central `Meeting` dataclass holding event info, travel metadata, and UI theme attributes. Includes logic for duration formatting and event categories (`exam`, `class`, `study`, `food`, `travel`, `sport`, etc.).
+- **`classifier.py`**: Heuristic keyword and regex engine to automatically assign pilots (Duck, Captain, Chef, Owl, etc.) and categories (`exam`, `class`, `study`, `travel`, `sport`, etc.) based on event titles, metadata, and prefixes.
 
 ### 2. Providers (`core/providers/`)
 Data ingestion layer fetching events from various platforms.
@@ -70,7 +70,7 @@ Data ingestion layer fetching events from various platforms.
 
 ### 3. Services (`core/services/`)
 Orchestrates business use cases.
-- **`calendar_service.py`**: Filters events strictly for **Today**, manages the on-disk JSON cache, and implements the stale-while-revalidate pattern.
+- **`calendar_service.py`**: Filters events strictly for **Today**, performs smart multi-calendar deduplication for exams and lectures, manages the on-disk JSON cache, and enriches travel events with transit/driving ETA from home or default exam locations.
 - **`reminder_engine.py`**: Evaluates when to fire notifications. It differentiates between standard events (fires relative to `start_time`) and travel events (fires relative to `departure_time`).
 - **`eta_service.py`**: Calculates multi-modal travel times and builds Apple Maps / Google Maps deep links. On macOS, queries Apple's native `MKDirections` (MapKit) for live transit timetables and traffic-aware driving durations; on Linux/Ubuntu, queries open-source OpenStreetMap / OSRM routing networks (`routed-car`, `routed-bike`, `routed-foot`, and calibrated transit models) with offline Haversine fallback.
 - **`event_bus.py`**: Decouples UI updates from background logic. Components publish events (e.g., `CALENDAR_UPDATED`, `CONFIG_CHANGED`) that the UI subscribes to.

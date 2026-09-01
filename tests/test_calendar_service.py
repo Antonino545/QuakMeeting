@@ -79,5 +79,71 @@ class TestCalendarServiceTravelTime(unittest.TestCase):
         filtered = self.service._filter_within_window([m_spanning])
         self.assertEqual(len(filtered), 1)
         self.assertEqual(filtered[0].title, "Spanning Event")
+
+    def test_exam_location_fallback_and_enrichment(self):
+        from unittest.mock import patch
+        self.service.config.set("home_address", "Corso Francia 10, Torino")
+        self.service.config.set("exam_location", "Politecnico di Torino, Corso Duca degli Abruzzi 24")
+        self.service.config.set("transport_mode", "transit")
+
+        now = datetime.now()
+        start = now + timedelta(hours=3)
+
+        # Exam event without explicit location
+        m_exam = Meeting(
+            title="Exam:Satellite Systems for Positioning and Maps",
+            start_time=start,
+            location="",
+            classroom="Aula 5M",
+            event_type="exam",
+            is_travel=True
+        )
+
+        with patch("core.services.calendar_service.eta_service.calculate_eta") as mock_eta:
+            mock_eta.return_value = {
+                "duration_minutes": 28,
+                "distance_km": 3.9,
+                "maps_url": "https://maps.apple.com/test",
+                "mode_icon": "🚆"
+            }
+            self.service._enrich_with_eta([m_exam])
+
+            self.assertEqual(m_exam.location, "Politecnico di Torino, Corso Duca degli Abruzzi 24")
+            self.assertEqual(m_exam.travel_time_minutes, 28)
+            self.assertIn("28m", m_exam.eta_text)
+            self.assertIsNotNone(m_exam.departure_time)
+
+    def test_deduplicate_duplicate_exam_and_lecture(self):
+        now = datetime.now()
+        start_exam = now + timedelta(hours=2) # e.g. 07:40
+        end_exam = start_exam + timedelta(hours=2, minutes=15) # 09:55
+        start_class = start_exam + timedelta(minutes=20) # e.g. 08:00
+        end_class = start_class + timedelta(hours=2, minutes=30) # 10:30
+
+        # Duplicate situation from user prompt:
+        # Event 1: 07:40 - 09:55 • Exam:Satellite Systems for Positioning and Maps (Politecnico di Torino, Aula 5M)
+        # Event 2: 08:00 - 10:30 • Satellite Systems for Positioning and Maps (Class / Lecture)
+        m_exam = Meeting(
+            title="Exam:Satellite Systems for Positioning and Maps",
+            start_time=start_exam,
+            end_time=end_exam,
+            location="Politecnico di Torino",
+            classroom="Aula 5M",
+            event_type="exam"
+        )
+        m_class = Meeting(
+            title="Satellite Systems for Positioning and Maps",
+            start_time=start_class,
+            end_time=end_class,
+            location="Politecnico",
+            event_type="class"
+        )
+
+        deduped = self.service._filter_within_window([m_exam, m_class])
+        self.assertEqual(len(deduped), 1)
+        self.assertEqual(deduped[0].event_type, "exam")
+        self.assertEqual(deduped[0].title, "Exam:Satellite Systems for Positioning and Maps")
+        self.assertEqual(deduped[0].classroom, "Aula 5M")
+
 if __name__ == "__main__":
     unittest.main()
