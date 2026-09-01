@@ -283,10 +283,51 @@ class CalendarService:
         merged_list.sort(key=lambda m: m.start_time)
         return merged_list
 
+    def _apply_current_transport_mode(self, meetings: List[Meeting]) -> None:
+        """Re-applies the current config transport_mode to all travel meetings.
+
+        When meetings are loaded from disk cache or when the user changes the
+        preferred transport mode in settings, the cached Meeting objects still
+        carry the old mode.  This method patches them in-place so the UI
+        immediately reflects the new preference without waiting for a full
+        calendar sync.
+        """
+        current_mode = self.config.get("transport_mode", "transit")
+        for m in meetings:
+            if m.is_travel and m.transport_mode and m.transport_mode != current_mode:
+                old_mode = m.transport_mode
+                m.transport_mode = current_mode
+
+                # Update the mode icon in eta_text  (e.g.  "🚆 ~30m • Leave at 08:15")
+                if m.eta_text:
+                    old_icon = MODE_ICONS.get(old_mode, "🚆")
+                    new_icon = MODE_ICONS.get(current_mode, "🚆")
+                    m.eta_text = m.eta_text.replace(old_icon, new_icon, 1)
+
+                # Update action button text  (e.g.  "🗺️ PUBLIC TRANSIT (~30m)")
+                if m.action_btn_text:
+                    _BTN_LABELS = {
+                        "transit": "PUBLIC TRANSIT",
+                        "automobile": "DRIVE WITH MAPS",
+                        "walking": "WALKING ROUTE",
+                        "bicycling": "CYCLING ROUTE",
+                    }
+                    old_label = _BTN_LABELS.get(old_mode)
+                    new_label = _BTN_LABELS.get(current_mode)
+                    if old_label and new_label:
+                        m.action_btn_text = m.action_btn_text.replace(old_label, new_label)
+
+                # Rebuild the maps action URL with the new mode
+                if m.action_url:
+                    dest = m.location if (m.location and m.location != "missing value") else m.title
+                    home = self.config.get("home_address", "").strip() or None
+                    m.action_url = eta_service.build_maps_url(home, dest, current_mode)
+
     def _load_cache_from_disk(self) -> List[Meeting]:
         loaded = self.repository.load()
         if loaded:
             filtered = self._filter_within_window(loaded)
+            self._apply_current_transport_mode(filtered)
             self._in_memory_cache = filtered
             self._last_fetch_time = self.repository.get_last_modified_time()
             return filtered
@@ -332,6 +373,16 @@ class CalendarService:
             threading.Thread(target=self.sync_now, daemon=True).start()
 
         return list(self._in_memory_cache)
+
+    def update_transport_mode(self) -> None:
+        """Immediately re-applies the current config transport_mode to all cached meetings.
+
+        Call this after config.set("transport_mode", ...) so that the in-memory
+        cache (and subsequent get_upcoming_meetings() calls) reflect the new
+        preference without waiting for a full calendar sync.
+        """
+        if self._in_memory_cache:
+            self._apply_current_transport_mode(self._in_memory_cache)
 
     def get_available_calendars(self, force_refresh: bool = False) -> List[Dict[str, Any]]:
         """Return list of macOS calendars with 5-minute cache to prevent main-thread UI blocking."""

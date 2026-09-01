@@ -890,6 +890,7 @@ class SettingsTabController(AppKit.NSObject):
                 self._update_transport_mode_buttons_ui(k)
                 from core.services.eta_service import eta_service
                 eta_service.clear_cache()
+                calendar_service.update_transport_mode()
                 try:
                     event_bus.publish("CONFIG_CHANGED", key="transport_mode", value=k)
                 except Exception:
