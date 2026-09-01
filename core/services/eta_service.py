@@ -4,6 +4,7 @@ Calculates ETA for Public Transit (Bus, Metro, Tram, Treno), Driving, Walking, a
 """
 import os
 import json
+import time
 import urllib.parse
 import urllib.request
 import logging
@@ -85,10 +86,10 @@ class ETAService:
         try:
             import objc
             try:
-                objc.loadBundle('CoreLocation', bundle_path='/System/Library/Frameworks/CoreLocation.framework', module_globals=globals())
-                objc.loadBundle('MapKit', bundle_path='/System/Library/Frameworks/MapKit.framework', module_globals=globals())
-            except Exception:
-                pass
+                objc.loadBundle('CoreLocation', globals(), bundle_path='/System/Library/Frameworks/CoreLocation.framework')
+                objc.loadBundle('MapKit', globals(), bundle_path='/System/Library/Frameworks/MapKit.framework')
+            except Exception as e:
+                logger.debug(f"Bundle load notice: {e}")
             objc.registerMetaDataForSelector(
                 b'MKDirections',
                 b'calculateETAWithCompletionHandler:',
@@ -107,6 +108,11 @@ class ETAService:
                     }
                 }
             )
+            self.MKDirections = objc.lookUpClass('MKDirections')
+            self.MKDirectionsRequest = objc.lookUpClass('MKDirectionsRequest')
+            self.MKMapItem = objc.lookUpClass('MKMapItem')
+            self.MKPlacemark = objc.lookUpClass('MKPlacemark')
+            self._mapkit_ready = True
         except Exception as e:
             logger.debug(f"MapKit initialization notice: {e}")
 
@@ -116,28 +122,25 @@ class ETAService:
         if sys.platform != "darwin":
             return None
 
+        if not getattr(self, "_mapkit_ready", False):
+            self._init_mapkit()
+
+        if not (getattr(self, "MKDirections", None) and getattr(self, "MKDirectionsRequest", None) and getattr(self, "MKMapItem", None) and getattr(self, "MKPlacemark", None)):
+            return None
+
         try:
-            import objc
             import Foundation
-
-            MKDirections = objc.lookUpClass('MKDirections')
-            MKDirectionsRequest = objc.lookUpClass('MKDirectionsRequest')
-            MKMapItem = objc.lookUpClass('MKMapItem')
-            MKPlacemark = objc.lookUpClass('MKPlacemark')
-
-            if not (MKDirections and MKDirectionsRequest and MKMapItem and MKPlacemark):
-                return None
 
             lat1, lon1 = coords_orig
             lat2, lon2 = coords_dest
 
-            pm1 = MKPlacemark.alloc().initWithCoordinate_addressDictionary_((lat1, lon1), None)
-            pm2 = MKPlacemark.alloc().initWithCoordinate_addressDictionary_((lat2, lon2), None)
+            pm1 = self.MKPlacemark.alloc().initWithCoordinate_addressDictionary_((lat1, lon1), None)
+            pm2 = self.MKPlacemark.alloc().initWithCoordinate_addressDictionary_((lat2, lon2), None)
 
-            item1 = MKMapItem.alloc().initWithPlacemark_(pm1)
-            item2 = MKMapItem.alloc().initWithPlacemark_(pm2)
+            item1 = self.MKMapItem.alloc().initWithPlacemark_(pm1)
+            item2 = self.MKMapItem.alloc().initWithPlacemark_(pm2)
 
-            req = MKDirectionsRequest.alloc().init()
+            req = self.MKDirectionsRequest.alloc().init()
             req.setSource_(item1)
             req.setDestination_(item2)
 
@@ -150,7 +153,7 @@ class ETAService:
 
             req.setTransportType_(t_type)
 
-            directions = MKDirections.alloc().initWithRequest_(req)
+            directions = self.MKDirections.alloc().initWithRequest_(req)
             sem = threading.Semaphore(0)
             res: Dict[str, Any] = {}
 
