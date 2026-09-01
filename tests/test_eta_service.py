@@ -79,13 +79,29 @@ class TestETAService(unittest.TestCase):
         self.assertIsNone(self.eta_service.calculate_eta("   ", "   "))
         self.assertIsNone(self.eta_service.calculate_eta(None, "Politecnico")) # type: ignore
 
+    @patch("core.services.eta_service.ETAService._calculate_apple_maps_eta")
     @patch("urllib.request.urlopen")
-    def test_calculate_eta_with_mocked_osrm(self, mock_urlopen):
+    def test_calculate_eta_with_native_apple_maps(self, mock_urlopen, mock_apple_eta):
+        mock_apple_eta.return_value = (28, 4.2)
+        geo_resp_1 = io.BytesIO(json.dumps([{"lat": "45.0625", "lon": "7.6622"}]).encode("utf-8"))
+        geo_resp_2 = io.BytesIO(json.dumps([{"lat": "45.0705", "lon": "7.6866"}]).encode("utf-8"))
+        mock_urlopen.side_effect = [geo_resp_1, geo_resp_2]
+
+        result = self.eta_service.calculate_eta("Corso Duca degli Abruzzi 24", "Piazza Castello", mode="transit")
+        self.assertIsNotNone(result)
+        self.assertEqual(result["duration_minutes"], 28)
+        self.assertEqual(result["distance_km"], 4.2)
+        self.assertEqual(result["transport_mode"], "transit")
+
+    @patch("core.services.eta_service.ETAService._calculate_apple_maps_eta", return_value=None)
+    @patch("urllib.request.urlopen")
+    def test_calculate_eta_with_mocked_osrm(self, mock_urlopen, mock_apple_eta):
         # Mock Nominatim geocoding responses (Home: 45.06, 7.66; Dest: 45.07, 7.68)
         geo_resp_1 = io.BytesIO(json.dumps([{"lat": "45.0625", "lon": "7.6622"}]).encode("utf-8"))
         geo_resp_2 = io.BytesIO(json.dumps([{"lat": "45.0705", "lon": "7.6866"}]).encode("utf-8"))
 
         # Mock OSRM route (duration: 600 seconds = 10 min, distance: 3000 meters = 3.0 km)
+        # Driving in urban traffic: 10 * 1.35 + 4 = 17.5 ~ 18 min
         osrm_resp = io.BytesIO(json.dumps({
             "routes": [{"duration": 600, "distance": 3000}]
         }).encode("utf-8"))
@@ -95,16 +111,17 @@ class TestETAService(unittest.TestCase):
         result = self.eta_service.calculate_eta("Corso Duca degli Abruzzi 24", "Piazza Castello", mode="automobile")
 
         self.assertIsNotNone(result)
-        self.assertEqual(result["duration_minutes"], 10)
+        self.assertEqual(result["duration_minutes"], 18)
         self.assertEqual(result["distance_km"], 3.0)
         self.assertEqual(result["transport_mode"], "automobile")
         self.assertEqual(result["mode_icon"], "🚗")
 
+    @patch("core.services.eta_service.ETAService._calculate_apple_maps_eta", return_value=None)
     @patch("urllib.request.urlopen")
-    def test_calculate_eta_transit_mode_multiplier(self, mock_urlopen):
+    def test_calculate_eta_transit_mode_multiplier(self, mock_urlopen, mock_apple_eta):
         geo_resp_1 = io.BytesIO(json.dumps([{"lat": "45.06", "lon": "7.66"}]).encode("utf-8"))
         geo_resp_2 = io.BytesIO(json.dumps([{"lat": "45.07", "lon": "7.68"}]).encode("utf-8"))
-        # 10 min drive (600 sec), 3.0 km -> transit should calculate 10 * 1.35 + 4 = 17.5 ~ 18 min
+        # 10 min drive (600 sec), 3.0 km -> realistic city transit includes walking & wait: 10 * 1.8 + 12 = 30 min
         osrm_resp = io.BytesIO(json.dumps({
             "routes": [{"duration": 600, "distance": 3000}]
         }).encode("utf-8"))
@@ -114,17 +131,18 @@ class TestETAService(unittest.TestCase):
         result = self.eta_service.calculate_eta("Home", "Campus", mode="transit")
 
         self.assertIsNotNone(result)
-        self.assertEqual(result["duration_minutes"], 18)
+        self.assertEqual(result["duration_minutes"], 30)
         self.assertEqual(result["transport_mode"], "transit")
         self.assertEqual(result["mode_icon"], "🚆")
 
+    @patch("core.services.eta_service.ETAService._calculate_apple_maps_eta", return_value=None)
     @patch("urllib.request.urlopen")
-    def test_calculate_eta_walking_and_bicycling(self, mock_urlopen):
-        # 1. Walking: 5.0 km at 5 km/h -> 60 min
+    def test_calculate_eta_walking_and_bicycling(self, mock_urlopen, mock_apple_eta):
+        # 1. Walking: 5.0 km (5000m, 3600 sec) -> 60 min
         geo_resp_1 = io.BytesIO(json.dumps([{"lat": "45.0", "lon": "7.0"}]).encode("utf-8"))
         geo_resp_2 = io.BytesIO(json.dumps([{"lat": "45.1", "lon": "7.1"}]).encode("utf-8"))
         osrm_resp_walk = io.BytesIO(json.dumps({
-            "routes": [{"duration": 600, "distance": 5000}]
+            "routes": [{"duration": 3600, "distance": 5000}]
         }).encode("utf-8"))
 
         mock_urlopen.side_effect = [geo_resp_1, geo_resp_2, osrm_resp_walk]
@@ -136,7 +154,7 @@ class TestETAService(unittest.TestCase):
     def test_calculate_eta_memory_caching(self):
         cache_key = "route_home_office_transit"
         self.eta_service._memory_cache[cache_key] = {
-            "duration_minutes": 22,
+            "duration_minutes": 30,
             "distance_km": 6.5,
             "transport_mode": "transit",
             "mode_icon": "🚆",
@@ -148,8 +166,13 @@ class TestETAService(unittest.TestCase):
 
         # Should retrieve cached value instantly without urlopen
         cached_result = self.eta_service.calculate_eta("Home", "Office", mode="transit")
-        self.assertEqual(cached_result["duration_minutes"], 22)
+        self.assertEqual(cached_result["duration_minutes"], 30)
         self.assertEqual(cached_result["distance_km"], 6.5)
+
+    def test_clear_cache(self):
+        self.eta_service._memory_cache["test_key"] = {"duration_minutes": 25}
+        self.eta_service.clear_cache()
+        self.assertEqual(len(self.eta_service._memory_cache), 0)
 
     def test_departure_time_calculation(self):
         start = datetime(2026, 8, 22, 15, 0, 0)
@@ -186,13 +209,11 @@ class TestETAService(unittest.TestCase):
         self.assertEqual(validate_address("Via Roma 10, 10121 Torino, Italia")[0], True)
         self.assertEqual(validate_address("Baker Street 221B, London")[0], True)
         self.assertEqual(validate_address("Piazza San Carlo, Torino")[0], True)
+        self.assertEqual(validate_address("Torino")[0], True)
+        self.assertEqual(validate_address("Politecnico")[0], True)
 
         # Invalid cases
-        self.assertEqual(validate_address("via")[0], False)
-        self.assertEqual(validate_address("Torino")[0], False)
-        self.assertEqual(validate_address("12345")[0], False)
-        self.assertEqual(validate_address("Via Roma")[0], False) # missing number or city
-        self.assertEqual(validate_address("abc")[0], False)
+        self.assertEqual(validate_address("a")[0], False)
 
 if __name__ == "__main__":
     unittest.main()

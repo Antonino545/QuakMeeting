@@ -264,6 +264,8 @@ class QuakMeetingMenuBar(AppKit.NSObject):
     def _on_config_changed(self, key: Optional[str] = None, **kwargs) -> None:
         self._last_menu_signature = None
         if key in ("transport_mode", "home_address", "eta_buffer_minutes", "enable_eta_service", "custom_keywords", "ignored_calendars", None):
+            if key == "transport_mode":
+                calendar_service.update_transport_mode()
             threading.Thread(target=calendar_service.sync_now, daemon=True).start()
         self.performSelectorOnMainThread_withObject_waitUntilDone_(
             "refreshMenuOnMainThread:",

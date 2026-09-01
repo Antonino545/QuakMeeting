@@ -36,6 +36,11 @@ DEFAULT_KEYWORDS = {
         "treno", "stazione", "ferrovia", "frecciarossa", "italo", "regionale", "metropolitana",
         "navetta", "traghetto", "viaggio", "gita", "trasferta", "spostamento", "ita airways"
     ],
+    "exam": [
+        "exam", "exams", "esame", "esami", "appello", "parziale", "midterm", "final exam",
+        "oral exam", "written exam", "esonero", "prova scritta", "prova orale", "colloquio",
+        "test d'esame", "exam prep", "preparazione esame"
+    ],
     "class": [
         "lecture", "classes", "course", "classroom", "seminar", "workshop", "tutorial",
         "lab", "laboratory", "university", "college", "professor", "prof", "academic",
@@ -45,10 +50,9 @@ DEFAULT_KEYWORDS = {
     ],
     "owl": [
         "study", "studying", "homework", "assignment", "revision", "self-study", "self study", "selfstudy",
-        "or study", "exam", "test", "quiz", "midterm", "final exam", "thesis", "dissertation", "library",
-        "research", "paper", "reading", "textbook", "studio", "studiare", "studio individuale", "studio autonomo",
-        "compiti", "ripasso", "esame", "esami", "parziale", "esonero", "tesi", "tesina", "laurea",
-        "biblioteca", "ricerca", "dispense", "esercitazione", "appunti", "preparazione esame", "exam prep"
+        "or study", "quiz", "thesis", "dissertation", "library", "research", "paper", "reading", "textbook",
+        "studio", "studiare", "studio individuale", "studio autonomo", "compiti", "ripasso",
+        "tesi", "tesina", "laurea", "biblioteca", "ricerca", "dispense", "esercitazione", "appunti"
     ],
     "gym": [
         "gym", "workout", "fitness", "training", "exercise", "crossfit", "bodybuilding",
@@ -247,7 +251,35 @@ class EventClassifier:
                 )
                 return cls._apply_forced_pilot_if_needed(res_meeting)
 
-        # 4. Check Self-Study Block vs Class / Lecture Attendance
+        # 4. Check Exam / Esame
+        is_exam_event = (
+            any(cls._matches_kw(kw, search_blob) for kw in keywords_dict.get("exam", []))
+            or bool(re.search(r"^(?:exam|esame|appello|parziale|esonero)[:\s\-\–\—]+", title.strip(), re.IGNORECASE))
+        )
+        if is_exam_event:
+            is_trav = "online" not in search_blob
+            maps_dest = location if (location and location != "missing value") else (f"{title} {classroom or ''}".strip())
+            maps_url = f"https://maps.apple.com/?q={urllib.parse.quote(maps_dest)}" if is_trav else "https://calendar.apple.com"
+            provider_label = f"Exam 🎓 {classroom}" if classroom else "Exam 🎓"
+            res_meeting = Meeting(
+                title=title,
+                start_time=start_time or datetime.now(),
+                end_time=end_time,
+                location=location,
+                description=description,
+                event_type=EventCategory.EXAM.value,
+                pilot_type=PilotType.OWL.value,
+                provider=provider_label,
+                action_btn_text=f"🎓 {classroom or 'EXAM LOCATION'}" if is_trav else "🎓 EXAM NOTES",
+                action_url=maps_url,
+                theme_name="Academic Purple",
+                is_travel=is_trav,
+                classroom=classroom,
+                teacher=teacher
+            )
+            return cls._apply_forced_pilot_if_needed(res_meeting)
+
+        # 5. Check Self-Study Block vs Class / Lecture Attendance
         is_study_event = any(cls._matches_kw(kw, search_blob) for kw in keywords_dict.get("owl", []))
         is_class_event = bool(classroom) or bool(teacher) or any(cls._matches_kw(kw, search_blob) for kw in keywords_dict.get("class", []))
 
@@ -454,6 +486,7 @@ class EventClassifier:
             cat_key = meeting.event_type or "general"
 
             CATEGORY_DEFAULT_OUTFITS = {
+                "exam": "student",
                 "study": "student",
                 "class": "student",
                 "food": "chef",

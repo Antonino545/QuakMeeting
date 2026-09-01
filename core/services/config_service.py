@@ -37,6 +37,7 @@ DEFAULT_CONFIG = {
     "calendar_urls": [],               # Remote ICS / CalDAV feeds for Linux (Google, iCloud, Outlook, Nextcloud)
     # Smart Travel & ETA Settings (Mezzi Pubblici, Auto, Piedi, Bici)
     "home_address": "",               # e.g. "Corso Duca degli Abruzzi 24, Torino"
+    "exam_location": "",              # Default campus/hall location for exams e.g. "Politecnico di Torino"
     "transport_mode": "transit",       # "transit" (Mezzi Pubblici), "automobile" (Auto), "walking" (A Piedi), "bicycling" (Bici)
     "enable_eta_service": True,
     "eta_buffer_minutes": 10,          # Margine di anticipo per raggiungere la fermata/parcheggio
@@ -44,6 +45,7 @@ DEFAULT_CONFIG = {
     "default_pilot": "duck",           # Active default mascot ("duck", "owl", "bunny")
     "force_default_pilot": False,      # If True, always uses default_pilot for all notifications instead of auto-categorization
     "mascot_customization": {
+        "exam": {"animal": "owl", "outfit": "student"},
         "study": {"animal": "owl", "outfit": "student"},
         "class": {"animal": "owl", "outfit": "student"},
         "food": {"animal": "duck", "outfit": "chef"},

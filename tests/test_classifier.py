@@ -208,4 +208,35 @@ class TestEventClassifier(unittest.TestCase):
             self.assertEqual(m_food.outfit, "chef")
             self.assertEqual(m_food.pilot_type, "owl_chef")
 
+    def test_classify_exam_events(self):
+        # 1. Exam with prefix "Exam:..."
+        m1 = self.classifier.classify(
+            title="Exam:Satellite Systems for Positioning and Maps",
+            location="Politecnico di Torino",
+            description=""
+        )
+        self.assertEqual(m1.event_type, EventCategory.EXAM.value)
+        self.assertEqual(m1.pilot_type, PilotType.OWL.value)
+        self.assertTrue(m1.is_travel)
+        self.assertIn("Exam", m1.provider)
+
+        # 2. Italian Esame with "Esame di..."
+        m2 = self.classifier.classify(
+            title="Esame di Analisi Matematica 1 - Aula 5M",
+            location="Politecnico",
+            description=""
+        )
+        self.assertEqual(m2.event_type, EventCategory.EXAM.value)
+        self.assertEqual(m2.classroom, "Aula 5M")
+        self.assertTrue(m2.is_travel)
+
+        # 3. Midterm / Appello / Parziale
+        m3 = self.classifier.classify(
+            title="Appello Sessione Invernale: Fisica Generale",
+            location="Aula Magna",
+            description=""
+        )
+        self.assertEqual(m3.event_type, EventCategory.EXAM.value)
+        self.assertTrue(m3.is_travel)
+
 

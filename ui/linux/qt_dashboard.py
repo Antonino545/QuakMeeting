@@ -653,12 +653,14 @@ class QtFlightDeckWindow(QMainWindow):
         def _save_addr():
             val = addr_entry.text().strip()
             config.set("home_address", val)
+            from core.services.eta_service import eta_service
+            eta_service.clear_cache()
             try:
                 event_bus.publish("CONFIG_CHANGED", key="home_address", value=val)
             except Exception:
                 pass
-            if val and (len(val) < 5 or len(val.split()) < 2):
-                hint_lbl.setText("⚠️ Please specify street, number, and city for accurate transit ETA.")
+            if val and len(val) < 2:
+                hint_lbl.setText("⚠️ Please specify street, number, or city for accurate transit ETA.")
                 hint_lbl.setStyleSheet("color: #fab387; font-size: 11px; margin-top: 2px;")
                 QTimer.singleShot(3500, lambda: (
                     hint_lbl.setText("💡 Format: Street & Number, City, Postal Code, Country (e.g. Corso Duca degli Abruzzi 24, 10129 Torino, Italy)"),
@@ -675,6 +677,55 @@ class QtFlightDeckWindow(QMainWindow):
         entry_row.addWidget(save_addr_btn)
         ac_layout.addLayout(entry_row)
         ac_layout.addWidget(hint_lbl)
+
+        # 1b. Default Exam Campus / Location Row
+        exam_row_lbl = QLabel("<b>🎓 Default Exam Campus / Location</b>", addr_card)
+        exam_row_lbl.setStyleSheet("color: #cdd6f4; font-size: 12px; margin-top: 6px;")
+        ac_layout.addWidget(exam_row_lbl)
+
+        exam_entry_row = QHBoxLayout()
+        exam_addr_entry = QLineEdit(addr_card)
+        exam_addr_entry.setText(config.get("exam_location", "") or "")
+        exam_addr_entry.setPlaceholderText("e.g. Politecnico di Torino, Corso Duca degli Abruzzi 24")
+
+        save_exam_btn = QPushButton("💾 Save Exam Location", addr_card)
+        save_exam_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        save_exam_btn.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #cba6f7, stop:1 #b4befe);
+                color: #11111b;
+                font-weight: bold;
+                font-size: 12px;
+                border-radius: 8px;
+                padding: 7px 16px;
+                border: 1px solid #cba6f7;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #b4befe, stop:1 #cba6f7);
+                border: 1px solid #b4befe;
+            }
+        """)
+
+        exam_hint_lbl = QLabel("💡 Default campus address automatically assigned to all exams for accurate travel ETA.", addr_card)
+        exam_hint_lbl.setStyleSheet("color: #a6adc8; font-size: 11px; margin-top: 2px;")
+
+        def _save_exam_addr():
+            val = exam_addr_entry.text().strip()
+            config.set("exam_location", val)
+            from core.services.eta_service import eta_service
+            eta_service.clear_cache()
+            try:
+                event_bus.publish("CONFIG_CHANGED", key="exam_location", value=val)
+            except Exception:
+                pass
+            save_exam_btn.setText("✓ Saved")
+            QTimer.singleShot(1500, lambda: save_exam_btn.setText("💾 Save Exam Location"))
+        save_exam_btn.clicked.connect(_save_exam_addr)
+
+        exam_entry_row.addWidget(exam_addr_entry, stretch=1)
+        exam_entry_row.addWidget(save_exam_btn)
+        ac_layout.addLayout(exam_entry_row)
+        ac_layout.addWidget(exam_hint_lbl)
 
         # 2. Preferred Transport Mode
         mode_lbl = QLabel("<b>🚦 Transport Mode for Route Calculation</b>", addr_card)
@@ -732,6 +783,9 @@ class QtFlightDeckWindow(QMainWindow):
             def _select_m(chk=False, k=m_key):
                 config.set("transport_mode", k)
                 _update_mode_styles(k)
+                from core.services.eta_service import eta_service
+                eta_service.clear_cache()
+                calendar_service.update_transport_mode()
                 try:
                     event_bus.publish("CONFIG_CHANGED", key="transport_mode", value=k)
                 except Exception:

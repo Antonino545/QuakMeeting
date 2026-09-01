@@ -83,27 +83,57 @@ class CalendarService:
         self._provider = provider
         self.provider_name = provider.__class__.__name__
 
+    @staticmethod
+    def _normalize_event_subject(title: str) -> str:
+        """
+        Normalizes course / exam / meeting titles for duplicate detection.
+        Strips academic prefixes (Exam:, Esame:, Lezione:), classrooms (- Aula ...),
+        teacher names ((Prof. ...)), and punctuation to extract the canonical subject.
+        """
+        if not title:
+            return ""
+        import re
+        t = title.strip().lower()
+        # Strip common prefixes e.g. "Exam:", "Esame:", "Lezione:", "Class:", "Course:", "Appello:", "Parziale:"
+        t = re.sub(r'^(?:exam|esame|lezione|lezioni|class|course|corso|appello|parziale|esonero|seminario|workshop)[:\s\-\–\—\|]+', '', t, flags=re.IGNORECASE)
+        # Strip teacher/extra in parentheses e.g. "(VASSIO LUCA)"
+        t = re.sub(r'\([^\)]*\)', '', t)
+        # Strip classroom suffix e.g. "- Aula 5M", "- Room 101"
+        t = re.sub(r'[\-\–\—\|]\s*(?:aula|room|lab|edificio).*$', '', t, flags=re.IGNORECASE)
+        # Strip non-alphanumeric except whitespace
+        t = re.sub(r'[^a-z0-9\s]', ' ', t)
+        return ' '.join(t.split())
+
     def _enrich_with_eta(self, meetings: List[Meeting]) -> None:
         """Enriches physical/travel meetings with ETA travel time and departure deadlines."""
         if not self.config.get("enable_eta_service", True):
             return
 
         home_address = self.config.get("home_address", "").strip()
+        exam_location = self.config.get("exam_location", "").strip()
         transport_mode = self.config.get("transport_mode", "transit")
         buffer_minutes = int(self.config.get("eta_buffer_minutes", 10))
 
         for m in meetings:
             if m.is_all_day:
                 continue
+
+            # Fallback to user-configured exam_location for exams without a physical campus or where user set a default
+            if m.event_type == "exam" and exam_location:
+                if not m.location or m.location == "missing value" or m.location.strip() == "":
+                    m.location = exam_location
+                elif any(c in m.location.lower() for c in ["aula", "room", "lab"]) and not any(univ in m.location.lower() for univ in ["politecnico", "universit", "corso", "via", "piazza", "strada"]):
+                    m.location = f"{exam_location}, {m.location}"
+                m.is_travel = True
+
             if m.is_travel and m.start_time:
                 dest = m.location if (m.location and m.location != "missing value") else m.title
-
-                dur_str = format_duration(m.travel_time_minutes)
-                mode = m.transport_mode or transport_mode
+                mode = transport_mode
                 m.transport_mode = mode
 
                 # 1. Native EventKit travel time already extracted from Apple Calendar
-                if m.travel_time_minutes and m.travel_time_minutes > 0:
+                if m.travel_time_minutes and m.travel_time_minutes > 0 and getattr(m, "_is_native_travel_time", True) and not getattr(m, "_is_calculated_eta", False):
+                    dur_str = format_duration(m.travel_time_minutes)
                     m.departure_time = eta_service.get_departure_time(m.start_time, m.travel_time_minutes, buffer_minutes)
                     icon = MODE_ICONS.get(mode, "🚆")
                     dep_str = m.departure_time.astimezone().strftime("%H:%M")
@@ -122,15 +152,15 @@ class CalendarService:
                     else:
                         m.action_btn_text = f"🗺️ MAPS ROUTE (~{dur_str})"
 
-                # 2. Fallback: calculate ETA via ETAService if home_address is configured
+                # 2. Dynamic calculated ETA via ETAService if home_address is configured
                 elif home_address and dest:
                     eta_res = eta_service.calculate_eta(home_address, dest, mode)
                     if eta_res:
                         m.travel_time_minutes = eta_res["duration_minutes"]
                         m.travel_distance_km = eta_res["distance_km"]
-                        m.transport_mode = mode
                         m.origin_address = home_address
                         m.departure_time = eta_service.get_departure_time(m.start_time, m.travel_time_minutes, buffer_minutes)
+                        m._is_calculated_eta = True
 
                         dur_str = format_duration(m.travel_time_minutes)
                         icon = MODE_ICONS.get(mode, "🚆")
@@ -151,7 +181,7 @@ class CalendarService:
         self.repository.save(meetings)
 
     def _filter_within_window(self, meetings: List[Meeting]) -> List[Meeting]:
-        """Filters events to only include those happening Today (00:00 to 23:59:59)."""
+        """Filters events to only include those happening Today and deduplicates overlapping duplicates."""
         from datetime import timezone
         # Determine local 'today' boundaries converted to UTC
         now = datetime.now().astimezone() 
@@ -173,22 +203,131 @@ class CalendarService:
             if s <= end_of_today and e >= start_of_today:
                 filtered.append(m)
 
-        # Deduplicate events based on uid if available, else title and start time
-        seen = set()
-        deduped = []
+        # 1. Deduplicate events based on exact UID
+        seen_uids = set()
+        unique_list: List[Meeting] = []
         for m in filtered:
             key = m.uid if m.uid else (m.title, m.start_time.timestamp())
-            if key not in seen:
-                seen.add(key)
-                deduped.append(m)
+            if key not in seen_uids:
+                seen_uids.add(key)
+                unique_list.append(m)
 
-        deduped.sort(key=lambda m: m.start_time)
-        return deduped
+        # 2. Smart Deduplication for Duplicate Exams & Overlapping Entries
+        # Groups events with matching normalized subjects and overlapping/near times
+        merged_list: List[Meeting] = []
+        skip_indices = set()
+
+        for i, m1 in enumerate(unique_list):
+            if i in skip_indices:
+                continue
+
+            norm1 = self._normalize_event_subject(m1.title)
+            chosen = m1
+
+            for j in range(i + 1, len(unique_list)):
+                if j in skip_indices:
+                    continue
+
+                m2 = unique_list[j]
+                norm2 = self._normalize_event_subject(m2.title)
+
+                # Check if subjects match
+                if norm1 and norm2 and len(norm1) >= 3 and norm1 == norm2:
+                    # Check time overlap or start times within 90 minutes (5400s)
+                    s1 = chosen.start_time
+                    e1 = chosen.end_time or chosen.start_time
+                    s2 = m2.start_time
+                    e2 = m2.end_time or m2.start_time
+
+                    time_overlaps = (s1 < e2 and s2 < e1) or (abs((s1 - s2).total_seconds()) <= 5400)
+                    if time_overlaps:
+                        # Decide which event to keep:
+                        # Priority A: If one is an exam and the other is a regular class/event, ALWAYS KEEP EXAM!
+                        is_exam_1 = chosen.event_type == "exam" or "exam" in chosen.title.lower() or "esame" in chosen.title.lower()
+                        is_exam_2 = m2.event_type == "exam" or "exam" in m2.title.lower() or "esame" in m2.title.lower()
+
+                        if is_exam_2 and not is_exam_1:
+                            # Prefer m2 (the exam event)
+                            survivor = m2
+                            discarded = chosen
+                        elif is_exam_1 and not is_exam_2:
+                            # Prefer chosen (already the exam event)
+                            survivor = chosen
+                            discarded = m2
+                        else:
+                            # Both exams or both classes: prefer the one with earlier start time or more info
+                            if m2.start_time < chosen.start_time:
+                                survivor = m2
+                                discarded = chosen
+                            else:
+                                survivor = chosen
+                                discarded = m2
+
+                        # Merge rich metadata from discarded event if survivor is missing it
+                        if not survivor.classroom and discarded.classroom:
+                            survivor.classroom = discarded.classroom
+                        if not survivor.teacher and discarded.teacher:
+                            survivor.teacher = discarded.teacher
+                        if (not survivor.location or survivor.location == "missing value") and discarded.location and discarded.location != "missing value":
+                            survivor.location = discarded.location
+                        if not survivor.description and discarded.description:
+                            survivor.description = discarded.description
+                        if not survivor.meeting_url and discarded.meeting_url:
+                            survivor.meeting_url = discarded.meeting_url
+
+                        chosen = survivor
+                        skip_indices.add(j)
+
+            merged_list.append(chosen)
+
+        merged_list.sort(key=lambda m: m.start_time)
+        return merged_list
+
+    def _apply_current_transport_mode(self, meetings: List[Meeting]) -> None:
+        """Re-applies the current config transport_mode to all travel meetings.
+
+        When meetings are loaded from disk cache or when the user changes the
+        preferred transport mode in settings, the cached Meeting objects still
+        carry the old mode.  This method patches them in-place so the UI
+        immediately reflects the new preference without waiting for a full
+        calendar sync.
+        """
+        current_mode = self.config.get("transport_mode", "transit")
+        for m in meetings:
+            if m.is_travel and m.transport_mode and m.transport_mode != current_mode:
+                old_mode = m.transport_mode
+                m.transport_mode = current_mode
+
+                # Update the mode icon in eta_text  (e.g.  "🚆 ~30m • Leave at 08:15")
+                if m.eta_text:
+                    old_icon = MODE_ICONS.get(old_mode, "🚆")
+                    new_icon = MODE_ICONS.get(current_mode, "🚆")
+                    m.eta_text = m.eta_text.replace(old_icon, new_icon, 1)
+
+                # Update action button text  (e.g.  "🗺️ PUBLIC TRANSIT (~30m)")
+                if m.action_btn_text:
+                    _BTN_LABELS = {
+                        "transit": "PUBLIC TRANSIT",
+                        "automobile": "DRIVE WITH MAPS",
+                        "walking": "WALKING ROUTE",
+                        "bicycling": "CYCLING ROUTE",
+                    }
+                    old_label = _BTN_LABELS.get(old_mode)
+                    new_label = _BTN_LABELS.get(current_mode)
+                    if old_label and new_label:
+                        m.action_btn_text = m.action_btn_text.replace(old_label, new_label)
+
+                # Rebuild the maps action URL with the new mode
+                if m.action_url:
+                    dest = m.location if (m.location and m.location != "missing value") else m.title
+                    home = self.config.get("home_address", "").strip() or None
+                    m.action_url = eta_service.build_maps_url(home, dest, current_mode)
 
     def _load_cache_from_disk(self) -> List[Meeting]:
         loaded = self.repository.load()
         if loaded:
             filtered = self._filter_within_window(loaded)
+            self._apply_current_transport_mode(filtered)
             self._in_memory_cache = filtered
             self._last_fetch_time = self.repository.get_last_modified_time()
             return filtered
@@ -234,6 +373,16 @@ class CalendarService:
             threading.Thread(target=self.sync_now, daemon=True).start()
 
         return list(self._in_memory_cache)
+
+    def update_transport_mode(self) -> None:
+        """Immediately re-applies the current config transport_mode to all cached meetings.
+
+        Call this after config.set("transport_mode", ...) so that the in-memory
+        cache (and subsequent get_upcoming_meetings() calls) reflect the new
+        preference without waiting for a full calendar sync.
+        """
+        if self._in_memory_cache:
+            self._apply_current_transport_mode(self._in_memory_cache)
 
     def get_available_calendars(self, force_refresh: bool = False) -> List[Dict[str, Any]]:
         """Return list of macOS calendars with 5-minute cache to prevent main-thread UI blocking."""
