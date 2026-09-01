@@ -838,6 +838,8 @@ class SettingsTabController(AppKit.NSObject):
             if btn == sender:
                 self.config.set("transport_mode", k)
                 self._update_transport_mode_buttons_ui(k)
+                from core.services.eta_service import eta_service
+                eta_service.clear_cache()
                 try:
                     event_bus.publish("CONFIG_CHANGED", key="transport_mode", value=k)
                 except Exception:
@@ -970,7 +972,7 @@ class SettingsTabController(AppKit.NSObject):
     @objc.IBAction
     def onSaveHomeAddress_(self, sender):
         if hasattr(self, 'home_addr_field') and self.home_addr_field:
-            from core.services.eta_service import validate_address
+            from core.services.eta_service import validate_address, eta_service
             addr = str(self.home_addr_field.stringValue() or "").strip()
 
             is_valid, err_code = validate_address(addr)
@@ -1002,8 +1004,9 @@ class SettingsTabController(AppKit.NSObject):
                 threading.Thread(target=_delayed_err_reset, daemon=True).start()
                 return
 
-            # Address is valid: save to config and publish event
+            # Address is valid: save to config, clear ETA cache, and publish event
             self.config.set("home_address", addr)
+            eta_service.clear_cache()
             try:
                 event_bus.publish("CONFIG_CHANGED", key="home_address", value=addr)
             except Exception:
@@ -1037,6 +1040,10 @@ class SettingsTabController(AppKit.NSObject):
     def onSelectETABuffer_(self, sender):
         val_buf = sender.selectedItem().representedObject()
         self.config.set("eta_buffer_minutes", int(val_buf))
+        try:
+            event_bus.publish("CONFIG_CHANGED", key="eta_buffer_minutes", value=int(val_buf))
+        except Exception:
+            pass
         self.refresh_data(force=True)
 
     @objc.IBAction

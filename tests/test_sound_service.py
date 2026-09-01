@@ -76,6 +76,64 @@ class TestSoundService(unittest.TestCase):
         mock_run.return_value = MagicMock(returncode=0, stdout="Mute: yes\n")
         self.assertFalse(is_system_volume_on())
 
+    @patch("core.services.sound_service.sys")
+    @patch("core.services.sound_service.shutil.which")
+    @patch("core.services.sound_service.subprocess.run")
+    def test_linux_pactl_unmuted(self, mock_run, mock_which, mock_sys):
+        mock_sys.platform = "linux"
+        mock_which.side_effect = lambda cmd: "/usr/bin/pactl" if cmd == "pactl" else None
+        mock_run.side_effect = [
+            MagicMock(returncode=0, stdout="Mute: no\n"),
+            MagicMock(returncode=0, stdout="Volume: front-left: 65536 / 100% / 0.00 dB\n")
+        ]
+        self.assertTrue(is_system_volume_on())
+
+    @patch("core.services.sound_service.sys")
+    @patch("core.services.sound_service.shutil.which")
+    @patch("core.services.sound_service.subprocess.run")
+    def test_linux_pactl_zero_volume(self, mock_run, mock_which, mock_sys):
+        mock_sys.platform = "linux"
+        mock_which.side_effect = lambda cmd: "/usr/bin/pactl" if cmd == "pactl" else None
+        mock_run.side_effect = [
+            MagicMock(returncode=0, stdout="Mute: no\n"),
+            MagicMock(returncode=0, stdout="Volume: front-left: 0 / 0% / -inf dB\n")
+        ]
+        self.assertFalse(is_system_volume_on())
+
+    @patch("core.services.sound_service.sys")
+    @patch("core.services.sound_service.shutil.which")
+    @patch("core.services.sound_service.subprocess.run")
+    def test_linux_amixer_on(self, mock_run, mock_which, mock_sys):
+        mock_sys.platform = "linux"
+        mock_which.side_effect = lambda cmd: "/usr/bin/amixer" if cmd == "amixer" else None
+        mock_run.return_value = MagicMock(returncode=0, stdout="Mono: Playback 75 [75%] [on]\n")
+        self.assertTrue(is_system_volume_on())
+
+    @patch("core.services.sound_service.sys")
+    @patch("core.services.sound_service.shutil.which")
+    @patch("core.services.sound_service.subprocess.run")
+    def test_linux_amixer_off(self, mock_run, mock_which, mock_sys):
+        mock_sys.platform = "linux"
+        mock_which.side_effect = lambda cmd: "/usr/bin/amixer" if cmd == "amixer" else None
+        mock_run.return_value = MagicMock(returncode=0, stdout="Mono: Playback 75 [75%] [off]\n")
+        self.assertFalse(is_system_volume_on())
+
+    @patch("core.services.sound_service.sys")
+    @patch("core.services.sound_service.shutil.which")
+    @patch("core.services.sound_service.subprocess.run")
+    def test_linux_amixer_zero(self, mock_run, mock_which, mock_sys):
+        mock_sys.platform = "linux"
+        mock_which.side_effect = lambda cmd: "/usr/bin/amixer" if cmd == "amixer" else None
+        mock_run.return_value = MagicMock(returncode=0, stdout="Mono: Playback 0 [0%] [on]\n")
+        self.assertFalse(is_system_volume_on())
+
+    @patch("core.services.sound_service.sys")
+    @patch("core.services.sound_service.shutil.which")
+    def test_linux_fallback_no_tool(self, mock_which, mock_sys):
+        mock_sys.platform = "linux"
+        mock_which.return_value = None
+        self.assertTrue(is_system_volume_on())
+
     @patch("core.services.calendar_service.calendar_service.is_in_lesson", return_value=False)
     @patch("core.services.sound_service.is_system_volume_on")
     @patch("core.services.sound_service.subprocess.run")
@@ -95,10 +153,13 @@ class TestSoundService(unittest.TestCase):
         mock_vol.assert_called_once()
         mock_run.assert_not_called()
 
+    @patch("core.services.sound_service.sys")
+    @patch("core.services.sound_service.os.path.exists", return_value=True)
     @patch("core.services.calendar_service.calendar_service.is_in_lesson", return_value=False)
     @patch("core.services.sound_service.is_system_volume_on", return_value=True)
     @patch("core.services.sound_service.subprocess.run")
-    def test_play_chime_plays_when_not_in_lesson(self, mock_run, mock_vol, mock_in_lesson):
+    def test_play_chime_plays_when_not_in_lesson(self, mock_run, mock_vol, mock_in_lesson, mock_exists, mock_sys):
+        mock_sys.platform = "darwin"
         config.set("sound_enabled", True)
         config.set("mute_during_lessons", True)
         lesson_event = {
@@ -123,10 +184,13 @@ class TestSoundService(unittest.TestCase):
         play_chime(sync=True, event_dict=normal_event)
         mock_run.assert_not_called()
 
+    @patch("core.services.sound_service.sys")
+    @patch("core.services.sound_service.os.path.exists", return_value=True)
     @patch("core.services.calendar_service.calendar_service.is_in_lesson", return_value=False)
     @patch("core.services.sound_service.is_system_volume_on", return_value=True)
     @patch("core.services.sound_service.subprocess.run")
-    def test_play_chime_plays_when_mute_during_lessons_disabled(self, mock_run, mock_vol, mock_in_lesson):
+    def test_play_chime_plays_when_mute_during_lessons_disabled(self, mock_run, mock_vol, mock_in_lesson, mock_exists, mock_sys):
+        mock_sys.platform = "darwin"
         config.set("sound_enabled", True)
         config.set("mute_during_lessons", False)
         lesson_event = {
@@ -136,6 +200,72 @@ class TestSoundService(unittest.TestCase):
         }
         play_chime(sync=True, event_dict=lesson_event)
         mock_vol.assert_called_once()
+        mock_run.assert_called_once()
+
+    @patch("core.services.sound_service.sys")
+    @patch("core.services.sound_service.shutil.which")
+    @patch("core.services.sound_service.is_system_volume_on", return_value=True)
+    @patch("core.services.sound_service.subprocess.run")
+    def test_play_chime_linux_canberra(self, mock_run, mock_vol, mock_which, mock_sys):
+        mock_sys.platform = "linux"
+        mock_which.side_effect = lambda cmd: "/usr/bin/canberra-gtk-play" if cmd == "canberra-gtk-play" else None
+        mock_run.return_value = MagicMock(returncode=0)
+        config.set("sound_enabled", True)
+        play_chime(sync=True)
+        mock_run.assert_called_once_with(
+            ["canberra-gtk-play", "-i", "message"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+
+    @patch("core.services.sound_service.sys")
+    @patch("core.services.sound_service.os.path.exists", return_value=True)
+    @patch("core.services.sound_service.shutil.which")
+    @patch("core.services.sound_service.is_system_volume_on", return_value=True)
+    @patch("core.services.sound_service.subprocess.run")
+    def test_play_chime_linux_pw_play(self, mock_run, mock_vol, mock_which, mock_exists, mock_sys):
+        mock_sys.platform = "linux"
+        mock_which.side_effect = lambda cmd: "/usr/bin/pw-play" if cmd == "pw-play" else None
+        config.set("sound_enabled", True)
+        play_chime(sync=True)
+        mock_run.assert_called_once_with(
+            ["pw-play", "/usr/share/sounds/Yaru/stereo/message.oga"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+
+    @patch("core.services.sound_service.sys")
+    @patch("core.services.sound_service.os.path.exists", return_value=True)
+    @patch("core.services.sound_service.shutil.which")
+    @patch("core.services.sound_service.is_system_volume_on", return_value=True)
+    @patch("core.services.sound_service.subprocess.run")
+    def test_play_chime_linux_paplay(self, mock_run, mock_vol, mock_which, mock_exists, mock_sys):
+        mock_sys.platform = "linux"
+        mock_which.side_effect = lambda cmd: "/usr/bin/paplay" if cmd == "paplay" else None
+        config.set("sound_enabled", True)
+        play_chime(sync=True)
+        mock_run.assert_called_once_with(
+            ["paplay", "/usr/share/sounds/Yaru/stereo/message.oga"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+
+    @patch("core.services.sound_service.sys")
+    @patch("core.services.sound_service.os.path.exists")
+    @patch("core.services.sound_service.shutil.which")
+    @patch("core.services.sound_service.is_system_volume_on", return_value=True)
+    @patch("core.services.sound_service.subprocess.run")
+    def test_play_chime_linux_aplay(self, mock_run, mock_vol, mock_which, mock_exists, mock_sys):
+        mock_sys.platform = "linux"
+        mock_which.side_effect = lambda cmd: "/usr/bin/aplay" if cmd == "aplay" else None
+        mock_exists.side_effect = lambda path: path.endswith(".wav")
+        config.set("sound_enabled", True)
+        play_chime(sync=True)
+        mock_run.assert_called_once_with(
+            ["aplay", "/usr/share/sounds/alsa/Front_Center.wav"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
 
     @patch("core.services.sound_service.is_system_volume_on", return_value=True)
     @patch("core.services.sound_service.subprocess.run")

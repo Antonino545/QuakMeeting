@@ -72,7 +72,7 @@ Data ingestion layer fetching events from various platforms.
 Orchestrates business use cases.
 - **`calendar_service.py`**: Filters events strictly for **Today**, manages the on-disk JSON cache, and implements the stale-while-revalidate pattern.
 - **`reminder_engine.py`**: Evaluates when to fire notifications. It differentiates between standard events (fires relative to `start_time`) and travel events (fires relative to `departure_time`).
-- **`eta_service.py`**: Handles routing links (e.g. Apple Maps) and calculates transit/walking buffers.
+- **`eta_service.py`**: Calculates multi-modal travel times and builds Apple Maps / Google Maps deep links. On macOS, queries Apple's native `MKDirections` (MapKit) for live transit timetables and traffic-aware driving durations; provides calibrated multi-modal routing fallback (OSRM / Haversine) on Linux or when offline.
 - **`event_bus.py`**: Decouples UI updates from background logic. Components publish events (e.g., `CALENDAR_UPDATED`, `CONFIG_CHANGED`) that the UI subscribes to.
 - **`updater_service.py`**: Checks GitHub Releases for new releases, fetches platform packages (.dmg/.zip on macOS, .deb on Ubuntu), performs in-place upgrades, and publishes update progress events.
 - **`language_service.py`**: Internationalization and localization service with OS language auto-detection (macOS `AppKit.NSLocale` & Linux `$LANG`), user language override, and centralized bilingual translations (English & Italian).

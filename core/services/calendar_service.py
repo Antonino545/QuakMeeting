@@ -97,13 +97,12 @@ class CalendarService:
                 continue
             if m.is_travel and m.start_time:
                 dest = m.location if (m.location and m.location != "missing value") else m.title
-
-                dur_str = format_duration(m.travel_time_minutes)
-                mode = m.transport_mode or transport_mode
+                mode = transport_mode
                 m.transport_mode = mode
 
                 # 1. Native EventKit travel time already extracted from Apple Calendar
-                if m.travel_time_minutes and m.travel_time_minutes > 0:
+                if m.travel_time_minutes and m.travel_time_minutes > 0 and getattr(m, "_is_native_travel_time", True) and not getattr(m, "_is_calculated_eta", False):
+                    dur_str = format_duration(m.travel_time_minutes)
                     m.departure_time = eta_service.get_departure_time(m.start_time, m.travel_time_minutes, buffer_minutes)
                     icon = MODE_ICONS.get(mode, "🚆")
                     dep_str = m.departure_time.astimezone().strftime("%H:%M")
@@ -122,15 +121,15 @@ class CalendarService:
                     else:
                         m.action_btn_text = f"🗺️ MAPS ROUTE (~{dur_str})"
 
-                # 2. Fallback: calculate ETA via ETAService if home_address is configured
+                # 2. Dynamic calculated ETA via ETAService if home_address is configured
                 elif home_address and dest:
                     eta_res = eta_service.calculate_eta(home_address, dest, mode)
                     if eta_res:
                         m.travel_time_minutes = eta_res["duration_minutes"]
                         m.travel_distance_km = eta_res["distance_km"]
-                        m.transport_mode = mode
                         m.origin_address = home_address
                         m.departure_time = eta_service.get_departure_time(m.start_time, m.travel_time_minutes, buffer_minutes)
+                        m._is_calculated_eta = True
 
                         dur_str = format_duration(m.travel_time_minutes)
                         icon = MODE_ICONS.get(mode, "🚆")

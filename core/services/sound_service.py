@@ -75,8 +75,18 @@ def is_system_volume_on() -> bool:
                 ["pactl", "get-sink-mute", "@DEFAULT_SINK@"],
                 capture_output=True, text=True, timeout=1
             )
-            if res.returncode == 0 and "yes" in res.stdout.lower():
-                return False
+            if res.returncode == 0:
+                if "yes" in res.stdout.lower():
+                    return False
+                res_vol = subprocess.run(
+                    ["pactl", "get-sink-volume", "@DEFAULT_SINK@"],
+                    capture_output=True, text=True, timeout=1
+                )
+                if res_vol.returncode == 0:
+                    out_vol = res_vol.stdout
+                    if "0%" in out_vol and not any(f"{d}%" in out_vol for d in range(1, 101)):
+                        return False
+                return True
         except Exception:
             pass
 
@@ -87,10 +97,14 @@ def is_system_volume_on() -> bool:
                 capture_output=True, text=True, timeout=1
             )
             if res.returncode == 0:
-                if "[off]" in res.stdout:
+                out = res.stdout
+                if "[off]" in out or "[0%]" in out:
                     return False
+                return True
         except Exception:
             pass
+
+    return True
 
 def is_in_lesson_now(event_dict: Optional[dict] = None) -> bool:
     """Checks if the user is currently attending an active lecture/lesson."""
@@ -160,9 +174,13 @@ def play_chime(
             # 2. PipeWire pw-play / PulseAudio paplay / ALSA aplay with system sound files
             sound_candidates = [
                 "/usr/share/sounds/Yaru/stereo/message.oga",
+                "/usr/share/sounds/Yaru/stereo/bell.oga",
+                "/usr/share/sounds/ubuntu/stereo/message.ogg",
+                "/usr/share/sounds/ubuntu/stereo/bell.ogg",
                 "/usr/share/sounds/freedesktop/stereo/message.oga",
                 "/usr/share/sounds/freedesktop/stereo/bell.oga",
                 "/usr/share/sounds/gnome/default/alerts/glass.ogg",
+                "/usr/share/sounds/gnome/default/alerts/drip.ogg",
                 "/usr/share/sounds/alsa/Front_Center.wav"
             ]
             chosen_file = None

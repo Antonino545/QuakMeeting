@@ -653,12 +653,14 @@ class QtFlightDeckWindow(QMainWindow):
         def _save_addr():
             val = addr_entry.text().strip()
             config.set("home_address", val)
+            from core.services.eta_service import eta_service
+            eta_service.clear_cache()
             try:
                 event_bus.publish("CONFIG_CHANGED", key="home_address", value=val)
             except Exception:
                 pass
-            if val and (len(val) < 5 or len(val.split()) < 2):
-                hint_lbl.setText("⚠️ Please specify street, number, and city for accurate transit ETA.")
+            if val and len(val) < 2:
+                hint_lbl.setText("⚠️ Please specify street, number, or city for accurate transit ETA.")
                 hint_lbl.setStyleSheet("color: #fab387; font-size: 11px; margin-top: 2px;")
                 QTimer.singleShot(3500, lambda: (
                     hint_lbl.setText("💡 Format: Street & Number, City, Postal Code, Country (e.g. Corso Duca degli Abruzzi 24, 10129 Torino, Italy)"),
@@ -732,6 +734,8 @@ class QtFlightDeckWindow(QMainWindow):
             def _select_m(chk=False, k=m_key):
                 config.set("transport_mode", k)
                 _update_mode_styles(k)
+                from core.services.eta_service import eta_service
+                eta_service.clear_cache()
                 try:
                     event_bus.publish("CONFIG_CHANGED", key="transport_mode", value=k)
                 except Exception:
