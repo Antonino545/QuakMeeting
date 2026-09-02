@@ -202,6 +202,12 @@ class EventClassifier:
         # Keep original-case text for URL extraction to preserve case-sensitive tokens
         raw_blob = f"{title} {location} {description} {meeting_url or ''}"
         search_blob = raw_blob.lower()
+        is_explicit_study_title = any(
+            cls._matches_kw(kw, title) for kw in keywords_dict.get("owl", [])
+        )
+        is_explicit_exam_title = bool(
+            re.search(r"^(?:exam|esame|appello|parziale|esonero)[:\s\-\–\—]+", title.strip(), re.IGNORECASE)
+        )
 
         # 1. Match Video Meeting Patterns
         active_url = meeting_url or cls.extract_meeting_url(raw_blob)
@@ -278,9 +284,9 @@ class EventClassifier:
         # 4. Check Exam / Esame
         is_exam_event = (
             any(cls._matches_kw(kw, search_blob) for kw in keywords_dict.get("exam", []))
-            or bool(re.search(r"^(?:exam|esame|appello|parziale|esonero)[:\s\-\–\—]+", title.strip(), re.IGNORECASE))
+            or is_explicit_exam_title
         )
-        if is_exam_event:
+        if is_exam_event and (is_explicit_exam_title or not is_explicit_study_title):
             is_trav = "online" not in search_blob
             maps_dest = location if (location and location != "missing value") else (f"{title} {classroom or ''}".strip())
             maps_url = f"https://maps.apple.com/?q={urllib.parse.quote(maps_dest)}" if is_trav else "https://calendar.apple.com"
