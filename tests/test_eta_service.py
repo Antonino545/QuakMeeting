@@ -13,6 +13,9 @@ class TestETAService(unittest.TestCase):
             "transport_mode": "transit",
             "eta_buffer_minutes": 10
         }.get(key, default)
+        # Reset singleton so __init__ applies the mock config
+        ETAService._instance = None
+        ETAService._initialized = False
         self.eta_service = ETAService(config=self.mock_config)
         self.eta_service._memory_cache = {}
 
@@ -214,6 +217,30 @@ class TestETAService(unittest.TestCase):
 
         # Invalid cases
         self.assertEqual(validate_address("a")[0], False)
+
+    @patch("urllib.request.urlopen")
+    def test_geocode_with_default_city_and_proximity_bias(self, mock_urlopen):
+        geo_resp = io.BytesIO(json.dumps([{"lat": "45.07", "lon": "7.68"}]).encode("utf-8"))
+        mock_urlopen.return_value = geo_resp
+
+        coords = self.eta_service._geocode_address("Via Roma 10", default_city="Torino", proximity_coords=(45.075, 7.619))
+        self.assertEqual(coords, (45.07, 7.68))
+
+        # Check requested URL contains city and viewbox bias
+        req_arg = mock_urlopen.call_args[0][0]
+        req_url = req_arg.full_url if hasattr(req_arg, "full_url") else str(req_arg)
+        self.assertIn("Torino", req_url)
+        self.assertIn("viewbox=", req_url)
+
+    def test_build_maps_url_with_home_city(self):
+        self.mock_config.get.side_effect = lambda key, default=None: {
+            "home_city": "Torino",
+            "transport_mode": "automobile"
+        }.get(key, default)
+
+        url = self.eta_service._build_google_maps_url("Via Pietro Cossa 11", "Via Roma 10", mode="automobile")
+        self.assertIn("origin=Via%20Pietro%20Cossa%2011", url)
+        self.assertIn("destination=Via%20Roma%2010", url)
 
 if __name__ == "__main__":
     unittest.main()
