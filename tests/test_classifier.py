@@ -113,6 +113,13 @@ class TestEventClassifier(unittest.TestCase):
         self.assertEqual(m_self_study.event_type, EventCategory.STUDY.value)
         self.assertEqual(m_self_study.provider, "Study Session 📖")
 
+        m_study_with_exam_reference = self.classifier.classify(
+            title="OR Study: Finish Lecture 3 (Complexity P, NP, NP-Complete)",
+            description="Goal: master standard exam examples and certificate verification.",
+        )
+        self.assertEqual(m_study_with_exam_reference.event_type, EventCategory.STUDY.value)
+        self.assertEqual(m_study_with_exam_reference.provider, "Study Session 📖")
+
     def test_classroom_and_teacher_extraction(self):
         title = "ICT for smart mobility (VASSIO LUCA) - Aula 5M"
         meeting = self.classifier.classify(title=title, location="Politecnico")
