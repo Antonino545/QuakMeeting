@@ -166,7 +166,7 @@ class QuakPitBannerView(AppKit.NSView):
                 mode_icon = MODE_ICONS.get(self.transport_mode, "🚆")
                 dur_str = format_duration(self.travel_time_minutes)
                 detail_text += f" ({mode_icon} ~{dur_str})"
-        elif self.action_url and ("meet.google.com" in self.action_url or "zoom" in self.action_url):
+        elif self.action_url and ("meet.google.com" in self.action_url or "zoom" in self.action_url or "teams" in self.action_url or "serenis" in self.action_url):
             detail_text += "  •  🌐 Online Meeting"
 
         if self.teacher:

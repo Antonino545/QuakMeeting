@@ -619,18 +619,33 @@ class QtFlightDeckWindow(QMainWindow):
         ac_layout.addWidget(ac_title)
         ac_layout.addWidget(ac_sub)
 
-        # 1. Starting Address Row
+        # 1. Starting Address and Default City Inputs
+        inputs_row = QHBoxLayout()
+        inputs_row.setSpacing(10)
+
+        addr_col = QVBoxLayout()
+        addr_col.setSpacing(4)
         addr_row_lbl = QLabel("<b>🏠 Starting Address (Origin)</b>", addr_card)
         addr_row_lbl.setStyleSheet("color: #cdd6f4; font-size: 12px;")
-        ac_layout.addWidget(addr_row_lbl)
-
-        entry_row = QHBoxLayout()
         addr_entry = QLineEdit(addr_card)
         addr_entry.setText(config.get("home_address", "") or "")
         addr_entry.setPlaceholderText("e.g. Corso Duca degli Abruzzi 24, 10129 Torino, Italy")
+        addr_col.addWidget(addr_row_lbl)
+        addr_col.addWidget(addr_entry)
+
+        city_col = QVBoxLayout()
+        city_col.setSpacing(4)
+        city_row_lbl = QLabel("<b>🏙️ Default City / Area</b>", addr_card)
+        city_row_lbl.setStyleSheet("color: #cdd6f4; font-size: 12px;")
+        city_entry = QLineEdit(addr_card)
+        city_entry.setText(config.get("home_city", "") or "")
+        city_entry.setPlaceholderText("e.g. Torino, Milano, Roma")
+        city_col.addWidget(city_row_lbl)
+        city_col.addWidget(city_entry)
 
         save_addr_btn = QPushButton("💾 Save Location", addr_card)
         save_addr_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        save_addr_btn.setFixedHeight(34)
         save_addr_btn.setStyleSheet("""
             QPushButton {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #a6e3a1, stop:1 #94e2d5);
@@ -640,6 +655,7 @@ class QtFlightDeckWindow(QMainWindow):
                 border-radius: 8px;
                 padding: 7px 16px;
                 border: 1px solid #a6e3a1;
+                margin-top: 18px;
             }
             QPushButton:hover {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #94e2d5, stop:1 #a6e3a1);
@@ -651,15 +667,17 @@ class QtFlightDeckWindow(QMainWindow):
         hint_lbl.setStyleSheet("color: #a6adc8; font-size: 11px; margin-top: 2px;")
 
         def _save_addr():
-            val = addr_entry.text().strip()
-            config.set("home_address", val)
+            val_addr = addr_entry.text().strip()
+            val_city = city_entry.text().strip()
+            config.set("home_address", val_addr)
+            config.set("home_city", val_city)
             from core.services.eta_service import eta_service
             eta_service.clear_cache()
             try:
-                event_bus.publish("CONFIG_CHANGED", key="home_address", value=val)
+                event_bus.publish("CONFIG_CHANGED", key="home_address", value=val_addr)
             except Exception:
                 pass
-            if val and len(val) < 2:
+            if val_addr and len(val_addr) < 2:
                 hint_lbl.setText("⚠️ Please specify street, number, or city for accurate transit ETA.")
                 hint_lbl.setStyleSheet("color: #fab387; font-size: 11px; margin-top: 2px;")
                 QTimer.singleShot(3500, lambda: (
@@ -673,9 +691,10 @@ class QtFlightDeckWindow(QMainWindow):
             QTimer.singleShot(1500, lambda: save_addr_btn.setText("💾 Save Location"))
         save_addr_btn.clicked.connect(_save_addr)
 
-        entry_row.addWidget(addr_entry, stretch=1)
-        entry_row.addWidget(save_addr_btn)
-        ac_layout.addLayout(entry_row)
+        inputs_row.addLayout(addr_col, stretch=3)
+        inputs_row.addLayout(city_col, stretch=2)
+        inputs_row.addWidget(save_addr_btn, alignment=Qt.AlignmentFlag.AlignBottom)
+        ac_layout.addLayout(inputs_row)
         ac_layout.addWidget(hint_lbl)
 
         # 1b. Default Exam Campus / Location Row

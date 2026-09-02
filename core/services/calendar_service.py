@@ -111,6 +111,13 @@ class CalendarService:
 
         home_address = self.config.get("home_address", "").strip()
         exam_location = self.config.get("exam_location", "").strip()
+        home_city = self.config.get("home_city", "").strip()
+        origin_query = home_address
+        if home_city and home_address and home_city.lower() not in home_address.lower() and "," not in home_address:
+            origin_query = f"{home_address}, {home_city}"
+        elif not home_address and home_city:
+            origin_query = home_city
+
         transport_mode = self.config.get("transport_mode", "transit")
         buffer_minutes = int(self.config.get("eta_buffer_minutes", 10))
 
@@ -139,7 +146,7 @@ class CalendarService:
                     dep_str = m.departure_time.astimezone().strftime("%H:%M")
                     m.eta_text = f"{icon} ~{dur_str} • Leave at {dep_str}"
                     if not m.action_url or ("maps.apple.com" not in m.action_url and "maps.google.com" not in m.action_url):
-                        m.action_url = eta_service.build_maps_url(home_address or None, dest, mode)
+                        m.action_url = eta_service.build_maps_url(origin_query or None, dest, m.transport_mode or transport_mode)
 
                     if mode == "transit":
                         m.action_btn_text = f"🗺️ PUBLIC TRANSIT (~{dur_str})"
@@ -152,13 +159,14 @@ class CalendarService:
                     else:
                         m.action_btn_text = f"🗺️ MAPS ROUTE (~{dur_str})"
 
-                # 2. Dynamic calculated ETA via ETAService if home_address is configured
-                elif home_address and dest:
-                    eta_res = eta_service.calculate_eta(home_address, dest, mode)
+                # 2. Dynamic calculated ETA via ETAService if origin_query is configured
+                elif origin_query and dest:
+                    eta_res = eta_service.calculate_eta(origin_query, dest, transport_mode)
                     if eta_res:
                         m.travel_time_minutes = eta_res["duration_minutes"]
                         m.travel_distance_km = eta_res["distance_km"]
-                        m.origin_address = home_address
+                        m.transport_mode = transport_mode
+                        m.origin_address = origin_query
                         m.departure_time = eta_service.get_departure_time(m.start_time, m.travel_time_minutes, buffer_minutes)
                         m._is_calculated_eta = True
 

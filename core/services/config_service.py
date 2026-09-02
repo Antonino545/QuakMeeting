@@ -37,6 +37,7 @@ DEFAULT_CONFIG = {
     "calendar_urls": [],               # Remote ICS / CalDAV feeds for Linux (Google, iCloud, Outlook, Nextcloud)
     # Smart Travel & ETA Settings (Mezzi Pubblici, Auto, Piedi, Bici)
     "home_address": "",               # e.g. "Corso Duca degli Abruzzi 24, Torino"
+    "home_city": "",                  # e.g. "Torino"
     "exam_location": "",              # Default campus/hall location for exams e.g. "Politecnico di Torino"
     "transport_mode": "transit",       # "transit" (Mezzi Pubblici), "automobile" (Auto), "walking" (A Piedi), "bicycling" (Bici)
     "enable_eta_service": True,

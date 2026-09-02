@@ -332,8 +332,14 @@ class SettingsTabController(AppKit.NSObject):
             h, w
         )
 
-        # 1. Starting Address (Origin)
-        t1 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 68, w - 36, 18))
+        # 1. Starting Address (Origin) and Default City (Area)
+        btn_w = 126.0
+        gap = 8.0
+        total_input_w = (w - 36.0) - btn_w - gap
+        addr_w = int(total_input_w * 0.62)
+        city_w = int(total_input_w - addr_w - gap)
+
+        t1 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 74, addr_w, 18))
         t1.setStringValue_(t("settings_starting_address"))
         t1.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.0))
         t1.setTextColor_(Theme.TEXT)
@@ -342,9 +348,19 @@ class SettingsTabController(AppKit.NSObject):
         t1.setEditable_(False)
         card.addSubview_(t1)
 
+        t1_city = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18 + addr_w + gap, h - 74, city_w, 18))
+        t1_city.setStringValue_("🏙️ Default City / Area")
+        t1_city.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.0))
+        t1_city.setTextColor_(Theme.TEXT)
+        t1_city.setBezeled_(False)
+        t1_city.setDrawsBackground_(False)
+        t1_city.setEditable_(False)
+        card.addSubview_(t1_city)
+
         curr_addr = str(self.config.get("home_address", "") or "")
-        field_w = w - 36.0 - 146.0
-        self.home_addr_field = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 100, field_w, 28))
+        curr_city = str(self.config.get("home_city", "") or "")
+
+        self.home_addr_field = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 108, addr_w, 28))
         self.home_addr_field.setStringValue_(curr_addr)
         self.home_addr_field.setPlaceholderString_(t("settings_address_placeholder"))
         self.home_addr_field.setFont_(AppKit.NSFont.systemFontOfSize_(12))
@@ -360,8 +376,24 @@ class SettingsTabController(AppKit.NSObject):
         self.home_addr_field.setFocusRingType_(AppKit.NSFocusRingTypeNone)
         card.addSubview_(self.home_addr_field)
 
+        self.home_city_field = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18 + addr_w + gap, h - 108, city_w, 28))
+        self.home_city_field.setStringValue_(curr_city)
+        self.home_city_field.setPlaceholderString_("e.g. Torino, Milano")
+        self.home_city_field.setFont_(AppKit.NSFont.systemFontOfSize_(12))
+        self.home_city_field.setTextColor_(Theme.TEXT)
+        self.home_city_field.setTarget_(self)
+        self.home_city_field.setAction_("onSaveHomeAddress:")
+        self.home_city_field.setWantsLayer_(True)
+        self.home_city_field.layer().setCornerRadius_(8.0)
+        self.home_city_field.setBackgroundColor_(Theme.CRUST)
+        self.home_city_field.setDrawsBackground_(True)
+        self.home_city_field.layer().setBorderWidth_(1.0)
+        self.home_city_field.layer().setBorderColor_(Theme.SURFACE0.CGColor())
+        self.home_city_field.setFocusRingType_(AppKit.NSFocusRingTypeNone)
+        card.addSubview_(self.home_city_field)
+
         self.home_save_btn = Theme.create_gradient_button(
-            AppKit.NSMakeRect(18 + field_w + 8.0, h - 100, 138.0, 28.0),
+            AppKit.NSMakeRect(18 + addr_w + gap + city_w + gap, h - 108, btn_w, 28.0),
             title=t("settings_save_location"),
             start_color=Theme.GREEN,
             end_color=Theme.TEAL,
@@ -395,6 +427,7 @@ class SettingsTabController(AppKit.NSObject):
         card.addSubview_(t_exam)
 
         curr_exam_addr = str(self.config.get("exam_location", "") or "")
+        field_w = w - 36.0 - 146.0
         self.exam_addr_field = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 182, field_w, 28))
         self.exam_addr_field.setStringValue_(curr_exam_addr)
         self.exam_addr_field.setPlaceholderString_(t("settings_exam_location_placeholder"))
@@ -1055,8 +1088,9 @@ class SettingsTabController(AppKit.NSObject):
                 threading.Thread(target=_delayed_err_reset, daemon=True).start()
                 return
 
-            # Address is valid: save to config, clear ETA cache, and publish event
-            self.config.set("home_address", addr)
+            if hasattr(self, 'home_city_field') and self.home_city_field:
+                city = str(self.home_city_field.stringValue() or "").strip()
+                self.config.set("home_city", city)
             eta_service.clear_cache()
             try:
                 event_bus.publish("CONFIG_CHANGED", key="home_address", value=addr)

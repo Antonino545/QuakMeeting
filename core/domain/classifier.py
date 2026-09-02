@@ -161,6 +161,26 @@ class EventClassifier:
             _KW_REGEX_CACHE[kw] = pattern
         return bool(pattern.search(text))
 
+    @staticmethod
+    def _apply_meeting_url_if_found(meeting: Meeting, active_url: Optional[str]) -> Meeting:
+        """If a video meeting URL was extracted, overlay it onto the Meeting's action button.
+
+        The event keeps its category theme, pilot, and provider label — only the
+        action button text/URL and meeting_url field are updated so the banner
+        shows a clickable "Join" button instead of a generic calendar/maps link.
+        """
+        if not active_url:
+            return meeting
+        btn_text = "🚀 JOIN MEETING"
+        for pat, _, _, pat_btn in MEETING_PATTERNS:
+            if re.search(pat, active_url, re.IGNORECASE):
+                btn_text = pat_btn
+                break
+        meeting.meeting_url = active_url
+        meeting.action_url = active_url
+        meeting.action_btn_text = btn_text
+        return meeting
+
     @classmethod
     def classify(cls, title: str, location: str = "", description: str = "",
                  meeting_url: Optional[str] = None,
@@ -179,10 +199,12 @@ class EventClassifier:
                     keywords_dict[k] = [kw.lower() for kw in v]
 
         classroom, teacher = cls.extract_classroom_and_teacher(title, location, description)
-        search_blob = f"{title} {location} {description} {meeting_url or ''}".lower()
+        # Keep original-case text for URL extraction to preserve case-sensitive tokens
+        raw_blob = f"{title} {location} {description} {meeting_url or ''}"
+        search_blob = raw_blob.lower()
 
         # 1. Match Video Meeting Patterns
-        active_url = meeting_url or cls.extract_meeting_url(search_blob)
+        active_url = meeting_url or cls.extract_meeting_url(raw_blob)
         if active_url:
             for pattern, provider_name, p_type, btn_text in MEETING_PATTERNS:
                 if re.search(pattern, active_url, re.IGNORECASE):
@@ -226,6 +248,7 @@ class EventClassifier:
                     classroom=classroom,
                     teacher=teacher
                 )
+                cls._apply_meeting_url_if_found(res_meeting, active_url)
                 return cls._apply_forced_pilot_if_needed(res_meeting)
 
         # 3. Check Travel / Flights / Airport / Trains
@@ -249,6 +272,7 @@ class EventClassifier:
                     classroom=classroom,
                     teacher=teacher
                 )
+                cls._apply_meeting_url_if_found(res_meeting, active_url)
                 return cls._apply_forced_pilot_if_needed(res_meeting)
 
         # 4. Check Exam / Esame
@@ -303,6 +327,7 @@ class EventClassifier:
                 classroom=classroom,
                 teacher=teacher
             )
+            cls._apply_meeting_url_if_found(res_meeting, active_url)
             return cls._apply_forced_pilot_if_needed(res_meeting)
 
         if is_class_event:
@@ -326,8 +351,8 @@ class EventClassifier:
                 classroom=classroom,
                 teacher=teacher
             )
+            cls._apply_meeting_url_if_found(res_meeting, active_url)
             return cls._apply_forced_pilot_if_needed(res_meeting)
-
         # 5. Check Gym / Palestra / Sport / Workout
         for kw in keywords_dict.get("gym", []):
             if cls._matches_kw(kw, search_blob):
@@ -349,6 +374,7 @@ class EventClassifier:
                     classroom=classroom,
                     teacher=teacher
                 )
+                cls._apply_meeting_url_if_found(res_meeting, active_url)
                 return cls._apply_forced_pilot_if_needed(res_meeting)
 
         # 6. Check In-Person Appointments / Driver
@@ -370,6 +396,7 @@ class EventClassifier:
                     theme_name="Racing Green",
                     is_travel=True
                 )
+                cls._apply_meeting_url_if_found(res_meeting, active_url)
                 return cls._apply_forced_pilot_if_needed(res_meeting)
 
         # 6. Check Therapy / Zen Duck
@@ -389,6 +416,7 @@ class EventClassifier:
                     theme_name="Teal Modern",
                     is_travel=False
                 )
+                cls._apply_meeting_url_if_found(res_meeting, active_url)
                 return cls._apply_forced_pilot_if_needed(res_meeting)
 
         # 7. Check Secret Mission / Platypus
@@ -408,6 +436,7 @@ class EventClassifier:
                     theme_name="Midnight Slate",
                     is_travel=False
                 )
+                cls._apply_meeting_url_if_found(res_meeting, active_url)
                 return cls._apply_forced_pilot_if_needed(res_meeting)
 
         # 8. Check Quick Sync / Squirrel
@@ -427,6 +456,7 @@ class EventClassifier:
                     theme_name="Amber Glow",
                     is_travel=False
                 )
+                cls._apply_meeting_url_if_found(res_meeting, active_url)
                 return cls._apply_forced_pilot_if_needed(res_meeting)
 
         # 9. Generic Physical Event (if non-empty location)
@@ -446,6 +476,7 @@ class EventClassifier:
                 theme_name="Racing Green",
                 is_travel=True
             )
+            cls._apply_meeting_url_if_found(res_meeting, active_url)
             return cls._apply_forced_pilot_if_needed(res_meeting)
 
         # 10. General Default Meeting / Reminder
@@ -464,6 +495,7 @@ class EventClassifier:
             theme_name="Sunset Orange",
             is_travel=False
         )
+        cls._apply_meeting_url_if_found(res_meeting, active_url)
         return cls._apply_forced_pilot_if_needed(res_meeting)
 
     @classmethod

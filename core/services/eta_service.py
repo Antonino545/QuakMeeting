@@ -213,10 +213,20 @@ class ETAService:
     def build_maps_url(self, origin: Optional[str], destination: str, mode: str = "transit") -> str:
         """Builds a routing map deep link (Apple Maps on macOS, Google Maps otherwise)."""
         import sys
+        home_city = (self.config.get("home_city", "") or "").strip() if self.config else ""
+        
+        dest_query = destination
+        if home_city and destination and home_city.lower() not in destination.lower() and "," not in destination:
+            dest_query = f"{destination}, {home_city}"
+
+        orig_query = origin
+        if origin and home_city and home_city.lower() not in origin.lower() and "," not in origin:
+            orig_query = f"{origin}, {home_city}"
+
         if sys.platform == "darwin":
-            return self._build_apple_maps_url(origin, destination, mode)
+            return self._build_apple_maps_url(orig_query, dest_query, mode)
         else:
-            return self._build_google_maps_url(origin, destination, mode)
+            return self._build_google_maps_url(orig_query, dest_query, mode)
 
     def _build_apple_maps_url(self, origin: Optional[str], destination: str, mode: str) -> str:
         encoded_dest = urllib.parse.quote(destination or "")
@@ -241,27 +251,52 @@ class ETAService:
         else:
             return f"https://www.google.com/maps/dir/?api=1&destination={encoded_dest}&travelmode={g_mode}"
 
-    def _geocode_address(self, address: str) -> Optional[Tuple[float, float]]:
-        """Geocodes an address string to (latitude, longitude) coordinates."""
-        cache_key = f"geo_{address.lower().strip()}"
+    def _geocode_address(
+        self,
+        address: str,
+        default_city: Optional[str] = None,
+        proximity_coords: Optional[Tuple[float, float]] = None
+    ) -> Optional[Tuple[float, float]]:
+        """Geocodes an address string to (latitude, longitude) coordinates with smart local context bias."""
+        cleaned_addr = address.strip()
+        city_context = (default_city or "").strip()
+        cache_key = f"geo_{cleaned_addr.lower()}_{city_context.lower()}"
         if cache_key in self._memory_cache:
             coords = self._memory_cache[cache_key]
             return coords["lat"], coords["lon"]
 
-        try:
-            url = f"https://nominatim.openstreetmap.org/search?q={urllib.parse.quote(address)}&format=json&limit=1"
-            headers = {"User-Agent": "QuakMeeting-macOS/1.0"}
-            req = urllib.request.Request(url, headers=headers)
-            with urllib.request.urlopen(req, timeout=4) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-                if data and len(data) > 0:
-                    lat = float(data[0]["lat"])
-                    lon = float(data[0]["lon"])
-                    self._memory_cache[cache_key] = {"lat": lat, "lon": lon}
-                    self._save_cache()
-                    return lat, lon
-        except Exception as e:
-            logger.debug(f"Geocoding error for '{address}': {e}")
+        raw_key = f"geo_{cleaned_addr.lower()}"
+        if raw_key in self._memory_cache and not city_context:
+            coords = self._memory_cache[raw_key]
+            return coords["lat"], coords["lon"]
+
+        headers = {"User-Agent": "QuakMeeting/1.0"}
+
+        queries = []
+        if city_context and city_context.lower() not in cleaned_addr.lower() and "," not in cleaned_addr:
+            queries.append(f"{cleaned_addr}, {city_context}")
+        queries.append(cleaned_addr)
+
+        viewbox_param = ""
+        if proximity_coords:
+            p_lat, p_lon = proximity_coords
+            viewbox_param = f"&viewbox={p_lon-0.35:.4f},{p_lat+0.35:.4f},{p_lon+0.35:.4f},{p_lat-0.35:.4f}&bounded=0"
+
+        for q in queries:
+            try:
+                url = f"https://nominatim.openstreetmap.org/search?q={urllib.parse.quote(q)}{viewbox_param}&format=json&limit=1"
+                req = urllib.request.Request(url, headers=headers)
+                with urllib.request.urlopen(req, timeout=4) as resp:
+                    data = json.loads(resp.read().decode("utf-8"))
+                    if data and len(data) > 0:
+                        lat = float(data[0]["lat"])
+                        lon = float(data[0]["lon"])
+                        self._memory_cache[cache_key] = {"lat": lat, "lon": lon}
+                        self._memory_cache[raw_key] = {"lat": lat, "lon": lon}
+                        self._save_cache()
+                        return lat, lon
+            except Exception as e:
+                logger.debug(f"Geocoding error for '{q}': {e}")
         return None
 
     def _query_opensource_route(self, coords_orig: Tuple[float, float], coords_dest: Tuple[float, float], mode: str) -> Optional[Tuple[int, float]]:
@@ -321,19 +356,23 @@ class ETAService:
     def calculate_eta(self, origin: str, destination: str, mode: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """
         Calculates travel duration (minutes) and distance (km) for the specified mode.
-        Returns dict with minutes, km, mode, and ready-to-use Apple Maps URL.
+        Returns dict with minutes, km, mode, and ready-to-use Maps URL.
         """
         if not origin or not destination or origin.strip() == "" or destination.strip() == "":
             return None
 
         selected_mode = mode or self.config.get("transport_mode", "transit")
-        cache_key = f"route_{origin.lower().strip()}_{destination.lower().strip()}_{selected_mode}"
+        home_city = (self.config.get("home_city", "") or "").strip() if self.config else ""
+        if home_city:
+            cache_key = f"route_{origin.lower().strip()}_{destination.lower().strip()}_{selected_mode}_{home_city.lower()}"
+        else:
+            cache_key = f"route_{origin.lower().strip()}_{destination.lower().strip()}_{selected_mode}"
 
         if cache_key in self._memory_cache:
             return self._memory_cache[cache_key]
 
-        coords_orig = self._geocode_address(origin)
-        coords_dest = self._geocode_address(destination)
+        coords_orig = self._geocode_address(origin, default_city=home_city)
+        coords_dest = self._geocode_address(destination, default_city=home_city, proximity_coords=coords_orig)
 
         duration_minutes = 30
         distance_km = 8.0
