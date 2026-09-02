@@ -9,16 +9,17 @@ from typing import Dict, Any, Optional
 
 try:
     from PyQt6.QtWidgets import QApplication, QWidget
-    from PyQt6.QtCore import Qt, QTimer, QRect, QRectF, QPointF
+    from PyQt6.QtCore import Qt, QTimer, QRect, QRectF, QPointF, QUrl
     from PyQt6.QtGui import (
         QColor, QPainter, QBrush, QPen, QFont, QPainterPath,
-        QLinearGradient, QRadialGradient, QFontMetrics, QCursor
+        QLinearGradient, QRadialGradient, QFontMetrics, QCursor, QDesktopServices
     )
 except ImportError:
     pass
 
 from core.services.config_service import config
 from core.domain.models import format_duration
+from core.domain.classifier import EventClassifier
 from ui.linux.theme import Theme
 from ui.common.banner_speech import build_pilot_speech_text
 from ui.common.banner_particles import BannerParticleEngine
@@ -57,7 +58,14 @@ class QtDuckBannerWindow(QWidget):
 
         self.title = str(event_data.get("title") or "Event Reminder")
         self.provider = str(event_data.get("provider") or "Event")
+        extracted_meeting_url = EventClassifier.extract_meeting_url(
+            f"{event_data.get('location', '')} {event_data.get('description', '')}"
+        )
         self.action_url = event_data.get("action_url") or event_data.get("meeting_url")
+        if extracted_meeting_url and (
+            not self.action_url or self.action_url == "https://calendar.apple.com"
+        ):
+            self.action_url = extracted_meeting_url
         self.action_btn_text = str(event_data.get("action_btn_text") or "🚀 JOIN NOW")
         def _norm_dt(dt):
             if isinstance(dt, datetime):
@@ -207,7 +215,7 @@ class QtDuckBannerWindow(QWidget):
                 mode_icon = MODE_ICONS.get(self.transport_mode, "🚆")
                 dur_str = format_duration(self.travel_time_minutes)
                 detail_text += f" ({mode_icon} ~{dur_str})"
-        elif self.action_url and ("meet.google.com" in self.action_url or "zoom" in self.action_url or "teams" in self.action_url):
+        elif self.action_url and ("meet.google.com" in self.action_url or "zoom" in self.action_url or "teams" in self.action_url or "app.serenis.it" in self.action_url):
             detail_text += "  •  🌐 Online Meeting"
 
         if self.teacher:
@@ -477,7 +485,7 @@ class QtDuckBannerWindow(QWidget):
             except Exception:
                 pass
             if self.has_real_url:
-                webbrowser.open(self.action_url)
+                QDesktopServices.openUrl(QUrl(self.action_url))
             self._dismiss()
         elif clicked == "arrived" and rects["arrived"].contains(pos):
             try:
@@ -532,7 +540,7 @@ class QtDuckBannerWindow(QWidget):
             except Exception:
                 pass
             if self.has_real_url:
-                webbrowser.open(self.action_url)
+                QDesktopServices.openUrl(QUrl(self.action_url))
             self._dismiss()
 
     def leaveEvent(self, ev):

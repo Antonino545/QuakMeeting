@@ -2,6 +2,7 @@
 Unit tests for Universal CalDAV & iCalendar Provider (Linux / Cross-platform).
 """
 import unittest
+from unittest.mock import MagicMock
 from datetime import datetime, timedelta
 from core.providers.caldav_provider import CalDAVCalendarProvider
 from core.services.config_service import ConfigService
@@ -66,6 +67,73 @@ class TestCalDAVProvider(unittest.TestCase):
         escaped = r"Hello\, World\; This is a line\nwith backslash\\"
         unescaped = self.provider._unescape_ics(escaped)
         self.assertEqual(unescaped, "Hello, World; This is a line\nwith backslash\\")
+
+    def test_parse_html_alt_description_with_serenis_link(self):
+        ics_payload = """BEGIN:VCALENDAR
+BEGIN:VEVENT
+UID:serenis-html-123
+SUMMARY:Serenis Session
+DESCRIPTION:This is an event reminder
+X-ALT-DESC;FMTTYPE=text/html:<p>Join your session <a href="https://app.serenis.it/join/html123">here</a></p>
+DTSTART:20260902T150000Z
+DTEND:20260902T160000Z
+END:VEVENT
+END:VCALENDAR
+"""
+
+        event = self.provider._parse_ics_events(ics_payload)[0]
+
+        self.assertIn("https://app.serenis.it/join/html123", event["description"])
+
+    def test_parse_event_description_not_alarm_description(self):
+        ics_payload = """BEGIN:VCALENDAR
+BEGIN:VEVENT
+UID:serenis-alarm-123
+SUMMARY:Serenis Session
+DESCRIPTION:Join Serenis at https:\n //app.serenis.it/join/alarm123
+DTSTART:20260902T150000Z
+DTEND:20260902T160000Z
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:This is an event reminder
+TRIGGER:PT0S
+END:VALARM
+END:VEVENT
+END:VCALENDAR
+"""
+
+        event = self.provider._parse_ics_events(ics_payload)[0]
+
+        self.assertIn("https://app.serenis.it/join/alarm123", event["description"])
+
+    def test_fetch_events_uses_serenis_url_from_description(self):
+        config = MagicMock()
+        config.get.side_effect = lambda key, default=None: {
+            "calendar_urls": ["test.ics"],
+            "ignored_calendars": [],
+            "custom_keywords": {},
+        }.get(key, default)
+        provider = CalDAVCalendarProvider(config)
+        now = datetime.now()
+        ics_payload = f"""BEGIN:VCALENDAR
+X-WR-CALNAME:Therapy
+BEGIN:VEVENT
+UID:serenis-123
+SUMMARY:Serenis Online Therapy Session
+DESCRIPTION:Join your session at https://app.serenis.it/join/test123
+URL:https://calendar.example.test/event/serenis-123
+DTSTART:{now.strftime('%Y%m%dT%H%M%S')}
+DTEND:{(now + timedelta(hours=1)).strftime('%Y%m%dT%H%M%S')}
+END:VEVENT
+END:VCALENDAR
+"""
+        provider._load_ics_content = MagicMock(return_value=ics_payload)
+
+        meetings = provider.fetch_events()
+
+        self.assertEqual(len(meetings), 1)
+        self.assertEqual(meetings[0].meeting_url, "https://app.serenis.it/join/test123")
+        self.assertEqual(meetings[0].action_url, "https://app.serenis.it/join/test123")
 
 if __name__ == "__main__":
     unittest.main()

@@ -4,6 +4,7 @@ Pure Python calendar provider for Ubuntu/Linux and cross-platform feed sync.
 """
 import os
 import re
+import html
 import urllib.request
 import logging
 from datetime import datetime, timedelta, timezone, date
@@ -74,7 +75,11 @@ class CalDAVCalendarProvider(BaseCalendarProvider):
                     title=title,
                     location=loc,
                     description=desc,
-                    meeting_url=url_val or EventClassifier.extract_meeting_url(f"{loc} {desc}"),
+                    meeting_url=(
+                        EventClassifier.extract_meeting_url(url_val) or
+                        EventClassifier.extract_meeting_url(loc) or
+                        EventClassifier.extract_meeting_url(desc)
+                    ),
                     custom_keywords=custom_kw,
                     start_time=s_dt,
                     end_time=e_dt or (s_dt + timedelta(hours=1))
@@ -145,14 +150,21 @@ class CalDAVCalendarProvider(BaseCalendarProvider):
 
         for line in unfolded_lines:
             line = line.strip()
+            if line == "BEGIN:VALARM":
+                in_alarm = True
+                continue
+            if line == "END:VALARM":
+                in_alarm = False
+                continue
             if line == "BEGIN:VEVENT":
                 in_event = True
+                in_alarm = False
                 current_event = {}
             elif line == "END:VEVENT":
                 if in_event and "title" in current_event and "start_time" in current_event:
                     events.append(current_event)
                 in_event = False
-            elif in_event:
+            elif in_event and not in_alarm:
                 if ":" in line:
                     raw_key, val = line.split(":", 1)
                     key = raw_key.split(";")[0].upper()
@@ -163,6 +175,12 @@ class CalDAVCalendarProvider(BaseCalendarProvider):
                         current_event["location"] = self._unescape_ics(val)
                     elif key == "DESCRIPTION":
                         current_event["description"] = self._unescape_ics(val)
+                    elif key == "X-ALT-DESC":
+                        alt_description = self._unescape_ics(html.unescape(val))
+                        if not current_event.get("description") or current_event["description"] == "This is an event reminder":
+                            current_event["description"] = alt_description
+                        elif alt_description not in current_event["description"]:
+                            current_event["description"] += "\n" + alt_description
                     elif key == "URL":
                         current_event["url"] = val.strip()
                     elif key == "UID":
@@ -197,4 +215,6 @@ class CalDAVCalendarProvider(BaseCalendarProvider):
         return None, False
 
     def _unescape_ics(self, text: str) -> str:
-        return text.replace(r"\,", ",").replace(r"\;", ";").replace(r"\n", "\n").replace(r"\\", "\\").strip()
+        text = text.replace(r"\,", ",").replace(r"\;", ";").replace(r"\n", "\n").replace(r"\\", "\\")
+        text = re.sub(r"https:\s*//", "https://", text)
+        return text.strip()

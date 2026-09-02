@@ -198,5 +198,29 @@ class TestBannerModules(unittest.TestCase):
                         banner._timer.stop()
                         banner.close()
 
+    def test_qt_duck_banner_serenis_action_url(self):
+        try:
+            from PyQt6.QtWidgets import QApplication
+            from ui.linux.banner.qt_duck_banner import QtDuckBannerWindow
+        except ImportError:
+            self.skipTest("PyQt6 not available")
+
+        app = QApplication.instance() or QApplication(sys.argv)
+        banner = QtDuckBannerWindow({
+            "title": "Serenis Online Therapy Session",
+            "provider": "Serenis 🛋️",
+            "pilot_type": "zen_duck",
+            "action_btn_text": "🚀 JOIN SESSION",
+            "action_url": "https://calendar.apple.com",
+            "description": "Join at https://app.serenis.it/join/test123",
+            "start_time": datetime.now().astimezone(),
+            "is_travel": False,
+        })
+
+        self.assertTrue(banner.has_real_url)
+        self.assertIn("Online Meeting", banner._cached_detail_text)
+        banner._timer.stop()
+        banner.close()
+
 if __name__ == "__main__":
     unittest.main()

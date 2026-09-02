@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import MagicMock
 import sys
+from datetime import datetime
 
 # Only run macOS UI tests on macOS
 class TestDashboardUI(unittest.TestCase):
@@ -153,6 +154,42 @@ class TestDashboardUI(unittest.TestCase):
             tray_app.build_menu()
             action_texts = [act.text() for act in tray_app.tray.contextMenu().actions()]
             self.assertIn("📄 View Logs & Diagnostics...", action_texts)
+
+    def test_qt_agenda_serenis_redirect_button(self):
+        try:
+            from PyQt6.QtWidgets import QApplication, QPushButton
+            from PyQt6.QtCore import QUrl
+            from PyQt6.QtGui import QDesktopServices
+            from ui.linux.qt_dashboard import QtFlightDeckWindow
+            from core.domain.models import Meeting
+        except (ImportError, ModuleNotFoundError):
+            self.skipTest("PyQt6 not available for Qt dashboard testing")
+
+        app = QApplication.instance() or QApplication(sys.argv)
+        window = QtFlightDeckWindow(tab_index=0)
+        meeting = Meeting(
+            title="Serenis Online Therapy Session",
+            start_time=datetime.now().astimezone(),
+            provider="Serenis 🛋️",
+            pilot_type="zen_duck",
+            action_btn_text="🚀 JOIN SESSION",
+            action_url="https://calendar.apple.com",
+            description="Join at https://app.serenis.it/join/test123",
+        )
+
+        window._refresh_agenda([meeting])
+        buttons = [
+            button for button in window.scroll_content.findChildren(QPushButton, "PrimaryBtn")
+            if button.text() == "🚀 JOIN SESSION"
+        ]
+        self.assertEqual(len(buttons), 1)
+        self.assertLessEqual(buttons[0].geometry().right(), buttons[0].parentWidget().width())
+
+        with unittest.mock.patch.object(QDesktopServices, "openUrl", return_value=True) as open_url:
+            buttons[0].click()
+            open_url.assert_called_once_with(QUrl("https://app.serenis.it/join/test123"))
+
+        window.close()
 
 if __name__ == '__main__':
     unittest.main()
