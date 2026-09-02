@@ -14,7 +14,6 @@ if sys.platform.startswith("linux"):
 
 import threading
 import logging
-import webbrowser
 from datetime import datetime, timedelta
 from typing import Optional, List
 
@@ -23,8 +22,8 @@ from PyQt6.QtWidgets import (
     QVBoxLayout, QTabWidget, QScrollArea, QFrame, QLineEdit, QComboBox, QCheckBox,
     QProgressBar, QStackedWidget, QSizePolicy
 )
-from PyQt6.QtCore import Qt, QTimer, QObject, pyqtSignal
-from PyQt6.QtGui import QColor, QFont, QPixmap, QIcon, QPainter
+from PyQt6.QtCore import Qt, QTimer, QObject, QUrl, pyqtSignal
+from PyQt6.QtGui import QColor, QDesktopServices, QFont, QPixmap, QIcon, QPainter
 
 from ui.linux.animated_widgets import (
     BouncingMascotLabel, AnimatedSpinButton, AnimatedUpdateCard, UpdatingHUDWidget, ToggleSwitch
@@ -39,6 +38,7 @@ from core.services.updater_service import updater_service
 from core.autostart import is_autostart_enabled, enable_autostart, disable_autostart
 from core.services.event_bus import event_bus
 from core.domain.models import format_duration, Meeting
+from core.domain.classifier import EventClassifier
 from core.logger import open_log_file, open_log_folder
 
 logger = logging.getLogger("QuakMeeting.QtDashboard")
@@ -1476,7 +1476,9 @@ class QtFlightDeckWindow(QMainWindow):
                 icon_l.setStyleSheet("font-size: 26px; border: none; background: transparent;")
                 c_layout.addWidget(icon_l)
 
-                info_box = QVBoxLayout()
+                info_widget = QWidget(card)
+                info_widget.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+                info_box = QVBoxLayout(info_widget)
                 info_box.setSpacing(2)
 
                 st = m.start_time.astimezone().strftime("%H:%M") if m.start_time else "--:--"
@@ -1501,9 +1503,16 @@ class QtFlightDeckWindow(QMainWindow):
 
                 info_box.addWidget(t_l)
                 info_box.addWidget(s_l)
-                c_layout.addLayout(info_box, stretch=1)
+                c_layout.addWidget(info_widget, stretch=1)
 
+                extracted_meeting_url = EventClassifier.extract_meeting_url(
+                    f"{m.location} {m.description}"
+                )
                 action_url = m.action_url or m.meeting_url
+                if extracted_meeting_url and (
+                    not action_url or action_url == "https://calendar.apple.com"
+                ):
+                    action_url = extracted_meeting_url
                 if not action_url and m.location and m.location != "missing value":
                     import urllib.parse
                     action_url = f"https://www.google.com/maps/search/?api=1&query={urllib.parse.quote(m.location)}"
@@ -1529,7 +1538,7 @@ class QtFlightDeckWindow(QMainWindow):
                             border-color: #b4befe;
                         }
                     """)
-                    btn.clicked.connect(lambda chk, u=action_url: webbrowser.open(u))
+                    btn.clicked.connect(lambda chk, u=action_url: QDesktopServices.openUrl(QUrl(u)))
                     c_layout.addWidget(btn)
 
                     copy_btn = QPushButton("📋 Copy", card)

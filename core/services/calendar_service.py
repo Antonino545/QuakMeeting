@@ -73,6 +73,7 @@ class CalendarService:
 
         self._in_memory_cache: List[Meeting] = []
         self._last_fetch_time: float = 0.0
+        self._has_synced_this_process = False
         self._is_fetching: bool = False
         self._cached_calendars: List[Dict[str, Any]] = []
         self._last_calendars_fetch_time: float = 0.0
@@ -356,6 +357,7 @@ class CalendarService:
                 self.last_sync_time = datetime.now()
                 self.last_sync_status = "Success"
                 self.last_error = None
+                self._has_synced_this_process = True
 
                 logger.info(f"Synchronized {len(filtered)} events scheduled for today.")
                 self.bus.publish("CALENDAR_SYNCED", meetings=filtered)
@@ -374,7 +376,7 @@ class CalendarService:
         if not self._in_memory_cache:
             self._load_cache_from_disk()
 
-        if force_refresh or (not self._in_memory_cache and self._last_fetch_time == 0.0):
+        if force_refresh or (not self._has_synced_this_process and not self._is_fetching):
             if not self._is_fetching:
                 threading.Thread(target=self.sync_now, daemon=True).start()
         elif time.time() - self._last_fetch_time > CACHE_TTL_SECONDS and not self._is_fetching:
