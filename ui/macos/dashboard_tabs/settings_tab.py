@@ -427,6 +427,7 @@ class SettingsTabController(AppKit.NSObject):
         card.addSubview_(t_exam)
 
         curr_exam_addr = str(self.config.get("exam_location", "") or "")
+        field_w = w - 36.0 - 146.0
         self.exam_addr_field = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 182, field_w, 28))
         self.exam_addr_field.setStringValue_(curr_exam_addr)
         self.exam_addr_field.setPlaceholderString_(t("settings_exam_location_placeholder"))
