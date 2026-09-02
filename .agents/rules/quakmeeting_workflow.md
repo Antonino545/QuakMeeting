@@ -11,10 +11,21 @@ Read this file before changing the project. For deeper reference, use [docs/PROJ
 ## First actions
 
 1. Verify you are on the `test` branch (`git branch --show-current`) before starting any work. Always ensure you are on `test` before doing anything.
-2. Inspect `git status --short`. The worktree may contain user changes; preserve them and do not revert, overwrite, or commit them. and do the pull before starting any work. Always ensure you are on `test` before doing anything.
-3. Locate the behavior with `rg` before editing. Read the relevant test and the caller/callee around the change.
-4. Keep changes narrow. Add or update regression tests for behavior changes. If making any architectural, structural, or config changes, update the relevant documentation in `docs/` (`docs/ARCHITECTURE.md`, `docs/PROJECT_GUIDE.md`, `docs/CONFIGURATION.md`) before committing.
-5. Do not commit, create a branch, alter user calendar/config data, install system dependencies, or publish/release anything unless the user explicitly asks. When committing upon explicit user request, always run and verify that all tests pass before committing. Never commit broken code.
+2. Run `git pull` before making any modification, so you're working against the latest remote state. Resolve or surface any conflicts before proceeding — do not start editing on top of a stale branch.
+3. Inspect `git status --short`. The worktree may contain user changes; preserve them and do not revert, overwrite, or commit them.
+4. Locate the behavior with `rg` before editing. Read the relevant test and the caller/callee around the change.
+5. Before writing any new function, class, or utility, search for an existing equivalent first:
+   - `rg -i "<concept>"` across `core/` and `ui/common/` for similar logic — search by concept, not just the literal name you're about to introduce (e.g. before adding a new duration formatter, search "format_duration", "duration", "minutes").
+   - Check `requirements.txt` / `pyproject.toml` for a library that already solves this before hand-rolling it (date/time math, URL parsing, config validation, etc.).
+   - If something similar exists but doesn't quite fit, extend or parameterize it rather than adding a parallel implementation. If you still add new code, state explicitly in your summary why the existing one couldn't be reused.
+6. Keep changes narrow. Add or update regression tests for behavior changes. If making any architectural, structural, or config changes, update the relevant documentation in `docs/` (`docs/ARCHITECTURE.md`, `docs/PROJECT_GUIDE.md`, `docs/CONFIGURATION.md`) before committing.
+7. Do not commit, create a branch, alter user calendar/config data, install system dependencies, or publish/release anything unless the user explicitly asks. When committing upon explicit user request, always run and verify that all tests pass before committing. Never commit broken code.
+
+## Prefer existing libraries over new code
+
+- Date/time math → stdlib `datetime`/`zoneinfo`, not manual arithmetic.
+- Config validation → whatever schema/validation approach is already used in `config_service.py` rather than ad hoc `if key in config` checks scattered across callers.
+- Do not add a new third-party dependency without first checking `requirements.txt` for something already installed that covers the need.
 
 ## Architecture boundaries
 
@@ -44,7 +55,13 @@ Read this file before changing the project. For deeper reference, use [docs/PROJ
 
 ## Required verification after code or configuration changes
 
-Run the complete platform workflow. If a command needs system-level permissions, explain the exact action and request approval rather than bypassing it.
+Before running any verification commands, detect which platform you're actually on — do not assume or run both blindly:
+
+```bash
+uname -s   # "Darwin" → macOS workflow below; "Linux" → Ubuntu/Debian workflow below
+```
+
+Run the complete platform workflow for the detected OS only. If a command needs system-level permissions, explain the exact action and request approval rather than bypassing it.
 
 ### macOS
 
@@ -80,10 +97,16 @@ pkill -f "quakmeeting" 2>/dev/null; sleep 1; quakmeeting &
 tail -15 ~/.quakmeeting/quakmeeting.log
 ```
 
+### Static hygiene (before delivery)
+
+- Run `ruff check core ui` (or `pyflakes` if `ruff` isn't installed) and resolve unused imports/names introduced by this change.
+- If a change replaces or removes a code path, `rg` for its old name across the repo to confirm nothing still references it, and delete the dead file or function rather than leaving it unused "just in case."
+
 ## Delivery checklist
 
 - Before committing changes upon user request, verify that all unit tests pass (`/opt/miniconda3/bin/python3 -m unittest discover -s tests -v`).
 - Update documentation in `docs/` (`docs/ARCHITECTURE.md`, `docs/PROJECT_GUIDE.md`, `docs/CONFIGURATION.md`) before committing if any architectural, interface, or configuration changes were made.
+- Confirm no new code duplicates existing logic in `core/` or `ui/common/`, and that no already-installed library could have replaced hand-written code.
 - Report the outcome first, then concise evidence: tests/build/restart status and relevant files.
 - Call out any verification limitation rather than claiming an unobserved UI result.
 - Do not include unrelated existing modifications in the claimed change set.
