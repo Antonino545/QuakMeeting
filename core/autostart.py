@@ -146,7 +146,7 @@ def _check_smappservice_status() -> Optional[bool]:
 
 def is_autostart_enabled() -> bool:
     """Determines whether QuakMeeting is configured to launch at macOS/Linux login."""
-    if IS_LINUX or sys.platform != "darwin":
+    if IS_LINUX:
         return os.path.exists(LINUX_DESKTOP_FILE)
         
     sm_status = _check_smappservice_status()
@@ -160,25 +160,26 @@ def enable_autostart() -> bool:
     """Enables launch at login using SMAppService (macOS 13+) or LaunchAgent plist, or .desktop on Linux."""
     logger.info("Enabling Launch-at-Login for QuakMeeting...")
     
-    if IS_LINUX or sys.platform != "darwin":
+    if IS_LINUX:
         return _enable_autostart_linux()
         
-    # 1. Try SMAppService if inside an app bundle
-    try:
-        import ServiceManagement
-        import AppKit
-        bundle = AppKit.NSBundle.mainBundle()
-        if bundle and bundle.bundleIdentifier() and bundle.bundlePath().endswith(".app"):
-            service = ServiceManagement.SMAppService.mainAppService()
-            if service is not None:
-                success, err = service.registerAndReturnError_(None)
-                if success:
-                    logger.info("✅ Successfully registered with SMAppService (macOS Login Items).")
-                    return True
-                else:
-                    logger.warning(f"SMAppService registration failed ({err}), falling back to LaunchAgent plist.")
-    except Exception as e:
-        logger.debug(f"SMAppService registration skipped/failed: {e}")
+    # 1. Try SMAppService if inside an app bundle (macOS only)
+    if sys.platform == "darwin":
+        try:
+            import ServiceManagement
+            import AppKit
+            bundle = AppKit.NSBundle.mainBundle()
+            if bundle and bundle.bundleIdentifier() and bundle.bundlePath().endswith(".app"):
+                service = ServiceManagement.SMAppService.mainAppService()
+                if service is not None:
+                    success, err = service.registerAndReturnError_(None)
+                    if success:
+                        logger.info("✅ Successfully registered with SMAppService (macOS Login Items).")
+                        return True
+                    else:
+                        logger.warning(f"SMAppService registration failed ({err}), falling back to LaunchAgent plist.")
+        except Exception as e:
+            logger.debug(f"SMAppService registration skipped/failed: {e}")
 
     # 2. Universal LaunchAgent fallback
     try:
@@ -210,23 +211,24 @@ def disable_autostart() -> bool:
     """Disables launch at login by unregistering SMAppService and removing LaunchAgent plist or .desktop on Linux."""
     logger.info("Disabling Launch-at-Login for QuakMeeting...")
     
-    if IS_LINUX or sys.platform != "darwin":
+    if IS_LINUX:
         return _disable_autostart_linux()
         
     success = True
 
-    # 1. Try SMAppService unregister
-    try:
-        import ServiceManagement
-        import AppKit
-        bundle = AppKit.NSBundle.mainBundle()
-        if bundle and bundle.bundleIdentifier() and bundle.bundlePath().endswith(".app"):
-            service = ServiceManagement.SMAppService.mainAppService()
-            if service is not None:
-                service.unregisterAndReturnError_(None)
-                logger.info("Unregistered from SMAppService.")
-    except Exception as e:
-        logger.debug(f"SMAppService unregister: {e}")
+    # 1. Try SMAppService unregister (macOS only)
+    if sys.platform == "darwin":
+        try:
+            import ServiceManagement
+            import AppKit
+            bundle = AppKit.NSBundle.mainBundle()
+            if bundle and bundle.bundleIdentifier() and bundle.bundlePath().endswith(".app"):
+                service = ServiceManagement.SMAppService.mainAppService()
+                if service is not None:
+                    service.unregisterAndReturnError_(None)
+                    logger.info("Unregistered from SMAppService.")
+        except Exception as e:
+            logger.debug(f"SMAppService unregister: {e}")
 
     # 2. Remove LaunchAgent plist
     try:

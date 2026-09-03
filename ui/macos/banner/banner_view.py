@@ -240,11 +240,19 @@ class QuakPitBannerView(AppKit.NSView):
         # Do not pause on general window enter; pausing is handled selectively for airplane / card.
         pass
 
+    def _safe_set_cursor(self, pointing_hand: bool = False):
+        try:
+            cursor = AppKit.NSCursor.pointingHandCursor() if pointing_hand else AppKit.NSCursor.arrowCursor()
+            if cursor is not None and hasattr(cursor, "set"):
+                cursor.set()
+        except Exception:
+            pass
+
     def mouseExited_(self, event):
         self.is_paused = False
         self.pressed_button = None
         self.hovered_button = None
-        AppKit.NSCursor.arrowCursor().set()
+        self._safe_set_cursor(pointing_hand=False)
         if self.window():
             self.window().setIgnoresMouseEvents_(True)
         self.setNeedsDisplay_(True)
@@ -268,35 +276,35 @@ class QuakPitBannerView(AppKit.NSView):
         if AppKit.NSPointInRect(loc, rects["close_hit"]):
             self.hovered_button = "close"
             is_over_interactive = True
-            AppKit.NSCursor.pointingHandCursor().set()
+            self._safe_set_cursor(pointing_hand=True)
         elif AppKit.NSPointInRect(loc, rects["action"]):
             self.hovered_button = "action"
             is_over_interactive = True
-            AppKit.NSCursor.pointingHandCursor().set()
+            self._safe_set_cursor(pointing_hand=True)
         elif AppKit.NSPointInRect(loc, rects["arrived"]):
             self.hovered_button = "arrived"
             is_over_interactive = True
-            AppKit.NSCursor.pointingHandCursor().set()
+            self._safe_set_cursor(pointing_hand=True)
         elif AppKit.NSPointInRect(loc, rects["snooze1"]):
             self.hovered_button = "snooze1"
             is_over_interactive = True
-            AppKit.NSCursor.pointingHandCursor().set()
+            self._safe_set_cursor(pointing_hand=True)
         elif AppKit.NSPointInRect(loc, rects["snooze2"]):
             self.hovered_button = "snooze2"
             is_over_interactive = True
-            AppKit.NSCursor.pointingHandCursor().set()
+            self._safe_set_cursor(pointing_hand=True)
         elif AppKit.NSPointInRect(loc, rects["card"]):
             self.hovered_button = "card"
             is_over_interactive = True
-            AppKit.NSCursor.arrowCursor().set()
+            self._safe_set_cursor(pointing_hand=False)
         elif AppKit.NSPointInRect(loc, plane_rect) or (bubble_rect is not None and AppKit.NSPointInRect(loc, bubble_rect)):
             self.hovered_button = "plane"
             is_over_interactive = True
-            AppKit.NSCursor.pointingHandCursor().set()
+            self._safe_set_cursor(pointing_hand=True)
         else:
             self.hovered_button = None
             is_over_interactive = False
-            AppKit.NSCursor.arrowCursor().set()
+            self._safe_set_cursor(pointing_hand=False)
 
         self.is_paused = is_over_interactive
 
