@@ -61,7 +61,7 @@ flowchart TD
 ### 1. Domain (`core/domain/`)
 Contains pure Python data classes and enums. 
 - **`models.py`**: The central `Meeting` dataclass holding event info, travel metadata, and UI theme attributes. Includes logic for duration formatting and event categories (`exam`, `class`, `study`, `food`, `travel`, `sport`, etc.).
-- **`classifier.py`**: Heuristic keyword and regex engine to automatically assign pilots (Duck, Captain, Chef, Owl, etc.) and categories (`exam`, `class`, `study`, `travel`, `sport`, etc.) based on event titles, metadata, and prefixes.
+- **`classifier.py`**: Heuristic keyword, regex, and temporal anchor engine to automatically assign pilots (Duck, Captain, Chef, Owl, etc.) and categories (`exam`, `class`, `study`, `food`, `travel`, `sport`, `in_person`, `health`, etc.) based on event titles, metadata, closed-vocabulary prefixes, idiom overrides, and iterative temporal anchor masking.
 
 ### 2. Providers (`core/providers/`)
 Data ingestion layer fetching events from various platforms.

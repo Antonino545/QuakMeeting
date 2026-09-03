@@ -246,4 +246,72 @@ class TestEventClassifier(unittest.TestCase):
         self.assertEqual(m3.event_type, EventCategory.EXAM.value)
         self.assertTrue(m3.is_travel)
 
+    def test_temporal_anchors_and_hard_cases_regression(self):
+        """Unified regression test covering all original and hard temporal anchor cases (Section 3.1, 3.2, 3.3)."""
+        cases = [
+            # 3.1 Original cases
+            ("OR Study: Lecture 4 - Simplex & Duality (After Dinner Session)", "", "", EventCategory.STUDY, PilotType.OWL),
+            ("Study session (after dinner)", "", "", EventCategory.STUDY, None),
+            ("Gym workout before dinner", "", "", EventCategory.SPORT, None),
+            ("Quick sync after lunch", "", "", EventCategory.GENERAL, PilotType.SQUIRREL),
+            ("Dentist appointment after breakfast", "", "", EventCategory.IN_PERSON, PilotType.DRIVER),
+            ("OR Study: Lecture 2 (Post-Workout Session)", "", "", EventCategory.STUDY, None),
+            ("Dinner after gym", "", "", EventCategory.FOOD, None),
+            ("Cena dopo la palestra", "", "", EventCategory.FOOD, None),
+            ("Quick sync after workout", "", "", EventCategory.GENERAL, PilotType.SQUIRREL),
+            ("Dinner after exam", "", "", EventCategory.FOOD, None),
+            ("Pizza post-esame", "", "", EventCategory.FOOD, None),
+            ("Drinks after class", "", "", EventCategory.FOOD, None),
+            ("Relax after exam", "", "", EventCategory.HEALTH, PilotType.ZEN_DUCK),
+            ("Gym after class", "", "", EventCategory.SPORT, None),
+            ("Quick sync before flight", "", "", EventCategory.GENERAL, PilotType.SQUIRREL),
+            ("Dinner after flight", "", "", EventCategory.FOOD, None),
+            ("Study on train", "", "", EventCategory.STUDY, None),
+            ("Gym after work", "", "", EventCategory.SPORT, None),
+            ("Palestra dopo lavoro", "", "", EventCategory.SPORT, None),
+            ("Dinner after work", "", "", EventCategory.FOOD, None),
+            ("Cena dopo l'ufficio", "", "", EventCategory.FOOD, None),
+            ("Dinner with team", "Mario Pizzeria", "", EventCategory.FOOD, None),
+            ("Mario Pizzeria", "", "", EventCategory.FOOD, None),
+            ("Dinner with study group", "", "", EventCategory.FOOD, None),
+            ("Lunch with Professor Rossi", "", "", EventCategory.FOOD, None),
+            ("Aperitivo pre-cena", "", "", EventCategory.FOOD, None),
+            ("Flight to London (BA 257)", "Terminal 5", "dinner served", EventCategory.TRAVEL, None),
+
+            # 3.2 New hard cases
+            ("Dinner after gym after work", "", "", EventCategory.FOOD, None),
+            ("Quick sync after gym, before dinner", "", "", EventCategory.GENERAL, PilotType.SQUIRREL),
+            ("After gym", "", "", EventCategory.SPORT, None),
+            ("Café Luna team lunch", "", "", EventCategory.FOOD, None),
+            ("Training Room booking", "", "", EventCategory.GENERAL, None),
+            ("Exam Room 3 - IT setup check", "", "", EventCategory.GENERAL, None),
+            ("Study: Dinner reservation for 4", "", "", EventCategory.FOOD, None),
+            ("Weekly Sync (was: Lunch review)", "", "", EventCategory.GENERAL, None),
+            ("Cancelled: dinner after gym", "", "", EventCategory.FOOD, None),
+            ("[TENTATIVE] Gym before flight", "", "", EventCategory.SPORT, None),
+            ("Coffee after dentist", "", "", EventCategory.FOOD, None),
+            ("Study group after exam", "", "", EventCategory.STUDY, None),
+            ("Nap before exam", "", "", EventCategory.HEALTH, None),
+            ("Riposo prima dell'esame", "", "", EventCategory.HEALTH, None),
+            ("Meeting at 5, before flight", "", "", EventCategory.GENERAL, None),
+            ("Meeting before 5pm flight", "", "", EventCategory.GENERAL, None),
+            ("Lunch and Learn: Q3 Roadmap", "", "", EventCategory.GENERAL, None),
+            ("Coffee chat with recruiter", "", "", EventCategory.IN_PERSON, None),
+        ]
+
+        for item in cases:
+            title, location, desc, expected_cat, expected_pilot = item
+            with self.subTest(title=title):
+                meeting = self.classifier.classify(title=title, location=location, description=desc)
+                self.assertEqual(
+                    meeting.event_type, expected_cat.value,
+                    f"Expected event_type {expected_cat.value} for title '{title}', got {meeting.event_type}"
+                )
+                if expected_pilot is not None:
+                    self.assertEqual(
+                        meeting.pilot_type, expected_pilot.value,
+                        f"Expected pilot_type {expected_pilot.value} for title '{title}', got {meeting.pilot_type}"
+                    )
+
+
 
