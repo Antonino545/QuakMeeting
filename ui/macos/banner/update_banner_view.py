@@ -198,29 +198,37 @@ class MacUpdateBannerView(AppKit.NSView):
         self.setNeedsDisplay_(True)
 
     # ── Mouse Tracking & Clicks ───────────────────────────────────────────────
+    def _safe_set_cursor(self, pointing_hand: bool = False):
+        try:
+            cursor = AppKit.NSCursor.pointingHandCursor() if pointing_hand else AppKit.NSCursor.arrowCursor()
+            if cursor is not None and hasattr(cursor, "set"):
+                cursor.set()
+        except Exception:
+            pass
+
     def mouseMoved_(self, event):
         p = self.convertPoint_fromView_(event.locationInWindow(), None)
         old = self._hover_target
         if AppKit.NSPointInRect(p, self._close_rect()):
             self._hover_target = "close"
             self.is_paused = True
-            AppKit.NSCursor.pointingHandCursor().set()
+            self._safe_set_cursor(pointing_hand=True)
         elif AppKit.NSPointInRect(p, self._join_rect()):
             self._hover_target = "join"
             self.is_paused = True
-            AppKit.NSCursor.pointingHandCursor().set()
+            self._safe_set_cursor(pointing_hand=True)
         elif AppKit.NSPointInRect(p, self._snooze_rect()):
             self._hover_target = "snooze"
             self.is_paused = True
-            AppKit.NSCursor.pointingHandCursor().set()
+            self._safe_set_cursor(pointing_hand=True)
         elif AppKit.NSPointInRect(p, self._card_rect()):
             self._hover_target = None
             self.is_paused = True
-            AppKit.NSCursor.arrowCursor().set()
+            self._safe_set_cursor(pointing_hand=False)
         else:
             self._hover_target = None
             self.is_paused = False
-            AppKit.NSCursor.arrowCursor().set()
+            self._safe_set_cursor(pointing_hand=False)
 
         if hasattr(self.controller, "is_paused"):
             self.controller.is_paused = self.is_paused
@@ -239,7 +247,7 @@ class MacUpdateBannerView(AppKit.NSView):
         self._hover_target = None
         if hasattr(self.controller, "is_paused"):
             self.controller.is_paused = False
-        AppKit.NSCursor.arrowCursor().set()
+        self._safe_set_cursor(pointing_hand=False)
         self.setNeedsDisplay_(True)
 
     def mouseDown_(self, event):
