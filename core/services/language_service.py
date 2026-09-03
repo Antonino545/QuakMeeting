@@ -3,6 +3,7 @@ Language and Internationalization Service for QuakMeeting.
 Provides OS language detection, runtime language resolution, and bilingual translations (English & Italian).
 """
 import os
+import sys
 import locale
 import logging
 from typing import Dict, Any, Optional
@@ -498,6 +499,8 @@ _locale_observer = None
 
 def init_system_locale_listener():
     """Listens for macOS system language/locale change notifications to dynamically update UI."""
+    if sys.platform != "darwin":
+        return
     global _locale_observer
     if _locale_observer is not None:
         return
@@ -527,46 +530,48 @@ def init_system_locale_listener():
 
 def detect_system_language() -> str:
     """Detects the operating system's preferred language code ('it' or 'en')."""
-    # 1. macOS NSUserDefaults AppleLanguages
-    try:
-        import Foundation
-        user_defaults = Foundation.NSUserDefaults.standardUserDefaults()
-        apple_langs = user_defaults.objectForKey_("AppleLanguages")
-        if apple_langs and len(apple_langs) > 0:
-            first_lang = str(apple_langs[0]).lower()
-            if first_lang.startswith("it") or "it_" in first_lang or "it-" in first_lang:
-                return "it"
-            elif first_lang.startswith("en") or "en_" in first_lang or "en-" in first_lang:
-                return "en"
-    except Exception:
-        pass
+    # macOS native detection (avoid searching/importing AppKit on Linux/Ubuntu)
+    if sys.platform == "darwin":
+        # 1. macOS NSUserDefaults AppleLanguages
+        try:
+            import Foundation
+            user_defaults = Foundation.NSUserDefaults.standardUserDefaults()
+            apple_langs = user_defaults.objectForKey_("AppleLanguages")
+            if apple_langs and len(apple_langs) > 0:
+                first_lang = str(apple_langs[0]).lower()
+                if first_lang.startswith("it") or "it_" in first_lang or "it-" in first_lang:
+                    return "it"
+                elif first_lang.startswith("en") or "en_" in first_lang or "en-" in first_lang:
+                    return "en"
+        except Exception:
+            pass
 
-    # 2. macOS native preferred language detection via PyObjC
-    try:
-        import AppKit
-        langs = AppKit.NSLocale.preferredLanguages()
-        if langs and len(langs) > 0:
-            primary = str(langs[0]).lower()
-            if primary.startswith("it") or "it_" in primary or "it-" in primary:
-                return "it"
-            elif primary.startswith("en") or "en_" in primary or "en-" in primary:
-                return "en"
-    except Exception:
-        pass
+        # 2. macOS native preferred language detection via PyObjC
+        try:
+            import AppKit
+            langs = AppKit.NSLocale.preferredLanguages()
+            if langs and len(langs) > 0:
+                primary = str(langs[0]).lower()
+                if primary.startswith("it") or "it_" in primary or "it-" in primary:
+                    return "it"
+                elif primary.startswith("en") or "en_" in primary or "en-" in primary:
+                    return "en"
+        except Exception:
+            pass
 
-    # 3. macOS currentLocale languageCode
-    try:
-        import AppKit
-        loc = AppKit.NSLocale.currentLocale()
-        if loc:
-            code = loc.languageCode() if hasattr(loc, "languageCode") else None
-            if code and str(code).lower().startswith("it"):
-                return "it"
-            ident = loc.localeIdentifier() if hasattr(loc, "localeIdentifier") else None
-            if ident and str(ident).lower().startswith("it"):
-                return "it"
-    except Exception:
-        pass
+        # 3. macOS currentLocale languageCode
+        try:
+            import AppKit
+            loc = AppKit.NSLocale.currentLocale()
+            if loc:
+                code = loc.languageCode() if hasattr(loc, "languageCode") else None
+                if code and str(code).lower().startswith("it"):
+                    return "it"
+                ident = loc.localeIdentifier() if hasattr(loc, "localeIdentifier") else None
+                if ident and str(ident).lower().startswith("it"):
+                    return "it"
+        except Exception:
+            pass
 
     # 4. Linux environment / locale detection
     for env_var in ["LC_ALL", "LC_MESSAGES", "LANG", "LANGUAGE"]:

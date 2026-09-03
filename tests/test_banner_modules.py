@@ -13,6 +13,14 @@ from ui.common.banner_speech import build_pilot_speech_text
 from ui.common.banner_formatting import compute_countdown_text, format_travel_duration
 from ui.common.banner_particles import BannerParticleEngine
 
+HAS_APPKIT = False
+if sys.platform == "darwin":
+    try:
+        import AppKit
+        HAS_APPKIT = True
+    except ImportError:
+        HAS_APPKIT = False
+
 class TestBannerModules(unittest.TestCase):
 
     def test_banner_speech_vocalizations(self):
@@ -115,7 +123,7 @@ class TestBannerModules(unittest.TestCase):
         self.assertEqual(len(engine.flame_particles), 0)
         self.assertEqual(len(engine.smoke_particles), 0)
 
-    @unittest.skipIf(sys.platform != "darwin", "macOS specific UI tests")
+    @unittest.skipUnless(HAS_APPKIT, "macOS AppKit required")
     def test_banner_layout_geometry(self):
         from ui.macos.banner.banner_layout import BannerLayout
         layout = BannerLayout(banner_w=535.0, banner_h=126.0)
@@ -138,6 +146,52 @@ class TestBannerModules(unittest.TestCase):
         # Close hit rect should be larger than visual close rect
         self.assertGreater(rects["close_hit"].size.width, rects["close"].size.width)
         self.assertGreater(rects["close_hit"].size.height, rects["close"].size.height)
+
+        # Plane rect geometry
+        plane_rect = layout.get_plane_rect(plane_x=705.0, plane_y=54.0)
+        self.assertGreater(plane_rect.size.width, 100.0)
+        self.assertGreater(plane_rect.size.height, 50.0)
+
+    @unittest.skipUnless(HAS_APPKIT, "macOS AppKit required")
+    def test_banner_hittest_and_click_through(self):
+        import AppKit
+        from ui.macos.banner.banner_view import QuakPitBannerView
+        from datetime import datetime
+
+        event_data = {
+            "title": "Test Sync",
+            "start_time": datetime.now().astimezone(),
+            "action_url": "https://meet.google.com/abc-defg-hij",
+        }
+        view = QuakPitBannerView.alloc().initWithFrame_meetingData_controller_(
+            AppKit.NSMakeRect(0, 0, 1920, 220),
+            event_data,
+            None
+        )
+        view.x = 200.0
+        view.base_y = 48.0
+        view.tick = 0
+
+        # Points outside interactive elements should return None (click-through)
+        empty_pt = AppKit.NSMakePoint(50.0, 50.0)
+        self.assertIsNone(view.hitTest_(empty_pt))
+
+        # Points on card should return view
+        card_pt = AppKit.NSMakePoint(300.0, 50.0)
+        self.assertIsNotNone(view.hitTest_(card_pt))
+
+        # Points on plane should return view
+        plane_pt = AppKit.NSMakePoint(805.0, 52.0)
+        self.assertIsNotNone(view.hitTest_(plane_pt))
+
+        # Mouse update outside should not pause
+        view._update_mouse_interaction_at_point(empty_pt)
+        self.assertFalse(view.is_paused)
+
+        # Mouse update on plane should pause
+        view._update_mouse_interaction_at_point(plane_pt)
+        self.assertTrue(view.is_paused)
+
 
     def test_qt_duck_banner_speech_bubble_bounds(self):
         try:

@@ -3,9 +3,17 @@ from unittest.mock import MagicMock
 import sys
 from datetime import datetime
 
-# Only run macOS UI tests on macOS
+HAS_APPKIT = False
+if sys.platform == "darwin":
+    try:
+        import AppKit
+        HAS_APPKIT = True
+    except ImportError:
+        HAS_APPKIT = False
+
+# Only run macOS UI tests when AppKit is actually available on macOS
 class TestDashboardUI(unittest.TestCase):
-    @unittest.skipIf(sys.platform != "darwin", "macOS specific UI tests")
+    @unittest.skipUnless(HAS_APPKIT, "macOS AppKit required")
     def test_instantiate_and_render_tabs(self):
         # Avoid showing actual windows during test
         try:
@@ -43,7 +51,7 @@ class TestDashboardUI(unittest.TestCase):
         except ImportError as e:
             self.fail(f"Failed to import UI controllers: {e}")
 
-    @unittest.skipIf(sys.platform != "darwin", "macOS specific UI tests")
+    @unittest.skipUnless(HAS_APPKIT, "macOS AppKit required")
     def test_menu_bar_build_with_upcoming_events(self):
         from ui.macos.menu_bar_app import QuakMeetingMenuBar
         from datetime import datetime, timedelta
@@ -65,7 +73,7 @@ class TestDashboardUI(unittest.TestCase):
         menu_bar.build_menu()
         self.assertGreater(menu_bar.menu.numberOfItems(), 0)
 
-    @unittest.skipIf(sys.platform != "darwin", "macOS specific UI tests")
+    @unittest.skipUnless(HAS_APPKIT, "macOS AppKit required")
     def test_reminder_event_payload_shows_banner(self):
         """The EventBus payload includes event_dict as well as meeting/stage."""
         from ui.macos.menu_bar_app import QuakMeetingMenuBar
@@ -80,7 +88,7 @@ class TestDashboardUI(unittest.TestCase):
 
         show_banner.assert_called_once_with(payload)
 
-    @unittest.skipIf(sys.platform != "darwin", "macOS specific UI tests")
+    @unittest.skipUnless(HAS_APPKIT, "macOS AppKit required")
     def test_show_dashboard_accepts_tab_index(self):
         from ui.macos.dashboard_window import show_dashboard
         # Ensure show_dashboard accepts positional tab_index parameters (0, 1, 2, None)

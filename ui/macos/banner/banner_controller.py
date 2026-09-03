@@ -112,7 +112,12 @@ class QuakPitFlyingBanner(AppKit.NSObject):
         # NSScreenSaverWindowLevel guarantees floating above all full-screen spaces & apps
         self.window.setLevel_(AppKit.NSScreenSaverWindowLevel)
 
-        self.window.setIgnoresMouseEvents_(False)
+        # For flying banner, start with ignoresMouseEvents=True so transparent full-width
+        # trajectory passes all clicks to underlying apps until mouse is over interactive parts.
+        if not is_quiet and not is_update:
+            self.window.setIgnoresMouseEvents_(True)
+        else:
+            self.window.setIgnoresMouseEvents_(False)
         self.window.setAcceptsMouseMovedEvents_(True)
         self.window.setMovableByWindowBackground_(False)
 

@@ -201,46 +201,110 @@ class QuakPitBannerView(AppKit.NSView):
             banner_x, banner_y, self.has_maps_url, self.has_real_url, self.reminder_stage
         )
 
+    def _get_interactive_rects(self, banner_x: float, banner_y: float, plane_x: float, plane_y: float):
+        rects = self._get_button_rects(banner_x, banner_y)
+        plane_rect = self.layout_mgr.get_plane_rect(plane_x, plane_y)
+        bubble_rect = None
+        if self._cached_speech_text:
+            text_len = len(self._cached_speech_text) * 6.8
+            bubble_rect = self.layout_mgr.get_speech_bubble_rect(
+                plane_x, plane_y, banner_x + self.banner_w, text_len, self.tick
+            )
+        return rects, plane_rect, bubble_rect
+
+    def hitTest_(self, aPoint):
+        if self.superview() is not None:
+            loc = self.convertPoint_fromView_(aPoint, self.superview())
+        else:
+            loc = self.convertPoint_fromView_(aPoint, None)
+
+        y_wave = self.base_y + math.sin(self.tick * 0.038) * 8.0
+        banner_x = self.x
+        banner_y = y_wave - 10.0
+        plane_x = self.x + 605.0
+        plane_y = y_wave + 4.0
+
+        rects, plane_rect, bubble_rect = self._get_interactive_rects(banner_x, banner_y, plane_x, plane_y)
+
+        if (
+            AppKit.NSPointInRect(loc, plane_rect) or
+            AppKit.NSPointInRect(loc, rects["card"]) or
+            AppKit.NSPointInRect(loc, rects["close_hit"]) or
+            (bubble_rect is not None and AppKit.NSPointInRect(loc, bubble_rect))
+        ):
+            return self
+
+        return None
+
     def mouseEntered_(self, event):
-        self.is_paused = True
+        # Do not pause on general window enter; pausing is handled selectively for airplane / card.
+        pass
 
     def mouseExited_(self, event):
         self.is_paused = False
         self.pressed_button = None
         self.hovered_button = None
         AppKit.NSCursor.arrowCursor().set()
+        if self.window():
+            self.window().setIgnoresMouseEvents_(True)
         self.setNeedsDisplay_(True)
 
     def mouseMoved_(self, event):
         loc = self.convertPoint_fromView_(event.locationInWindow(), None)
+        self._update_mouse_interaction_at_point(loc)
+
+    def _update_mouse_interaction_at_point(self, loc):
         banner_x = self.x
         y_wave = self.base_y + math.sin(self.tick * 0.038) * 8.0
         banner_y = y_wave - 10.0
+        plane_x = self.x + 605.0
+        plane_y = y_wave + 4.0
 
-        rects = self._get_button_rects(banner_x, banner_y)
+        rects, plane_rect, bubble_rect = self._get_interactive_rects(banner_x, banner_y, plane_x, plane_y)
         old_hover = self.hovered_button
+
+        is_over_interactive = False
 
         if AppKit.NSPointInRect(loc, rects["close_hit"]):
             self.hovered_button = "close"
+            is_over_interactive = True
             AppKit.NSCursor.pointingHandCursor().set()
         elif AppKit.NSPointInRect(loc, rects["action"]):
             self.hovered_button = "action"
+            is_over_interactive = True
             AppKit.NSCursor.pointingHandCursor().set()
         elif AppKit.NSPointInRect(loc, rects["arrived"]):
             self.hovered_button = "arrived"
+            is_over_interactive = True
             AppKit.NSCursor.pointingHandCursor().set()
         elif AppKit.NSPointInRect(loc, rects["snooze1"]):
             self.hovered_button = "snooze1"
+            is_over_interactive = True
             AppKit.NSCursor.pointingHandCursor().set()
         elif AppKit.NSPointInRect(loc, rects["snooze2"]):
             self.hovered_button = "snooze2"
+            is_over_interactive = True
             AppKit.NSCursor.pointingHandCursor().set()
         elif AppKit.NSPointInRect(loc, rects["card"]):
             self.hovered_button = "card"
+            is_over_interactive = True
             AppKit.NSCursor.arrowCursor().set()
+        elif AppKit.NSPointInRect(loc, plane_rect) or (bubble_rect is not None and AppKit.NSPointInRect(loc, bubble_rect)):
+            self.hovered_button = "plane"
+            is_over_interactive = True
+            AppKit.NSCursor.pointingHandCursor().set()
         else:
             self.hovered_button = None
+            is_over_interactive = False
             AppKit.NSCursor.arrowCursor().set()
+
+        self.is_paused = is_over_interactive
+
+        win = self.window()
+        if win is not None:
+            should_ignore = not is_over_interactive
+            if win.ignoresMouseEvents() != should_ignore:
+                win.setIgnoresMouseEvents_(should_ignore)
 
         if old_hover != self.hovered_button:
             self.setNeedsDisplay_(True)
@@ -250,8 +314,10 @@ class QuakPitBannerView(AppKit.NSView):
         banner_x = self.x
         y_wave = self.base_y + math.sin(self.tick * 0.038) * 8.0
         banner_y = y_wave - 10.0
+        plane_x = self.x + 605.0
+        plane_y = y_wave + 4.0
 
-        rects = self._get_button_rects(banner_x, banner_y)
+        rects, plane_rect, bubble_rect = self._get_interactive_rects(banner_x, banner_y, plane_x, plane_y)
 
         if AppKit.NSPointInRect(loc, rects["close_hit"]):
             self.pressed_button = "close"
@@ -265,6 +331,8 @@ class QuakPitBannerView(AppKit.NSView):
             self.pressed_button = "snooze2"
         elif AppKit.NSPointInRect(loc, rects["card"]):
             self.pressed_button = "card"
+        elif AppKit.NSPointInRect(loc, plane_rect) or (bubble_rect is not None and AppKit.NSPointInRect(loc, bubble_rect)):
+            self.pressed_button = "plane"
         else:
             self.pressed_button = None
 
@@ -275,7 +343,9 @@ class QuakPitBannerView(AppKit.NSView):
         banner_x = self.x
         y_wave = self.base_y + math.sin(self.tick * 0.038) * 8.0
         banner_y = y_wave - 10.0
-        rects = self._get_button_rects(banner_x, banner_y)
+        plane_x = self.x + 605.0
+        plane_y = y_wave + 4.0
+        rects, plane_rect, bubble_rect = self._get_interactive_rects(banner_x, banner_y, plane_x, plane_y)
 
         clicked = self.pressed_button
         self.pressed_button = None
@@ -305,7 +375,11 @@ class QuakPitBannerView(AppKit.NSView):
                     self.controller.trigger_acknowledge()
                 else:
                     self.controller.trigger_arrived() # Skip event
-        elif clicked == "card" and AppKit.NSPointInRect(loc, rects["card"]):
+        elif (clicked in ("card", "plane")) and (
+            AppKit.NSPointInRect(loc, rects["card"]) or
+            AppKit.NSPointInRect(loc, plane_rect) or
+            (bubble_rect is not None and AppKit.NSPointInRect(loc, bubble_rect))
+        ):
             if self.controller:
                 if self.has_real_url:
                     self.controller.trigger_action()
@@ -315,6 +389,21 @@ class QuakPitBannerView(AppKit.NSView):
     def stepAnimation_(self, timer):
         self.tick += 1
         screen_w = self.bounds().size.width
+
+        # Check real-time hardware cursor position even if mouse is stationary
+        win = self.window()
+        if win is not None:
+            screen_loc = AppKit.NSEvent.mouseLocation()
+            if AppKit.NSPointInRect(screen_loc, win.frame()):
+                win_loc = win.convertPointFromScreen_(screen_loc)
+                loc = self.convertPoint_fromView_(win_loc, None)
+                self._update_mouse_interaction_at_point(loc)
+            else:
+                if self.is_paused:
+                    self.is_paused = False
+                    self.hovered_button = None
+                if not win.ignoresMouseEvents():
+                    win.setIgnoresMouseEvents_(True)
 
         if not self.is_paused:
             self.x += self.speed
