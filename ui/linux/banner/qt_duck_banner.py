@@ -390,6 +390,17 @@ class QtDuckBannerWindow(QWidget):
         y_wave = self.base_y + math.sin(self.tick * 0.038) * 8.0
         self.move(int(self.win_x), int(y_wave))
 
+        # Check hover even if mouse is stationary
+        cursor_pos = self.mapFromGlobal(QCursor.pos())
+        rects = self._get_button_rects(self.CARD_X, self.CARD_Y)
+        plane_rect = QRectF(self.PLANE_CX - 65.0, self.PLANE_CY - 30.0, 115.0, 60.0)
+        if (
+            rects["card"].contains(cursor_pos) or
+            rects["close_hit"].contains(cursor_pos) or
+            plane_rect.contains(cursor_pos)
+        ):
+            self.is_paused = True
+
         # Update countdown once every 30 frames (~0.5s) to save CPU
         if self.tick % 30 == 0:
             self._update_countdown_text()
@@ -408,6 +419,7 @@ class QtDuckBannerWindow(QWidget):
     def mouseMoveEvent(self, ev):
         pos = ev.position()
         rects = self._get_button_rects(self.CARD_X, self.CARD_Y)
+        plane_rect = QRectF(self.PLANE_CX - 65.0, self.PLANE_CY - 30.0, 115.0, 60.0)
         old_hover = self.hovered_button
 
         if rects["close_hit"].contains(pos):
@@ -428,11 +440,14 @@ class QtDuckBannerWindow(QWidget):
         elif rects["card"].contains(pos):
             self.hovered_button = "card"
             self.is_paused = True
+        elif plane_rect.contains(pos):
+            self.hovered_button = "plane"
+            self.is_paused = True
         else:
             self.hovered_button = None
             self.is_paused = False
 
-        cur = Qt.CursorShape.PointingHandCursor if self.hovered_button in ["close", "action", "arrived", "snooze1", "snooze2"] else Qt.CursorShape.ArrowCursor
+        cur = Qt.CursorShape.PointingHandCursor if self.hovered_button in ["close", "action", "arrived", "snooze1", "snooze2", "plane"] else Qt.CursorShape.ArrowCursor
         self.setCursor(cur)
 
         if old_hover != self.hovered_button:
@@ -443,6 +458,7 @@ class QtDuckBannerWindow(QWidget):
             return
         pos = ev.position()
         rects = self._get_button_rects(self.CARD_X, self.CARD_Y)
+        plane_rect = QRectF(self.PLANE_CX - 65.0, self.PLANE_CY - 30.0, 115.0, 60.0)
 
         if rects["close_hit"].contains(pos):
             self.pressed_button = "close"
@@ -456,6 +472,8 @@ class QtDuckBannerWindow(QWidget):
             self.pressed_button = "snooze2"
         elif rects["card"].contains(pos):
             self.pressed_button = "card"
+        elif plane_rect.contains(pos):
+            self.pressed_button = "plane"
         else:
             self.pressed_button = None
 
@@ -533,7 +551,7 @@ class QtDuckBannerWindow(QWidget):
                 except Exception:
                     pass
             self._dismiss()
-        elif clicked == "card" and rects["card"].contains(pos):
+        elif (clicked in ["card", "plane"]) and (rects["card"].contains(pos) or QRectF(self.PLANE_CX - 65.0, self.PLANE_CY - 30.0, 115.0, 60.0).contains(pos)):
             try:
                 from core.services.state_store import banner_history_store
                 banner_history_store.record_action(meeting_id, "card_clicked")

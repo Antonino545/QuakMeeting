@@ -2,6 +2,7 @@
 Native macOS EventKit Calendar Provider for QuakMeeting.
 Uses PyObjC EventKit (EKEventStore) for fast, low-overhead direct API access.
 """
+import sys
 import logging
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
@@ -21,6 +22,8 @@ class EventKitCalendarProvider(BaseCalendarProvider):
         self._is_authorized = None
 
     def _get_store(self):
+        if sys.platform != "darwin":
+            return None
         if self._store is None:
             try:
                 import EventKit

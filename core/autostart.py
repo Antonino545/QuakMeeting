@@ -65,14 +65,15 @@ def _get_target_app_path() -> str:
     if os.path.exists(standard_app):
         return standard_app
 
-    # Check if running within a bundle
-    try:
-        import AppKit
-        bundle = AppKit.NSBundle.mainBundle()
-        if bundle and bundle.bundlePath() and bundle.bundlePath().endswith(".app"):
-            return bundle.bundlePath()
-    except Exception:
-        pass
+    # Check if running within a bundle (macOS only)
+    if sys.platform == "darwin":
+        try:
+            import AppKit
+            bundle = AppKit.NSBundle.mainBundle()
+            if bundle and bundle.bundlePath() and bundle.bundlePath().endswith(".app"):
+                return bundle.bundlePath()
+        except Exception:
+            pass
 
     # Check project directory app bundle
     project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -119,6 +120,8 @@ def generate_launchagent_plist(app_path: Optional[str] = None) -> str:
 
 def _check_smappservice_status() -> Optional[bool]:
     """Checks autostart status using macOS 13+ ServiceManagement SMAppService."""
+    if sys.platform != "darwin":
+        return None
     try:
         import ServiceManagement
         import AppKit
@@ -143,7 +146,7 @@ def _check_smappservice_status() -> Optional[bool]:
 
 def is_autostart_enabled() -> bool:
     """Determines whether QuakMeeting is configured to launch at macOS/Linux login."""
-    if IS_LINUX:
+    if IS_LINUX or sys.platform != "darwin":
         return os.path.exists(LINUX_DESKTOP_FILE)
         
     sm_status = _check_smappservice_status()
@@ -157,7 +160,7 @@ def enable_autostart() -> bool:
     """Enables launch at login using SMAppService (macOS 13+) or LaunchAgent plist, or .desktop on Linux."""
     logger.info("Enabling Launch-at-Login for QuakMeeting...")
     
-    if IS_LINUX:
+    if IS_LINUX or sys.platform != "darwin":
         return _enable_autostart_linux()
         
     # 1. Try SMAppService if inside an app bundle
@@ -207,7 +210,7 @@ def disable_autostart() -> bool:
     """Disables launch at login by unregistering SMAppService and removing LaunchAgent plist or .desktop on Linux."""
     logger.info("Disabling Launch-at-Login for QuakMeeting...")
     
-    if IS_LINUX:
+    if IS_LINUX or sys.platform != "darwin":
         return _disable_autostart_linux()
         
     success = True

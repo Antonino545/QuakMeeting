@@ -58,3 +58,25 @@ class BannerLayout:
             "snooze2": btn_snooze2_rect,
             "card": AppKit.NSMakeRect(banner_x, banner_y, self.banner_w, self.banner_h)
         }
+
+    def get_plane_rect(self, plane_x: float, plane_y: float) -> AppKit.NSRect:
+        """Returns accurate bounding rect for the flying airplane mascot."""
+        return AppKit.NSMakeRect(plane_x - 65.0, plane_y - 30.0, 115.0, 60.0)
+
+    def get_speech_bubble_rect(
+        self,
+        plane_x: float,
+        plane_y: float,
+        card_right_x: float,
+        text_width: float,
+        tick: int = 0
+    ) -> AppKit.NSRect:
+        """Returns bounding rect for the pilot speech bubble if present."""
+        import math
+        bw = text_width + 24.0
+        bh = 26.0
+        min_bx = card_right_x + 10.0
+        ideal_bx = plane_x - bw * 0.5
+        bx = max(min_bx, ideal_bx)
+        by = plane_y + 36.0 + math.sin(tick * 0.08) * 3.0
+        return AppKit.NSMakeRect(bx, by - 8.0, bw, bh + 8.0)
