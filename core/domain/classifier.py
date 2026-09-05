@@ -532,12 +532,27 @@ class EventClassifier:
         keywords_dict = DEFAULT_KEYWORDS.copy()
         if isinstance(cls, EventClassifier) and hasattr(cls, 'keywords') and cls.keywords:
             keywords_dict.update(cls.keywords)
+
+        category_to_targets = {
+            "study": ["owl", "class", "exam"],
+            "food": ["chef"],
+            "travel": ["captain"],
+            "sport": ["gym"],
+            "in_person": ["driver"],
+            "health": ["zen_duck"],
+            "general": ["general"],
+        }
+
         if custom_keywords and isinstance(custom_keywords, dict):
             for k, v in custom_keywords.items():
-                if k in keywords_dict and isinstance(v, list):
-                    keywords_dict[k] = list(set(keywords_dict[k] + [kw.lower() for kw in v]))
-                elif isinstance(v, list):
-                    keywords_dict[k] = [kw.lower() for kw in v]
+                if not isinstance(v, list):
+                    continue
+                targets = category_to_targets.get(k, [k])
+                for target in targets:
+                    if target in keywords_dict:
+                        keywords_dict[target] = list(set(keywords_dict[target] + [kw.lower() for kw in v]))
+                    else:
+                        keywords_dict[target] = [kw.lower() for kw in v]
 
         classroom, teacher = cls.extract_classroom_and_teacher(title, location, description)
         raw_blob = f"{title} {location} {description} {meeting_url or ''}"

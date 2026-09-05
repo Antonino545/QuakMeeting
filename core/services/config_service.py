@@ -57,49 +57,56 @@ DEFAULT_CONFIG = {
         "general": {"animal": "duck", "outfit": "aviator"}
     },
     "custom_keywords": {
-        "chef": [
-            "dinner", "lunch", "breakfast", "brunch", "restaurant", "pizza", "pizzeria", "sushi",
-            "barbecue", "bbq", "burger", "food", "eat", "dining", "cocktail", "drinks", "pub",
-            "cena", "pranzo", "colazione", "ristorante", "trattoria", "osteria", "aperitivo",
-            "apericena", "cibo", "mangiare", "pasticceria", "bar", "degustazione", "focaccia"
-        ],
-        "captain": [
-            "flight", "airplane", "airport", "boarding", "gate", "terminal", "train", "station",
-            "subway", "metro", "bus", "shuttle", "pullman", "ferry", "travel", "trip", "departure",
-            "volo", "aereo", "aeroporto", "imbarco", "partenza", "treno", "stazione", "ferrovia",
-            "frecciarossa", "italo", "regionale", "metropolitana", "navetta", "viaggio", "gita"
-        ],
-        "owl": [
+        "study": [
             "study", "studying", "homework", "assignment", "revision", "self-study", "exam",
             "test", "thesis", "library", "research", "lecture", "class", "course", "classroom",
             "studio", "studiare", "compiti", "ripasso", "esame", "esami", "tesi", "laurea",
             "lezione", "lezioni", "corso", "aula", "universit", "politecnico", "biblioteca"
         ],
-        "gym": [
+        "food": [
+            "dinner", "lunch", "breakfast", "brunch", "restaurant", "pizza", "pizzeria", "sushi",
+            "barbecue", "bbq", "burger", "food", "eat", "dining", "cocktail", "drinks", "pub",
+            "cena", "pranzo", "colazione", "ristorante", "trattoria", "osteria", "aperitivo",
+            "apericena", "cibo", "mangiare", "pasticceria", "bar", "degustazione", "focaccia"
+        ],
+        "travel": [
+            "flight", "airplane", "airport", "boarding", "gate", "terminal", "train", "station",
+            "subway", "metro", "bus", "shuttle", "pullman", "ferry", "travel", "trip", "departure",
+            "volo", "aereo", "aeroporto", "imbarco", "partenza", "treno", "stazione", "ferrovia",
+            "frecciarossa", "italo", "regionale", "metropolitana", "navetta", "viaggio", "gita"
+        ],
+        "sport": [
             "gym", "workout", "fitness", "training", "exercise", "crossfit", "weights", "cardio",
             "running", "swimming", "cycling", "yoga", "pilates", "football", "soccer", "tennis", "padel",
             "palestra", "allenamento", "pesi", "corsa", "nuoto", "piscina", "bici", "bicicletta",
             "calcio", "calcetto", "partita", "basket", "pallavolo", "tennis", "boxe", "atletica"
         ],
-        "driver": [
+        "in_person": [
             "doctor", "dr.", "dentist", "medical", "clinic", "hospital", "therapy", "checkup",
             "appointment", "consultation", "optician", "vet", "mechanic", "garage", "driving",
             "dottore", "medico", "visita", "dentista", "clinica", "ospedale", "controllo",
             "appuntamento", "consulenza", "oculista", "veterinario", "meccanico", "tagliando"
         ],
-        "zen_duck": [
+        "health": [
             "meditation", "mindfulness", "wellness", "relax", "spa", "massage", "sauna",
             "mental health", "serenis", "therapy", "calm", "meditazione", "benessere", "terme"
         ],
-        "platypus": [
-            "secret", "segreto", "mission", "missione", "spy", "spia", "agent", "agente",
-            "undercover", "in incognito", "confidential", "top secret", "perry", "classified"
-        ],
-        "squirrel": [
-            "brainstorm", "brainstorming", "idea", "quick", "sync", "flash", "agile",
-            "standup", "sprint", "retro", "hackathon", "nut", "squirrel", "allineamento", "confronto"
+        "general": [
+            "meeting", "sync", "catchup", "call", "riunione", "allineamento", "confronto"
         ]
     }
+}
+
+PILOT_TO_CATEGORY_MAP = {
+    "owl": "study",
+    "class": "study",
+    "exam": "study",
+    "chef": "food",
+    "captain": "travel",
+    "gym": "sport",
+    "driver": "in_person",
+    "zen_duck": "health",
+    "general": "general"
 }
 
 class ConfigService:
@@ -164,6 +171,78 @@ class ConfigService:
             subprocess.Popen(cmd)
         except Exception as e:
             logger.error(f"Error opening config editor: {e}")
+
+    def _normalize_category_key(self, key: Optional[str]) -> Optional[str]:
+        if not key:
+            return None
+        k = str(key).strip().lower()
+        return PILOT_TO_CATEGORY_MAP.get(k, k)
+
+    def get_custom_keywords(self, category_key: Optional[str] = None) -> Any:
+        """Returns the dictionary of custom keywords or the list for a specific category/pilot."""
+        kw_dict = self.get("custom_keywords", {})
+        if not isinstance(kw_dict, dict) or not kw_dict:
+            kw_dict = DEFAULT_CONFIG.get("custom_keywords", {})
+        if category_key:
+            norm_k = self._normalize_category_key(category_key)
+            if norm_k in kw_dict:
+                return list(kw_dict[norm_k])
+            if category_key in kw_dict:
+                return list(kw_dict[category_key])
+            defaults = DEFAULT_CONFIG.get("custom_keywords", {})
+            return list(defaults.get(norm_k, defaults.get(category_key, [])))
+        return {k: list(v) for k, v in kw_dict.items()}
+
+    def add_custom_keyword(self, category_key: str, keyword: str) -> bool:
+        """Adds a new keyword to a category/pilot, preventing duplicates."""
+        clean_kw = (keyword or "").strip().lower()
+        if not clean_kw:
+            return False
+        norm_k = self._normalize_category_key(category_key) or category_key
+        kw_dict = dict(self.get("custom_keywords", {}))
+        cat_list = list(kw_dict.get(norm_k, kw_dict.get(category_key, [])))
+        if clean_kw in [k.lower() for k in cat_list]:
+            return False
+        cat_list.append(clean_kw)
+        kw_dict[norm_k] = cat_list
+        if category_key != norm_k and category_key in kw_dict:
+            del kw_dict[category_key]
+        self.set("custom_keywords", kw_dict)
+        return True
+
+    def remove_custom_keyword(self, category_key: str, keyword: str) -> bool:
+        """Removes a keyword from a category/pilot."""
+        clean_kw = (keyword or "").strip().lower()
+        norm_k = self._normalize_category_key(category_key) or category_key
+        kw_dict = dict(self.get("custom_keywords", {}))
+        target_k = norm_k if norm_k in kw_dict else category_key
+        cat_list = list(kw_dict.get(target_k, []))
+        initial_len = len(cat_list)
+        cat_list = [k for k in cat_list if k.lower() != clean_kw]
+        if len(cat_list) == initial_len:
+            return False
+        kw_dict[target_k] = cat_list
+        self.set("custom_keywords", kw_dict)
+        return True
+
+    def reset_custom_keywords(self, category_key: Optional[str] = None) -> None:
+        """Resets custom keywords to default values."""
+        defaults = DEFAULT_CONFIG.get("custom_keywords", {})
+        if category_key:
+            norm_k = self._normalize_category_key(category_key) or category_key
+            kw_dict = dict(self.get("custom_keywords", {}))
+            kw_dict[norm_k] = list(defaults.get(norm_k, []))
+            if category_key != norm_k and category_key in kw_dict:
+                del kw_dict[category_key]
+            self.set("custom_keywords", kw_dict)
+        else:
+            self.set("custom_keywords", {k: list(v) for k, v in defaults.items()})
+
+    # Category-centric aliases
+    get_category_keywords = get_custom_keywords
+    add_category_keyword = add_custom_keyword
+    remove_category_keyword = remove_custom_keyword
+    reset_category_keywords = reset_custom_keywords
 
 def is_debug_mode() -> bool:
     """Returns True if debug mode is active via CLI flag, environment variable, or configuration."""

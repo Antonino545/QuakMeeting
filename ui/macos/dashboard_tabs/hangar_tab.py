@@ -177,9 +177,14 @@ class HangarTabController(AppKit.NSObject):
         self._cached_view = None
         self._cached_sig = None
         self._anim_timer = None
+        self.expanded_categories = set()
         self.mini_canvases = {}
         self.subtitle_labels = {}
         self.popups = {}
+        self.kw_toggle_buttons = {}
+        self.kw_doc_views = {}
+        self.kw_scrolls = {}
+        self.kw_inputs = {}
         return self
 
     @objc.python_method
@@ -216,12 +221,25 @@ class HangarTabController(AppKit.NSObject):
     @objc.python_method
     def render(self, container, w, h):
         self.dashboard_controller = container
+        if not hasattr(self, "expanded_categories") or self.expanded_categories is None:
+            self.expanded_categories = set()
         self.mini_canvases = {}
         self.subtitle_labels = {}
         self.popups = {}
+        self.kw_toggle_buttons = {}
+        self.kw_doc_views = {}
+        self.kw_scrolls = {}
+        self.kw_inputs = {}
 
         customs = config.get("mascot_customization", {})
-        sig = (round(w), round(h), str(customs), bool(config.get("force_default_pilot", False)), get_active_language())
+        sig = (
+            round(w),
+            round(h),
+            str(customs),
+            bool(config.get("force_default_pilot", False)),
+            get_active_language(),
+            tuple(sorted(self.expanded_categories)),
+        )
         if self._cached_view is not None and self._cached_sig == sig:
             self.start_animation_timer()
             return self._cached_view
@@ -230,12 +248,18 @@ class HangarTabController(AppKit.NSObject):
         scroll_view.setHasVerticalScroller_(True)
         scroll_view.setDrawsBackground_(False)
 
-        card_h = 100.0
-        gap = 12.0
+        card_base_h = 102.0
+        drawer_h = 144.0
+        gap = 14.0
         header_h = 52.0
         categories = get_categories()
         n_cards = len(categories)
-        content_h = max(h, 20.0 + header_h + 16.0 + n_cards * card_h + (n_cards - 1) * gap + 24.0)
+
+        total_cards_h = sum(
+            (card_base_h + drawer_h if cat_key in self.expanded_categories else card_base_h)
+            for cat_key, *_ in categories
+        )
+        content_h = max(h, 20.0 + header_h + 16.0 + total_cards_h + (n_cards - 1) * gap + 24.0)
         content_view = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 0, w - 16, content_h))
 
         # 1. Top Compact Toolbar
@@ -243,18 +267,45 @@ class HangarTabController(AppKit.NSObject):
         content_view.addSubview_(header_card)
 
         # 2. Category Cards
-        start_y = content_h - 20.0 - header_h - 16.0 - card_h
-        for idx, (cat_key, cat_title, cat_desc, fixed_outfit, def_animal, cat_color) in enumerate(categories):
-            c_y = start_y - idx * (card_h + gap)
+        cur_top = content_h - 20.0 - header_h - 16.0
+        for cat_key, cat_title, cat_desc, fixed_outfit, def_animal, cat_color in categories:
+            is_exp = cat_key in self.expanded_categories
+            this_card_h = (card_base_h + drawer_h) if is_exp else card_base_h
+            c_y = cur_top - this_card_h
+
             current_setting = customs.get(cat_key, {})
-            current_animal = current_setting.get("animal", def_animal) if isinstance(current_setting, dict) else (current_setting or def_animal)
+            current_animal = (
+                current_setting.get("animal", def_animal)
+                if isinstance(current_setting, dict)
+                else (current_setting or def_animal)
+            )
+
             card = self._create_customizer_card(
-                cat_key, cat_title, cat_desc, fixed_outfit, current_animal, cat_color,
-                20, c_y, w - 56, card_h
+                cat_key,
+                cat_title,
+                cat_desc,
+                fixed_outfit,
+                current_animal,
+                cat_color,
+                20,
+                c_y,
+                w - 56,
+                this_card_h,
+                is_exp,
+                drawer_h,
             )
             content_view.addSubview_(card)
+            cur_top = c_y - gap
 
         scroll_view.setDocumentView_(content_view)
+        if scroll_view.contentView():
+            if hasattr(self, "_saved_dist_from_top") and self._saved_dist_from_top is not None:
+                target_y = max(0.0, min(content_h - h, content_h - h - self._saved_dist_from_top))
+            else:
+                target_y = max(0.0, content_h - h)
+            scroll_view.contentView().scrollToPoint_(AppKit.NSMakePoint(0, target_y))
+            scroll_view.reflectScrolledClipView_(scroll_view.contentView())
+
         self._cached_view = scroll_view
         self._cached_sig = sig
         self.start_animation_timer()
@@ -327,43 +378,61 @@ class HangarTabController(AppKit.NSObject):
         return container
 
     @objc.python_method
-    def _create_customizer_card(self, cat_key, cat_title, cat_desc, fixed_outfit, cur_animal, accent_color, x, y, w, h):
+    def _create_customizer_card(
+        self,
+        cat_key,
+        cat_title,
+        cat_desc,
+        fixed_outfit,
+        cur_animal,
+        accent_color,
+        x,
+        y,
+        w,
+        h,
+        is_expanded,
+        drawer_h,
+    ):
         card = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(x, y, w, h))
         card.setWantsLayer_(True)
-        card.layer().setBackgroundColor_(Theme.BASE.CGColor())
+        card.layer().setBackgroundColor_((Theme.MANTLE if is_expanded else Theme.BASE).CGColor())
         card.layer().setCornerRadius_(12.0)
         card.layer().setMasksToBounds_(True)
-        card.layer().setBorderWidth_(1.0)
-        card.layer().setBorderColor_(Theme.SURFACE0.CGColor())
+        card.layer().setBorderWidth_(1.5 if is_expanded else 1.0)
+        card.layer().setBorderColor_((accent_color if is_expanded else Theme.SURFACE0).CGColor())
 
-        # Category Accent Pill Indicator
-        pill = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(12, (h - 44) * 0.5, 4, 44))
+        # ── Upper section (always 102px tall) ──
+        upper_y = drawer_h if is_expanded else 0.0
+        upper_view = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(0, upper_y, w, 102.0))
+        card.addSubview_(upper_view)
+
+        # Accent Pill Indicator
+        pill = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(12, 24, 4, 54))
         pill.setWantsLayer_(True)
         pill.layer().setBackgroundColor_(accent_color.CGColor())
         pill.layer().setCornerRadius_(2.0)
-        card.addSubview_(pill)
+        upper_view.addSubview_(pill)
 
-        # 🌟 Embedded Live Mini Mascot Viewport (Left side of card)
+        # 🌟 Embedded Live Mini Mascot Viewport
         mini_canvas = MascotMiniCanvasView.alloc().initWithFrame_animal_outfit_(
-            AppKit.NSMakeRect(22, (h - 68) * 0.5, 74, 68),
-            cur_animal, fixed_outfit
+            AppKit.NSMakeRect(22, 16, 74, 68), cur_animal, fixed_outfit
         )
         self.mini_canvases[cat_key] = mini_canvas
-        card.addSubview_(mini_canvas)
+        upper_view.addSubview_(mini_canvas)
 
         # Title and Description
-        text_w = max(240.0, w - 380.0)
-        title_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(106, h - 36, text_w, 24))
+        text_w = max(240.0, w - 316.0)
+        title_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(106, 64, text_w, 24))
         title_lbl.setStringValue_(cat_title)
         title_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(13))
         title_lbl.setTextColor_(Theme.TEXT)
         title_lbl.setBezeled_(False)
         title_lbl.setDrawsBackground_(False)
         title_lbl.setEditable_(False)
-        card.addSubview_(title_lbl)
+        upper_view.addSubview_(title_lbl)
 
         combo_name = get_combo_title(cur_animal, fixed_outfit)
-        sub_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(106, 8, text_w, 48))
+        sub_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(106, 12, text_w, 50))
         sub_lbl.setStringValue_(f"{cat_desc}\n✨ {t('hangar_active_pilot_label')}: {combo_name}")
         sub_lbl.setFont_(AppKit.NSFont.systemFontOfSize_(10.5))
         sub_lbl.setTextColor_(Theme.SUBTEXT0)
@@ -373,24 +442,22 @@ class HangarTabController(AppKit.NSObject):
         sub_lbl.cell().setWraps_(True)
         sub_lbl.setUsesSingleLineMode_(False)
         self.subtitle_labels[cat_key] = (sub_lbl, cat_desc, fixed_outfit)
-        card.addSubview_(sub_lbl)
+        upper_view.addSubview_(sub_lbl)
 
-        # Align Animal Selector Popup and Test Flight Button on the exact same baseline
-        ctrl_h = 32.0
-        ctrl_y = (h - ctrl_h) * 0.5 - 2.0
-
-        animal_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(w - 262, ctrl_y + ctrl_h + 4.0, 150, 16))
+        # Controls on Right
+        # Row 1: Mascot Selector (Label stacked cleanly above Popup)
+        animal_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(w - 186, 78, 170, 16))
         animal_lbl.setStringValue_(t("hangar_animal_mascot"))
         animal_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(10.5))
         animal_lbl.setTextColor_(Theme.SUBTEXT1)
         animal_lbl.setBezeled_(False)
         animal_lbl.setDrawsBackground_(False)
         animal_lbl.setEditable_(False)
-        card.addSubview_(animal_lbl)
+        upper_view.addSubview_(animal_lbl)
 
         animals = get_animals()
         animal_popup = AppKit.NSPopUpButton.alloc().initWithFrame_pullsDown_(
-            AppKit.NSMakeRect(w - 262, ctrl_y, 150, ctrl_h), False
+            AppKit.NSMakeRect(w - 188, 50, 172, 28), False
         )
         for a_id, a_label in animals:
             animal_popup.addItemWithTitle_(a_label)
@@ -400,25 +467,306 @@ class HangarTabController(AppKit.NSObject):
         animal_popup.setTarget_(self)
         animal_popup.setAction_("onAnimalSelectionChanged:")
         self.popups[cat_key] = animal_popup
-        card.addSubview_(animal_popup)
+        upper_view.addSubview_(animal_popup)
 
-        # Test Flight Button (aligned horizontally to animal_popup)
+        # Row 2: Keywords Toggle Button & Test Button
+        kw_count = len(config.get_custom_keywords(cat_key))
+        toggle_title = t(
+            "hangar_keywords_toggle_btn_open" if is_expanded else "hangar_keywords_toggle_btn",
+            count=kw_count,
+        )
+        kw_toggle_btn = Theme.create_button(
+            AppKit.NSMakeRect(w - 192, 14, 114, 28),
+            title=toggle_title,
+            bg_color=Theme.SURFACE1 if is_expanded else Theme.SURFACE0,
+            text_color=Theme.TEXT if is_expanded else Theme.SUBTEXT1,
+            border_color=Theme.BLUE if is_expanded else Theme.SURFACE1,
+            corner_radius=6.0,
+            font_size=11.0,
+            bold=is_expanded,
+        )
+        kw_toggle_btn.setIdentifier_(cat_key)
+        kw_toggle_btn.setTarget_(self)
+        kw_toggle_btn.setAction_("onToggleKeywordsDrawer:")
+        self.kw_toggle_buttons[cat_key] = kw_toggle_btn
+        upper_view.addSubview_(kw_toggle_btn)
+
         test_btn = Theme.create_button(
-            AppKit.NSMakeRect(w - 104, ctrl_y, 90, ctrl_h),
+            AppKit.NSMakeRect(w - 74, 14, 60, 28),
             title=t("hangar_test_btn"),
             bg_color=accent_color,
             text_color=Theme.CRUST,
             border_color=None,
-            corner_radius=7.0,
+            corner_radius=6.0,
             font_size=11.5,
-            bold=True
+            bold=True,
         )
         test_btn.setIdentifier_(cat_key)
         test_btn.setTarget_(self)
         test_btn.setAction_("onTestCustomCategoryFlight:")
-        card.addSubview_(test_btn)
+        upper_view.addSubview_(test_btn)
 
+        if not is_expanded:
+            return card
+
+        # ── Expanded Drawer (height: drawer_h = 144px) ──
+        # Hairline divider
+        div = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(16, drawer_h - 1.0, w - 32.0, 1))
+        div.setWantsLayer_(True)
+        div.layer().setBackgroundColor_(Theme.SURFACE0.CGColor())
+        card.addSubview_(div)
+
+        drawer_view = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 0, w, drawer_h))
+        card.addSubview_(drawer_view)
+
+        # Drawer Guidance Subtitle
+        guide_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, 116, w - 36, 18))
+        guide_lbl.setStringValue_(t("hangar_keywords_drawer_subtitle"))
+        guide_lbl.setFont_(AppKit.NSFont.systemFontOfSize_(10.5))
+        guide_lbl.setTextColor_(Theme.SUBTEXT0)
+        guide_lbl.setBezeled_(False)
+        guide_lbl.setDrawsBackground_(False)
+        guide_lbl.setEditable_(False)
+        drawer_view.addSubview_(guide_lbl)
+
+        # Keywords Scroll Area
+        kw_scroll = AppKit.NSScrollView.alloc().initWithFrame_(AppKit.NSMakeRect(18, 44, w - 36, 64))
+        kw_scroll.setHasHorizontalScroller_(True)
+        kw_scroll.setHasVerticalScroller_(False)
+        kw_scroll.setAutohidesScrollers_(True)
+        kw_scroll.setDrawsBackground_(False)
+
+        kw_doc = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 0, w - 36, 56))
+        kw_scroll.setDocumentView_(kw_doc)
+        drawer_view.addSubview_(kw_scroll)
+        self.kw_doc_views[cat_key] = kw_doc
+        self.kw_scrolls[cat_key] = kw_scroll
+
+        # Bottom Action Bar
+        kw_input = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, 10, 160, 26))
+        kw_input.setPlaceholderString_(t("hangar_keywords_add_placeholder"))
+        kw_input.setFont_(AppKit.NSFont.systemFontOfSize_(11.0))
+        kw_input.setTextColor_(Theme.TEXT)
+        kw_input.setWantsLayer_(True)
+        kw_input.layer().setCornerRadius_(5.0)
+        kw_input.setBackgroundColor_(Theme.CRUST)
+        kw_input.setDrawsBackground_(True)
+        kw_input.layer().setBorderWidth_(1.0)
+        kw_input.layer().setBorderColor_(Theme.SURFACE0.CGColor())
+        kw_input.setFocusRingType_(AppKit.NSFocusRingTypeNone)
+        kw_input.setIdentifier_(cat_key)
+        kw_input.setTarget_(self)
+        kw_input.setAction_("onAddCategoryKeyword:")
+        self.kw_inputs[cat_key] = kw_input
+        drawer_view.addSubview_(kw_input)
+
+        add_btn = Theme.create_button(
+            AppKit.NSMakeRect(184, 10, 60, 26),
+            title=t("hangar_keywords_add_btn"),
+            bg_color=Theme.GREEN,
+            text_color=Theme.CRUST,
+            border_color=None,
+            corner_radius=5.0,
+            font_size=10.5,
+            bold=True,
+        )
+        add_btn.setIdentifier_(cat_key)
+        add_btn.setTarget_(self)
+        add_btn.setAction_("onAddCategoryKeyword:")
+        drawer_view.addSubview_(add_btn)
+
+        reset_btn = Theme.create_button(
+            AppKit.NSMakeRect(250, 10, 76, 26),
+            title=t("hangar_keywords_reset_btn"),
+            bg_color=Theme.SURFACE1,
+            text_color=Theme.SUBTEXT1,
+            border_color=Theme.SURFACE2,
+            corner_radius=5.0,
+            font_size=10.5,
+            bold=False,
+        )
+        reset_btn.setIdentifier_(cat_key)
+        reset_btn.setToolTip_(t("hangar_keywords_reset_btn"))
+        reset_btn.setTarget_(self)
+        reset_btn.setAction_("onResetCategoryKeywords:")
+        drawer_view.addSubview_(reset_btn)
+
+        hide_btn = Theme.create_button(
+            AppKit.NSMakeRect(w - 92, 10, 76, 26),
+            title=t("hangar_keywords_drawer_hide"),
+            bg_color=Theme.SURFACE0,
+            text_color=Theme.SUBTEXT0,
+            border_color=Theme.SURFACE1,
+            corner_radius=5.0,
+            font_size=10.5,
+            bold=False,
+        )
+        hide_btn.setIdentifier_(cat_key)
+        hide_btn.setTarget_(self)
+        hide_btn.setAction_("onToggleKeywordsDrawer:")
+        drawer_view.addSubview_(hide_btn)
+
+        self._render_category_keywords(cat_key)
         return card
+
+    @objc.python_method
+    def _render_category_keywords(self, cat_key: str):
+        doc_view = self.kw_doc_views.get(cat_key)
+        scroll_view = self.kw_scrolls.get(cat_key)
+        if not doc_view or not scroll_view:
+            return
+
+        for sub in list(doc_view.subviews()):
+            sub.removeFromSuperview()
+
+        keywords = config.get_custom_keywords(cat_key)
+
+        # Update toggle button title if present
+        if cat_key in self.kw_toggle_buttons:
+            is_exp = cat_key in self.expanded_categories
+            self.kw_toggle_buttons[cat_key].setTitle_(
+                t(
+                    "hangar_keywords_toggle_btn_open" if is_exp else "hangar_keywords_toggle_btn",
+                    count=len(keywords),
+                )
+            )
+
+        if not keywords:
+            empty_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(10, 18, 300, 18))
+            empty_lbl.setStringValue_("No trigger keywords. Add keywords below.")
+            empty_lbl.setFont_(AppKit.NSFont.systemFontOfSize_(10.5))
+            empty_lbl.setTextColor_(Theme.SUBTEXT0)
+            empty_lbl.setBezeled_(False)
+            empty_lbl.setDrawsBackground_(False)
+            empty_lbl.setEditable_(False)
+            doc_view.addSubview_(empty_lbl)
+            doc_view.setFrame_(AppKit.NSMakeRect(0, 0, 320, 56.0))
+            return
+
+        # 2-Row alternating layout for keywords inside the 56px canvas
+        chip_h = 24.0
+        gap_x = 6.0
+        x1 = 6.0
+        x2 = 6.0
+
+        for i, kw in enumerate(keywords):
+            kw_w = max(44.0, min(140.0, len(kw) * 6.8 + 26.0))
+            if i % 2 == 0:
+                y = 30.0
+                x = x1
+                x1 += kw_w + gap_x
+            else:
+                y = 4.0
+                x = x2
+                x2 += kw_w + gap_x
+
+            chip_view = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(x, y, kw_w, chip_h))
+            chip_view.setWantsLayer_(True)
+            chip_view.layer().setBackgroundColor_(Theme.SURFACE1.CGColor())
+            chip_view.layer().setCornerRadius_(5.0)
+            chip_view.layer().setBorderWidth_(1.0)
+            chip_view.layer().setBorderColor_(Theme.SURFACE2.CGColor())
+
+            lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(6, 2, kw_w - 22, 18))
+            lbl.setStringValue_(kw)
+            lbl.setFont_(AppKit.NSFont.systemFontOfSize_weight_(10.5, AppKit.NSFontWeightMedium))
+            lbl.setTextColor_(Theme.TEXT)
+            lbl.setBezeled_(False)
+            lbl.setDrawsBackground_(False)
+            lbl.setEditable_(False)
+            chip_view.addSubview_(lbl)
+
+            del_btn = AppKit.NSButton.alloc().initWithFrame_(AppKit.NSMakeRect(kw_w - 18, 2, 14, 18))
+            del_btn.setTitle_("✕")
+            del_btn.setBordered_(False)
+            del_btn.setFocusRingType_(AppKit.NSFocusRingTypeNone)
+            del_btn.setToolTip_(f"{cat_key}:::{kw}")
+            del_btn.setTarget_(self)
+            del_btn.setAction_("onRemoveCategoryKeyword:")
+            del_btn.setWantsLayer_(True)
+            del_btn.layer().setBackgroundColor_(AppKit.NSColor.clearColor().CGColor())
+
+            pstyle_del = AppKit.NSMutableParagraphStyle.alloc().init()
+            pstyle_del.setAlignment_(AppKit.NSTextAlignmentCenter)
+            del_attrs = {
+                AppKit.NSFontAttributeName: AppKit.NSFont.boldSystemFontOfSize_(9.5),
+                AppKit.NSForegroundColorAttributeName: Theme.RED,
+                AppKit.NSParagraphStyleAttributeName: pstyle_del,
+            }
+            del_btn.setAttributedTitle_(AppKit.NSAttributedString.alloc().initWithString_attributes_("✕", del_attrs))
+            chip_view.addSubview_(del_btn)
+
+            doc_view.addSubview_(chip_view)
+
+        total_w = max(scroll_view.frame().size.width, max(x1, x2) + 12.0)
+        doc_view.setFrame_(AppKit.NSMakeRect(0, 0, total_w, 56.0))
+
+    @objc.IBAction
+    def onToggleKeywordsDrawer_(self, sender):
+        cat_key = str(sender.identifier())
+        if not hasattr(self, "expanded_categories") or self.expanded_categories is None:
+            self.expanded_categories = set()
+
+        # Save scroll distance from top before refreshing
+        if self._cached_view and self._cached_view.contentView() and self._cached_view.documentView():
+            old_doc_h = self._cached_view.documentView().frame().size.height
+            clip_y = self._cached_view.contentView().bounds().origin.y
+            clip_h = self._cached_view.contentView().bounds().size.height
+            self._saved_dist_from_top = max(0.0, old_doc_h - (clip_y + clip_h))
+
+        if cat_key in self.expanded_categories:
+            self.expanded_categories.remove(cat_key)
+        else:
+            self.expanded_categories.add(cat_key)
+        self.invalidate_cache()
+        if self.dashboard_controller and hasattr(self.dashboard_controller, "refresh_current_tab"):
+            self.dashboard_controller.refresh_current_tab()
+
+    @objc.IBAction
+    def onAddCategoryKeyword_(self, sender):
+        cat_key = str(sender.identifier())
+        kw_input = self.kw_inputs.get(cat_key)
+        if not kw_input:
+            return
+        raw_val = (kw_input.stringValue() or "").strip()
+        if not raw_val:
+            return
+        # Support batch comma-separated keywords: "padel, tennis, workout"
+        tokens = [t.strip() for t in raw_val.split(",") if t.strip()]
+        any_success = False
+        for token in tokens:
+            if config.add_custom_keyword(cat_key, token):
+                any_success = True
+        if any_success:
+            kw_input.setStringValue_("")
+            try:
+                event_bus.publish("CONFIG_CHANGED", key="custom_keywords", value=config.get_custom_keywords())
+            except Exception:
+                pass
+            self._render_category_keywords(cat_key)
+
+    @objc.IBAction
+    def onRemoveCategoryKeyword_(self, sender):
+        tip = str(sender.toolTip() or "")
+        if ":::" not in tip:
+            return
+        cat_key, kw = tip.split(":::", 1)
+        config.remove_custom_keyword(cat_key, kw)
+        try:
+            event_bus.publish("CONFIG_CHANGED", key="custom_keywords", value=config.get_custom_keywords())
+        except Exception:
+            pass
+        self._render_category_keywords(cat_key)
+
+    @objc.IBAction
+    def onResetCategoryKeywords_(self, sender):
+        cat_key = str(sender.identifier())
+        config.reset_custom_keywords(cat_key)
+        try:
+            event_bus.publish("CONFIG_CHANGED", key="custom_keywords", value=config.get_custom_keywords())
+        except Exception:
+            pass
+        self._render_category_keywords(cat_key)
 
     @objc.IBAction
     def onAnimalSelectionChanged_(self, sender):
