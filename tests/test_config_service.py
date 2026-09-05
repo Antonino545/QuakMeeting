@@ -8,7 +8,8 @@ class TestConfigService(unittest.TestCase):
         self.assertIsNotNone(cfg.get("travel_reminder_stages"))
         self.assertIsNotNone(cfg.get("flight_speed"))
         self.assertTrue(cfg.get("mute_during_lessons"))
-        self.assertIn("chef", cfg.get("custom_keywords"))
+        self.assertIn("food", cfg.get("custom_keywords"))
+        self.assertEqual(cfg.get_custom_keywords("chef"), cfg.get_custom_keywords("food"))
 
     def test_get_with_fallback(self):
         cfg = ConfigService()
