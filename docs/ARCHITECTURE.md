@@ -72,6 +72,7 @@ Data ingestion layer fetching events from various platforms.
 Orchestrates business use cases.
 - **`calendar_service.py`**: Filters events strictly for **Today**, performs smart multi-calendar deduplication for exams and lectures, manages the on-disk JSON cache, and enriches travel events with transit/driving ETA from home or default exam locations.
 - **`reminder_engine.py`**: Evaluates when to fire notifications. It differentiates between standard events (fires relative to `start_time`) and travel events (fires relative to `departure_time`).
+- **`address_service.py`**: Centralized address search, live autocomplete, and geocoding validation service querying OpenStreetMap Nominatim with Photon fallback, disk/memory caching (`address_cache.json`), and platform map deep links.
 - **`eta_service.py`**: Calculates multi-modal travel times and builds Apple Maps / Google Maps deep links. On macOS, queries Apple's native `MKDirections` (MapKit) for live transit timetables and traffic-aware driving durations; on Linux/Ubuntu, queries open-source OpenStreetMap / OSRM routing networks (`routed-car`, `routed-bike`, `routed-foot`, and calibrated transit models) with offline Haversine fallback.
 - **`event_bus.py`**: Decouples UI updates from background logic. Components publish events (e.g., `CALENDAR_UPDATED`, `CONFIG_CHANGED`) that the UI subscribes to.
 - **`updater_service.py`**: Checks GitHub Releases for new releases, fetches platform packages (.dmg/.zip on macOS, .deb on Ubuntu), performs in-place upgrades, and publishes update progress events.
@@ -81,6 +82,10 @@ Orchestrates business use cases.
 
 ### 4. UI Layer (`ui/`)
 Cross-platform presentation layer structured by operating system:
+- **`ui/macos/components/`**: Reusable AppKit components:
+  - **`address_autocomplete_view.py`**: Generic `NSView` providing debounced keystroke search (350ms), floating `NSPopover` candidate list, verification status badges (`🟢 Verified`), manual check button, and native Apple Maps links.
+- **`ui/linux/components/`**: Reusable PyQt6 components:
+  - **`address_autocomplete_widget.py`**: Generic `QWidget` providing debounced `QTimer` search, popup `QListWidget` suggestions, canonical address badges, and browser map preview links.
 - **`ui/common/`**: Platform-independent design tokens and view logic:
   - **`theme.py`**: Central single-source-of-truth **Catppuccin Mocha** color palette (`Crust`, `Mantle`, `Base`, `Surface0/1/2`, `Text`, `Subtext0/1`, `Mauve`, `Blue`, `Sapphire`, `Green`, `Peach`, `Red`, `Yellow`, `Teal`) and pilot theme token maps.
   - **`tray_viewmodel.py`**: Shared tray status logic and countdown string formatting.

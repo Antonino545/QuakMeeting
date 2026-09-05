@@ -41,21 +41,16 @@ APPLE_MAPS_FLAGS = {
     "bicycling": "b"     # Biking
 }
 
-def validate_address(address: str) -> Tuple[bool, Optional[str]]:
+def validate_address(address: str, city_context: Optional[str] = None) -> Tuple[bool, Optional[str]]:
     """
-    Validates departure/destination address format.
+    Validates departure/destination address format via AddressService.
     Returns (is_valid, error_code).
-    Accepts street addresses, landmarks, campus names, or cities (e.g. 'Via Roma 10, Torino', 'Piazza Castello', 'Politecnico di Torino').
     Empty address is considered valid (clears departure address).
     """
-    if not address or not address.strip():
-        return True, None
+    from core.services.address_service import address_service
+    is_valid, _cand, err = address_service.verify_address(address, city_context=city_context)
+    return is_valid, err
 
-    clean = address.strip()
-    if len(clean) < 2:
-        return False, "too_short"
-
-    return True, None
 
 class ETAService:
     """Calculates multi-modal route durations and builds Apple Maps navigation links."""

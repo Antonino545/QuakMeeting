@@ -36,6 +36,8 @@ class DashboardWindowDelegate(AppKit.NSObject):
 
     def windowShouldClose_(self, sender):
         if self.controller:
+            if hasattr(self.controller, "hangar_tab") and hasattr(self.controller.hangar_tab, "stop_animation_timer"):
+                self.controller.hangar_tab.stop_animation_timer()
             self.controller.window.orderOut_(None)
         else:
             sender.orderOut_(None)
@@ -430,6 +432,9 @@ class DashboardWindowController(AppKit.NSObject):
 
         for sub in list(self.content_container.subviews()):
             sub.removeFromSuperview()
+
+        if self.current_tab != 1 and hasattr(self.hangar_tab, "stop_animation_timer"):
+            self.hangar_tab.stop_animation_timer()
 
         cw = self.content_container.frame().size.width
         ch = self.content_container.frame().size.height

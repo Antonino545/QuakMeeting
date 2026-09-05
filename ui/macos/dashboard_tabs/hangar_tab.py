@@ -176,13 +176,40 @@ class HangarTabController(AppKit.NSObject):
         self.dashboard_controller = None
         self._cached_view = None
         self._cached_sig = None
+        self._anim_timer = None
         self.mini_canvases = {}
         self.subtitle_labels = {}
         self.popups = {}
         return self
 
     @objc.python_method
+    def start_animation_timer(self):
+        if self._anim_timer is None:
+            self._anim_timer = AppKit.NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
+                0.04, self, "onAnimTick:", None, True
+            )
+            AppKit.NSRunLoop.mainRunLoop().addTimer_forMode_(self._anim_timer, AppKit.NSRunLoopCommonModes)
+
+    @objc.python_method
+    def stop_animation_timer(self):
+        if self._anim_timer is not None:
+            self._anim_timer.invalidate()
+            self._anim_timer = None
+
+    @objc.IBAction
+    def onAnimTick_(self, sender):
+        if not self._cached_view:
+            return
+        w = self._cached_view.window()
+        if not w or not w.isVisible():
+            return
+        for canvas in list(self.mini_canvases.values()):
+            canvas.tick += 1
+            canvas.setNeedsDisplay_(True)
+
+    @objc.python_method
     def invalidate_cache(self):
+        self.stop_animation_timer()
         self._cached_view = None
         self._cached_sig = None
 
@@ -196,6 +223,7 @@ class HangarTabController(AppKit.NSObject):
         customs = config.get("mascot_customization", {})
         sig = (round(w), round(h), str(customs), bool(config.get("force_default_pilot", False)), get_active_language())
         if self._cached_view is not None and self._cached_sig == sig:
+            self.start_animation_timer()
             return self._cached_view
 
         scroll_view = AppKit.NSScrollView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 0, w, h))
@@ -229,6 +257,7 @@ class HangarTabController(AppKit.NSObject):
         scroll_view.setDocumentView_(content_view)
         self._cached_view = scroll_view
         self._cached_sig = sig
+        self.start_animation_timer()
         return scroll_view
 
     @objc.python_method
@@ -242,7 +271,8 @@ class HangarTabController(AppKit.NSObject):
         container.layer().setBorderColor_(Theme.SURFACE0.CGColor())
 
         # Title on Left
-        title_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, (h - 22) * 0.5, 360, 22))
+        title_w = max(240.0, w - 380.0)
+        title_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, (h - 22) * 0.5, title_w, 22))
         title_lbl.setStringValue_(t("hangar_header_title"))
         title_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(13.5))
         title_lbl.setTextColor_(Theme.TEXT)
@@ -251,9 +281,23 @@ class HangarTabController(AppKit.NSObject):
         title_lbl.setEditable_(False)
         container.addSubview_(title_lbl)
 
-        # Actions on Right: Surprise Me, Reset Presets
+        # Actions on Right: Test Chime, Surprise Me, Reset Presets
+        chime_btn = Theme.create_button(
+            AppKit.NSMakeRect(w - 364, (h - 28) * 0.5, 110, 28),
+            title=t("hangar_test_chime"),
+            bg_color=Theme.SURFACE0,
+            text_color=Theme.TEXT,
+            border_color=Theme.SURFACE1,
+            corner_radius=6.0,
+            font_size=11.0,
+            bold=False
+        )
+        chime_btn.setTarget_(self)
+        chime_btn.setAction_("onTestChime:")
+        container.addSubview_(chime_btn)
+
         surprise_btn = Theme.create_button(
-            AppKit.NSMakeRect(w - 248, (h - 28) * 0.5, 114, 28),
+            AppKit.NSMakeRect(w - 246, (h - 28) * 0.5, 114, 28),
             title=t("hangar_surprise_me"),
             bg_color=Theme.SURFACE0,
             text_color=Theme.TEXT,
@@ -267,7 +311,7 @@ class HangarTabController(AppKit.NSObject):
         container.addSubview_(surprise_btn)
 
         reset_btn = Theme.create_button(
-            AppKit.NSMakeRect(w - 126, (h - 28) * 0.5, 114, 28),
+            AppKit.NSMakeRect(w - 124, (h - 28) * 0.5, 114, 28),
             title=t("hangar_reset_presets"),
             bg_color=Theme.SURFACE0,
             text_color=Theme.SUBTEXT0,
@@ -465,7 +509,15 @@ class HangarTabController(AppKit.NSObject):
             self.dashboard_controller.refresh_current_tab()
 
     @objc.IBAction
+    def onTestChime_(self, sender):
+        from core.services.sound_service import play_test_chime
+        play_test_chime()
+
+    @objc.IBAction
     def onTestCustomCategoryFlight_(self, sender):
+        from core.services.sound_service import play_test_chime
+        play_test_chime()
+
         cat_key = str(sender.identifier())
         customs = config.get("mascot_customization", {})
         setting = customs.get(cat_key, {})
