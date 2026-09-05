@@ -32,7 +32,8 @@ class QuakPitFlyingBanner(AppKit.NSObject):
         self.is_paused = False
         self.is_quiet = bool(meeting_data.get("is_quiet_reminder", False))
         self.is_update = bool(meeting_data.get("is_update_banner", False))
-        self.action_url = meeting_data.get("action_url") or meeting_data.get("meeting_url")
+        self.action_url = meeting_data.get("action_url") or meeting_data.get("meeting_url") or meeting_data.get("maps_url")
+        self._esc_monitor = None
         return self
 
     def show(self) -> None:
@@ -180,6 +181,17 @@ class QuakPitFlyingBanner(AppKit.NSObject):
         )
         AppKit.NSRunLoop.currentRunLoop().addTimer_forMode_(self.timer, AppKit.NSRunLoopCommonModes)
 
+        def _esc_key_monitor(event):
+            if event.keyCode() == 53:  # Escape
+                self.dismiss()
+                return None
+            return event
+
+        self._esc_monitor = AppKit.NSEvent.addLocalMonitorForEventsMatchingMask_handler_(
+            AppKit.NSEventMaskKeyDown,
+            _esc_key_monitor
+        )
+
     def play_chime(self) -> None:
         if self.is_quiet:
             return
@@ -208,12 +220,19 @@ class QuakPitFlyingBanner(AppKit.NSObject):
             if isinstance(self.meeting_data, Meeting):
                 m_id = self.meeting_data.id
             else:
-                m_title = self.meeting_data.get("title", "")
-                m_start = self.meeting_data.get("start_time")
-                time_str = m_start.strftime("%Y%m%d%H%M") if hasattr(m_start, "strftime") else "000000000000"
-                m_id = f"{m_title}_{time_str}"
+                m_id = str(self.meeting_data.get("id") or self.meeting_data.get("uid") or "")
+                if not m_id:
+                    m_title = self.meeting_data.get("title", "")
+                    m_start = self.meeting_data.get("start_time")
+                    time_str = m_start.strftime("%Y%m%d%H%M") if hasattr(m_start, "strftime") else "000000000000"
+                    m_id = f"{m_title}_{time_str}"
             reminder_engine.mark_arrived(m_id)
             banner_history_store.record_action(m_id, "arrived")
+            try:
+                from core.services.event_bus import event_bus
+                event_bus.publish("MARK_ARRIVED", meeting_id=m_id)
+            except Exception:
+                pass
         except Exception as e:
             logger.error(f"Error marking arrived: {e}")
         self.dismiss()
@@ -270,6 +289,9 @@ class QuakPitFlyingBanner(AppKit.NSObject):
         if self.timer:
             self.timer.invalidate()
             self.timer = None
+        if self._esc_monitor:
+            AppKit.NSEvent.removeMonitor_(self._esc_monitor)
+            self._esc_monitor = None
         if self.window:
             self.window.orderOut_(None)
             self.window = None

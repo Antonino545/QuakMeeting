@@ -47,6 +47,10 @@ class ChefPilotRenderer(BasePilotRenderer):
         AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.48, 0.02, 1.0).set()
         beak_path.fill()
 
+        # Narice
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.68, 0.25, 0.01, 0.85).set()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 7.5, py + 9.5, 1.4, 1.1)).fill()
+
         # 3. Bandana Rossa al collo con pois bianchi
         bandana = AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 6, py - 2, 14, 8))
         AppKit.NSColor.colorWithRed_green_blue_alpha_(0.92, 0.18, 0.18, 1.0).set()

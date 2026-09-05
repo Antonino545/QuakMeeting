@@ -31,7 +31,7 @@ def get_pilot_renderer(pilot_type: str, animal: str = None, outfit: str = None) 
 
     if "_" in pilot_type and pilot_type not in ("zen_duck",):
         parts = pilot_type.split("_", 1)
-        if parts[0] in ("duck", "owl", "bunny"):
+        if parts[0] in ("duck", "owl", "bunny", "platypus", "squirrel"):
             return ModularPilotRenderer(animal=parts[0], outfit=parts[1])
 
     if pilot_type == "bunny":

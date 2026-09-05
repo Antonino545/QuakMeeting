@@ -25,6 +25,10 @@ Instead of tiny, easily-missed system notification banners, QuakMeeting animates
 - **macOS**: Built with native **AppKit / Quartz 2D** with frosted glass cards, smooth 60fps animations, and in-process runtime.
 - **Ubuntu Linux (Wayland & X11)**: Native **PyQt6** animated overlay banner with solid Catppuccin cards and **GNOME AppIndicator3** status item.
 
+<div align="center">
+  <img src="assets/animations/banner_flight.gif" width="85%" alt="QuakMeeting Interactive HUD Banner in Flight" />
+</div>
+
 ---
 
 ## ✨ Key Features
@@ -54,17 +58,22 @@ Instead of tiny, easily-missed system notification banners, QuakMeeting animates
 
 ## 🦆 Mascot Animal Roster & Pilot Personas
 
-QuakMeeting features a diverse crew of animal pilots automatically chosen based on event classification:
+QuakMeeting features a diverse crew of animal pilots automatically chosen based on event classification. Each pilot features dynamic flight physics including high-RPM spinning propellers, wingtip navigation strobe beacons, vertical wave bobbing, blinking expressions, and fluttering accessories in the slipstream:
 
-| Mascot Animal | Persona | Accent Color | Triggers & Context | 1-Click Action |
-| :--- | :--- | :--- | :--- | :--- |
-| 🦆 **Mallard Duck** | **Aviator Pilot** | Catppuccin Green | Google Meet, Zoom, MS Teams, Webex, Online calls | `[🚀 JOIN MEETING]` |
-| 🦉 **Wise Owl** | **Academic Scholar** | Catppuccin Mauve | University lectures, exams, campus study, research | `[📚 CLASSROOM & NOTES]` |
-| 🐰 **Athletic Bunny** | **Gym & Sport Hero** | Catppuccin Red | Palestra, Gym, CrossFit, Padel, Tennis, Football, Running | `[🗺️ GYM DIRECTIONS]` |
-| 🐿️ **Gourmet Squirrel** | **Chef & Foodie** | Catppuccin Peach | Dinner, Lunch, Restaurant, Pizzeria, Sushi, Cooking | `[🗺️ RESTAURANT MAPS]` |
-| 🦔 **Zen Platypus** | **Mindfulness Guru** | Catppuccin Teal | Serenis, Therapy, Yoga, Wellness, Meditation | `[🛋️ JOIN SESSION]` |
-| 🧑‍✈️ **Captain Duck** | **Airline & Train Pilot**| Catppuccin Sapphire | Flights, Airports, High-speed trains, Buses, Transit | `[🗺️ TRANSIT / AIRPORT]` |
-| 🏎️ **Speed Racer** | **Driver** | Catppuccin Yellow | Appointments, Doctor, Dentist, Errands, Commutes | `[🗺️ NAVIGATE MAPS]` |
+<div align="center">
+  <img src="assets/animations/mascot_squadron.gif" width="100%" alt="QuakMeeting Animated Mascot Squadron" />
+  <p><em>From left to right: Mallard Duck, Wise Owl, Athletic Bunny, Zen Platypus, and Gourmet Squirrel in formation flight.</em></p>
+</div>
+
+| Live Animation | Mascot Animal | Persona | Accent Color | Triggers & Context | 1-Click Action |
+| :---: | :--- | :--- | :--- | :--- | :--- |
+| <img src="assets/animations/duck_flight.gif" width="110" alt="Mallard Duck" /> | 🦆 **Mallard Duck** | **Aviator Pilot** | Catppuccin Green | Google Meet, Zoom, MS Teams, Webex, Online calls | `[🚀 JOIN MEETING]` |
+| <img src="assets/animations/owl_flight.gif" width="110" alt="Wise Owl" /> | 🦉 **Wise Owl** | **Academic Scholar** | Catppuccin Mauve | University lectures, exams, campus study, research | `[📚 CLASSROOM & NOTES]` |
+| <img src="assets/animations/bunny_flight.gif" width="110" alt="Athletic Bunny" /> | 🐰 **Athletic Bunny** | **Gym & Sport Hero** | Catppuccin Red | Palestra, Gym, CrossFit, Padel, Tennis, Football, Running | `[🗺️ GYM DIRECTIONS]` |
+| <img src="assets/animations/platypus_flight.gif" width="110" alt="Zen Platypus" /> | 🦔 **Zen Platypus** | **Mindfulness Guru** | Catppuccin Teal | Serenis, Therapy, Yoga, Wellness, Meditation | `[🛋️ JOIN SESSION]` |
+| <img src="assets/animations/squirrel_flight.gif" width="110" alt="Gourmet Squirrel" /> | 🐿️ **Gourmet Squirrel** | **Chef & Foodie** | Catppuccin Peach | Dinner, Lunch, Restaurant, Pizzeria, Sushi, Cooking | `[🗺️ RESTAURANT MAPS]` |
+| <img src="assets/animations/captain_flight.gif" width="110" alt="Captain Duck" /> | 🧑‍✈️ **Captain Duck** | **Airline & Train Pilot**| Catppuccin Sapphire | Flights, Airports, High-speed trains, Buses, Transit | `[🗺️ TRANSIT / AIRPORT]` |
+| <img src="assets/animations/racer_flight.gif" width="110" alt="Speed Racer" /> | 🏎️ **Speed Racer** | **Driver** | Catppuccin Yellow | Appointments, Doctor, Dentist, Errands, Commutes | `[🗺️ NAVIGATE MAPS]` |
 
 ---
 

@@ -89,7 +89,7 @@ def compute_countdown_text(
                     countdown_text = f"⚡ {t('badge_study_time_to_study', lang=active_lang, mins=mins)}"
                     is_urgent = True
                 else:
-                    countdown_text = f"⏳ {t('badge_study_starting', lang=active_lang, secs=secs)}"
+                    countdown_text = f"⏳ {t('badge_study_starting', lang=active_lang)}"
                     is_urgent = True
             elif classroom:
                 if mins >= 10:
@@ -117,7 +117,7 @@ def compute_countdown_text(
                     countdown_text = f"🚀 {t('badge_in_mins_almost', lang=active_lang, mins=mins)}"
                     is_urgent = True
                 else:
-                    countdown_text = f"⏳ {t('badge_in_secs_now', lang=active_lang, secs=secs)}"
+                    countdown_text = f"⏳ {t('badge_in_secs_now', lang=active_lang)}"
                     is_urgent = True
         elif diff > -1800:
             late_mins = abs(int(diff // 60))

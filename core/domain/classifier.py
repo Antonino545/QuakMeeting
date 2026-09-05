@@ -1,6 +1,11 @@
 """
 Event Classification and URL Extraction Engine for QuakMeeting.
 Pure Python matching logic for video meeting providers, keyword pilots, and travel detection.
+
+Known limitations:
+- Natural-language negation of anchors (e.g. "No gym today, doing dinner instead") is not handled.
+- Anchor-stripping guarantees apply only to English and Italian; other languages fall back to plain keyword matching.
+- Emoji/symbol-only titles (e.g. "🍕 after 🏋️") are not parsed by this classifier version.
 """
 import re
 import urllib.parse
@@ -77,7 +82,8 @@ DEFAULT_KEYWORDS = {
         "meditation", "mindfulness", "wellness", "relax", "spa", "massage", "thermal",
         "sauna", "breathing", "mental health", "counseling", "serenis", "therapy",
         "therapy session", "calm", "retreat", "chill", "meditazione", "benessere",
-        "terme", "massaggio", "respirazione", "salute mentale", "terapia", "seduta", "riposo"
+        "terme", "massaggio", "respirazione", "salute mentale", "terapia", "seduta", "riposo",
+        "nap", "sonnellino"
     ],
     "platypus": [
         "secret", "segreto", "mission", "missione", "spy", "spia", "agent", "agente",
@@ -102,6 +108,161 @@ LEGACY_PILOT_MAP = {
     ("platypus", "agent"): "platypus",
     ("squirrel", "acorn"): "squirrel"
 }
+
+# 1. Status marker prefix regex (Section 2 Step 1)
+STATUS_MARKER_REGEX = re.compile(
+    r'^\s*(?:\[\s*(?:cancelled|canceled|tentative|declined|annullat[oa]|rifiutat[oa])\s*\]|(?:cancelled|canceled|tentative|declined|annullat[oa]|rifiutat[oa])\s*[:\-]\s*)',
+    re.IGNORECASE
+)
+
+# 2. Idiom overrides (Section 2 Step 2)
+IDIOM_OVERRIDES: Dict[str, EventCategory] = {
+    "lunch and learn": EventCategory.GENERAL,
+    "coffee chat": EventCategory.IN_PERSON,
+    "brown bag session": EventCategory.GENERAL,
+}
+
+# 3. Structured food signal (Section 2 Step 3)
+STRUCTURED_FOOD_REGEX = re.compile(
+    r'\b(?:table for \d+|reservation(?: at| for)?|party of \d+|prenotazione(?: (?:a|al|da|per))?(?: \d+)?)\b',
+    re.IGNORECASE
+)
+
+# 4. Explicit prefix category words (Section 2 Step 4)
+PREFIX_CATEGORY_WORDS: Dict[str, EventCategory] = {
+    "or study": EventCategory.STUDY,
+    "self-study": EventCategory.STUDY,
+    "self study": EventCategory.STUDY,
+    "studio autonomo": EventCategory.STUDY,
+    "studio individuale": EventCategory.STUDY,
+    "study": EventCategory.STUDY,
+    "studio": EventCategory.STUDY,
+    "ripasso": EventCategory.STUDY,
+    "exam": EventCategory.EXAM,
+    "esame": EventCategory.EXAM,
+    "appello": EventCategory.EXAM,
+    "midterm": EventCategory.EXAM,
+    "esonero": EventCategory.EXAM,
+    "parziale": EventCategory.EXAM,
+    "lecture": EventCategory.CLASS,
+    "lezione": EventCategory.CLASS,
+    "class": EventCategory.CLASS,
+    "corso": EventCategory.CLASS,
+    "flight": EventCategory.TRAVEL,
+    "volo": EventCategory.TRAVEL,
+    "train": EventCategory.TRAVEL,
+    "treno": EventCategory.TRAVEL,
+    "gym": EventCategory.SPORT,
+    "palestra": EventCategory.SPORT,
+    "workout": EventCategory.SPORT,
+    "allenamento": EventCategory.SPORT,
+    "dinner": EventCategory.FOOD,
+    "cena": EventCategory.FOOD,
+    "lunch": EventCategory.FOOD,
+    "pranzo": EventCategory.FOOD,
+}
+
+_PREFIX_ALTS = "|".join(re.escape(k) for k in sorted(PREFIX_CATEGORY_WORDS.keys(), key=len, reverse=True))
+PREFIX_REGEX = re.compile(rf'^\s*(?P<prefix>{_PREFIX_ALTS})\s*[:\-\–\—]+\s*', re.IGNORECASE)
+
+# 5. Temporal anchor category mapping (Section 2 Step 5)
+ANCHOR_CATEGORY_MAP: Dict[str, EventCategory] = {
+    # Food
+    "dinner": EventCategory.FOOD,
+    "lunch": EventCategory.FOOD,
+    "breakfast": EventCategory.FOOD,
+    "brunch": EventCategory.FOOD,
+    "supper": EventCategory.FOOD,
+    "snack": EventCategory.FOOD,
+    "coffee": EventCategory.FOOD,
+    "drinks": EventCategory.FOOD,
+    "cena": EventCategory.FOOD,
+    "pranzo": EventCategory.FOOD,
+    "colazione": EventCategory.FOOD,
+    "merenda": EventCategory.FOOD,
+    "spuntino": EventCategory.FOOD,
+    "aperitivo": EventCategory.FOOD,
+    # Sport
+    "gym": EventCategory.SPORT,
+    "workout": EventCategory.SPORT,
+    "training": EventCategory.SPORT,
+    "exercise": EventCategory.SPORT,
+    "run": EventCategory.SPORT,
+    "running": EventCategory.SPORT,
+    "match": EventCategory.SPORT,
+    "palestra": EventCategory.SPORT,
+    "allenamento": EventCategory.SPORT,
+    "corsa": EventCategory.SPORT,
+    "partita": EventCategory.SPORT,
+    # Academic
+    "class": EventCategory.CLASS,
+    "classes": EventCategory.CLASS,
+    "lecture": EventCategory.CLASS,
+    "lesson": EventCategory.CLASS,
+    "lezione": EventCategory.CLASS,
+    "lezioni": EventCategory.CLASS,
+    "corso": EventCategory.CLASS,
+    "exam": EventCategory.EXAM,
+    "test": EventCategory.EXAM,
+    "esame": EventCategory.EXAM,
+    # Travel
+    "flight": EventCategory.TRAVEL,
+    "plane": EventCategory.TRAVEL,
+    "train": EventCategory.TRAVEL,
+    "volo": EventCategory.TRAVEL,
+    "aereo": EventCategory.TRAVEL,
+    "treno": EventCategory.TRAVEL,
+    # Work
+    "work": EventCategory.GENERAL,
+    "office": EventCategory.GENERAL,
+    "lavoro": EventCategory.GENERAL,
+    "ufficio": EventCategory.GENERAL,
+    # Appointments
+    "dentist": EventCategory.IN_PERSON,
+    "doctor": EventCategory.IN_PERSON,
+    "dentista": EventCategory.IN_PERSON,
+    "medico": EventCategory.IN_PERSON,
+}
+
+LOCATION_SUFFIX_DENYLIST = {
+    "room", "hall", "building", "floor", "wing", "aula", "edificio", "center", "centre"
+}
+
+_ANCHOR_WORDS_ALTS = "|".join(re.escape(w) for w in sorted(ANCHOR_CATEGORY_MAP.keys(), key=len, reverse=True))
+_LOC_GUARD = r'(?!\s+(?:room|hall|building|floor|wing|aula|edificio|center|centre)\b)'
+
+_PREP_WORDS = (
+    r'after|before|post|pre|during|until|till|around|between|'
+    r'dopo|prima(?:\s+di|\s+del|\s+della|\s+dell\'|\s+dello)?|durante|fino\s+a|verso|tra'
+)
+_TIME_TOKEN = r'(?:\d{1,2}(?::\d{2})?\s*(?:am|pm)?\s+)?'
+_ARTICLES = r'(?:the|il|la|l\'|lo|i|gli|le|del|della|dell\')?'
+_SESSION_SUFFIXES = r'(?:\s+(?:session|sessione|slot|block|meeting|call|hour|ora))?'
+
+TRANSIT_ANCHOR_REGEX = re.compile(
+    r'\b(?:on(?:\s+the)?|in(?:\s+the)?|sul|su|in)\s+(?:train|flight|plane|treno|volo|aereo)\b',
+    re.IGNORECASE
+)
+
+STALE_RENAME_REGEX = re.compile(
+    r'\((?:was|formerly|ex|previously|old title):[^)]*\)',
+    re.IGNORECASE
+)
+
+PARENTHETICAL_ANCHOR_REGEX = re.compile(
+    rf'\((?:[^)]*\b)?(?:{_PREP_WORDS})\s+{_TIME_TOKEN}{_ARTICLES}\s*(?P<anchor>{_ANCHOR_WORDS_ALTS}){_LOC_GUARD}[^)]*\)',
+    re.IGNORECASE
+)
+
+HYPHENATED_ANCHOR_REGEX = re.compile(
+    rf'\b(?:post|pre)-(?P<anchor>{_ANCHOR_WORDS_ALTS}){_LOC_GUARD}\b',
+    re.IGNORECASE
+)
+
+PREP_ANCHOR_REGEX = re.compile(
+    rf'\b(?:{_PREP_WORDS})\s+{_TIME_TOKEN}{_ARTICLES}\s*(?P<anchor>{_ANCHOR_WORDS_ALTS}){_LOC_GUARD}{_SESSION_SUFFIXES}\b',
+    re.IGNORECASE
+)
 
 
 class EventClassifier:
@@ -154,12 +315,192 @@ class EventClassifier:
 
     @staticmethod
     def _matches_kw(kw: str, text: str) -> bool:
-        """Match keyword using word-boundary regex with compiled pattern cache."""
+        """Match keyword using word-boundary regex with compiled pattern cache,
+        guarding against location suffixes like Room, Hall, Building.
+        """
         pattern = _KW_REGEX_CACHE.get(kw)
         if pattern is None:
-            pattern = re.compile(r'\b' + re.escape(kw) + r'\b', re.IGNORECASE)
+            pattern = re.compile(
+                r'\b' + re.escape(kw) + r'\b(?!\s+(?:room|hall|building|floor|wing|aula|edificio|center|centre)\b)',
+                re.IGNORECASE
+            )
             _KW_REGEX_CACHE[kw] = pattern
         return bool(pattern.search(text))
+
+    @staticmethod
+    def _strip_status_markers(title: str) -> str:
+        """Strips leading status markers like 'Cancelled:', '[TENTATIVE]', etc."""
+        if not title:
+            return ""
+        return STATUS_MARKER_REGEX.sub("", title).strip()
+
+    @classmethod
+    def _strip_temporal_qualifiers(cls, text: str) -> Tuple[str, Optional[EventCategory]]:
+        """Iteratively strips temporal and ancillary anchors from text.
+        Returns the core text and the category of the last stripped anchor.
+        """
+        curr = text
+        last_category: Optional[EventCategory] = None
+
+        # 1. Strip stale rename fragments like "(was: Lunch review)"
+        curr = STALE_RENAME_REGEX.sub("", curr)
+
+        # 2. Strip transit backdrop phrases like "on train", "during flight"
+        if TRANSIT_ANCHOR_REGEX.search(curr):
+            curr = TRANSIT_ANCHOR_REGEX.sub("", curr)
+            last_category = EventCategory.TRAVEL
+
+        # 3. Iteratively strip temporal anchors until fixpoint
+        changed = True
+        while changed:
+            changed = False
+            # Check parenthetical anchors
+            m_paren = PARENTHETICAL_ANCHOR_REGEX.search(curr)
+            if m_paren:
+                anchor_word = m_paren.group("anchor").lower()
+                last_category = ANCHOR_CATEGORY_MAP.get(anchor_word, last_category)
+                curr = curr[:m_paren.start()] + " " + curr[m_paren.end():]
+                changed = True
+                continue
+
+            # Check hyphenated anchors
+            m_hyph = HYPHENATED_ANCHOR_REGEX.search(curr)
+            if m_hyph:
+                anchor_word = m_hyph.group("anchor").lower()
+                last_category = ANCHOR_CATEGORY_MAP.get(anchor_word, last_category)
+                curr = curr[:m_hyph.start()] + " " + curr[m_hyph.end():]
+                changed = True
+                continue
+
+            # Check standard preposition anchors
+            m_prep = PREP_ANCHOR_REGEX.search(curr)
+            if m_prep:
+                anchor_word = m_prep.group("anchor").lower()
+                last_category = ANCHOR_CATEGORY_MAP.get(anchor_word, last_category)
+                curr = curr[:m_prep.start()] + " " + curr[m_prep.end():]
+                changed = True
+                continue
+
+        # Clean trailing commas, hyphens, and normalize whitespace
+        cleaned = re.sub(r'[\s,\-]+$', '', curr).strip()
+        cleaned = re.sub(r'^\s*[\s,\-]+', '', cleaned).strip()
+        cleaned = re.sub(r'\s{2,}', ' ', cleaned)
+        return cleaned, last_category
+
+    @classmethod
+    def _build_meeting(cls, category: EventCategory, title: str, location: str = "", description: str = "",
+                       start_time: Optional[datetime] = None, end_time: Optional[datetime] = None,
+                       classroom: Optional[str] = None, teacher: Optional[str] = None,
+                       search_blob: str = "", active_url: Optional[str] = None,
+                       special_pilot: Optional[str] = None, special_provider: Optional[str] = None,
+                       special_btn: Optional[str] = None, special_theme: Optional[str] = None) -> Meeting:
+        maps_dest = location if (location and location != "missing value") else title
+        now_time = start_time or datetime.now()
+
+        if category == EventCategory.FOOD:
+            maps_url = f"https://maps.apple.com/?q={urllib.parse.quote(maps_dest)}"
+            m = Meeting(
+                title=title, start_time=now_time, end_time=end_time,
+                location=location, description=description,
+                event_type=EventCategory.FOOD.value, pilot_type=PilotType.CHEF.value,
+                provider="Dinner / Food 🍕🍽️", action_btn_text="🗺️ RESTAURANT DIRECTIONS",
+                action_url=maps_url, theme_name="Coral Food", is_travel=True,
+                classroom=classroom, teacher=teacher
+            )
+        elif category == EventCategory.TRAVEL:
+            maps_url = f"https://maps.apple.com/?q={urllib.parse.quote(maps_dest)}"
+            m = Meeting(
+                title=title, start_time=now_time, end_time=end_time,
+                location=location, description=description,
+                event_type=EventCategory.TRAVEL.value, pilot_type=PilotType.CAPTAIN.value,
+                provider="Flight / Travel ✈️", action_btn_text="🗺️ TRAVEL DIRECTIONS",
+                action_url=maps_url, theme_name="Sky Captain Blue", is_travel=True,
+                classroom=classroom, teacher=teacher
+            )
+        elif category == EventCategory.EXAM:
+            is_trav = "online" not in search_blob.lower()
+            exam_dest = location if (location and location != "missing value") else (f"{title} {classroom or ''}".strip())
+            maps_url = f"https://maps.apple.com/?q={urllib.parse.quote(exam_dest)}" if is_trav else "https://calendar.apple.com"
+            provider_label = f"Exam 🎓 {classroom}" if classroom else "Exam 🎓"
+            m = Meeting(
+                title=title, start_time=now_time, end_time=end_time,
+                location=location, description=description,
+                event_type=EventCategory.EXAM.value, pilot_type=PilotType.OWL.value,
+                provider=provider_label,
+                action_btn_text=f"🎓 {classroom or 'EXAM LOCATION'}" if is_trav else "🎓 EXAM NOTES",
+                action_url=maps_url, theme_name="Academic Purple", is_travel=is_trav,
+                classroom=classroom, teacher=teacher
+            )
+        elif category == EventCategory.STUDY:
+            is_trav = bool(location and location != "missing value" and "online" not in search_blob.lower())
+            maps_url = f"https://maps.apple.com/?q={urllib.parse.quote(maps_dest)}" if is_trav else "https://calendar.apple.com"
+            m = Meeting(
+                title=title, start_time=now_time, end_time=end_time,
+                location=location, description=description,
+                event_type=EventCategory.STUDY.value, pilot_type=PilotType.OWL.value,
+                provider="Study Session 📖",
+                action_btn_text=f"🗺️ {location}" if is_trav else "⚡ TIME TO STUDY! DO IT 📖",
+                action_url=maps_url, theme_name="Academic Purple", is_travel=is_trav,
+                classroom=classroom, teacher=teacher
+            )
+        elif category == EventCategory.CLASS:
+            is_trav = bool(location and location != "missing value" and "online" not in search_blob.lower())
+            class_dest = location if is_trav else (f"{title} {classroom or ''}".strip())
+            maps_url = f"https://maps.apple.com/?q={urllib.parse.quote(class_dest)}" if is_trav else "https://calendar.apple.com"
+            provider_label = f"Class / Lecture 🏫 {classroom}" if classroom else "Class / Lecture 🏫"
+            m = Meeting(
+                title=title, start_time=now_time, end_time=end_time,
+                location=location, description=description,
+                event_type=EventCategory.CLASS.value, pilot_type=PilotType.OWL.value,
+                provider=provider_label,
+                action_btn_text=f"🗺️ {classroom or 'CAMPUS'}" if is_trav else "🏫 CLASSROOM & NOTES",
+                action_url=maps_url, theme_name="Academic Purple", is_travel=is_trav,
+                classroom=classroom, teacher=teacher
+            )
+        elif category == EventCategory.SPORT:
+            maps_url = f"https://maps.apple.com/?daddr={urllib.parse.quote(maps_dest)}"
+            m = Meeting(
+                title=title, start_time=now_time, end_time=end_time,
+                location=location, description=description,
+                event_type=EventCategory.SPORT.value, pilot_type=PilotType.GYM.value,
+                provider="Gym & Sport 🏋️‍♂️💪", action_btn_text="🗺️ GYM DIRECTIONS",
+                action_url=maps_url, theme_name="Athletic Crimson", is_travel=True,
+                classroom=classroom, teacher=teacher
+            )
+        elif category == EventCategory.IN_PERSON:
+            maps_url = f"https://maps.apple.com/?daddr={urllib.parse.quote(maps_dest)}"
+            m = Meeting(
+                title=title, start_time=now_time, end_time=end_time,
+                location=location, description=description,
+                event_type=EventCategory.IN_PERSON.value, pilot_type=PilotType.DRIVER.value,
+                provider="In Person 📍 Travel Time!", action_btn_text="🗺️ NAVIGATE IN MAPS",
+                action_url=maps_url, theme_name="Racing Green", is_travel=True,
+                classroom=classroom, teacher=teacher
+            )
+        elif category == EventCategory.HEALTH:
+            m = Meeting(
+                title=title, start_time=now_time, end_time=end_time,
+                location=location, description=description,
+                event_type=EventCategory.HEALTH.value, pilot_type=PilotType.ZEN_DUCK.value,
+                provider="Therapy & Wellness 🌸🛋️", action_btn_text="🌸 WELLNESS TIME",
+                action_url="https://calendar.apple.com", theme_name="Teal Modern", is_travel=False,
+                classroom=classroom, teacher=teacher
+            )
+        else:  # GENERAL
+            default_pilot_id = special_pilot or cls._get_default_pilot()
+            m = Meeting(
+                title=title, start_time=now_time, end_time=end_time,
+                location=location, description=description,
+                event_type=EventCategory.GENERAL.value, pilot_type=default_pilot_id,
+                provider=special_provider or "Reminder ⏰",
+                action_btn_text=special_btn or "📋 OPEN IN CALENDAR",
+                action_url="https://calendar.apple.com",
+                theme_name=special_theme or "Sunset Orange", is_travel=False,
+                classroom=classroom, teacher=teacher
+            )
+
+        cls._apply_meeting_url_if_found(m, active_url)
+        return cls._apply_forced_pilot_if_needed(m)
 
     @staticmethod
     def _apply_meeting_url_if_found(meeting: Meeting, active_url: Optional[str]) -> Meeting:
@@ -199,15 +540,8 @@ class EventClassifier:
                     keywords_dict[k] = [kw.lower() for kw in v]
 
         classroom, teacher = cls.extract_classroom_and_teacher(title, location, description)
-        # Keep original-case text for URL extraction to preserve case-sensitive tokens
         raw_blob = f"{title} {location} {description} {meeting_url or ''}"
         search_blob = raw_blob.lower()
-        is_explicit_study_title = any(
-            cls._matches_kw(kw, title) for kw in keywords_dict.get("owl", [])
-        )
-        is_explicit_exam_title = bool(
-            re.search(r"^(?:exam|esame|appello|parziale|esonero)[:\s\-\–\—]+", title.strip(), re.IGNORECASE)
-        )
 
         # 1. Match Video Meeting Patterns
         active_url = meeting_url or cls.extract_meeting_url(raw_blob)
@@ -233,276 +567,206 @@ class EventClassifier:
                     )
                     return cls._apply_forced_pilot_if_needed(res_meeting)
 
-        # 2. Check Physical Food / Dinner keywords
-        for kw in keywords_dict.get("chef", []):
-            if cls._matches_kw(kw, search_blob):
-                maps_dest = location if (location and location != "missing value") else title
-                maps_url = f"https://maps.apple.com/?q={urllib.parse.quote(maps_dest)}"
-                res_meeting = Meeting(
-                    title=title,
-                    start_time=start_time or datetime.now(),
-                    end_time=end_time,
-                    location=location,
-                    description=description,
-                    event_type=EventCategory.FOOD.value,
-                    pilot_type=PilotType.CHEF.value,
-                    provider="Dinner / Food 🍕🍽️",
-                    action_btn_text="🗺️ RESTAURANT DIRECTIONS",
-                    action_url=maps_url,
-                    theme_name="Coral Food",
-                    is_travel=True,
-                    classroom=classroom,
-                    teacher=teacher
-                )
-                cls._apply_meeting_url_if_found(res_meeting, active_url)
-                return cls._apply_forced_pilot_if_needed(res_meeting)
+        # Step 1: Strip status markers
+        clean_title = cls._strip_status_markers(title)
 
-        # 3. Check Travel / Flights / Airport / Trains
-        for kw in keywords_dict.get("captain", []):
-            if cls._matches_kw(kw, search_blob):
-                maps_dest = location if (location and location != "missing value") else title
-                maps_url = f"https://maps.apple.com/?q={urllib.parse.quote(maps_dest)}"
-                res_meeting = Meeting(
-                    title=title,
-                    start_time=start_time or datetime.now(),
-                    end_time=end_time,
-                    location=location,
-                    description=description,
-                    event_type=EventCategory.TRAVEL.value,
-                    pilot_type=PilotType.CAPTAIN.value,
-                    provider="Flight / Travel ✈️",
-                    action_btn_text="🗺️ TRAVEL DIRECTIONS",
-                    action_url=maps_url,
-                    theme_name="Sky Captain Blue",
-                    is_travel=True,
-                    classroom=classroom,
-                    teacher=teacher
+        # Step 2: Idiom overrides (checked before prefix and anchor logic)
+        clean_lower = clean_title.lower()
+        for idiom_phrase, target_cat in IDIOM_OVERRIDES.items():
+            if idiom_phrase in clean_lower:
+                return cls._build_meeting(
+                    target_cat, title=title, location=location, description=description,
+                    start_time=start_time, end_time=end_time, classroom=classroom, teacher=teacher,
+                    search_blob=search_blob, active_url=active_url
                 )
-                cls._apply_meeting_url_if_found(res_meeting, active_url)
-                return cls._apply_forced_pilot_if_needed(res_meeting)
 
-        # 4. Check Exam / Esame
-        is_exam_event = (
-            any(cls._matches_kw(kw, search_blob) for kw in keywords_dict.get("exam", []))
-            or is_explicit_exam_title
-        )
-        if is_exam_event and (is_explicit_exam_title or not is_explicit_study_title):
-            is_trav = "online" not in search_blob
-            maps_dest = location if (location and location != "missing value") else (f"{title} {classroom or ''}".strip())
-            maps_url = f"https://maps.apple.com/?q={urllib.parse.quote(maps_dest)}" if is_trav else "https://calendar.apple.com"
-            provider_label = f"Exam 🎓 {classroom}" if classroom else "Exam 🎓"
-            res_meeting = Meeting(
-                title=title,
-                start_time=start_time or datetime.now(),
-                end_time=end_time,
-                location=location,
-                description=description,
-                event_type=EventCategory.EXAM.value,
-                pilot_type=PilotType.OWL.value,
-                provider=provider_label,
-                action_btn_text=f"🎓 {classroom or 'EXAM LOCATION'}" if is_trav else "🎓 EXAM NOTES",
-                action_url=maps_url,
-                theme_name="Academic Purple",
-                is_travel=is_trav,
-                classroom=classroom,
-                teacher=teacher
+        # Step 5: Iteratively strip temporal and ancillary anchors
+        core_title, last_stripped_cat = cls._strip_temporal_qualifiers(clean_title)
+
+        # Step 6: Fallback when masking empties the title
+        if not core_title.strip():
+            fallback_cat = last_stripped_cat or EventCategory.GENERAL
+            return cls._build_meeting(
+                fallback_cat, title=title, location=location, description=description,
+                start_time=start_time, end_time=end_time, classroom=classroom, teacher=teacher,
+                search_blob=search_blob, active_url=active_url
             )
-            return cls._apply_forced_pilot_if_needed(res_meeting)
 
-        # 5. Check Self-Study Block vs Class / Lecture Attendance
-        is_study_event = any(cls._matches_kw(kw, search_blob) for kw in keywords_dict.get("owl", []))
-        is_class_event = bool(classroom) or bool(teacher) or any(cls._matches_kw(kw, search_blob) for kw in keywords_dict.get("class", []))
+        # Step 3: Structured-signal override (beats explicit prefix when they conflict)
+        has_structured_food = bool(
+            STRUCTURED_FOOD_REGEX.search(core_title) or STRUCTURED_FOOD_REGEX.search(search_blob)
+        )
+
+        # Step 4: Explicit Title Prefix Recognition (tightened closed vocabulary)
+        m_prefix = PREFIX_REGEX.match(clean_title)
+        if m_prefix:
+            prefix_word = m_prefix.group("prefix").lower()
+            prefix_cat = PREFIX_CATEGORY_WORDS.get(prefix_word)
+            if prefix_cat:
+                if has_structured_food and prefix_cat != EventCategory.FOOD:
+                    return cls._build_meeting(
+                        EventCategory.FOOD, title=title, location=location, description=description,
+                        start_time=start_time, end_time=end_time, classroom=classroom, teacher=teacher,
+                        search_blob=search_blob, active_url=active_url
+                    )
+                return cls._build_meeting(
+                    prefix_cat, title=title, location=location, description=description,
+                    start_time=start_time, end_time=end_time, classroom=classroom, teacher=teacher,
+                    search_blob=search_blob, active_url=active_url
+                )
+
+        if has_structured_food:
+            return cls._build_meeting(
+                EventCategory.FOOD, title=title, location=location, description=description,
+                start_time=start_time, end_time=end_time, classroom=classroom, teacher=teacher,
+                search_blob=search_blob, active_url=active_url
+            )
+
+        # Step 7: Core keyword matching on core_title and cleaned_search_blob
+        cleaned_search_blob = cls._strip_temporal_qualifiers(search_blob)[0].lower()
+        core_blob = f"{core_title} {location}".lower()
+
+        title_starts_with_food = bool(
+            re.search(r'^\s*(?:dinner|lunch|breakfast|brunch|supper|cena|pranzo|colazione|pizza|aperitivo|coffee|drinks|sushi)\b', core_title, re.IGNORECASE)
+        )
+
+        if title_starts_with_food:
+            for kw in keywords_dict.get("chef", []):
+                if cls._matches_kw(kw, core_blob) or cls._matches_kw(kw, cleaned_search_blob):
+                    return cls._build_meeting(
+                        EventCategory.FOOD, title=title, location=location, description=description,
+                        start_time=start_time, end_time=end_time, classroom=classroom, teacher=teacher,
+                        search_blob=search_blob, active_url=active_url
+                    )
+
+        # Check Travel / Flights / Airport / Trains
+        for kw in keywords_dict.get("captain", []):
+            if cls._matches_kw(kw, core_blob) or cls._matches_kw(kw, cleaned_search_blob):
+                return cls._build_meeting(
+                    EventCategory.TRAVEL, title=title, location=location, description=description,
+                    start_time=start_time, end_time=end_time, classroom=classroom, teacher=teacher,
+                    search_blob=search_blob, active_url=active_url
+                )
+
+        # Check Exam / Esame
+        is_facility_or_setup = bool(
+            re.search(r'\b(?:booking|setup|check|maintenance|cleaning|inspection)\b', core_title, re.IGNORECASE)
+        )
+        is_exam_event = not is_facility_or_setup and (
+            any(cls._matches_kw(kw, core_blob) for kw in keywords_dict.get("exam", []))
+            or any(cls._matches_kw(kw, cleaned_search_blob) for kw in keywords_dict.get("exam", []))
+        )
+        is_explicit_study_title = any(
+            cls._matches_kw(kw, core_title) for kw in keywords_dict.get("owl", [])
+        )
+        if is_exam_event and not is_explicit_study_title:
+            return cls._build_meeting(
+                EventCategory.EXAM, title=title, location=location, description=description,
+                start_time=start_time, end_time=end_time, classroom=classroom, teacher=teacher,
+                search_blob=search_blob, active_url=active_url
+            )
+
+        # Check Self-Study Block vs Class / Lecture Attendance
+        is_study_event = (
+            any(cls._matches_kw(kw, core_blob) for kw in keywords_dict.get("owl", []))
+            or any(cls._matches_kw(kw, cleaned_search_blob) for kw in keywords_dict.get("owl", []))
+        )
+        has_academic_class_kw = (
+            any(cls._matches_kw(kw, core_blob) for kw in keywords_dict.get("class", []))
+            or any(cls._matches_kw(kw, cleaned_search_blob) for kw in keywords_dict.get("class", []))
+        )
+        is_class_event = not is_facility_or_setup and (
+            bool(teacher)
+            or has_academic_class_kw
+            or (bool(classroom) and bool(re.search(r'\baula\b', classroom, re.IGNORECASE)))
+        )
 
         if is_study_event:
-            is_trav = bool(location and location != "missing value" and "online" not in search_blob)
-            maps_dest = location if is_trav else title
-            maps_url = f"https://maps.apple.com/?q={urllib.parse.quote(maps_dest)}" if is_trav else "https://calendar.apple.com"
-            res_meeting = Meeting(
-                title=title,
-                start_time=start_time or datetime.now(),
-                end_time=end_time,
-                location=location,
-                description=description,
-                event_type=EventCategory.STUDY.value,
-                pilot_type=PilotType.OWL.value,
-                provider="Study Session 📖",
-                action_btn_text=f"🗺️ {location}" if is_trav else "⚡ TIME TO STUDY! DO IT 📖",
-                action_url=maps_url,
-                theme_name="Academic Purple",
-                is_travel=is_trav,
-                classroom=classroom,
-                teacher=teacher
+            return cls._build_meeting(
+                EventCategory.STUDY, title=title, location=location, description=description,
+                start_time=start_time, end_time=end_time, classroom=classroom, teacher=teacher,
+                search_blob=search_blob, active_url=active_url
             )
-            cls._apply_meeting_url_if_found(res_meeting, active_url)
-            return cls._apply_forced_pilot_if_needed(res_meeting)
 
         if is_class_event:
-            is_trav = bool(location and location != "missing value" and "online" not in search_blob)
-            maps_dest = location if is_trav else (f"{title} {classroom or ''}".strip())
-            maps_url = f"https://maps.apple.com/?q={urllib.parse.quote(maps_dest)}" if is_trav else "https://calendar.apple.com"
-            provider_label = f"Class / Lecture 🏫 {classroom}" if classroom else "Class / Lecture 🏫"
-            res_meeting = Meeting(
-                title=title,
-                start_time=start_time or datetime.now(),
-                end_time=end_time,
-                location=location,
-                description=description,
-                event_type=EventCategory.CLASS.value,
-                pilot_type=PilotType.OWL.value,
-                provider=provider_label,
-                action_btn_text=f"🗺️ {classroom or 'CAMPUS'}" if is_trav else "🏫 CLASSROOM & NOTES",
-                action_url=maps_url,
-                theme_name="Academic Purple",
-                is_travel=is_trav,
-                classroom=classroom,
-                teacher=teacher
+            return cls._build_meeting(
+                EventCategory.CLASS, title=title, location=location, description=description,
+                start_time=start_time, end_time=end_time, classroom=classroom, teacher=teacher,
+                search_blob=search_blob, active_url=active_url
             )
-            cls._apply_meeting_url_if_found(res_meeting, active_url)
-            return cls._apply_forced_pilot_if_needed(res_meeting)
-        # 5. Check Gym / Palestra / Sport / Workout
+
+        # Check Food if not checked earlier
+        for kw in keywords_dict.get("chef", []):
+            if cls._matches_kw(kw, core_blob) or cls._matches_kw(kw, cleaned_search_blob):
+                return cls._build_meeting(
+                    EventCategory.FOOD, title=title, location=location, description=description,
+                    start_time=start_time, end_time=end_time, classroom=classroom, teacher=teacher,
+                    search_blob=search_blob, active_url=active_url
+                )
+
+        # Check Gym / Sport / Workout
         for kw in keywords_dict.get("gym", []):
-            if cls._matches_kw(kw, search_blob):
-                maps_dest = location if (location and location != "missing value") else title
-                maps_url = f"https://maps.apple.com/?daddr={urllib.parse.quote(maps_dest)}"
-                res_meeting = Meeting(
-                    title=title,
-                    start_time=start_time or datetime.now(),
-                    end_time=end_time,
-                    location=location,
-                    description=description,
-                    event_type=EventCategory.SPORT.value,
-                    pilot_type=PilotType.GYM.value,
-                    provider="Gym & Sport 🏋️‍♂️💪",
-                    action_btn_text="🗺️ GYM DIRECTIONS",
-                    action_url=maps_url,
-                    theme_name="Athletic Crimson",
-                    is_travel=True,
-                    classroom=classroom,
-                    teacher=teacher
+            if cls._matches_kw(kw, core_blob) or cls._matches_kw(kw, cleaned_search_blob):
+                return cls._build_meeting(
+                    EventCategory.SPORT, title=title, location=location, description=description,
+                    start_time=start_time, end_time=end_time, classroom=classroom, teacher=teacher,
+                    search_blob=search_blob, active_url=active_url
                 )
-                cls._apply_meeting_url_if_found(res_meeting, active_url)
-                return cls._apply_forced_pilot_if_needed(res_meeting)
 
-        # 6. Check In-Person Appointments / Driver
+        # Check In-Person Appointments / Driver
         for kw in keywords_dict.get("driver", []):
-            if cls._matches_kw(kw, search_blob):
-                maps_dest = location if (location and location != "missing value") else title
-                maps_url = f"https://maps.apple.com/?daddr={urllib.parse.quote(maps_dest)}"
-                res_meeting = Meeting(
-                    title=title,
-                    start_time=start_time or datetime.now(),
-                    end_time=end_time,
-                    location=location,
-                    description=description,
-                    event_type=EventCategory.IN_PERSON.value,
-                    pilot_type=PilotType.DRIVER.value,
-                    provider="In Person 📍 Travel Time!",
-                    action_btn_text="🗺️ NAVIGATE IN MAPS",
-                    action_url=maps_url,
-                    theme_name="Racing Green",
-                    is_travel=True
+            if cls._matches_kw(kw, core_blob) or cls._matches_kw(kw, cleaned_search_blob):
+                return cls._build_meeting(
+                    EventCategory.IN_PERSON, title=title, location=location, description=description,
+                    start_time=start_time, end_time=end_time, classroom=classroom, teacher=teacher,
+                    search_blob=search_blob, active_url=active_url
                 )
-                cls._apply_meeting_url_if_found(res_meeting, active_url)
-                return cls._apply_forced_pilot_if_needed(res_meeting)
 
-        # 6. Check Therapy / Zen Duck
+        # Check Therapy / Zen Duck / Health
         for kw in keywords_dict.get("zen_duck", []):
-            if cls._matches_kw(kw, search_blob):
-                res_meeting = Meeting(
-                    title=title,
-                    start_time=start_time or datetime.now(),
-                    end_time=end_time,
-                    location=location,
-                    description=description,
-                    event_type=EventCategory.HEALTH.value,
-                    pilot_type=PilotType.ZEN_DUCK.value,
-                    provider="Therapy & Wellness 🌸🛋️",
-                    action_btn_text="🌸 WELLNESS TIME",
-                    action_url="https://calendar.apple.com",
-                    theme_name="Teal Modern",
-                    is_travel=False
+            if cls._matches_kw(kw, core_blob) or cls._matches_kw(kw, cleaned_search_blob):
+                return cls._build_meeting(
+                    EventCategory.HEALTH, title=title, location=location, description=description,
+                    start_time=start_time, end_time=end_time, classroom=classroom, teacher=teacher,
+                    search_blob=search_blob, active_url=active_url
                 )
-                cls._apply_meeting_url_if_found(res_meeting, active_url)
-                return cls._apply_forced_pilot_if_needed(res_meeting)
 
-        # 7. Check Secret Mission / Platypus
+        # Check Secret Mission / Platypus
         for kw in keywords_dict.get("platypus", []):
-            if cls._matches_kw(kw, search_blob):
-                res_meeting = Meeting(
-                    title=title,
-                    start_time=start_time or datetime.now(),
-                    end_time=end_time,
-                    location=location,
-                    description=description,
-                    event_type=EventCategory.GENERAL.value,
-                    pilot_type=PilotType.PLATYPUS.value,
-                    provider="Top Secret Mission 🕵️‍♂️",
-                    action_btn_text="🕵️ BRIEFING ACCESS",
-                    action_url="https://calendar.apple.com",
-                    theme_name="Midnight Slate",
-                    is_travel=False
+            if cls._matches_kw(kw, core_blob) or cls._matches_kw(kw, cleaned_search_blob):
+                return cls._build_meeting(
+                    EventCategory.GENERAL, title=title, location=location, description=description,
+                    start_time=start_time, end_time=end_time, classroom=classroom, teacher=teacher,
+                    search_blob=search_blob, active_url=active_url,
+                    special_pilot=PilotType.PLATYPUS.value, special_provider="Top Secret Mission 🕵️‍♂️",
+                    special_btn="🕵️ BRIEFING ACCESS", special_theme="Midnight Slate"
                 )
-                cls._apply_meeting_url_if_found(res_meeting, active_url)
-                return cls._apply_forced_pilot_if_needed(res_meeting)
 
-        # 8. Check Quick Sync / Squirrel
+        # Check Quick Sync / Squirrel
         for kw in keywords_dict.get("squirrel", []):
-            if cls._matches_kw(kw, search_blob):
-                res_meeting = Meeting(
-                    title=title,
-                    start_time=start_time or datetime.now(),
-                    end_time=end_time,
-                    location=location,
-                    description=description,
-                    event_type=EventCategory.GENERAL.value,
-                    pilot_type=PilotType.SQUIRREL.value,
-                    provider="Quick Sync & Brainstorm 🐿️⚡",
-                    action_btn_text="🐿️ JOIN HUDDLE",
-                    action_url="https://calendar.apple.com",
-                    theme_name="Amber Glow",
-                    is_travel=False
+            if cls._matches_kw(kw, core_blob) or cls._matches_kw(kw, cleaned_search_blob):
+                return cls._build_meeting(
+                    EventCategory.GENERAL, title=title, location=location, description=description,
+                    start_time=start_time, end_time=end_time, classroom=classroom, teacher=teacher,
+                    search_blob=search_blob, active_url=active_url,
+                    special_pilot=PilotType.SQUIRREL.value, special_provider="Quick Sync & Brainstorm 🐿️⚡",
+                    special_btn="🐿️ JOIN HUDDLE", special_theme="Amber Glow"
                 )
-                cls._apply_meeting_url_if_found(res_meeting, active_url)
-                return cls._apply_forced_pilot_if_needed(res_meeting)
 
-        # 9. Generic Physical Event (if non-empty location)
+        # Generic Physical Event (if non-empty location)
         if location and location != "missing value" and len(location.strip()) > 2:
-            maps_url = f"https://maps.apple.com/?daddr={urllib.parse.quote(location)}"
-            res_meeting = Meeting(
-                title=title,
-                start_time=start_time or datetime.now(),
-                end_time=end_time,
-                location=location,
-                description=description,
-                event_type=EventCategory.IN_PERSON.value,
-                pilot_type=PilotType.DRIVER.value,
-                provider="In Person 📍 Travel Time!",
-                action_btn_text="🗺️ OPEN MAPS",
-                action_url=maps_url,
-                theme_name="Racing Green",
-                is_travel=True
+            return cls._build_meeting(
+                EventCategory.IN_PERSON, title=title, location=location, description=description,
+                start_time=start_time, end_time=end_time, classroom=classroom, teacher=teacher,
+                search_blob=search_blob, active_url=active_url
             )
-            cls._apply_meeting_url_if_found(res_meeting, active_url)
-            return cls._apply_forced_pilot_if_needed(res_meeting)
 
-        # 10. General Default Meeting / Reminder
-        default_pilot_id = cls._get_default_pilot()
-        res_meeting = Meeting(
-            title=title,
-            start_time=start_time or datetime.now(),
-            end_time=end_time,
-            location=location,
-            description=description,
-            event_type=EventCategory.GENERAL.value,
-            pilot_type=default_pilot_id,
-            provider="Reminder ⏰",
-            action_btn_text="📋 OPEN IN CALENDAR",
-            action_url="https://calendar.apple.com",
-            theme_name="Sunset Orange",
-            is_travel=False
+        # General Default Meeting / Reminder
+        return cls._build_meeting(
+            EventCategory.GENERAL, title=title, location=location, description=description,
+            start_time=start_time, end_time=end_time, classroom=classroom, teacher=teacher,
+            search_blob=search_blob, active_url=active_url
         )
-        cls._apply_meeting_url_if_found(res_meeting, active_url)
-        return cls._apply_forced_pilot_if_needed(res_meeting)
 
     @classmethod
     def _get_default_pilot(cls) -> str:

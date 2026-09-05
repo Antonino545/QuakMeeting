@@ -283,6 +283,18 @@ class TestSoundService(unittest.TestCase):
         play_chime(sync=True, event_dict=quiet_event)
         mock_run.assert_not_called()
 
+    @patch("core.services.sound_service.is_system_volume_on", return_value=True)
+    @patch("core.services.sound_service.subprocess.run")
+    def test_play_chime_debounced(self, mock_run, mock_vol):
+        import core.services.sound_service as sound_mod
+        config.set("sound_enabled", True)
+        config.set("mute_during_lessons", False)
+        sound_mod._last_chime_time = 0.0
+
+        # In testing without sync, it should suppress
+        play_chime(sync=False)
+        mock_run.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

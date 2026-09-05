@@ -1750,6 +1750,7 @@ class QtFlightDeckWindow(QMainWindow):
                         "secret": "Top Secret Agent Mission Briefing",
                         "general": "Weekly Team Sprint Planning"
                     }
+                    now = datetime.now().astimezone()
                     evt = {
                         "title": titles.get(ck, "Custom Mascot Test Flight"),
                         "provider": f"{an.capitalize()} wearing {out.capitalize()} Hat ✨",
@@ -1757,9 +1758,13 @@ class QtFlightDeckWindow(QMainWindow):
                         "animal": an,
                         "outfit": out,
                         "action_btn_text": "🚀 TEST FLIGHT",
-                        "action_url": "https://calendar.apple.com",
-                        "start_time": datetime.now().astimezone(),
-                        "is_travel": ck in ("food", "travel", "sport", "in_person")
+                        "action_url": "https://meet.google.com/test-flight",
+                        "start_time": now + timedelta(minutes=10),
+                        "end_time": now + timedelta(minutes=70),
+                        "reminder_stage": 10,
+                        "is_travel": ck in ("food", "travel", "sport", "in_person"),
+                        "is_test_banner": True,
+                        "is_late": False
                     }
                     from ui.linux.banner.qt_banner import show_qt_banner
                     show_qt_banner(evt)

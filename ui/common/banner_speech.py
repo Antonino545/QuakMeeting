@@ -14,10 +14,12 @@ def build_pilot_speech_text(
     classroom: Optional[str] = None,
     title: Optional[str] = None,
     provider: Optional[str] = None,
-    lang: Optional[str] = None
+    lang: Optional[str] = None,
+    reminder_stage: Optional[int] = None
 ) -> str:
     """Constructs animal-aware, context-aware quote for the pilot speech bubble."""
     active_lang = lang or get_active_language()
+    stage = reminder_stage if reminder_stage is not None else meeting_data.get("reminder_stage")
 
     chosen_animal = animal
     if not chosen_animal:
@@ -80,6 +82,36 @@ def build_pilot_speech_text(
                     return "QUAAK! 🚨 DEVI STUDIARE! FALLO ORA! 📖"
                 return "QUAAK! 🚨 SEI IN RITARDO! CORRI! 🦆"
         else:
+            if stage is not None and stage > 0:
+                if chosen_animal == "owl":
+                    if is_self_study:
+                        return "Hoot! Preavviso studio al volo! 📖✈️"
+                    if classroom:
+                        return f"Hoot! Preavviso: lezione in {classroom}! 📚✈️"
+                    return "Hoot! Preavviso al volo! 🦉✈️"
+                elif chosen_animal == "bunny":
+                    if chosen_outfit == "gym":
+                        return "Boing! Preavviso allenamento al volo! 🏋️‍♂️✈️"
+                    if is_self_study:
+                        return "Hop-hop! Preavviso studio al volo! 📖✈️"
+                    if chosen_outfit == "chef":
+                        return "Hop-hop! Preavviso: cibo in arrivo! 🍕✈️"
+                    return "Hop-hop! Preavviso al volo! 🐰✈️"
+                elif chosen_animal == "squirrel":
+                    if chosen_outfit in ("driver", "racer"):
+                        return "Chirp-chirp! Sorvolo rapido: prepararsi! 🏎️💨"
+                    return "Chirp! Preavviso rapido al volo! 🐿️⚡"
+                elif chosen_animal == "platypus":
+                    return "Kk-kk-kk! (Sorvolo di ricognizione... 🕵️‍♂️✈️)"
+                else: # Duck
+                    if chosen_outfit == "chef":
+                        return "Quak! Preavviso: cibo tra poco! 🍕✈️"
+                    if is_self_study:
+                        return "Quak! Preavviso: studio tra poco! 📖✈️"
+                    if chosen_outfit == "gym":
+                        return "Quak! Preavviso: allenamento a breve! 🏋️‍♂️✈️"
+                    return "Quak! Preavviso al volo! 🦆✈️"
+
             if chosen_animal == "owl":
                 if is_self_study:
                     return "Hoot! Tempo di studio! Apri i libri e studia! 📖"
@@ -169,6 +201,36 @@ def build_pilot_speech_text(
                     return "QUAAK! 🚨 YOU NEED TO STUDY! DO IT! 📖"
                 return "QUAAK! 🚨 YOU ARE LATE! RUN! 🦆"
         else:
+            if stage is not None and stage > 0:
+                if chosen_animal == "owl":
+                    if is_self_study:
+                        return "Hoot! Heads up study preview! 📖✈️"
+                    if classroom:
+                        return f"Hoot! Heads up: class in {classroom}! 📚✈️"
+                    return "Hoot! Heads up! Just flying by! 🦉✈️"
+                elif chosen_animal == "bunny":
+                    if chosen_outfit == "gym":
+                        return "Boing! Heads up: workout soon! 🏋️‍♂️✈️"
+                    if is_self_study:
+                        return "Hop-hop! Heads up study sprint soon! 📖✈️"
+                    if chosen_outfit == "chef":
+                        return "Hop-hop! Heads up: dining time soon! 🍕✈️"
+                    return "Hop-hop! Heads up! Just flying by! 🐰✈️"
+                elif chosen_animal == "squirrel":
+                    if chosen_outfit in ("driver", "racer"):
+                        return "Chirp-chirp! Flyby preview: ready to roll! 🏎️💨"
+                    return "Chirp! Quick heads-up flyby! 🐿️⚡"
+                elif chosen_animal == "platypus":
+                    return "Kk-kk-kk! (Recon flyby in progress... 🕵️‍♂️✈️)"
+                else: # Duck
+                    if chosen_outfit == "chef":
+                        return "Quak! Heads up: dining time soon! 🍕✈️"
+                    if is_self_study:
+                        return "Quak! Heads up: study time soon! 📖✈️"
+                    if chosen_outfit == "gym":
+                        return "Quak! Heads up: workout coming up! 🏋️‍♂️✈️"
+                    return "Quak! Heads up! Just flying by! 🦆✈️"
+
             if chosen_animal == "owl":
                 if is_self_study:
                     return "Hoot! Time to study! You need to study, do it! 📖"
@@ -221,3 +283,33 @@ def build_pilot_speech_text(
                 elif is_self_study:
                     return "Quak! Time to study! Open the books! 📖"
                 return "Quak! Ready for takeoff! 🦆"
+
+
+def build_pilot_hover_speech_text(animal: Optional[str] = None, lang: Optional[str] = None) -> str:
+    """Returns a fun, animal-specific quote when the cursor hovers over the mascot."""
+    active_lang = lang or get_active_language()
+    chosen_animal = (animal or "duck").lower()
+
+    if active_lang == "it":
+        if chosen_animal == "owl":
+            return "Uhu! Osservo dall'alto! 🦉✨"
+        elif chosen_animal == "bunny":
+            return "Hop! Fermo a mezz'aria! 🐰✨"
+        elif chosen_animal == "squirrel":
+            return "Squit! Metto il tempo da parte! 🐿️"
+        elif chosen_animal == "platypus":
+            return "Kk-kk! (Planata silenziosa!) 🦆🏊"
+        else:
+            return "Quak! Modalità stazionaria attiva! 🛸"
+    else:
+        if chosen_animal == "owl":
+            return "Hoo! Observing from above! 🦉✨"
+        elif chosen_animal == "bunny":
+            return "Hop! Paused in mid-air! 🐰✨"
+        elif chosen_animal == "squirrel":
+            return "Squeak! Stashing time! 🐿️"
+        elif chosen_animal == "platypus":
+            return "Kk-kk! (Gliding silently!) 🦆🏊"
+        else:
+            return "Quak! Hover mode engaged! 🛸"
+

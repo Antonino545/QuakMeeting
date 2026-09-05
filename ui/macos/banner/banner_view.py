@@ -11,9 +11,10 @@ import objc
 
 from ui.macos.theme import Theme
 from core.services.config_service import config
+from core.services.language_service import t
 from core.domain.models import format_duration
-from ui.common.banner_speech import build_pilot_speech_text
-from ui.common.banner_particles import BannerParticleEngine
+from ui.common.banner_speech import build_pilot_speech_text, build_pilot_hover_speech_text
+from ui.common.banner_particles import BannerParticleEngine, compute_airplane_flight_dynamics
 from ui.common.banner_formatting import compute_countdown_text, MODE_ICONS
 from .renderers import get_pilot_renderer
 from .banner_layout import BannerLayout
@@ -43,8 +44,7 @@ class QuakPitBannerView(AppKit.NSView):
         self.end_time = _norm_dt(meeting_data.get("end_time"))
         self.location = meeting_data.get("location")
         self.provider = meeting_data.get("provider", "Calendar")
-        self.action_url = meeting_data.get("action_url") or meeting_data.get("meeting_url")
-        self.action_btn_text = meeting_data.get("action_btn_text", "🚀 Join Flight")
+        self.action_url = meeting_data.get("action_url") or meeting_data.get("meeting_url") or meeting_data.get("maps_url")
         self.pilot_type = meeting_data.get("pilot_type", "duck")
         self.classroom = meeting_data.get("classroom")
         self.teacher = meeting_data.get("teacher")
@@ -82,12 +82,27 @@ class QuakPitBannerView(AppKit.NSView):
         )
         self.has_maps_url = bool(
             self.has_real_url and
-            "maps.apple.com" in self.action_url.lower()
+            ("maps.apple.com" in self.action_url.lower() or
+             "maps.google.com" in self.action_url.lower() or
+             "google.com/maps" in self.action_url.lower())
+        ) or self.is_travel
+
+        if not meeting_data.get("action_btn_text") and self.has_maps_url:
+            self.action_btn_text = t("agenda_maps_button", default="🗺️ Directions")
+        else:
+            self.action_btn_text = meeting_data.get("action_btn_text", "🚀 Join Flight")
+
+        # Determine slim card layout for buttonless advance flyby
+        self.is_slim = bool(
+            self.reminder_stage is not None and
+            self.reminder_stage > 0 and
+            not self.has_real_url and
+            not self.has_maps_url
         )
 
         # Modular Engines & Painters
         self.banner_w = 535.0
-        self.banner_h = 126.0
+        self.banner_h = 96.0 if self.is_slim else 132.0
         self.layout_mgr = BannerLayout(banner_w=self.banner_w, banner_h=self.banner_h)
         self.hud_painter = BannerHUDPainter()
         self.particle_engine = BannerParticleEngine()
@@ -129,6 +144,11 @@ class QuakPitBannerView(AppKit.NSView):
         return self.particle_engine.sparkle_particles
 
     def _compute_is_late(self) -> bool:
+        if isinstance(self.meeting_data, dict):
+            if self.meeting_data.get("is_late") is not None:
+                return bool(self.meeting_data["is_late"])
+            if self.meeting_data.get("is_test_banner") or self.meeting_data.get("is_test"):
+                return False
         now = datetime.now().astimezone()
         if self.is_travel and self.departure_time:
             dep = self.departure_time
@@ -181,7 +201,11 @@ class QuakPitBannerView(AppKit.NSView):
             is_late=self.is_late,
             classroom=self.classroom,
             title=self.title,
-            provider=self.provider
+            provider=self.provider,
+            reminder_stage=self.reminder_stage
+        )
+        self._cached_hover_speech_text = build_pilot_hover_speech_text(
+            animal=self.animal or self.pilot_type
         )
         self._cached_countdown_text, self._cached_is_urgent = compute_countdown_text(
             self.meeting_data,
@@ -205,12 +229,30 @@ class QuakPitBannerView(AppKit.NSView):
         rects = self._get_button_rects(banner_x, banner_y)
         plane_rect = self.layout_mgr.get_plane_rect(plane_x, plane_y)
         bubble_rect = None
-        if self._cached_speech_text:
-            text_len = len(self._cached_speech_text) * 6.8
+        speech = self._cached_hover_speech_text if (self.hovered_button == "plane" and self._cached_hover_speech_text) else self._cached_speech_text
+        if speech:
+            text_len = len(speech) * 6.8
             bubble_rect = self.layout_mgr.get_speech_bubble_rect(
                 plane_x, plane_y, banner_x + self.banner_w, text_len, self.tick
             )
         return rects, plane_rect, bubble_rect
+
+    def _compute_coordinates(self) -> tuple[float, float, float, float, float, float, float]:
+        """
+        Computes (banner_x, banner_y, banner_w, banner_h, dyn_px, dyn_py, pitch_deg)
+        incorporating flight bobbing, dynamic airplane float, and pitch angle.
+        """
+        y_wave = self.base_y + math.sin(self.tick * 0.038) * 8.0
+        banner_x = self.x
+        banner_y = y_wave + (20.0 if self.is_slim else -10.0)
+        base_px = self.x + 605.0
+        base_py = y_wave + (19.0 if self.is_slim else 4.0)
+
+        float_x, float_y, pitch_deg = compute_airplane_flight_dynamics(self.tick, self.is_paused)
+        dyn_px = base_px + float_x
+        dyn_py = base_py + float_y
+
+        return banner_x, banner_y, self.banner_w, self.banner_h, dyn_px, dyn_py, pitch_deg
 
     def hitTest_(self, aPoint):
         if self.superview() is not None:
@@ -218,13 +260,8 @@ class QuakPitBannerView(AppKit.NSView):
         else:
             loc = self.convertPoint_fromView_(aPoint, None)
 
-        y_wave = self.base_y + math.sin(self.tick * 0.038) * 8.0
-        banner_x = self.x
-        banner_y = y_wave - 10.0
-        plane_x = self.x + 605.0
-        plane_y = y_wave + 4.0
-
-        rects, plane_rect, bubble_rect = self._get_interactive_rects(banner_x, banner_y, plane_x, plane_y)
+        banner_x, banner_y, _, _, dyn_px, dyn_py, _ = self._compute_coordinates()
+        rects, plane_rect, bubble_rect = self._get_interactive_rects(banner_x, banner_y, dyn_px, dyn_py)
 
         if (
             AppKit.NSPointInRect(loc, plane_rect) or
@@ -262,13 +299,8 @@ class QuakPitBannerView(AppKit.NSView):
         self._update_mouse_interaction_at_point(loc)
 
     def _update_mouse_interaction_at_point(self, loc):
-        banner_x = self.x
-        y_wave = self.base_y + math.sin(self.tick * 0.038) * 8.0
-        banner_y = y_wave - 10.0
-        plane_x = self.x + 605.0
-        plane_y = y_wave + 4.0
-
-        rects, plane_rect, bubble_rect = self._get_interactive_rects(banner_x, banner_y, plane_x, plane_y)
+        banner_x, banner_y, _, _, dyn_px, dyn_py, _ = self._compute_coordinates()
+        rects, plane_rect, bubble_rect = self._get_interactive_rects(banner_x, banner_y, dyn_px, dyn_py)
         old_hover = self.hovered_button
 
         is_over_interactive = False
@@ -319,13 +351,8 @@ class QuakPitBannerView(AppKit.NSView):
 
     def mouseDown_(self, event):
         loc = self.convertPoint_fromView_(event.locationInWindow(), None)
-        banner_x = self.x
-        y_wave = self.base_y + math.sin(self.tick * 0.038) * 8.0
-        banner_y = y_wave - 10.0
-        plane_x = self.x + 605.0
-        plane_y = y_wave + 4.0
-
-        rects, plane_rect, bubble_rect = self._get_interactive_rects(banner_x, banner_y, plane_x, plane_y)
+        banner_x, banner_y, _, _, dyn_px, dyn_py, _ = self._compute_coordinates()
+        rects, plane_rect, bubble_rect = self._get_interactive_rects(banner_x, banner_y, dyn_px, dyn_py)
 
         if AppKit.NSPointInRect(loc, rects["close_hit"]):
             self.pressed_button = "close"
@@ -348,12 +375,8 @@ class QuakPitBannerView(AppKit.NSView):
 
     def mouseUp_(self, event):
         loc = self.convertPoint_fromView_(event.locationInWindow(), None)
-        banner_x = self.x
-        y_wave = self.base_y + math.sin(self.tick * 0.038) * 8.0
-        banner_y = y_wave - 10.0
-        plane_x = self.x + 605.0
-        plane_y = y_wave + 4.0
-        rects, plane_rect, bubble_rect = self._get_interactive_rects(banner_x, banner_y, plane_x, plane_y)
+        banner_x, banner_y, _, _, dyn_px, dyn_py, _ = self._compute_coordinates()
+        rects, plane_rect, bubble_rect = self._get_interactive_rects(banner_x, banner_y, dyn_px, dyn_py)
 
         clicked = self.pressed_button
         self.pressed_button = None
@@ -437,12 +460,9 @@ class QuakPitBannerView(AppKit.NSView):
                 self.title
             )
 
-        plane_x = self.x + 605.0
-        y_wave = self.base_y + math.sin(self.tick * 0.038) * 8.0
-        plane_y = y_wave + 4.0
-
+        _, _, _, _, dyn_px, dyn_py, _ = self._compute_coordinates()
         self.particle_engine.emit_and_update(
-            plane_x, plane_y, self.tick, self.is_late, self.is_paused, self.pilot_type
+            dyn_px, dyn_py, self.tick, self.is_late, self.is_paused, self.pilot_type
         )
         self.setNeedsDisplay_(True)
 
@@ -503,14 +523,7 @@ class QuakPitBannerView(AppKit.NSView):
         palette = self._palette
         accent = palette["accent"]
 
-        y_wave = self.base_y + math.sin(self.tick * 0.038) * 8.0
-        plane_x = self.x + 605.0
-        plane_y = y_wave + 4.0
-
-        banner_x = self.x
-        banner_y = y_wave - 10.0
-        banner_w = self.banner_w
-        banner_h = self.banner_h
+        banner_x, banner_y, banner_w, banner_h, dyn_px, dyn_py, pitch_deg = self._compute_coordinates()
 
         # 1. Turbo Flame Particles
         for f in self.particle_engine.flame_particles:
@@ -546,13 +559,15 @@ class QuakPitBannerView(AppKit.NSView):
             sparkle_path.fill()
 
         # 3. Towing Cables
-        self.hud_painter.draw_towing_cables(banner_x, banner_y, banner_w, banner_h, plane_x, plane_y, self.is_late)
+        self.hud_painter.draw_towing_cables(
+            banner_x, banner_y, banner_w, banner_h, dyn_px, dyn_py, self.is_late, pitch_deg=pitch_deg, tick=self.tick
+        )
 
         # 4. Card HUD
-        self.hud_painter.draw_glass_banner_card(banner_x, banner_y, banner_w, banner_h, self.is_late, self.tick)
+        self.hud_painter.draw_glass_banner_card(banner_x, banner_y, banner_w, banner_h, self.is_late, self.tick, self.reminder_stage)
 
         # 5. Provider Pill & Classroom Badge
-        self.hud_painter.draw_provider_and_classroom_pills(banner_x, banner_y, banner_h, self.provider, self.classroom, accent)
+        self.hud_painter.draw_provider_and_classroom_pills(banner_x, banner_y, banner_h, self.provider, self.classroom, accent, self.reminder_stage)
 
         # 6. Countdown Pill
         self.hud_painter.draw_countdown_pill(banner_x, banner_y, banner_w, banner_h, self._cached_countdown_text, self._cached_is_urgent)
@@ -578,10 +593,32 @@ class QuakPitBannerView(AppKit.NSView):
             self.hovered_button
         )
 
-        # 10. Vector Pilot Mascot
-        self.renderer.draw_pilot(plane_x, plane_y, self.tick)
+        # 10. Vector Pilot Mascot with Dynamic Pitch Rotation
+        # Centers rotation at dynamic airplane center (dyn_px, dyn_py)
+        ctx = AppKit.NSGraphicsContext.currentContext()
+        ctx.saveGraphicsState()
+        transform = AppKit.NSAffineTransform.transform()
+        transform.translateXBy_yBy_(dyn_px, dyn_py)
+        transform.rotateByDegrees_(pitch_deg)
+        transform.translateXBy_yBy_(-dyn_px, -dyn_py)
+        transform.concat()
 
-        # 11. Pilot Speech Bubble
+        self.renderer.draw_pilot(dyn_px, dyn_py, self.tick)
+        ctx.restoreGraphicsState()
+
+        # 11. Pilot Speech Bubble (Playful mascot hover quote when hovering plane)
+        active_speech = self._cached_hover_speech_text if (self.hovered_button == "plane" and self._cached_hover_speech_text) else self._cached_speech_text
         self.hud_painter.draw_pilot_speech_bubble(
-            plane_x, plane_y, banner_x + banner_w, self._cached_speech_text, self.is_late, self.tick
+            dyn_px, dyn_py, banner_x + banner_w, active_speech, self.is_late, self.tick
         )
+
+    def acceptsFirstResponder(self):
+        return True
+
+    def keyDown_(self, event):
+        if event.keyCode() == 53:  # Escape key
+            if self.controller:
+                self.controller.dismiss()
+        else:
+            objc.super(QuakPitBannerView, self).keyDown_(event)
+

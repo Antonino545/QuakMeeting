@@ -7,6 +7,8 @@ import AppKit
 from typing import Dict, Any, Optional
 
 from ui.macos.theme import Theme
+from core.services.language_service import t
+from ui.common.banner_particles import compute_towing_cable_hooks
 
 class BannerHUDPainter:
     def __init__(self):
@@ -23,33 +25,37 @@ class BannerHUDPainter:
         self.color_urgent_time = Theme.RED
         self.color_normal_time = Theme.YELLOW
 
-    def draw_towing_cables(self, bx: float, by: float, bw: float, bh: float, px: float, py: float, is_late: bool):
+    def draw_towing_cables(self, bx: float, by: float, bw: float, bh: float, px: float, py: float, is_late: bool, pitch_deg: float = 0.0, tick: int = 0):
         cable_col = Theme.RED.colorWithAlphaComponent_(0.75) if is_late else Theme.SUBTEXT1.colorWithAlphaComponent_(0.45)
         cable_col.set()
+
+        (hook_top_x, hook_top_y), (hook_bot_x, hook_bot_y) = compute_towing_cable_hooks(px, py, pitch_deg, is_qt_coords=False)
+        dx = hook_top_x - (bx + bw)
+        vibe = (math.sin(tick * 0.55) * 1.8) if is_late else (math.sin(tick * 0.38) * 1.2)
 
         cable_top = AppKit.NSBezierPath.bezierPath()
         cable_top.setLineWidth_(1.5)
         cable_top.moveToPoint_(AppKit.NSMakePoint(bx + bw, by + bh - 24.0))
-        ctrl_pt1 = AppKit.NSMakePoint(bx + bw + (px - bx - bw) * 0.45, by + bh - 16.0)
+        ctrl_pt1 = AppKit.NSMakePoint(bx + bw + dx * 0.45, by + bh - 16.0 - vibe)
         cable_top.curveToPoint_controlPoint1_controlPoint2_(
-            AppKit.NSMakePoint(px - 16.0, py + 8.0),
+            AppKit.NSMakePoint(hook_top_x, hook_top_y),
             ctrl_pt1,
-            AppKit.NSMakePoint(px - 32.0, py + 12.0)
+            AppKit.NSMakePoint(hook_top_x - 16.0, hook_top_y + 2.0 + vibe)
         )
         cable_top.stroke()
 
         cable_bot = AppKit.NSBezierPath.bezierPath()
         cable_bot.setLineWidth_(1.5)
         cable_bot.moveToPoint_(AppKit.NSMakePoint(bx + bw, by + 24.0))
-        ctrl_pt2 = AppKit.NSMakePoint(bx + bw + (px - bx - bw) * 0.45, by + 16.0)
+        ctrl_pt2 = AppKit.NSMakePoint(bx + bw + dx * 0.45, by + 16.0 + vibe)
         cable_bot.curveToPoint_controlPoint1_controlPoint2_(
-            AppKit.NSMakePoint(px - 16.0, py - 4.0),
+            AppKit.NSMakePoint(hook_bot_x, hook_bot_y),
             ctrl_pt2,
-            AppKit.NSMakePoint(px - 32.0, py - 6.0)
+            AppKit.NSMakePoint(hook_bot_x - 16.0, hook_bot_y - 2.0 - vibe)
         )
         cable_bot.stroke()
 
-    def draw_glass_banner_card(self, bx: float, by: float, bw: float, bh: float, is_late: bool, tick: int):
+    def draw_glass_banner_card(self, bx: float, by: float, bw: float, bh: float, is_late: bool, tick: int, reminder_stage: Optional[int] = None):
         card_rect = AppKit.NSMakeRect(bx, by, bw, bh)
         card_path = AppKit.NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(card_rect, 16.0, 16.0)
 
@@ -57,11 +63,14 @@ class BannerHUDPainter:
         Theme.BASE.set()
         card_path.fill()
 
-        # Subtle rim border / Emergency red pulse when late
+        # Subtle rim border / Emergency red pulse when late / Lavender glow for flyby
         if is_late:
             pulse = math.sin(tick * 0.15) * 0.3 + 0.7
             border_col = Theme.RED.colorWithAlphaComponent_(pulse)
             card_path.setLineWidth_(1.8)
+        elif reminder_stage is not None and reminder_stage > 0:
+            border_col = Theme.LAVENDER.colorWithAlphaComponent_(0.45)
+            card_path.setLineWidth_(1.2)
         else:
             border_col = Theme.SURFACE0
             card_path.setLineWidth_(1.0)
@@ -69,7 +78,7 @@ class BannerHUDPainter:
         border_col.set()
         card_path.stroke()
 
-    def draw_provider_and_classroom_pills(self, bx: float, by: float, bh: float, provider: str, classroom: Optional[str], accent: AppKit.NSColor):
+    def draw_provider_and_classroom_pills(self, bx: float, by: float, bh: float, provider: str, classroom: Optional[str], accent: AppKit.NSColor, reminder_stage: Optional[int] = None):
         attrs = {
             AppKit.NSFontAttributeName: self.font_pill,
             AppKit.NSForegroundColorAttributeName: accent
@@ -96,6 +105,8 @@ class BannerHUDPainter:
         text_pt = AppKit.NSMakePoint(pill_x + 8.0, pill_y + 3.0)
         ns_str.drawAtPoint_withAttributes_(text_pt, attrs)
 
+        next_x = pill_x + pill_w + 8.0
+
         # Draw Classroom Badge if available
         if classroom:
             c_attrs = {
@@ -104,7 +115,7 @@ class BannerHUDPainter:
             }
             c_str = AppKit.NSString.stringWithString_(f"🏫 {classroom}")
             c_size = c_str.sizeWithAttributes_(c_attrs)
-            c_pill_x = pill_x + pill_w + 8.0
+            c_pill_x = next_x
             c_pill_rect = AppKit.NSMakeRect(c_pill_x, pill_y, c_size.width + 14.0, pill_h)
             c_path = AppKit.NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(c_pill_rect, 10.0, 10.0)
 
@@ -115,6 +126,26 @@ class BannerHUDPainter:
             c_path.stroke()
 
             c_str.drawAtPoint_withAttributes_(AppKit.NSMakePoint(c_pill_x + 7.0, pill_y + 3.0), c_attrs)
+            next_x = c_pill_x + c_size.width + 14.0 + 8.0
+
+        # Draw Flyby Badge if advance reminder
+        if reminder_stage is not None and reminder_stage > 0:
+            fly_attrs = {
+                AppKit.NSFontAttributeName: self.font_pill,
+                AppKit.NSForegroundColorAttributeName: Theme.LAVENDER
+            }
+            fly_str = AppKit.NSString.stringWithString_(t("banner_flyby_pill"))
+            fly_size = fly_str.sizeWithAttributes_(fly_attrs)
+            fly_pill_rect = AppKit.NSMakeRect(next_x, pill_y, fly_size.width + 14.0, pill_h)
+            fly_path = AppKit.NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(fly_pill_rect, 10.0, 10.0)
+
+            Theme.LAVENDER.colorWithAlphaComponent_(0.15).set()
+            fly_path.fill()
+            Theme.LAVENDER.colorWithAlphaComponent_(0.45).set()
+            fly_path.setLineWidth_(1.0)
+            fly_path.stroke()
+
+            fly_str.drawAtPoint_withAttributes_(AppKit.NSMakePoint(next_x + 7.0, pill_y + 3.0), fly_attrs)
 
     def draw_countdown_pill(self, bx: float, by: float, bw: float, bh: float, countdown_text: str, is_urgent: bool):
         time_col = self.color_urgent_time if is_urgent else self.color_normal_time
@@ -183,14 +214,14 @@ class BannerHUDPainter:
             AppKit.NSFontAttributeName: self.font_title,
             AppKit.NSForegroundColorAttributeName: self.color_white
         }
-        title_pt = AppKit.NSMakePoint(bx + 18.0, by + bh - 58.0)
+        title_pt = AppKit.NSMakePoint(bx + 18.0, by + bh - 56.0)
         AppKit.NSString.stringWithString_(title_text).drawAtPoint_withAttributes_(title_pt, title_attrs)
 
         sub_attrs = {
             AppKit.NSFontAttributeName: self.font_sub,
             AppKit.NSForegroundColorAttributeName: self.color_sub
         }
-        sub_pt = AppKit.NSMakePoint(bx + 18.0, by + bh - 78.0)
+        sub_pt = AppKit.NSMakePoint(bx + 18.0, by + bh - 76.0)
         AppKit.NSString.stringWithString_(detail_text).drawAtPoint_withAttributes_(sub_pt, sub_attrs)
 
     def draw_buttons_bar(
@@ -207,43 +238,54 @@ class BannerHUDPainter:
         hovered_button: Optional[str]
     ):
         # 1. Main Action Button
-        is_pressed_act = (pressed_button == "action")
-        is_hovered_act = (hovered_button == "action")
+        btn_act_rect = button_rects["action"]
+        if btn_act_rect.size.width > 0:
+            is_pressed_act = (pressed_button == "action")
+            is_hovered_act = (hovered_button == "action")
+            btn_act_path = AppKit.NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(btn_act_rect, 9.0, 9.0)
 
-        btn_act_rect = AppKit.NSMakeRect(bx + 18.0, by + 12.0, 220.0, 33.0)
-        btn_act_path = AppKit.NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(btn_act_rect, 9.0, 9.0)
+            if not has_real_url:
+                top_c = Theme.SAPPHIRE
+                bot_c = Theme.BLUE
+                btn_text = t("banner_got_it")
+                txt_c = Theme.CRUST
+            else:
+                if has_maps_url:
+                    top_c = Theme.SKY
+                    bot_c = Theme.SAPPHIRE
+                else:
+                    top_c = palette["btn_gradient_top"]
+                    bot_c = palette["btn_gradient_bot"]
+                btn_text = action_btn_text
+                txt_c = Theme.CRUST
 
-        if not has_real_url:
-            top_c = Theme.SAPPHIRE
-            bot_c = Theme.BLUE
-            btn_text = "✅ Got it"
-        else:
-            top_c = palette["btn_gradient_top"]
-            bot_c = palette["btn_gradient_bot"]
-            btn_text = action_btn_text
+            if is_pressed_act:
+                grad = AppKit.NSGradient.alloc().initWithStartingColor_endingColor_(bot_c, top_c)
+            elif is_hovered_act:
+                if not has_real_url:
+                    hover_color = Theme.SKY
+                elif has_maps_url:
+                    hover_color = Theme.TEAL
+                else:
+                    hover_color = palette["accent_bright"]
+                grad = AppKit.NSGradient.alloc().initWithStartingColor_endingColor_(hover_color, bot_c)
+            else:
+                grad = AppKit.NSGradient.alloc().initWithStartingColor_endingColor_(top_c, bot_c)
 
-        if is_pressed_act:
-            grad = AppKit.NSGradient.alloc().initWithStartingColor_endingColor_(bot_c, top_c)
-        elif is_hovered_act:
-            hover_color = Theme.SKY if not has_real_url else palette["accent_bright"]
-            grad = AppKit.NSGradient.alloc().initWithStartingColor_endingColor_(hover_color, bot_c)
-        else:
-            grad = AppKit.NSGradient.alloc().initWithStartingColor_endingColor_(top_c, bot_c)
+            grad.drawInBezierPath_angle_(btn_act_path, 270.0)
 
-        grad.drawInBezierPath_angle_(btn_act_path, 270.0)
-
-        btn_attrs = {
-            AppKit.NSFontAttributeName: self.font_btn,
-            AppKit.NSForegroundColorAttributeName: Theme.CRUST
-        }
-        ns_btn_str = AppKit.NSString.stringWithString_(btn_text)
-        str_size = ns_btn_str.sizeWithAttributes_(btn_attrs)
-        text_x = btn_act_rect.origin.x + (btn_act_rect.size.width - str_size.width) * 0.5
-        text_y = btn_act_rect.origin.y + (btn_act_rect.size.height - str_size.height) * 0.5
-        ns_btn_str.drawAtPoint_withAttributes_(AppKit.NSMakePoint(text_x, text_y), btn_attrs)
+            btn_attrs = {
+                AppKit.NSFontAttributeName: self.font_btn,
+                AppKit.NSForegroundColorAttributeName: txt_c
+            }
+            ns_btn_str = AppKit.NSString.stringWithString_(btn_text)
+            str_size = ns_btn_str.sizeWithAttributes_(btn_attrs)
+            text_x = btn_act_rect.origin.x + (btn_act_rect.size.width - str_size.width) * 0.5
+            text_y = btn_act_rect.origin.y + (btn_act_rect.size.height - str_size.height) * 0.5
+            ns_btn_str.drawAtPoint_withAttributes_(AppKit.NSMakePoint(text_x, text_y), btn_attrs)
 
         # 2. "📍 I'm Here" Arrival Dismissal Button
-        if has_maps_url:
+        if has_maps_url and button_rects["arrived"].size.width > 0:
             is_pressed_arr = (pressed_button == "arrived")
             is_hovered_arr = (hovered_button == "arrived")
 
@@ -269,7 +311,7 @@ class BannerHUDPainter:
                 AppKit.NSFontAttributeName: self.font_btn_sec,
                 AppKit.NSForegroundColorAttributeName: self.color_arrived
             }
-            ns_arr_str = AppKit.NSString.stringWithString_("📍 I'm Here")
+            ns_arr_str = AppKit.NSString.stringWithString_(t("banner_im_here", default="📍 I'm Here"))
             arr_size = ns_arr_str.sizeWithAttributes_(arr_attrs)
             arr_tx = btn_arr_rect.origin.x + (btn_arr_rect.size.width - arr_size.width) * 0.5
             arr_ty = btn_arr_rect.origin.y + (btn_arr_rect.size.height - arr_size.height) * 0.5
@@ -320,7 +362,7 @@ class BannerHUDPainter:
             ns_str.drawAtPoint_withAttributes_(AppKit.NSMakePoint(tx, ty), s_attrs)
 
         if is_stage_zero:
-            _draw_snooze_btn("snooze1", button_rects["snooze1"], "✅ Got it")
+            _draw_snooze_btn("snooze1", button_rects["snooze1"], t("banner_got_it"))
         else:
             _draw_snooze_btn("snooze1", button_rects["snooze1"], "💤 5m")
             _draw_snooze_btn("snooze2", button_rects["snooze2"], "⏭️ Skip")

@@ -201,7 +201,7 @@ def get_update_preset(version_str: str = "New Version", release_url: str = "") -
 # ── Layout constants ──────────────────────────────────────────────────────────
 
 CARD_W    = 535
-CARD_H    = 126
+CARD_H    = 132
 CARD_R    = 18
 WIN_W     = 1000
 WIN_H     = 195

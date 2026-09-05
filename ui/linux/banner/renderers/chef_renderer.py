@@ -51,6 +51,10 @@ class QtChefRenderer(BaseQtPilotRenderer):
         p.setBrush(c(1.0, 0.48, 0.02))
         p.drawPath(beak)
 
+        # Beak nostril
+        p.setBrush(c(0.68, 0.25, 0.01, 0.85))
+        p.drawEllipse(QRectF(px + 7.5, py + 9.5, 1.4, 1.1))
+
         # 3. Red Bandana with Polka Dots
         p.setBrush(c(0.92, 0.18, 0.18))
         p.drawEllipse(QRectF(px - 6, py - 2, 14, 8))

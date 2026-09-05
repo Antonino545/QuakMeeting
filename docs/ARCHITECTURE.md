@@ -61,7 +61,7 @@ flowchart TD
 ### 1. Domain (`core/domain/`)
 Contains pure Python data classes and enums. 
 - **`models.py`**: The central `Meeting` dataclass holding event info, travel metadata, and UI theme attributes. Includes logic for duration formatting and event categories (`exam`, `class`, `study`, `food`, `travel`, `sport`, etc.).
-- **`classifier.py`**: Heuristic keyword and regex engine to automatically assign pilots (Duck, Captain, Chef, Owl, etc.) and categories (`exam`, `class`, `study`, `travel`, `sport`, etc.) based on event titles, metadata, and prefixes.
+- **`classifier.py`**: Heuristic keyword, regex, and temporal anchor engine to automatically assign pilots (Duck, Captain, Chef, Owl, etc.) and categories (`exam`, `class`, `study`, `food`, `travel`, `sport`, `in_person`, `health`, etc.) based on event titles, metadata, closed-vocabulary prefixes, idiom overrides, and iterative temporal anchor masking.
 
 ### 2. Providers (`core/providers/`)
 Data ingestion layer fetching events from various platforms.
@@ -86,7 +86,7 @@ Cross-platform presentation layer structured by operating system:
   - **`tray_viewmodel.py`**: Shared tray status logic and countdown string formatting.
   - **`banner_queue.py`**: Cross-platform banner sequencing and queue management.
   - **`banner_speech.py`**: Animal-specific vocalization generator (`duck`, `owl`, `bunny`, `squirrel`, `platypus`) and context-aware dialogue builder.
-  - **`banner_particles.py`**: Physics simulation engine for turbo afterburner flames, exhaust smoke puffs, and magical sparkles.
+  - **`banner_particles.py`**: Physics simulation engine for turbo afterburner flames, exhaust smoke puffs, magical sparkles, dynamic flight pitch & thrust calculation (`compute_airplane_flight_dynamics`), and rotated towing cable hook anchors (`compute_towing_cable_hooks`).
   - **`banner_formatting.py`**: Time differentials, countdown text, urgency flags, and travel duration formatting.
 - **`ui/macos/`**: Native macOS UI using PyObjC:
   - **`theme.py`**: Native `NSColor` and `CGColor` bridges derived directly from `ui.common.theme.CatppuccinMocha`.
@@ -94,16 +94,17 @@ Cross-platform presentation layer structured by operating system:
   - **`dashboard_window.py`**: Native `NSWindow` Flight Deck HUD with custom segmented capsule pill switcher.
   - **`dashboard_tabs/`**: Dedicated native tab views (`agenda_tab.py`, `hangar_tab.py`, `settings_tab.py`).
   - **`banner/`**: Quartz 2D animated HUD banners:
-    - `banner_view.py`: Streamlined Cocoa `NSView` managing animation timer ticks, flight motion, and mouse event dispatch.
+    - `banner_view.py`: Streamlined Cocoa `NSView` managing animation timer ticks, dynamic airplane pitch rotation transforms, flight motion, and mouse event dispatch.
     - `banner_layout.py`: Bounding boxes, button positions, and hit testing targets.
-    - `banner_hud_painter.py`: Quartz 2D drawing routines (Glass card, pills, action buttons, towing cables, speech bubble).
+    - `banner_hud_painter.py`: Quartz 2D drawing routines (Glass card, pills, action buttons, vibrating towing cables, speech bubble).
     - `quiet_banner_view.py`: Distraction-free compact notifications.
-    - `update_banner_view.py`: Software update alerts.
+    - `renderers/`: Vector pilot & vehicle renderers (`duck_renderer.py`, `modular_renderer.py`) featuring 4-blade high-RPM propeller discs, pulsating wingtip strobe beacons, natural mascot eye blinking, head bobbing, and species-specific slipstream inertia.
 - **`ui/linux/`**: Native Linux / Ubuntu UI using PyQt6 (Wayland / X11):
   - **`theme.py`**: Native `QColor` and RGBA string converters derived directly from `ui.common.theme.CatppuccinMocha`.
   - **`qt_tray_app.py`**: PyQt6 `QSystemTrayIcon` with custom Catppuccin context menu.
   - **`qt_dashboard.py`**: PyQt6 Flight Deck window with capsule pill switcher and solid Catppuccin cards.
-  - **`banner/`**: PyQt6 Wayland/X11 animated overlay banner (`qt_duck_banner.py`) and software update banners (`qt_update_banner.py`).
+  - **`banner/`**: PyQt6 Wayland/X11 animated overlay banner (`qt_duck_banner.py`) with dynamic pitch rotation and software update banners (`qt_update_banner.py`).
+  - **`banner/renderers/`**: Pixel-identical PyQt6 vector renderers with multiplatform parity to macOS Quartz 2D.
 - **`ui/app_launcher.py`**: Platform-aware UI dispatcher and entrypoint.
 
 
@@ -146,6 +147,25 @@ The UI follows strict multiplatform parity where both macOS AppKit and Linux PyQ
 | macOS (AppKit) — Live Downloading Progress | macOS (AppKit) — Installation Complete & Relaunch |
 | :---: | :---: |
 | ![macOS Downloading](../assets/screenshots/macos_update_downloading.png) | ![macOS Installed](../assets/screenshots/macos_update_installed.png) |
+
+#### 5. 🦆 Advance Flyby Reminder vs. Event-Time Looping Banner
+QuakMeeting provides clear visual and functional distinction between advance heads-up reminders and event-time alarms:
+- **Advance Flyby Reminder (`reminder_stage > 0`, e.g., 20m, 10m, 5m, 2m)**:
+  - Single-pass non-looping flight across the screen that auto-dismisses upon exiting the display.
+  - Distinctive `[✈️ FLYBY]` / `[✈️ AL VOLO]` badge pill and soft Lavender accent border (`Theme.LAVENDER`).
+  - Contextual flyby speech quotes across all mascots (e.g., *"Quak! Heads up! Just flying by! 🦆✈️"*).
+  - **Adaptive Slim Height (`96px`)**: For buttonless general event reminders (advance reminders with no online meeting URL or transit link), the banner card dynamically shrinks from `132px` to `96px`. This completely eliminates bottom whitespace while keeping symmetrical 18px content padding, with towing cables and the pilot plane automatically re-centering.
+  - **Zero bottom buttons for general events**: Since the reminder engine automatically re-alerts at subsequent stages (e.g., 5m, 2m), manual snooze is redundant. The card serves as a pure ambient heads-up widget without buttons prompting unnecessary clicks.
+  - **Single `[🚀 Join Meeting]` button for online meetings**: Retained at standard `132px` height so users can enter calls early with 1 click, without redundant snooze or skip controls.
+  - **`[📍 I'm Here]` button for travel events**: Retained at standard `132px` height when transit destinations have location/maps links to allow early arrival acknowledgement (paired with `[🗺️ Directions]` when a directions URL is available).
+- **Event-Time Looping Banner (`reminder_stage == 0`)**:
+  - Persistent alert looping across the screen at standard `132px` height until acknowledged by the user.
+  - High-visibility styling and urgent countdown pill (`⏳ Starting Now!` / `⏳ Inizia ora!`).
+  - Minimalist, high-contrast action bar: single primary action (`[🚀 Join Meeting]` for online events, `[📍 I'm Here]` for in-person travel events, or `[✅ Got it]` for general events) avoids visual clutter and ensures maximum readability.
+- **Interactive Keyboard & Mascot Controls (Both macOS & Linux)**:
+  - **Instant `Esc` Dismissal**: Pressing the `Escape` key immediately dismisses any active flying banner via Qt `QShortcut` / `keyPressEvent` on Linux and `NSEvent` monitor / `keyDown_` on macOS.
+  - **Playful Mascot Hover Reaction**: Hovering the cursor over the pilot mascot airplane pauses flight progression and triggers an animal-specific playful speech quote (e.g., *"Quak! Hover mode engaged! 🛸"*, *"Uhu! Osservo dall'alto! 🦉✨"*), smoothly restoring the normal reminder speech when the mouse leaves.
+
 
 ---
 
