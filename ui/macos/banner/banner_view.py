@@ -11,6 +11,7 @@ import objc
 
 from ui.macos.theme import Theme
 from core.services.config_service import config
+from core.services.language_service import t
 from core.domain.models import format_duration
 from ui.common.banner_speech import build_pilot_speech_text, build_pilot_hover_speech_text
 from ui.common.banner_particles import BannerParticleEngine, compute_airplane_flight_dynamics
@@ -43,8 +44,7 @@ class QuakPitBannerView(AppKit.NSView):
         self.end_time = _norm_dt(meeting_data.get("end_time"))
         self.location = meeting_data.get("location")
         self.provider = meeting_data.get("provider", "Calendar")
-        self.action_url = meeting_data.get("action_url") or meeting_data.get("meeting_url")
-        self.action_btn_text = meeting_data.get("action_btn_text", "🚀 Join Flight")
+        self.action_url = meeting_data.get("action_url") or meeting_data.get("meeting_url") or meeting_data.get("maps_url")
         self.pilot_type = meeting_data.get("pilot_type", "duck")
         self.classroom = meeting_data.get("classroom")
         self.teacher = meeting_data.get("teacher")
@@ -82,8 +82,15 @@ class QuakPitBannerView(AppKit.NSView):
         )
         self.has_maps_url = bool(
             self.has_real_url and
-            "maps.apple.com" in self.action_url.lower()
-        )
+            ("maps.apple.com" in self.action_url.lower() or
+             "maps.google.com" in self.action_url.lower() or
+             "google.com/maps" in self.action_url.lower())
+        ) or self.is_travel
+
+        if not meeting_data.get("action_btn_text") and self.has_maps_url:
+            self.action_btn_text = t("agenda_maps_button", default="🗺️ Directions")
+        else:
+            self.action_btn_text = meeting_data.get("action_btn_text", "🚀 Join Flight")
 
         # Determine slim card layout for buttonless advance flyby
         self.is_slim = bool(
@@ -95,7 +102,7 @@ class QuakPitBannerView(AppKit.NSView):
 
         # Modular Engines & Painters
         self.banner_w = 535.0
-        self.banner_h = 96.0 if self.is_slim else 126.0
+        self.banner_h = 96.0 if self.is_slim else 132.0
         self.layout_mgr = BannerLayout(banner_w=self.banner_w, banner_h=self.banner_h)
         self.hud_painter = BannerHUDPainter()
         self.particle_engine = BannerParticleEngine()

@@ -6,7 +6,7 @@ import AppKit
 from typing import Dict, Any, Optional
 
 class BannerLayout:
-    def __init__(self, banner_w: float = 535.0, banner_h: float = 126.0):
+    def __init__(self, banner_w: float = 535.0, banner_h: float = 132.0):
         self.banner_w = banner_w
         self.banner_h = banner_h
 
@@ -23,40 +23,52 @@ class BannerLayout:
         btn_close_hit_rect = AppKit.NSMakeRect(banner_x + self.banner_w - 44, banner_y + self.banner_h - 44, 40, 40)
 
         # 4 Button Bar: [Action] [I'm Here] [Snooze 5m] [Skip]
+        btn_h = 32.0
+        btn_y = banner_y + 14.0
         is_stage_zero = (reminder_stage == 0)
 
         if is_stage_zero:
             if has_maps_url:
-                btn_action_rect = AppKit.NSMakeRect(banner_x + 18, banner_y + 12, 220, 33)
-                btn_arrived_rect = AppKit.NSMakeRect(banner_x + 246, banner_y + 12, 100, 33)
-                if not has_real_url:
+                if has_real_url:
+                    # 2 Buttons: [Action / Directions (260px)] [📍 I'm Here (227px)] (Got it is redundant and removed)
+                    btn_action_rect = AppKit.NSMakeRect(banner_x + 18, btn_y, 260, btn_h)
+                    btn_arrived_rect = AppKit.NSMakeRect(banner_x + 290, btn_y, 227, btn_h)
                     btn_snooze1_rect = AppKit.NSMakeRect(0, 0, 0, 0)
                 else:
-                    btn_snooze1_rect = AppKit.NSMakeRect(banner_x + 354, banner_y + 12, 163, 33)
+                    # 1 Button: [📍 I'm Here (200px)]
+                    btn_action_rect = AppKit.NSMakeRect(0, 0, 0, 0)
+                    btn_arrived_rect = AppKit.NSMakeRect(banner_x + 18, btn_y, 200, btn_h)
+                    btn_snooze1_rect = AppKit.NSMakeRect(0, 0, 0, 0)
                 btn_snooze2_rect = AppKit.NSMakeRect(0, 0, 0, 0)
             else:
                 btn_arrived_rect = AppKit.NSMakeRect(0, 0, 0, 0)
-                btn_action_rect = AppKit.NSMakeRect(banner_x + 18, banner_y + 12, 220, 33)
-                if not has_real_url:
-                    btn_snooze1_rect = AppKit.NSMakeRect(0, 0, 0, 0)
-                else:
-                    btn_snooze1_rect = AppKit.NSMakeRect(banner_x + 246, banner_y + 12, 208, 33)
+                btn_snooze1_rect = AppKit.NSMakeRect(0, 0, 0, 0)
                 btn_snooze2_rect = AppKit.NSMakeRect(0, 0, 0, 0)
+                if has_real_url:
+                    # Online Meeting (Option A): Single prominent [🚀 JOIN NOW] action button
+                    btn_action_rect = AppKit.NSMakeRect(banner_x + 18, btn_y, 220, btn_h)
+                else:
+                    # Plain Event / Note: Single [✅ Got it] confirmation button
+                    btn_action_rect = AppKit.NSMakeRect(banner_x + 18, btn_y, 220, btn_h)
         else:
             # Advance Flyby Reminder (Option A - Pure Ambient):
             # - No Snooze or Skip buttons (ambient flyby auto-snoozes via reminder stages)
-            # - If meeting has a real URL: only [🚀 Join Meeting]
-            # - If travel/maps: only [📍 I'm Here]
+            # - If meeting has real URL and maps: [Action (260px)] [📍 I'm Here (227px)]
+            # - If meeting has only real URL: [Action (220px)]
+            # - If travel/maps only: [📍 I'm Here (200px)]
             # - General event: no bottom buttons at all
             btn_snooze1_rect = AppKit.NSMakeRect(0, 0, 0, 0)
             btn_snooze2_rect = AppKit.NSMakeRect(0, 0, 0, 0)
 
-            if has_real_url:
-                btn_action_rect = AppKit.NSMakeRect(banner_x + 18, banner_y + 12, 220, 33)
-                btn_arrived_rect = AppKit.NSMakeRect(banner_x + 246, banner_y + 12, 100, 33) if has_maps_url else AppKit.NSMakeRect(0, 0, 0, 0)
+            if has_real_url and has_maps_url:
+                btn_action_rect = AppKit.NSMakeRect(banner_x + 18, btn_y, 260, btn_h)
+                btn_arrived_rect = AppKit.NSMakeRect(banner_x + 290, btn_y, 227, btn_h)
+            elif has_real_url:
+                btn_action_rect = AppKit.NSMakeRect(banner_x + 18, btn_y, 220, btn_h)
+                btn_arrived_rect = AppKit.NSMakeRect(0, 0, 0, 0)
             elif has_maps_url:
                 btn_action_rect = AppKit.NSMakeRect(0, 0, 0, 0)
-                btn_arrived_rect = AppKit.NSMakeRect(banner_x + 18, banner_y + 12, 100, 33)
+                btn_arrived_rect = AppKit.NSMakeRect(banner_x + 18, btn_y, 200, btn_h)
             else:
                 btn_action_rect = AppKit.NSMakeRect(0, 0, 0, 0)
                 btn_arrived_rect = AppKit.NSMakeRect(0, 0, 0, 0)

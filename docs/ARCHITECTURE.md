@@ -154,14 +154,14 @@ QuakMeeting provides clear visual and functional distinction between advance hea
   - Single-pass non-looping flight across the screen that auto-dismisses upon exiting the display.
   - Distinctive `[✈️ FLYBY]` / `[✈️ AL VOLO]` badge pill and soft Lavender accent border (`Theme.LAVENDER`).
   - Contextual flyby speech quotes across all mascots (e.g., *"Quak! Heads up! Just flying by! 🦆✈️"*).
-  - **Adaptive Slim Height (`96px`)**: For buttonless general event reminders (advance reminders with no online meeting URL or transit link), the banner card dynamically shrinks from `126px` to `96px`. This completely eliminates bottom whitespace while keeping symmetrical 18px content padding, with towing cables and the pilot plane automatically re-centering.
+  - **Adaptive Slim Height (`96px`)**: For buttonless general event reminders (advance reminders with no online meeting URL or transit link), the banner card dynamically shrinks from `132px` to `96px`. This completely eliminates bottom whitespace while keeping symmetrical 18px content padding, with towing cables and the pilot plane automatically re-centering.
   - **Zero bottom buttons for general events**: Since the reminder engine automatically re-alerts at subsequent stages (e.g., 5m, 2m), manual snooze is redundant. The card serves as a pure ambient heads-up widget without buttons prompting unnecessary clicks.
-  - **Single `[🚀 Join Meeting]` button for online meetings**: Retained at standard `126px` height so users can enter calls early with 1 click, without redundant snooze or skip controls.
-  - **`[📍 I'm Here]` button for travel events**: Retained at standard `126px` height when transit destinations have location/maps links to allow early arrival acknowledgement.
+  - **Single `[🚀 Join Meeting]` button for online meetings**: Retained at standard `132px` height so users can enter calls early with 1 click, without redundant snooze or skip controls.
+  - **`[📍 I'm Here]` button for travel events**: Retained at standard `132px` height when transit destinations have location/maps links to allow early arrival acknowledgement (paired with `[🗺️ Directions]` when a directions URL is available).
 - **Event-Time Looping Banner (`reminder_stage == 0`)**:
-  - Persistent alert looping across the screen at standard `126px` height until acknowledged by the user.
+  - Persistent alert looping across the screen at standard `132px` height until acknowledged by the user.
   - High-visibility styling and urgent countdown pill (`⏳ Starting Now!` / `⏳ Inizia ora!`).
-  - Prominent confirmation action (`[✅ Got it]` or `[🚀 Join Meeting]`) required for dismissal.
+  - Minimalist, high-contrast action bar: single primary action (`[🚀 Join Meeting]` for online events, `[📍 I'm Here]` for in-person travel events, or `[✅ Got it]` for general events) avoids visual clutter and ensures maximum readability.
 - **Interactive Keyboard & Mascot Controls (Both macOS & Linux)**:
   - **Instant `Esc` Dismissal**: Pressing the `Escape` key immediately dismisses any active flying banner via Qt `QShortcut` / `keyPressEvent` on Linux and `NSEvent` monitor / `keyDown_` on macOS.
   - **Playful Mascot Hover Reaction**: Hovering the cursor over the pilot mascot airplane pauses flight progression and triggers an animal-specific playful speech quote (e.g., *"Quak! Hover mode engaged! 🛸"*, *"Uhu! Osservo dall'alto! 🦉✨"*), smoothly restoring the normal reminder speech when the mouse leaves.

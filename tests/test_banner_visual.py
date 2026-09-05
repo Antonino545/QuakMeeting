@@ -88,7 +88,7 @@ class TestBannerVisualSnapshots(unittest.TestCase):
         p_meet.end()
 
         self.assertFalse(banner_meeting.is_slim, "Meeting banner with URL retains standard height")
-        self.assertEqual(banner_meeting.card_h, 126.0, "Standard card height is 126.0px")
+        self.assertEqual(banner_meeting.card_h, 132.0, "Standard card height is 132.0px")
         rects_meet = banner_meeting._get_button_rects(banner_meeting.CARD_X, banner_meeting.CARD_Y)
         self.assertEqual(rects_meet["action"].width(), 220.0, "Meeting advance reminder retains [🚀 Join Meeting]")
         self.assertEqual(rects_meet["snooze1"].width(), 0.0, "No snooze button on meeting advance reminder")
@@ -126,7 +126,7 @@ class TestBannerVisualSnapshots(unittest.TestCase):
         self.assertGreater(os.path.getsize(zero_path), 1000)
 
         self.assertFalse(banner_zero.is_slim)
-        self.assertEqual(banner_zero.card_h, 126.0)
+        self.assertEqual(banner_zero.card_h, 132.0)
         rects_zero = banner_zero._get_button_rects(banner_zero.CARD_X, banner_zero.CARD_Y)
         self.assertEqual(rects_zero["action"].width(), 220.0, "Stage 0 banner must have 'Got it' primary button")
         self.assertEqual(rects_zero["snooze1"].width(), 0.0, "Stage 0 non-URL reminder uses action button as Got it")
@@ -176,21 +176,21 @@ class TestBannerVisualSnapshots(unittest.TestCase):
         p_comb.drawText(20, y1 + 52, "Features: Compact 96px card (zero empty button space), [✈️ FLYBY] badge, flyby quote, Esc to dismiss")
         p_comb.drawImage(0, y1 + 65, img_advance)
 
-        # Label 2: Advance Flyby Reminder (Online Meeting - Join Meeting only, 126px)
+        # Label 2: Advance Flyby Reminder (Online Meeting - Join Meeting only, 132px)
         y2 = y1 + banner_h + header_h
         p_comb.setFont(header_font)
         p_comb.setPen(QColor(137, 220, 235)) # Sky / Teal
-        p_comb.drawText(20, y2 + 32, "2. Advance Reminder — Online Meeting (Stage > 0 • Direct Join Action, 126px)")
+        p_comb.drawText(20, y2 + 32, "2. Advance Reminder — Online Meeting (Stage > 0 • Direct Join Action, 132px)")
         p_comb.setFont(desc_font)
         p_comb.setPen(QColor(186, 194, 222))
-        p_comb.drawText(20, y2 + 52, "Features: Standard 126px card, [✈️ FLYBY] badge, single [🚀 Join Flight] action button, Esc to dismiss")
+        p_comb.drawText(20, y2 + 52, "Features: Standard 132px card, [✈️ FLYBY] badge, single [🚀 Join Flight] action button, Esc to dismiss")
         p_comb.drawImage(0, y2 + 65, img_meeting)
 
-        # Label 3: Stage 0 Event-Time Banner (Looping Screen Alert, 126px)
+        # Label 3: Stage 0 Event-Time Banner (Looping Screen Alert, 132px)
         y3 = y2 + banner_h + header_h
         p_comb.setFont(header_font)
         p_comb.setPen(QColor(137, 180, 250)) # Blue
-        p_comb.drawText(20, y3 + 32, "3. Event-Time Banner — Event Starting (Stage 0 • Looping Screen Alert, 126px)")
+        p_comb.drawText(20, y3 + 32, "3. Event-Time Banner — Event Starting (Stage 0 • Looping Screen Alert, 132px)")
         p_comb.setFont(desc_font)
         p_comb.setPen(QColor(186, 194, 222))
         p_comb.drawText(20, y3 + 52, "Features: 'Starting Now!' badge, [✅ Got it] confirmation button required to dismiss looping screen alarm")

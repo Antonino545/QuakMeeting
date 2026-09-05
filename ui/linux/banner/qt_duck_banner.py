@@ -47,7 +47,7 @@ class QtDuckBannerWindow(QWidget):
     """
 
     CARD_W = 535.0
-    CARD_H = 126.0
+    CARD_H = 132.0
     CARD_R = 18.0
     CARD_X = 10.0
     CARD_Y = 55.0
@@ -67,12 +67,11 @@ class QtDuckBannerWindow(QWidget):
         extracted_meeting_url = EventClassifier.extract_meeting_url(
             f"{event_data.get('location', '')} {event_data.get('description', '')}"
         )
-        self.action_url = event_data.get("action_url") or event_data.get("meeting_url")
+        self.action_url = event_data.get("action_url") or event_data.get("meeting_url") or event_data.get("maps_url")
         if extracted_meeting_url and (
             not self.action_url or self.action_url == "https://calendar.apple.com"
         ):
             self.action_url = extracted_meeting_url
-        self.action_btn_text = str(event_data.get("action_btn_text") or "🚀 JOIN NOW")
         def _norm_dt(dt):
             if isinstance(dt, datetime):
                 return dt.astimezone() if dt.tzinfo else dt.astimezone()
@@ -114,6 +113,11 @@ class QtDuckBannerWindow(QWidget):
              "maps.google.com" in self.action_url.lower() or
              "google.com/maps" in self.action_url.lower())
         ) or self.is_travel
+
+        if not event_data.get("action_btn_text") and self.has_maps_url:
+            self.action_btn_text = t("agenda_maps_button", default="🗺️ Directions")
+        else:
+            self.action_btn_text = str(event_data.get("action_btn_text") or "🚀 JOIN NOW")
 
         # Modular animal & outfit customization
         self.animal = event_data.get("animal")
@@ -362,42 +366,52 @@ class QtDuckBannerWindow(QWidget):
         btn_close_hit_rect = QRectF(bx + self.CARD_W - 44.0, by + 2.0, 40.0, 40.0)
 
         # 4 Button Bar: [Action] [I'm Here] [Snooze 5m] [Snooze 15m / Skip]
-        btn_y = by + self.card_h - 33.0 - 12.0
-        btn_action_rect = QRectF(bx + 18.0, btn_y, 220.0, 33.0)
+        btn_h = 32.0
+        btn_y = by + self.card_h - btn_h - 14.0
         is_stage_zero = (self.reminder_stage == 0)
 
         if is_stage_zero:
             if self.has_maps_url:
-                btn_action_rect = QRectF(bx + 18.0, btn_y, 220.0, 33.0)
-                btn_arrived_rect = QRectF(bx + 246.0, btn_y, 100.0, 33.0)
-                if not self.has_real_url:
+                if self.has_real_url:
+                    # 2 Buttons: [Action / Directions (260px)] [📍 I'm Here (227px)]
+                    btn_action_rect = QRectF(bx + 18.0, btn_y, 260.0, btn_h)
+                    btn_arrived_rect = QRectF(bx + 290.0, btn_y, 227.0, btn_h)
                     btn_snooze1_rect = QRectF(0, 0, 0, 0)
                 else:
-                    btn_snooze1_rect = QRectF(bx + 354.0, btn_y, 163.0, 33.0)
+                    # 1 Button: [📍 I'm Here (200px)]
+                    btn_action_rect = QRectF(0, 0, 0, 0)
+                    btn_arrived_rect = QRectF(bx + 18.0, btn_y, 200.0, btn_h)
+                    btn_snooze1_rect = QRectF(0, 0, 0, 0)
                 btn_snooze2_rect = QRectF(0, 0, 0, 0)
             else:
                 btn_arrived_rect = QRectF(0, 0, 0, 0)
-                btn_action_rect = QRectF(bx + 18.0, btn_y, 220.0, 33.0)
-                if not self.has_real_url:
-                    btn_snooze1_rect = QRectF(0, 0, 0, 0)
-                else:
-                    btn_snooze1_rect = QRectF(bx + 246.0, btn_y, 208.0, 33.0)
+                btn_snooze1_rect = QRectF(0, 0, 0, 0)
                 btn_snooze2_rect = QRectF(0, 0, 0, 0)
+                if self.has_real_url:
+                    # Online Meeting (Option A): Single prominent [🚀 JOIN NOW] action button
+                    btn_action_rect = QRectF(bx + 18.0, btn_y, 220.0, btn_h)
+                else:
+                    # Plain Event / Note: Single [✅ Got it] confirmation button
+                    btn_action_rect = QRectF(bx + 18.0, btn_y, 220.0, btn_h)
         else:
             # Advance Flyby Reminder (Option A - Pure Ambient):
             # - No Snooze or Skip buttons (ambient flyby auto-snoozes via reminder stages)
-            # - If meeting has a real URL: only [🚀 Join Meeting]
-            # - If travel/maps: only [📍 I'm Here]
+            # - If meeting has real URL and maps: [Action (260px)] [📍 I'm Here (227px)]
+            # - If meeting has only real URL: [Action (220px)]
+            # - If travel/maps only: [📍 I'm Here (200px)]
             # - General event: no bottom buttons at all
             btn_snooze1_rect = QRectF(0, 0, 0, 0)
             btn_snooze2_rect = QRectF(0, 0, 0, 0)
 
-            if self.has_real_url:
-                btn_action_rect = QRectF(bx + 18.0, btn_y, 220.0, 33.0)
-                btn_arrived_rect = QRectF(bx + 246.0, btn_y, 100.0, 33.0) if self.has_maps_url else QRectF(0, 0, 0, 0)
+            if self.has_real_url and self.has_maps_url:
+                btn_action_rect = QRectF(bx + 18.0, btn_y, 260.0, btn_h)
+                btn_arrived_rect = QRectF(bx + 290.0, btn_y, 227.0, btn_h)
+            elif self.has_real_url:
+                btn_action_rect = QRectF(bx + 18.0, btn_y, 220.0, btn_h)
+                btn_arrived_rect = QRectF(0, 0, 0, 0)
             elif self.has_maps_url:
                 btn_action_rect = QRectF(0, 0, 0, 0)
-                btn_arrived_rect = QRectF(bx + 18.0, btn_y, 100.0, 33.0)
+                btn_arrived_rect = QRectF(bx + 18.0, btn_y, 200.0, btn_h)
             else:
                 btn_action_rect = QRectF(0, 0, 0, 0)
                 btn_arrived_rect = QRectF(0, 0, 0, 0)
@@ -866,14 +880,14 @@ class QtDuckBannerWindow(QWidget):
         p.setPen(Qt.GlobalColor.white)
         tf = QFont("Inter, Arial", 12, QFont.Weight.Bold)
         p.setFont(tf)
-        title_rect = QRectF(bx + 18.0, by + 38.0, bw - 36.0, 24.0)
+        title_rect = QRectF(bx + 18.0, by + 36.0, bw - 36.0, 20.0)
         p.drawText(title_rect, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft, self._cached_short_title)
 
         # Subtitle details
         p.setPen(QColor(184, 194, 224))
         sf = QFont("Inter, Arial", 10)
         p.setFont(sf)
-        sub_rect = QRectF(bx + 18.0, by + 62.0, bw - 36.0, 20.0)
+        sub_rect = QRectF(bx + 18.0, by + 58.0, bw - 36.0, 18.0)
         p.drawText(sub_rect, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft, self._cached_detail_text)
 
     def _draw_buttons_bar(self, p: QPainter, bx: float, by: float, palette: Dict[str, Any]):
@@ -893,10 +907,14 @@ class QtDuckBannerWindow(QWidget):
                 text_col = Qt.GlobalColor.white
                 border_pen = Qt.PenStyle.NoPen
             else:
-                top_c = palette["btn_gradient_top"]
-                bot_c = palette["btn_gradient_bot"]
+                if self.has_maps_url:
+                    top_c = Theme.SKY
+                    bot_c = Theme.SAPPHIRE
+                else:
+                    top_c = palette["btn_gradient_top"]
+                    bot_c = palette["btn_gradient_bot"]
                 btn_text = self.action_btn_text
-                text_col = Qt.GlobalColor.white
+                text_col = Theme.CRUST
                 border_pen = Qt.PenStyle.NoPen
 
             g = QLinearGradient(btn_act_rect.topLeft(), btn_act_rect.bottomLeft())
@@ -904,7 +922,12 @@ class QtDuckBannerWindow(QWidget):
                 g.setColorAt(0, bot_c)
                 g.setColorAt(1, top_c)
             elif is_hovered_act:
-                hover_color = QColor(51, 204, 230) if not self.has_real_url else palette["accent_bright"]
+                if not self.has_real_url:
+                    hover_color = QColor(51, 204, 230)
+                elif self.has_maps_url:
+                    hover_color = Theme.TEAL
+                else:
+                    hover_color = palette["accent_bright"]
                 g.setColorAt(0, hover_color)
                 g.setColorAt(1, bot_c)
             else:
@@ -938,7 +961,7 @@ class QtDuckBannerWindow(QWidget):
 
             p.setPen(QColor(77, 217, 140))
             p.setFont(QFont("Inter, Arial", 9, QFont.Weight.Bold))
-            p.drawText(btn_arr_rect, Qt.AlignmentFlag.AlignCenter, "📍 I'm Here")
+            p.drawText(btn_arr_rect, Qt.AlignmentFlag.AlignCenter, t("banner_im_here", default="📍 I'm Here"))
 
         # 3. Snooze / Acknowledge Buttons
         is_stage_zero = (self.reminder_stage == 0)

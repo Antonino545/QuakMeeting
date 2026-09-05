@@ -214,14 +214,14 @@ class BannerHUDPainter:
             AppKit.NSFontAttributeName: self.font_title,
             AppKit.NSForegroundColorAttributeName: self.color_white
         }
-        title_pt = AppKit.NSMakePoint(bx + 18.0, by + bh - 58.0)
+        title_pt = AppKit.NSMakePoint(bx + 18.0, by + bh - 56.0)
         AppKit.NSString.stringWithString_(title_text).drawAtPoint_withAttributes_(title_pt, title_attrs)
 
         sub_attrs = {
             AppKit.NSFontAttributeName: self.font_sub,
             AppKit.NSForegroundColorAttributeName: self.color_sub
         }
-        sub_pt = AppKit.NSMakePoint(bx + 18.0, by + bh - 78.0)
+        sub_pt = AppKit.NSMakePoint(bx + 18.0, by + bh - 76.0)
         AppKit.NSString.stringWithString_(detail_text).drawAtPoint_withAttributes_(sub_pt, sub_attrs)
 
     def draw_buttons_bar(
@@ -250,15 +250,24 @@ class BannerHUDPainter:
                 btn_text = t("banner_got_it")
                 txt_c = Theme.CRUST
             else:
-                top_c = palette["btn_gradient_top"]
-                bot_c = palette["btn_gradient_bot"]
+                if has_maps_url:
+                    top_c = Theme.SKY
+                    bot_c = Theme.SAPPHIRE
+                else:
+                    top_c = palette["btn_gradient_top"]
+                    bot_c = palette["btn_gradient_bot"]
                 btn_text = action_btn_text
                 txt_c = Theme.CRUST
 
             if is_pressed_act:
                 grad = AppKit.NSGradient.alloc().initWithStartingColor_endingColor_(bot_c, top_c)
             elif is_hovered_act:
-                hover_color = Theme.SKY if not has_real_url else palette["accent_bright"]
+                if not has_real_url:
+                    hover_color = Theme.SKY
+                elif has_maps_url:
+                    hover_color = Theme.TEAL
+                else:
+                    hover_color = palette["accent_bright"]
                 grad = AppKit.NSGradient.alloc().initWithStartingColor_endingColor_(hover_color, bot_c)
             else:
                 grad = AppKit.NSGradient.alloc().initWithStartingColor_endingColor_(top_c, bot_c)
@@ -302,7 +311,7 @@ class BannerHUDPainter:
                 AppKit.NSFontAttributeName: self.font_btn_sec,
                 AppKit.NSForegroundColorAttributeName: self.color_arrived
             }
-            ns_arr_str = AppKit.NSString.stringWithString_("📍 I'm Here")
+            ns_arr_str = AppKit.NSString.stringWithString_(t("banner_im_here", default="📍 I'm Here"))
             arr_size = ns_arr_str.sizeWithAttributes_(arr_attrs)
             arr_tx = btn_arr_rect.origin.x + (btn_arr_rect.size.width - arr_size.width) * 0.5
             arr_ty = btn_arr_rect.origin.y + (btn_arr_rect.size.height - arr_size.height) * 0.5

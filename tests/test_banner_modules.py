@@ -184,7 +184,7 @@ class TestBannerModules(unittest.TestCase):
     @unittest.skipUnless(HAS_APPKIT, "macOS AppKit required")
     def test_banner_layout_geometry(self):
         from ui.macos.banner.banner_layout import BannerLayout
-        layout = BannerLayout(banner_w=535.0, banner_h=126.0)
+        layout = BannerLayout(banner_w=535.0, banner_h=132.0)
         rects = layout.get_button_rects(
             banner_x=100.0,
             banner_y=50.0,
@@ -367,7 +367,7 @@ class TestBannerModules(unittest.TestCase):
         banner_advance._timer.stop()
         banner_advance.close()
 
-        # Advance reminder WITH real URL retains Join button only (standard 126px height)
+        # Advance reminder WITH real URL retains Join button only (standard 132px height)
         banner_advance_url = QtDuckBannerWindow({
             "title": "Strategy Call",
             "provider": "Google Meet 🎥",
@@ -378,15 +378,18 @@ class TestBannerModules(unittest.TestCase):
         })
         self.assertTrue(banner_advance_url.has_real_url)
         self.assertFalse(banner_advance_url.is_slim, "Advance reminder with URL must not be slim")
-        self.assertEqual(banner_advance_url.card_h, 126.0, "Standard card height must be 126.0px")
+        self.assertEqual(banner_advance_url.card_h, 132.0, "Standard card height must be 132.0px")
         rects_adv_url = banner_advance_url._get_button_rects(banner_advance_url.CARD_X, banner_advance_url.CARD_Y)
         self.assertEqual(rects_adv_url["action"].width(), 220.0, "Meeting advance reminder retains [🚀 Join Meeting]")
         self.assertEqual(rects_adv_url["snooze1"].width(), 0.0, "No snooze button on meeting advance reminder")
         self.assertEqual(rects_adv_url["snooze2"].width(), 0.0, "No skip button on meeting advance reminder")
+        # Check vertical breathing room between subtitle and button
+        sub_bottom = banner_advance_url.CARD_Y + 58.0 + 18.0
+        self.assertGreaterEqual(rects_adv_url["action"].y() - sub_bottom, 8.0, "Must have >= 8px space below time subtitle")
         banner_advance_url._timer.stop()
         banner_advance_url.close()
 
-        # Stage 0 (Event-time reminder -> standard 126px height)
+        # Stage 0 (Event-time reminder -> standard 132px height)
         banner_zero = QtDuckBannerWindow({
             "title": "General Sync",
             "provider": "Reminder ⏰",
@@ -397,7 +400,7 @@ class TestBannerModules(unittest.TestCase):
         self.assertEqual(banner_zero.reminder_stage, 0)
         self.assertFalse(banner_zero.has_real_url)
         self.assertFalse(banner_zero.is_slim, "Stage 0 reminder must not be slim")
-        self.assertEqual(banner_zero.card_h, 126.0, "Stage 0 card height must be 126.0px")
+        self.assertEqual(banner_zero.card_h, 132.0, "Stage 0 card height must be 132.0px")
         self.assertNotIn("flying by", banner_zero._cached_speech_text.lower())
         rects_zero = banner_zero._get_button_rects(banner_zero.CARD_X, banner_zero.CARD_Y)
         self.assertEqual(rects_zero["action"].width(), 220.0)
@@ -405,7 +408,7 @@ class TestBannerModules(unittest.TestCase):
         banner_zero._timer.stop()
         banner_zero.close()
 
-        # Stage 0 WITH real URL has Join button + Got it (standard 126px height)
+        # Stage 0 WITH real URL has Join button only (Option A - minimalist, no redundant Got it)
         banner_zero_url = QtDuckBannerWindow({
             "title": "Strategy Call",
             "provider": "Google Meet 🎥",
@@ -415,18 +418,74 @@ class TestBannerModules(unittest.TestCase):
             "is_travel": False,
         })
         self.assertFalse(banner_zero_url.is_slim, "Stage 0 reminder with URL must not be slim")
-        self.assertEqual(banner_zero_url.card_h, 126.0, "Stage 0 card height must be 126.0px")
+        self.assertEqual(banner_zero_url.card_h, 132.0, "Stage 0 card height must be 132.0px")
         rects_zero_url = banner_zero_url._get_button_rects(banner_zero_url.CARD_X, banner_zero_url.CARD_Y)
-        self.assertEqual(rects_zero_url["action"].width(), 220.0)
-        self.assertEqual(rects_zero_url["snooze1"].width(), 208.0)
+        self.assertEqual(rects_zero_url["action"].width(), 220.0, "Single prominent Join action button")
+        self.assertEqual(rects_zero_url["snooze1"].width(), 0.0, "No redundant Got it button")
         banner_zero_url._timer.stop()
         banner_zero_url.close()
+
+        # Travel / Maps in-person events: Directions + Arrived button with responsive widths
+        banner_travel_adv = QtDuckBannerWindow({
+            "title": "Dentist Appointment",
+            "provider": "Google Calendar",
+            "start_time": datetime.now().astimezone() + timedelta(minutes=15),
+            "location": "Piazza Duomo 1, Milano",
+            "travel_time_minutes": 25,
+            "transport_mode": "transit",
+            "is_travel": True,
+            "maps_url": "https://maps.google.com/?q=Piazza+Duomo+1",
+            "reminder_stage": 15,
+        })
+        self.assertTrue(banner_travel_adv.has_maps_url)
+        rects_tr_adv = banner_travel_adv._get_button_rects(banner_travel_adv.CARD_X, banner_travel_adv.CARD_Y)
+        self.assertEqual(rects_tr_adv["action"].width(), 260.0, "Advance travel reminder has 260px Directions button")
+        self.assertEqual(rects_tr_adv["arrived"].width(), 227.0, "Advance travel reminder has 227px Arrived button")
+        sub_bottom_tr = banner_travel_adv.CARD_Y + 58.0 + 18.0
+        self.assertGreaterEqual(rects_tr_adv["arrived"].y() - sub_bottom_tr, 8.0, "Must have >= 8px space below time subtitle")
+        banner_travel_adv._timer.stop()
+        banner_travel_adv.close()
+
+        # Advance travel reminder without URL (only [📍 I'm Here] 200px)
+        banner_travel_nourl = QtDuckBannerWindow({
+            "title": "Office Walk",
+            "provider": "Reminder ⏰",
+            "start_time": datetime.now().astimezone() + timedelta(minutes=15),
+            "location": "Building B",
+            "is_travel": True,
+            "reminder_stage": 15,
+        })
+        rects_tr_no = banner_travel_nourl._get_button_rects(banner_travel_nourl.CARD_X, banner_travel_nourl.CARD_Y)
+        self.assertEqual(rects_tr_no["action"].width(), 0.0)
+        self.assertEqual(rects_tr_no["arrived"].width(), 200.0, "No-URL travel reminder has 200px Arrived button")
+        banner_travel_nourl._timer.stop()
+        banner_travel_nourl.close()
+
+        # Stage 0 Travel with Maps and Real URL (2 buttons: Action + I'm Here, Got it removed as redundant)
+        banner_stage0_2btn = QtDuckBannerWindow({
+            "title": "Hybrid Meeting",
+            "provider": "Google Calendar",
+            "start_time": datetime.now().astimezone(),
+            "location": "Via Roma 10",
+            "is_travel": True,
+            "maps_url": "https://maps.google.com/?q=Via+Roma+10",
+            "action_url": "https://meet.google.com/xyz",
+            "reminder_stage": 0,
+        })
+        rects_2btn = banner_stage0_2btn._get_button_rects(banner_stage0_2btn.CARD_X, banner_stage0_2btn.CARD_Y)
+        self.assertEqual(rects_2btn["action"].width(), 260.0, "Primary action button is 260px wide")
+        self.assertEqual(rects_2btn["arrived"].width(), 227.0, "I'm Here button is 227px wide")
+        self.assertEqual(rects_2btn["snooze1"].width(), 0.0, "Got it button is removed when Join and I'm Here are present")
+        banner_stage0_2btn._timer.stop()
+        banner_stage0_2btn.close()
 
         # Translations exist
         self.assertEqual(t("banner_heads_up", lang="en"), "👀 Heads Up")
         self.assertEqual(t("banner_heads_up", lang="it"), "👀 Preavviso")
         self.assertEqual(t("banner_flyby_pill", lang="en"), "✈️ FLYBY")
         self.assertEqual(t("banner_flyby_pill", lang="it"), "✈️ AL VOLO")
+        self.assertEqual(t("banner_im_here", lang="en"), "📍 I'm Here")
+        self.assertEqual(t("banner_im_here", lang="it"), "📍 Sono qui")
 
     def test_mascot_blinking_cycle(self):
         renderer = QtDuckRenderer()
