@@ -202,6 +202,11 @@ class QtDuckBannerWindow(QWidget):
 
     def _compute_is_late(self) -> bool:
         """Determines if the event is already past departure time or past start time."""
+        if isinstance(self.event_data, dict):
+            if self.event_data.get("is_late") is not None:
+                return bool(self.event_data["is_late"])
+            if self.event_data.get("is_test_banner") or self.event_data.get("is_test"):
+                return False
         now = datetime.now().astimezone()
         if self.is_travel and self.departure_time:
             dep = self.departure_time

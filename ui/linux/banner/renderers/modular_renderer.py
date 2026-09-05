@@ -106,15 +106,77 @@ class QtModularRenderer(BaseQtPilotRenderer):
         p.setBrush(QColor(255, 209, 71))
         p.drawEllipse(QRectF(px - 10, py + 2 + hb_y, 22, 20))
 
-        # Beak with breathing bob
+        # Guanciotta aranciata / blush caldo
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(255, 166, 51, 89))
+        p.drawEllipse(QRectF(px + 1, py + 4 + hb_y, 8, 6))
+
+        # Beak 3D sculpted with breathing bob and smile crease
         beak_bob = math.sin(tick * 0.12) * 0.7
+
+        # Lower beak shadow
+        lower_beak = QPainterPath()
+        lower_beak.moveTo(px + 4, py + 5.5 + hb_y)
+        lower_beak.cubicTo(
+            px + 9, py + 2.5 + hb_y,
+            px + 14, py + 3.8 + hb_y + beak_bob,
+            px + 17, py + 6.5 + hb_y + beak_bob,
+        )
+        lower_beak.lineTo(px + 4, py + 6.5 + hb_y)
+        lower_beak.closeSubpath()
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(217, 89, 5))
+        p.drawPath(lower_beak)
+
+        # Main beak body
         beak_path = QPainterPath()
-        beak_path.moveTo(px + 4, py + 8 + hb_y)
-        beak_path.lineTo(px + 18, py + 6 + hb_y + beak_bob)
-        beak_path.lineTo(px + 4, py + 2 + hb_y)
+        beak_path.moveTo(px + 4, py + 10.5 + hb_y)
+        beak_path.cubicTo(
+            px + 9, py + 11.2 + hb_y,
+            px + 15, py + 10.2 + hb_y + beak_bob,
+            px + 18.5, py + 7.5 + hb_y + beak_bob,
+        )
+        beak_path.cubicTo(
+            px + 17.5, py + 5.5 + hb_y + beak_bob,
+            px + 19.5, py + 6.8 + hb_y + beak_bob,
+            px + 19.0, py + 5.8 + hb_y + beak_bob,
+        )
+        beak_path.cubicTo(
+            px + 13, py + 5.0 + hb_y + beak_bob,
+            px + 8, py + 4.5 + hb_y,
+            px + 4, py + 5.0 + hb_y,
+        )
         beak_path.closeSubpath()
-        p.setBrush(QColor(255, 122, 0))
+        p.setBrush(QColor(255, 128, 8))
         p.drawPath(beak_path)
+
+        # Smile crease line
+        crease = QPainterPath()
+        crease.moveTo(px + 4.5, py + 6.8 + hb_y)
+        crease.cubicTo(
+            px + 9, py + 6.5 + hb_y,
+            px + 13, py + 7.0 + hb_y + beak_bob,
+            px + 16.5, py + 6.8 + hb_y + beak_bob,
+        )
+        p.setPen(QPen(QColor(199, 71, 0, 230), 0.85, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawPath(crease)
+
+        # Highlight curve
+        highlight = QPainterPath()
+        highlight.moveTo(px + 6, py + 9.8 + hb_y)
+        highlight.cubicTo(
+            px + 9, py + 10.3 + hb_y,
+            px + 12, py + 9.5 + hb_y + beak_bob,
+            px + 14.5, py + 8.4 + hb_y + beak_bob,
+        )
+        p.setPen(QPen(QColor(255, 199, 77, 217), 1.1, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+        p.drawPath(highlight)
+
+        # Duck nostril
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(166, 56, 0, 242))
+        p.drawEllipse(QRectF(px + 7.0, py + 8.8 + hb_y, 1.6, 1.2))
 
         # Eye with natural blinking
         if self.is_eye_blinking(tick):
@@ -182,11 +244,29 @@ class QtModularRenderer(BaseQtPilotRenderer):
         ear_tip_wave = math.sin(tick * 0.22 + 0.8) * 4.2
         p.setPen(Qt.PenStyle.NoPen)
 
-        # Floppy ears with dual-wave inertia
+        # 🐰 1. Back Ear (Depth)
+        ear_r = QPainterPath()
+        ear_r.moveTo(px - 3, py + 17 + hb_y)
+        ear_r.cubicTo(px - 8, py + 26 + ear_base_wave * 0.8 + hb_y, px - 17, py + 32 + ear_tip_wave * 0.9 + hb_y, px - 10, py + 36 + ear_tip_wave * 0.9 + hb_y)
+        ear_r.cubicTo(px - 4, py + 33 + ear_tip_wave * 0.9 + hb_y, px + 1, py + 25 + hb_y, px + 2, py + 18 + hb_y)
+        ear_r.closeSubpath()
+        p.setBrush(QColor(230, 224, 220))
+        p.drawPath(ear_r)
+
+        # Back ear inner shadow
+        p.setBrush(QColor(242, 166, 184, 153))
+        ear_r_in = QPainterPath()
+        ear_r_in.moveTo(px - 2, py + 19 + hb_y)
+        ear_r_in.lineTo(px - 8, py + 32 + ear_tip_wave * 0.9 + hb_y)
+        ear_r_in.lineTo(px, py + 21 + hb_y)
+        ear_r_in.closeSubpath()
+        p.drawPath(ear_r_in)
+
+        # 🐰 2. Front Floppy Ear
         ear_path = QPainterPath()
-        ear_path.moveTo(px - 8, py + 16 + hb_y)
-        ear_path.cubicTo(px - 16, py + 24 + ear_base_wave + hb_y, px - 24, py + 30 + ear_tip_wave + hb_y, px - 16, py + 35 + ear_tip_wave + hb_y)
-        ear_path.cubicTo(px - 9, py + 32 + ear_tip_wave + hb_y, px - 4, py + 24 + hb_y, px - 3, py + 18 + hb_y)
+        ear_path.moveTo(px - 9, py + 16 + hb_y)
+        ear_path.cubicTo(px - 17, py + 24 + ear_base_wave + hb_y, px - 25, py + 30 + ear_tip_wave + hb_y, px - 18, py + 35 + ear_tip_wave + hb_y)
+        ear_path.cubicTo(px - 10, py + 32 + ear_tip_wave + hb_y, px - 5, py + 24 + hb_y, px - 4, py + 18 + hb_y)
         ear_path.closeSubpath()
         p.setBrush(QColor(250, 245, 240))
         p.drawPath(ear_path)
@@ -194,21 +274,31 @@ class QtModularRenderer(BaseQtPilotRenderer):
         # Pink inner ear
         p.setBrush(QColor(255, 184, 199, 217))
         inner_path = QPainterPath()
-        inner_path.moveTo(px - 7, py + 18 + hb_y)
-        inner_path.lineTo(px - 14, py + 31 + ear_tip_wave + hb_y)
-        inner_path.lineTo(px - 5, py + 20 + hb_y)
+        inner_path.moveTo(px - 8, py + 18 + hb_y)
+        inner_path.lineTo(px - 16, py + 31 + ear_tip_wave + hb_y)
+        inner_path.lineTo(px - 6, py + 20 + hb_y)
         inner_path.closeSubpath()
         p.drawPath(inner_path)
 
-        # Head
+        # 🐰 3. Head
         p.setBrush(QColor(250, 245, 240))
         p.drawEllipse(QRectF(px - 9, py + 2 + hb_y, 21, 19))
 
-        # Cheeks
-        p.setBrush(QColor(255, 224, 230, 153))
-        p.drawEllipse(QRectF(px + 1, py + 3 + hb_y, 10, 8))
+        # 🐰 4. Soft Cheek Blush
+        p.setBrush(QColor(255, 210, 220, 166))
+        p.drawEllipse(QRectF(px - 1, py + 4 + hb_y, 9, 7))
 
-        # Eye with blinking
+        # 🐰 5. Puffy Muzzle Pad (Eliminates beak appearance)
+        p.setBrush(QColor(255, 255, 255))
+        p.drawEllipse(QRectF(px + 6, py + 3.5 + hb_y, 7.5, 6.5))
+
+        # 🐰 6. Cute Bunny Buck Tooth
+        p.setBrush(QColor(242, 242, 250))
+        p.setPen(QPen(QColor(178, 166, 178, 153), 0.6))
+        p.drawRoundedRect(QRectF(px + 8.5, py + 2.0 + hb_y, 3.2, 3.2), 1.0, 1.0)
+        p.setPen(Qt.PenStyle.NoPen)
+
+        # 🐰 7. Eye with sweet reflections and natural blinking
         if self.is_eye_blinking(tick):
             eye_arc = QPainterPath()
             eye_arc.moveTo(px + 1.0, py + 12.5 + hb_y)
@@ -219,24 +309,26 @@ class QtModularRenderer(BaseQtPilotRenderer):
             p.setPen(Qt.PenStyle.NoPen)
         else:
             p.setBrush(QColor(56, 38, 71))
-            p.drawEllipse(QRectF(px + 2, py + 10 + hb_y, 5.0, 6.0))
+            p.drawEllipse(QRectF(px + 1.5, py + 9.5 + hb_y, 5.5, 6.5))
             p.setBrush(QColor(255, 255, 255))
-            p.drawEllipse(QRectF(px + 3.5, py + 12.5 + hb_y, 2.0, 2.0))
+            p.drawEllipse(QRectF(px + 3.0, py + 12.5 + hb_y, 2.2, 2.2))
+            p.drawEllipse(QRectF(px + 4.5, py + 10.5 + hb_y, 1.0, 1.0))
 
-        # Twitching cute nose
-        nose_twitch = 0.5 if (tick % 26) < 10 else 0.0
-        p.setBrush(QColor(255, 115, 153))
-        nose_path = QPainterPath()
-        nose_path.moveTo(px + 11, py + 7.5 + hb_y + nose_twitch)
-        nose_path.lineTo(px + 14, py + 7.5 + hb_y + nose_twitch)
-        nose_path.lineTo(px + 12.5, py + 5.5 + hb_y)
-        nose_path.closeSubpath()
-        p.drawPath(nose_path)
+        # 🐰 8. Button nose (Cute rounded pink nose on top of muzzle)
+        nose_twitch = 0.4 if (tick % 24) < 10 else 0.0
+        p.setBrush(QColor(255, 122, 158))
+        p.drawEllipse(QRectF(px + 10.0, py + 7.0 + hb_y + nose_twitch, 3.5, 2.8))
 
-        # Whiskers
-        p.setPen(QPen(QColor(128, 115, 115, 178), 0.9))
-        p.drawLine(QPointF(px + 13, py + 6.5 + hb_y), QPointF(px + 21, py + 8.5 + hb_y))
-        p.drawLine(QPointF(px + 13, py + 5.5 + hb_y), QPointF(px + 20, py + 3.5 + hb_y))
+        # Philtrum line
+        p.setPen(QPen(QColor(217, 102, 140, 204), 0.8))
+        p.drawLine(QPointF(px + 10.5, py + 7.0 + hb_y + nose_twitch), QPointF(px + 10.5, py + 4.8 + hb_y))
+
+        # 🐰 9. Cheek whisker freckles (Zero gray beak)
+        p.setBrush(QColor(217, 140, 166, 178))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.drawEllipse(QRectF(px + 4.0, py + 6.5 + hb_y, 1.1, 1.1))
+        p.drawEllipse(QRectF(px + 6.0, py + 5.8 + hb_y, 1.1, 1.1))
+        p.drawEllipse(QRectF(px + 4.8, py + 4.8 + hb_y, 1.1, 1.1))
 
     def _draw_platypus(self, p: QPainter, px: float, py: float, tick: int) -> None:
         hb_y = math.sin(tick * 0.14) * 1.2

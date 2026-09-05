@@ -11,9 +11,19 @@ from datetime import datetime, timedelta
 # Set offscreen platform for headless Qt rendering
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
-from PyQt6.QtWidgets import QApplication
-from PyQt6.QtGui import QImage, QPainter, QColor, QFont
-from ui.linux.banner.qt_duck_banner import QtDuckBannerWindow
+try:
+    from PyQt6.QtWidgets import QApplication
+    from PyQt6.QtGui import QImage, QPainter, QColor, QFont
+    from ui.linux.banner.qt_duck_banner import QtDuckBannerWindow
+    _HAS_PYQT6 = True
+except (ImportError, ModuleNotFoundError):
+    _HAS_PYQT6 = False
+    QApplication = None
+    QImage = None
+    QPainter = None
+    QColor = None
+    QFont = None
+    QtDuckBannerWindow = None
 
 import tempfile
 
@@ -24,6 +34,7 @@ ARTIFACTS_DIR = os.environ.get("ARTIFACTS_DIR") or (
 )
 os.makedirs(ARTIFACTS_DIR, exist_ok=True)
 
+@unittest.skipUnless(_HAS_PYQT6, "PyQt6 is required for Qt banner visual snapshot tests")
 class TestBannerVisualSnapshots(unittest.TestCase):
 
     def setUp(self):

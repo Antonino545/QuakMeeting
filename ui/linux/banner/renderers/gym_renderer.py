@@ -57,14 +57,19 @@ class QtGymRenderer(BaseQtPilotRenderer):
         p.setBrush(Qt.GlobalColor.black)
         p.drawEllipse(QRectF(px + 6, py + 8.5, 3.5, 3.5))
 
-        # Orange Beak
+        # Orange Beak (Sculpted curves & nostril)
         beak = QPainterPath()
-        beak.moveTo(px + 10, py + 5)
-        beak.lineTo(px + 22, py + 4)
-        beak.lineTo(px + 10, py + 10)
+        beak.moveTo(px + 10, py + 10)
+        beak.cubicTo(px + 14, py + 10.5, px + 19, py + 8.5, px + 23, py + 6.0)
+        beak.cubicTo(px + 23.5, py + 5.0, px + 23.0, py + 4.0, px + 21.5, py + 3.5)
+        beak.cubicTo(px + 17, py + 3.5, px + 13, py + 4.0, px + 10, py + 4.5)
         beak.closeSubpath()
         p.setBrush(c(1.0, 0.50, 0.05))
         p.drawPath(beak)
+
+        # Nostril
+        p.setBrush(c(0.7, 0.22, 0.02, 0.85))
+        p.drawEllipse(QRectF(px + 12.5, py + 8.0, 1.6, 1.1))
 
         # 3. Dynamic Sport Wing & Propeller
         wing = QPainterPath()

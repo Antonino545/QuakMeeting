@@ -58,14 +58,31 @@ class GymPilotRenderer(BasePilotRenderer):
         AppKit.NSColor.blackColor().set()
         AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 6, py + 8.5, 3.5, 3.5)).fill()
 
-        # Duck Orange Beak
+        # Duck Orange Beak (Sculpted curves & nostril)
         AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.50, 0.05, 1.0).set()
         beak = AppKit.NSBezierPath.bezierPath()
-        beak.moveToPoint_(AppKit.NSMakePoint(px + 10, py + 5))
-        beak.lineToPoint_(AppKit.NSMakePoint(px + 22, py + 4))
-        beak.lineToPoint_(AppKit.NSMakePoint(px + 10, py + 10))
+        beak.moveToPoint_(AppKit.NSMakePoint(px + 10, py + 10))
+        beak.curveToPoint_controlPoint1_controlPoint2_(
+            AppKit.NSMakePoint(px + 23, py + 6.0),
+            AppKit.NSMakePoint(px + 14, py + 10.5),
+            AppKit.NSMakePoint(px + 19, py + 8.5),
+        )
+        beak.curveToPoint_controlPoint1_controlPoint2_(
+            AppKit.NSMakePoint(px + 21.5, py + 3.5),
+            AppKit.NSMakePoint(px + 23.5, py + 5.0),
+            AppKit.NSMakePoint(px + 23.0, py + 4.0),
+        )
+        beak.curveToPoint_controlPoint1_controlPoint2_(
+            AppKit.NSMakePoint(px + 10, py + 4.5),
+            AppKit.NSMakePoint(px + 17, py + 3.5),
+            AppKit.NSMakePoint(px + 13, py + 4.0),
+        )
         beak.closePath()
         beak.fill()
+
+        # Nostril
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.7, 0.22, 0.02, 0.85).set()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 12.5, py + 8.0, 1.6, 1.1)).fill()
 
         # 3. Dynamic Sport Wing
         wing = AppKit.NSBezierPath.bezierPath()

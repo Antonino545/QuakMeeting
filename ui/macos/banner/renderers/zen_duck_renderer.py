@@ -32,14 +32,31 @@ class ZenDuckRenderer(BasePilotRenderer):
         )
         eye_arc.stroke()
 
-        # Becco sorridente
+        # Becco sorridente sagomato con riflesso e narice
         beak = AppKit.NSBezierPath.bezierPath()
-        beak.moveToPoint_(AppKit.NSMakePoint(px + 4, py + 11))
-        beak.lineToPoint_(AppKit.NSMakePoint(px + 15, py + 8.5))
-        beak.lineToPoint_(AppKit.NSMakePoint(px + 4, py + 5.5))
+        beak.moveToPoint_(AppKit.NSMakePoint(px + 4, py + 10.5))
+        beak.curveToPoint_controlPoint1_controlPoint2_(
+            AppKit.NSMakePoint(px + 16.5, py + 8.0),
+            AppKit.NSMakePoint(px + 8, py + 11.0),
+            AppKit.NSMakePoint(px + 13, py + 10.0)
+        )
+        beak.curveToPoint_controlPoint1_controlPoint2_(
+            AppKit.NSMakePoint(px + 15.5, py + 6.0),
+            AppKit.NSMakePoint(px + 17.2, py + 7.2),
+            AppKit.NSMakePoint(px + 16.8, py + 6.2)
+        )
+        beak.curveToPoint_controlPoint1_controlPoint2_(
+            AppKit.NSMakePoint(px + 4, py + 5.5),
+            AppKit.NSMakePoint(px + 11, py + 5.5),
+            AppKit.NSMakePoint(px + 7, py + 5.0)
+        )
         beak.closePath()
         AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.52, 0.1, 1.0).set()
         beak.fill()
+
+        # Narice
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.7, 0.25, 0.05, 0.8).set()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 6.5, py + 8.5, 1.5, 1.1)).fill()
 
         # 3. Fiore di Loto rosa 🌸 sulla testa
         AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.62, 0.78, 1.0).set()

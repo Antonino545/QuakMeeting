@@ -1,5 +1,5 @@
 import random
-from datetime import datetime
+from datetime import datetime, timedelta
 import AppKit
 import objc
 
@@ -486,6 +486,7 @@ class HangarTabController(AppKit.NSObject):
             "general": "Weekly Team Sprint Planning"
         }
 
+        now = datetime.now().astimezone()
         _run_banner({
             "title": titles.get(cat_key, "Custom Mascot Test Flight"),
             "provider": get_combo_title(animal, outfit),
@@ -494,6 +495,10 @@ class HangarTabController(AppKit.NSObject):
             "outfit": outfit,
             "action_btn_text": "🚀 TEST FLIGHT",
             "action_url": "https://meet.google.com/test-flight",
-            "start_time": datetime.now().astimezone(),
-            "is_travel": cat_key in ("food", "travel", "sport", "in_person")
+            "start_time": now + timedelta(minutes=10),
+            "end_time": now + timedelta(minutes=70),
+            "reminder_stage": 10,
+            "is_travel": cat_key in ("food", "travel", "sport", "in_person"),
+            "is_test_banner": True,
+            "is_late": False
         })

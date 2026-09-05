@@ -144,6 +144,11 @@ class QuakPitBannerView(AppKit.NSView):
         return self.particle_engine.sparkle_particles
 
     def _compute_is_late(self) -> bool:
+        if isinstance(self.meeting_data, dict):
+            if self.meeting_data.get("is_late") is not None:
+                return bool(self.meeting_data["is_late"])
+            if self.meeting_data.get("is_test_banner") or self.meeting_data.get("is_test"):
+                return False
         now = datetime.now().astimezone()
         if self.is_travel and self.departure_time:
             dep = self.departure_time
