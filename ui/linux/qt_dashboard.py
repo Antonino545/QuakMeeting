@@ -329,6 +329,9 @@ class QtFlightDeckWindow(QMainWindow):
         self.setStyleSheet(QT_DASHBOARD_QSS)
         self.setStatusBar(None)
 
+        self.h_mini_widgets = []
+        self.hangar_anim_timer = None
+
         central_widget = QWidget(self)
         central_widget.setObjectName("CentralWidget")
         self.setCentralWidget(central_widget)
@@ -1412,11 +1415,48 @@ class QtFlightDeckWindow(QMainWindow):
         self.current_tab_index = index
         if hasattr(self, 'stacked_widget'):
             self.stacked_widget.setCurrentIndex(index)
+        if index == 1:
+            self._start_hangar_timer()
+        else:
+            self._stop_hangar_timer()
         for i, btn in enumerate(getattr(self, 'nav_buttons', [])):
             is_active = (i == index)
             btn.setProperty("active", "true" if is_active else "false")
             btn.style().unpolish(btn)
             btn.style().polish(btn)
+
+    def closeEvent(self, event):
+        self._stop_hangar_timer()
+        super().closeEvent(event)
+
+    def _start_hangar_timer(self):
+        try:
+            from PyQt6.QtCore import QTimer
+            if self.hangar_anim_timer is None:
+                self.hangar_anim_timer = QTimer(self)
+                self.hangar_anim_timer.setInterval(40)  # 25 fps
+                self.hangar_anim_timer.timeout.connect(self._on_hangar_tick)
+            if not self.hangar_anim_timer.isActive():
+                self.hangar_anim_timer.start()
+        except Exception:
+            pass
+
+    def _stop_hangar_timer(self):
+        try:
+            if self.hangar_anim_timer is not None and self.hangar_anim_timer.isActive():
+                self.hangar_anim_timer.stop()
+        except Exception:
+            pass
+
+    def _on_hangar_tick(self):
+        if not self.isVisible() or getattr(self, "current_tab_index", 0) != 1:
+            return
+        for w in getattr(self, "h_mini_widgets", []):
+            try:
+                w.tick += 1
+                w.update()
+            except Exception:
+                pass
 
     def _refresh_agenda(self, meetings=None):
         # Clear layout safely
@@ -1581,6 +1621,8 @@ class QtFlightDeckWindow(QMainWindow):
             if child.widget():
                 child.widget().deleteLater()
 
+        self.h_mini_widgets = []
+
         # 1. Header Toolbar
         customs = config.get("mascot_customization", {})
         header_card = QFrame(self.h_content)
@@ -1625,6 +1667,15 @@ class QtFlightDeckWindow(QMainWindow):
             config.set("mascot_customization", defs)
             event_bus.publish("CONFIG_CHANGED", key="mascot_customization", value=defs)
             self.render_hangar_tab()
+
+        chime_btn = QPushButton("🔔 Test Chime", header_card)
+        chime_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        chime_btn.setStyleSheet("background: #313244; color: #cdd6f4; border: 1px solid #45475a; border-radius: 6px; padding: 5px 12px; font-size: 11px;")
+        def _on_test_chime():
+            from core.services.sound_service import play_test_chime
+            play_test_chime()
+        chime_btn.clicked.connect(_on_test_chime)
+        r_box.addWidget(chime_btn)
 
         sur_btn = QPushButton("🎲 Surprise Me", header_card)
         sur_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -1679,6 +1730,7 @@ class QtFlightDeckWindow(QMainWindow):
 
             # Mini Canvas Preview on Left
             mini_preview = QtMascotMiniWidget(animal=current_animal, outfit=fixed_outfit, parent=card)
+            self.h_mini_widgets.append(mini_preview)
             c_layout.addWidget(mini_preview)
 
             p_box = QVBoxLayout()
@@ -1766,6 +1818,8 @@ class QtFlightDeckWindow(QMainWindow):
                         "is_test_banner": True,
                         "is_late": False
                     }
+                    from core.services.sound_service import play_test_chime
+                    play_test_chime()
                     from ui.linux.banner.qt_banner import show_qt_banner
                     show_qt_banner(evt)
                 return _trigger_test
@@ -1792,6 +1846,8 @@ class QtFlightDeckWindow(QMainWindow):
             self.h_layout.addWidget(card)
 
         self.h_layout.addStretch()
+        if getattr(self, "current_tab_index", 0) == 1:
+            self._start_hangar_timer()
 
 
 

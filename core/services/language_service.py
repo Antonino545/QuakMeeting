@@ -229,6 +229,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
 
         # Hangar Tab
         "hangar_header_title": "🦆 Animal Mascot Customization",
+        "hangar_test_chime": "🔔 Test Chime",
         "hangar_surprise_me": "🎲 Surprise Me",
         "hangar_reset_presets": "🔄 Reset Presets",
         "hangar_animal_mascot": "Animal Mascot:",
@@ -472,6 +473,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
 
         # Hangar Tab
         "hangar_header_title": "🦆 Personalizzazione Mascotte",
+        "hangar_test_chime": "🔔 Prova Suono",
         "hangar_surprise_me": "🎲 A Sorpresa",
         "hangar_reset_presets": "🔄 Ripristina Predefiniti",
         "hangar_animal_mascot": "Mascotte Animale:",

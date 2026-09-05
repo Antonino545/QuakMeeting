@@ -232,3 +232,58 @@ def play_chime(
         _play_async()
     else:
         threading.Thread(target=_play_async, daemon=True).start()
+
+
+def play_test_chime(sound_name: Optional[str] = None) -> None:
+    """
+    Plays sample notification chime immediately for user test verification.
+    Bypasses automated test suppressions and quiet reminder filters so manual clicks always produce sound.
+    """
+    def _play_sample():
+        try:
+            snd = sound_name or config.get("sound_name", "Glass")
+            if sys.platform == "darwin":
+                sound_path = f"/System/Library/Sounds/{snd}.aiff"
+                if os.path.exists(sound_path):
+                    subprocess.run(["afplay", sound_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                else:
+                    try:
+                        import AppKit
+                        nssnd = AppKit.NSSound.soundNamed_(snd)
+                        if nssnd:
+                            nssnd.play()
+                    except Exception:
+                        pass
+                return
+
+            if shutil.which("canberra-gtk-play"):
+                res = subprocess.run(
+                    ["canberra-gtk-play", "-i", "message"],
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+                )
+                if res.returncode == 0:
+                    return
+
+            sound_candidates = [
+                "/usr/share/sounds/Yaru/stereo/message.oga",
+                "/usr/share/sounds/Yaru/stereo/bell.oga",
+                "/usr/share/sounds/ubuntu/stereo/message.ogg",
+                "/usr/share/sounds/ubuntu/stereo/bell.ogg",
+                "/usr/share/sounds/freedesktop/stereo/message.oga",
+                "/usr/share/sounds/freedesktop/stereo/bell.oga",
+                "/usr/share/sounds/gnome/default/alerts/glass.ogg",
+                "/usr/share/sounds/gnome/default/alerts/drip.ogg",
+                "/usr/share/sounds/alsa/Front_Center.wav"
+            ]
+            for p in sound_candidates:
+                if os.path.exists(p):
+                    for tool in ["pw-play", "paplay", "aplay"]:
+                        if shutil.which(tool):
+                            subprocess.run([tool, p], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                            return
+                    break
+        except Exception as e:
+            logger.debug(f"Error playing test chime: {e}")
+
+    threading.Thread(target=_play_sample, daemon=True).start()
+
