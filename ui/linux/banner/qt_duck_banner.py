@@ -23,7 +23,11 @@ from core.domain.models import format_duration
 from core.domain.classifier import EventClassifier
 from ui.linux.theme import Theme
 from ui.common.banner_speech import build_pilot_speech_text, build_pilot_hover_speech_text
-from ui.common.banner_particles import BannerParticleEngine
+from ui.common.banner_particles import (
+    BannerParticleEngine,
+    compute_airplane_flight_dynamics,
+    compute_towing_cable_hooks
+)
 from ui.common.banner_formatting import compute_countdown_text, MODE_ICONS
 from core.services.sound_service import play_chime
 from core.services.language_service import t
@@ -408,6 +412,11 @@ class QtDuckBannerWindow(QWidget):
             "card": QRectF(bx, by, self.CARD_W, self.card_h)
         }
 
+    def _get_airplane_dynamics(self) -> tuple[float, float, float]:
+        """Returns dynamic (px, py, pitch_deg) for airplane flight dynamics."""
+        float_x, float_y, pitch_deg = compute_airplane_flight_dynamics(self.tick, self.is_paused)
+        return self.plane_cx + float_x, self.plane_cy + float_y, pitch_deg
+
     # ── Animation Step ─────────────────────────────────────────────────────────
 
     def _step(self):
@@ -427,25 +436,26 @@ class QtDuckBannerWindow(QWidget):
         self.move(int(self.win_x), int(y_wave))
 
         # Check hover even if mouse is stationary
-        cursor_pos = self.mapFromGlobal(QCursor.pos())
-        rects = self._get_button_rects(self.CARD_X, self.CARD_Y)
-        plane_rect = QRectF(self.plane_cx - 65.0, self.plane_cy - 30.0, 115.0, 60.0)
-        if (
-            rects["card"].contains(cursor_pos) or
-            rects["close_hit"].contains(cursor_pos) or
-            plane_rect.contains(cursor_pos)
-        ):
-            self.is_paused = True
+        try:
+            cursor_pos = QPointF(self.mapFromGlobal(QCursor.pos()))
+            rects = self._get_button_rects(self.CARD_X, self.CARD_Y)
+            dyn_px, dyn_py, _ = self._get_airplane_dynamics()
+            plane_rect = QRectF(dyn_px - 65.0, dyn_py - 30.0, 115.0, 60.0)
+            if (
+                rects["card"].contains(cursor_pos) or
+                rects["close_hit"].contains(cursor_pos) or
+                plane_rect.contains(cursor_pos)
+            ):
+                self.is_paused = True
+        except Exception:
+            pass
 
         # Update countdown once every 30 frames (~0.5s) to save CPU
         if self.tick % 30 == 0:
             self._update_countdown_text()
 
-        plane_x = self.plane_cx
-        plane_y = self.plane_cy
-
         self.particle_engine.emit_and_update(
-            plane_x, plane_y, self.tick, self.is_late, self.is_paused, self.pilot_type
+            dyn_px, dyn_py, self.tick, self.is_late, self.is_paused, self.pilot_type
         )
 
         self.update()
@@ -461,7 +471,8 @@ class QtDuckBannerWindow(QWidget):
     def mouseMoveEvent(self, ev):
         pos = ev.position()
         rects = self._get_button_rects(self.CARD_X, self.CARD_Y)
-        plane_rect = QRectF(self.plane_cx - 65.0, self.plane_cy - 30.0, 115.0, 60.0)
+        dyn_px, dyn_py, _ = self._get_airplane_dynamics()
+        plane_rect = QRectF(dyn_px - 65.0, dyn_py - 30.0, 115.0, 60.0)
         old_hover = self.hovered_button
 
         if rects["close_hit"].contains(pos):
@@ -500,7 +511,8 @@ class QtDuckBannerWindow(QWidget):
             return
         pos = ev.position()
         rects = self._get_button_rects(self.CARD_X, self.CARD_Y)
-        plane_rect = QRectF(self.plane_cx - 65.0, self.plane_cy - 30.0, 115.0, 60.0)
+        dyn_px, dyn_py, _ = self._get_airplane_dynamics()
+        plane_rect = QRectF(dyn_px - 65.0, dyn_py - 30.0, 115.0, 60.0)
 
         if rects["close_hit"].contains(pos):
             self.pressed_button = "close"
@@ -530,6 +542,9 @@ class QtDuckBannerWindow(QWidget):
         self.update()
 
         meeting_id = str(self.event_data.get("id") or self.event_data.get("uid") or "")
+
+        dyn_px, dyn_py, _ = self._get_airplane_dynamics()
+        plane_rect = QRectF(dyn_px - 65.0, dyn_py - 30.0, 115.0, 60.0)
 
         if clicked == "close" and rects["close_hit"].contains(pos):
             try:
@@ -593,7 +608,7 @@ class QtDuckBannerWindow(QWidget):
                 except Exception:
                     pass
             self._dismiss()
-        elif (clicked in ["card", "plane"]) and (rects["card"].contains(pos) or QRectF(self.plane_cx - 65.0, self.plane_cy - 30.0, 115.0, 60.0).contains(pos)):
+        elif (clicked in ["card", "plane"]) and (rects["card"].contains(pos) or plane_rect.contains(pos)):
             try:
                 from core.services.state_store import banner_history_store
                 banner_history_store.record_action(meeting_id, "card_clicked")
@@ -624,8 +639,7 @@ class QtDuckBannerWindow(QWidget):
         by = self.CARD_Y
         bw = self.CARD_W
         bh = self.card_h
-        px = self.plane_cx
-        py = self.plane_cy
+        dyn_px, dyn_py, pitch_deg = self._get_airplane_dynamics()
 
         # 1. Turbo Flame Particles (Afterburners)
         for f in self.flame_particles:
@@ -656,7 +670,7 @@ class QtDuckBannerWindow(QWidget):
             p.drawEllipse(QRectF(sp["x"] - sp["r"], sp["y"] - sp["r"], sp["r"] * 2, sp["r"] * 2))
 
         # 3. Towing Cables (Curved Bezier Cables)
-        self._draw_towing_cables(p, bx, by, bw, bh, px, py)
+        self._draw_towing_cables(p, bx, by, bw, bh, dyn_px, dyn_py, pitch_deg)
 
         # 4. Frosted Glass Banner Card
         self._draw_glass_banner_card(p, bx, by, bw, bh, palette)
@@ -676,35 +690,42 @@ class QtDuckBannerWindow(QWidget):
         # 9. Action Buttons Bar ([Action] [📍 I'm Here] [💤 Snooze])
         self._draw_buttons_bar(p, bx, by, palette)
 
-        # 10. Draw Pilot Vehicle & Character (Flips Y coordinate so ported AppKit coordinates align)
+        # 10. Draw Pilot Vehicle & Character with Dynamic Pitch Rotation
+        # Centers rotation at dynamic airplane center (dyn_px, dyn_py)
         p.save()
-        p.translate(0.0, 2.0 * py)
+        p.translate(dyn_px, dyn_py)
+        p.rotate(pitch_deg)
+        p.translate(-dyn_px, -dyn_py)
+        p.translate(0.0, 2.0 * dyn_py)
         p.scale(1.0, -1.0)
         p.setPen(Qt.PenStyle.NoPen)
-        self.renderer.draw_pilot(p, px, py, self.tick)
+        self.renderer.draw_pilot(p, dyn_px, dyn_py, self.tick)
         p.restore()
 
         # 11. Animated Pilot Speech Bubble (Above plane, kept strictly clear of card HUD & close button)
-        self._draw_pilot_speech_bubble(p, px, py, bx + bw)
+        self._draw_pilot_speech_bubble(p, dyn_px, dyn_py, bx + bw)
 
         p.end()
 
     # ── Sub-drawing Helpers ────────────────────────────────────────────────────
 
-    def _draw_towing_cables(self, p: QPainter, bx: float, by: float, bw: float, bh: float, px: float, py: float):
+    def _draw_towing_cables(self, p: QPainter, bx: float, by: float, bw: float, bh: float, px: float, py: float, pitch_deg: float):
         cable_col = QColor(255, 102, 89, 166) if self.is_late else QColor(217, 217, 217, 107)
         pen = QPen(cable_col, 1.5)
         p.setPen(pen)
         p.setBrush(Qt.BrushStyle.NoBrush)
 
-        dx = px - bx - bw
+        (hook_top_x, hook_top_y), (hook_bot_x, hook_bot_y) = compute_towing_cable_hooks(px, py, pitch_deg, is_qt_coords=True)
+        dx = hook_top_x - (bx + bw)
+        vibe = (math.sin(self.tick * 0.55) * 1.8) if self.is_late else (math.sin(self.tick * 0.38) * 1.2)
+
         # Top Cable
         top_cable = QPainterPath()
         top_cable.moveTo(bx + bw, by + 24.0)
         top_cable.cubicTo(
-            bx + bw + dx * 0.45, by + 16.0,
-            px - 32.0, py - 6.0,
-            px - 16.0, py - 4.0
+            bx + bw + dx * 0.45, by + 16.0 + vibe,
+            hook_top_x - 16.0, hook_top_y - 2.0 - vibe,
+            hook_top_x, hook_top_y
         )
         p.drawPath(top_cable)
 
@@ -712,9 +733,9 @@ class QtDuckBannerWindow(QWidget):
         bot_cable = QPainterPath()
         bot_cable.moveTo(bx + bw, by + bh - 24.0)
         bot_cable.cubicTo(
-            bx + bw + dx * 0.45, by + bh - 16.0,
-            px - 32.0, py + 12.0,
-            px - 16.0, py + 8.0
+            bx + bw + dx * 0.45, by + bh - 16.0 - vibe,
+            hook_bot_x - 16.0, hook_bot_y + 2.0 + vibe,
+            hook_bot_x, hook_bot_y
         )
         p.drawPath(bot_cable)
 

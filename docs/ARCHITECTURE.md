@@ -86,7 +86,7 @@ Cross-platform presentation layer structured by operating system:
   - **`tray_viewmodel.py`**: Shared tray status logic and countdown string formatting.
   - **`banner_queue.py`**: Cross-platform banner sequencing and queue management.
   - **`banner_speech.py`**: Animal-specific vocalization generator (`duck`, `owl`, `bunny`, `squirrel`, `platypus`) and context-aware dialogue builder.
-  - **`banner_particles.py`**: Physics simulation engine for turbo afterburner flames, exhaust smoke puffs, and magical sparkles.
+  - **`banner_particles.py`**: Physics simulation engine for turbo afterburner flames, exhaust smoke puffs, magical sparkles, dynamic flight pitch & thrust calculation (`compute_airplane_flight_dynamics`), and rotated towing cable hook anchors (`compute_towing_cable_hooks`).
   - **`banner_formatting.py`**: Time differentials, countdown text, urgency flags, and travel duration formatting.
 - **`ui/macos/`**: Native macOS UI using PyObjC:
   - **`theme.py`**: Native `NSColor` and `CGColor` bridges derived directly from `ui.common.theme.CatppuccinMocha`.
@@ -94,16 +94,17 @@ Cross-platform presentation layer structured by operating system:
   - **`dashboard_window.py`**: Native `NSWindow` Flight Deck HUD with custom segmented capsule pill switcher.
   - **`dashboard_tabs/`**: Dedicated native tab views (`agenda_tab.py`, `hangar_tab.py`, `settings_tab.py`).
   - **`banner/`**: Quartz 2D animated HUD banners:
-    - `banner_view.py`: Streamlined Cocoa `NSView` managing animation timer ticks, flight motion, and mouse event dispatch.
+    - `banner_view.py`: Streamlined Cocoa `NSView` managing animation timer ticks, dynamic airplane pitch rotation transforms, flight motion, and mouse event dispatch.
     - `banner_layout.py`: Bounding boxes, button positions, and hit testing targets.
-    - `banner_hud_painter.py`: Quartz 2D drawing routines (Glass card, pills, action buttons, towing cables, speech bubble).
+    - `banner_hud_painter.py`: Quartz 2D drawing routines (Glass card, pills, action buttons, vibrating towing cables, speech bubble).
     - `quiet_banner_view.py`: Distraction-free compact notifications.
-    - `update_banner_view.py`: Software update alerts.
+    - `renderers/`: Vector pilot & vehicle renderers (`duck_renderer.py`, `modular_renderer.py`) featuring 4-blade high-RPM propeller discs, pulsating wingtip strobe beacons, natural mascot eye blinking, head bobbing, and species-specific slipstream inertia.
 - **`ui/linux/`**: Native Linux / Ubuntu UI using PyQt6 (Wayland / X11):
   - **`theme.py`**: Native `QColor` and RGBA string converters derived directly from `ui.common.theme.CatppuccinMocha`.
   - **`qt_tray_app.py`**: PyQt6 `QSystemTrayIcon` with custom Catppuccin context menu.
   - **`qt_dashboard.py`**: PyQt6 Flight Deck window with capsule pill switcher and solid Catppuccin cards.
-  - **`banner/`**: PyQt6 Wayland/X11 animated overlay banner (`qt_duck_banner.py`) and software update banners (`qt_update_banner.py`).
+  - **`banner/`**: PyQt6 Wayland/X11 animated overlay banner (`qt_duck_banner.py`) with dynamic pitch rotation and software update banners (`qt_update_banner.py`).
+  - **`banner/renderers/`**: Pixel-identical PyQt6 vector renderers with multiplatform parity to macOS Quartz 2D.
 - **`ui/app_launcher.py`**: Platform-aware UI dispatcher and entrypoint.
 
 

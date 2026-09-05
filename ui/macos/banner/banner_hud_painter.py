@@ -8,6 +8,7 @@ from typing import Dict, Any, Optional
 
 from ui.macos.theme import Theme
 from core.services.language_service import t
+from ui.common.banner_particles import compute_towing_cable_hooks
 
 class BannerHUDPainter:
     def __init__(self):
@@ -24,29 +25,33 @@ class BannerHUDPainter:
         self.color_urgent_time = Theme.RED
         self.color_normal_time = Theme.YELLOW
 
-    def draw_towing_cables(self, bx: float, by: float, bw: float, bh: float, px: float, py: float, is_late: bool):
+    def draw_towing_cables(self, bx: float, by: float, bw: float, bh: float, px: float, py: float, is_late: bool, pitch_deg: float = 0.0, tick: int = 0):
         cable_col = Theme.RED.colorWithAlphaComponent_(0.75) if is_late else Theme.SUBTEXT1.colorWithAlphaComponent_(0.45)
         cable_col.set()
+
+        (hook_top_x, hook_top_y), (hook_bot_x, hook_bot_y) = compute_towing_cable_hooks(px, py, pitch_deg, is_qt_coords=False)
+        dx = hook_top_x - (bx + bw)
+        vibe = (math.sin(tick * 0.55) * 1.8) if is_late else (math.sin(tick * 0.38) * 1.2)
 
         cable_top = AppKit.NSBezierPath.bezierPath()
         cable_top.setLineWidth_(1.5)
         cable_top.moveToPoint_(AppKit.NSMakePoint(bx + bw, by + bh - 24.0))
-        ctrl_pt1 = AppKit.NSMakePoint(bx + bw + (px - bx - bw) * 0.45, by + bh - 16.0)
+        ctrl_pt1 = AppKit.NSMakePoint(bx + bw + dx * 0.45, by + bh - 16.0 - vibe)
         cable_top.curveToPoint_controlPoint1_controlPoint2_(
-            AppKit.NSMakePoint(px - 16.0, py + 8.0),
+            AppKit.NSMakePoint(hook_top_x, hook_top_y),
             ctrl_pt1,
-            AppKit.NSMakePoint(px - 32.0, py + 12.0)
+            AppKit.NSMakePoint(hook_top_x - 16.0, hook_top_y + 2.0 + vibe)
         )
         cable_top.stroke()
 
         cable_bot = AppKit.NSBezierPath.bezierPath()
         cable_bot.setLineWidth_(1.5)
         cable_bot.moveToPoint_(AppKit.NSMakePoint(bx + bw, by + 24.0))
-        ctrl_pt2 = AppKit.NSMakePoint(bx + bw + (px - bx - bw) * 0.45, by + 16.0)
+        ctrl_pt2 = AppKit.NSMakePoint(bx + bw + dx * 0.45, by + 16.0 + vibe)
         cable_bot.curveToPoint_controlPoint1_controlPoint2_(
-            AppKit.NSMakePoint(px - 16.0, py - 4.0),
+            AppKit.NSMakePoint(hook_bot_x, hook_bot_y),
             ctrl_pt2,
-            AppKit.NSMakePoint(px - 32.0, py - 6.0)
+            AppKit.NSMakePoint(hook_bot_x - 16.0, hook_bot_y - 2.0 - vibe)
         )
         cable_bot.stroke()
 

@@ -4,7 +4,7 @@ Handles turbo afterburner flames, smoke puffs, and sparkle trails.
 """
 import math
 import random
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 
 class BannerParticleEngine:
     def __init__(self):
@@ -96,3 +96,53 @@ class BannerParticleEngine:
             if s["alpha"] > 0:
                 new_sparkles.append(s)
         self.sparkle_particles = new_sparkles
+
+
+def compute_airplane_flight_dynamics(tick: int, is_paused: bool) -> Tuple[float, float, float]:
+    """
+    Computes (float_x, float_y, pitch_deg) for airplane motion relative to base anchor.
+    - float_x: subtle thrust variance / aerodynamic drag oscillation
+    - float_y: independent aerodynamic lift oscillation (decoupled from card)
+    - pitch_deg: aerodynamic pitch rotation (nose up during climb, nose down during descent)
+    """
+    float_x = math.sin(tick * 0.08) * 1.8
+    if is_paused:
+        float_y = math.sin(tick * 0.15) * 3.0
+        pitch_deg = math.sin(tick * 0.12) * 1.2
+    else:
+        float_y = math.sin(tick * 0.055 + 0.4) * 2.2
+        pitch_deg = math.cos(tick * 0.038) * 4.2 + math.sin(tick * 0.11) * 0.8
+
+    return float_x, float_y, pitch_deg
+
+
+def compute_towing_cable_hooks(
+    plane_cx: float, plane_cy: float, pitch_deg: float, is_qt_coords: bool = False
+) -> Tuple[Tuple[float, float], Tuple[float, float]]:
+    """
+    Computes the (top_hook, bottom_hook) connection points at the rear of the airplane fuselage,
+    taking into account the plane's dynamic pitch rotation.
+    """
+    rad = math.radians(pitch_deg)
+    cos_r = math.cos(rad)
+    sin_r = math.sin(rad)
+
+    if is_qt_coords:
+        # Qt coordinates: +Y is down, rotation is clockwise
+        # Top hook (local dy = -4.0)
+        top_x = plane_cx + (-36.0 * cos_r - (-4.0) * sin_r)
+        top_y = plane_cy + (-36.0 * sin_r + (-4.0) * cos_r)
+        # Bottom hook (local dy = +4.0)
+        bot_x = plane_cx + (-36.0 * cos_r - 4.0 * sin_r)
+        bot_y = plane_cy + (-36.0 * sin_r + 4.0 * cos_r)
+    else:
+        # Cocoa coordinates: +Y is up, rotation is counter-clockwise
+        # Top hook (local dy = +4.0)
+        top_x = plane_cx + (-36.0 * cos_r - 4.0 * sin_r)
+        top_y = plane_cy + (-36.0 * sin_r + 4.0 * cos_r)
+        # Bottom hook (local dy = -4.0)
+        bot_x = plane_cx + (-36.0 * cos_r - (-4.0) * sin_r)
+        bot_y = plane_cy + (-36.0 * sin_r + (-4.0) * cos_r)
+
+    return (top_x, top_y), (bot_x, bot_y)
+

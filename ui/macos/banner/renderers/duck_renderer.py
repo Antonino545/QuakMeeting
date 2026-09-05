@@ -80,26 +80,28 @@ class DuckPilotRenderer(BasePilotRenderer):
         glare.stroke()
 
         # 4. Sciarpa Rossa Svolazzante Animata nel Vento 🧣
-        scarf_wave1 = math.sin(tick * 0.28) * 5.0
-        scarf_wave2 = math.sin(tick * 0.28 + 1.2) * 6.5
+        hb_y = math.sin(tick * 0.14) * 1.2
+        scarf_wave1 = math.sin(tick * 0.30) * 5.5
+        scarf_wave2 = math.sin(tick * 0.30 + 1.2) * 7.0
+        scarf_wave3 = math.sin(tick * 0.38 + 2.0) * 8.5
 
         scarf_tail = AppKit.NSBezierPath.bezierPath()
-        scarf_tail.moveToPoint_(AppKit.NSMakePoint(px - 8, py + 5))
+        scarf_tail.moveToPoint_(AppKit.NSMakePoint(px - 8, py + 5 + hb_y))
         scarf_tail.curveToPoint_controlPoint1_controlPoint2_(
-            AppKit.NSMakePoint(px - 28, py + 7 + scarf_wave1),
-            AppKit.NSMakePoint(px - 15, py + 4 + scarf_wave1 * 0.5),
-            AppKit.NSMakePoint(px - 22, py + 10 + scarf_wave1)
+            AppKit.NSMakePoint(px - 28, py + 7 + scarf_wave1 + hb_y),
+            AppKit.NSMakePoint(px - 15, py + 4 + scarf_wave1 * 0.5 + hb_y),
+            AppKit.NSMakePoint(px - 22, py + 10 + scarf_wave1 + hb_y)
         )
         scarf_tail.curveToPoint_controlPoint1_controlPoint2_(
-            AppKit.NSMakePoint(px - 46, py + 4 + scarf_wave2),
-            AppKit.NSMakePoint(px - 34, py + 5 + scarf_wave1),
-            AppKit.NSMakePoint(px - 40, py + 8 + scarf_wave2)
+            AppKit.NSMakePoint(px - 46, py + 4 + scarf_wave2 + hb_y),
+            AppKit.NSMakePoint(px - 34, py + 5 + scarf_wave1 + hb_y),
+            AppKit.NSMakePoint(px - 40, py + 8 + scarf_wave2 + hb_y)
         )
-        scarf_tail.lineToPoint_(AppKit.NSMakePoint(px - 45, py - 1 + scarf_wave2))
+        scarf_tail.lineToPoint_(AppKit.NSMakePoint(px - 45, py - 1 + scarf_wave2 + hb_y))
         scarf_tail.curveToPoint_controlPoint1_controlPoint2_(
-            AppKit.NSMakePoint(px - 26, py + 2 + scarf_wave1),
-            AppKit.NSMakePoint(px - 38, py + 3 + scarf_wave2),
-            AppKit.NSMakePoint(px - 32, py + scarf_wave1)
+            AppKit.NSMakePoint(px - 26, py + 2 + scarf_wave1 + hb_y),
+            AppKit.NSMakePoint(px - 38, py + 3 + scarf_wave2 + hb_y),
+            AppKit.NSMakePoint(px - 32, py + scarf_wave1 + hb_y)
         )
         scarf_tail.closePath()
         AppKit.NSColor.colorWithRed_green_blue_alpha_(0.92, 0.18, 0.18, 1.0).set()
@@ -109,50 +111,64 @@ class DuckPilotRenderer(BasePilotRenderer):
         AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.85, 0.25, 1.0).set()
         fringe = AppKit.NSBezierPath.bezierPath()
         fringe.setLineWidth_(1.6)
-        fringe.moveToPoint_(AppKit.NSMakePoint(px - 46, py + 4 + scarf_wave2))
-        fringe.lineToPoint_(AppKit.NSMakePoint(px - 49, py + 3 + scarf_wave2))
-        fringe.moveToPoint_(AppKit.NSMakePoint(px - 45, py + 1.5 + scarf_wave2))
-        fringe.lineToPoint_(AppKit.NSMakePoint(px - 48, py + 0.5 + scarf_wave2))
+        fringe.moveToPoint_(AppKit.NSMakePoint(px - 46, py + 4 + scarf_wave2 + hb_y))
+        fringe.lineToPoint_(AppKit.NSMakePoint(px - 50, py + 3 + scarf_wave3 + hb_y))
+        fringe.moveToPoint_(AppKit.NSMakePoint(px - 45, py + 1.5 + scarf_wave2 + hb_y))
+        fringe.lineToPoint_(AppKit.NSMakePoint(px - 49, py + 0.5 + scarf_wave3 + hb_y))
         fringe.stroke()
 
         # Nodo sciarpa al collo
         AppKit.NSColor.colorWithRed_green_blue_alpha_(0.85, 0.15, 0.15, 1.0).set()
-        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 9, py + 2, 11, 7)).fill()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 9, py + 2 + hb_y, 11, 7)).fill()
 
-        # 5. Testa Papero con Sfumature Calde e Guance Rosee 🦆
-        head_rect = AppKit.NSMakeRect(px - 8, py + 3, 20, 20)
+        # 5. Testa Papero con Sfumature Calde e Guance Rosee 🦆 (oscilla col motore)
+        head_rect = AppKit.NSMakeRect(px - 8, py + 3 + hb_y, 20, 20)
         AppKit.NSColor.colorWithRed_green_blue_alpha_(0.92, 0.65, 0.15, 1.0).set()
-        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 7, py + 2, 19, 18)).fill()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 7, py + 2 + hb_y, 19, 18)).fill()
         AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.82, 0.24, 1.0).set()
         AppKit.NSBezierPath.bezierPathWithOvalInRect_(head_rect).fill()
         AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.92, 0.50, 0.70).set()
-        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 5, py + 9, 14, 13)).fill()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 5, py + 9 + hb_y, 14, 13)).fill()
 
         # Guancia Rosa Morbida
         AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.42, 0.42, 0.45).set()
-        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 3, py + 5, 7, 5)).fill()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 3, py + 5 + hb_y, 7, 5)).fill()
 
-        # 6. Occhio Espressivo con Doppio Catchlight
-        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.10, 0.10, 0.12, 1.0).set()
-        eye_rect = AppKit.NSMakeRect(px + 2.5, py + 12, 5.0, 5.5)
-        AppKit.NSBezierPath.bezierPathWithOvalInRect_(eye_rect).fill()
+        # 6. Occhio con ciclo naturale di ammiccamento
+        if self.is_eye_blinking(tick):
+            eye_arc = AppKit.NSBezierPath.bezierPath()
+            eye_arc.setLineWidth_(1.8)
+            eye_arc.setLineCapStyle_(AppKit.NSLineCapStyleRound)
+            eye_arc.moveToPoint_(AppKit.NSMakePoint(px + 1.5, py + 14.5 + hb_y))
+            eye_arc.curveToPoint_controlPoint1_controlPoint2_(
+                AppKit.NSMakePoint(px + 7.5, py + 14.5 + hb_y),
+                AppKit.NSMakePoint(px + 3.5, py + 17.0 + hb_y),
+                AppKit.NSMakePoint(px + 5.5, py + 17.0 + hb_y)
+            )
+            AppKit.NSColor.colorWithRed_green_blue_alpha_(0.10, 0.10, 0.12, 1.0).set()
+            eye_arc.stroke()
+        else:
+            AppKit.NSColor.colorWithRed_green_blue_alpha_(0.10, 0.10, 0.12, 1.0).set()
+            eye_rect = AppKit.NSMakeRect(px + 2.5, py + 12 + hb_y, 5.0, 5.5)
+            AppKit.NSBezierPath.bezierPathWithOvalInRect_(eye_rect).fill()
 
-        AppKit.NSColor.whiteColor().set()
-        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 4.2, py + 14.2, 2.2, 2.2)).fill()
-        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 3.2, py + 12.8, 1.0, 1.0)).fill()
+            AppKit.NSColor.whiteColor().set()
+            AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 4.2, py + 14.2 + hb_y, 2.2, 2.2)).fill()
+            AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 3.2, py + 12.8 + hb_y, 1.0, 1.0)).fill()
 
-        # 7. Becco Sagomato 3D con Sorriso
+        # 7. Becco Sagomato 3D con Sorriso e Respiro
+        beak_bob = math.sin(tick * 0.12) * 0.7
         beak_path = AppKit.NSBezierPath.bezierPath()
-        beak_path.moveToPoint_(AppKit.NSMakePoint(px + 5, py + 12))
+        beak_path.moveToPoint_(AppKit.NSMakePoint(px + 5, py + 12 + hb_y))
         beak_path.curveToPoint_controlPoint1_controlPoint2_(
-            AppKit.NSMakePoint(px + 18, py + 9.5),
-            AppKit.NSMakePoint(px + 10, py + 13),
-            AppKit.NSMakePoint(px + 15, py + 12)
+            AppKit.NSMakePoint(px + 18, py + 9.5 + hb_y + beak_bob),
+            AppKit.NSMakePoint(px + 10, py + 13 + hb_y + beak_bob),
+            AppKit.NSMakePoint(px + 15, py + 12 + hb_y + beak_bob)
         )
         beak_path.curveToPoint_controlPoint1_controlPoint2_(
-            AppKit.NSMakePoint(px + 5, py + 5.5),
-            AppKit.NSMakePoint(px + 15, py + 7),
-            AppKit.NSMakePoint(px + 10, py + 6)
+            AppKit.NSMakePoint(px + 5, py + 5.5 + hb_y),
+            AppKit.NSMakePoint(px + 15, py + 7 + hb_y),
+            AppKit.NSMakePoint(px + 10, py + 6 + hb_y)
         )
         beak_path.closePath()
         AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.48, 0.02, 1.0).set()
@@ -160,40 +176,40 @@ class DuckPilotRenderer(BasePilotRenderer):
 
         # Luce riflessa sul labbro superiore del becco
         beak_hi = AppKit.NSBezierPath.bezierPath()
-        beak_hi.moveToPoint_(AppKit.NSMakePoint(px + 7, py + 11))
-        beak_hi.lineToPoint_(AppKit.NSMakePoint(px + 14, py + 9.5))
+        beak_hi.moveToPoint_(AppKit.NSMakePoint(px + 7, py + 11 + hb_y + beak_bob * 0.5))
+        beak_hi.lineToPoint_(AppKit.NSMakePoint(px + 14, py + 9.5 + hb_y + beak_bob * 0.5))
         AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.72, 0.25, 0.85).set()
         beak_hi.setLineWidth_(1.2)
         beak_hi.stroke()
 
         # Narice
         AppKit.NSColor.colorWithRed_green_blue_alpha_(0.75, 0.30, 0.0, 1.0).set()
-        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 8, py + 10.5, 1.5, 1.2)).fill()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 8, py + 10.5 + hb_y, 1.5, 1.2)).fill()
 
         # 8. Caschetto da Aviatore in Cuoio & Occhialoni Dorati
         AppKit.NSColor.colorWithRed_green_blue_alpha_(0.38, 0.22, 0.12, 1.0).set()
         cap_path = AppKit.NSBezierPath.bezierPath()
-        cap_path.moveToPoint_(AppKit.NSMakePoint(px - 8, py + 12))
+        cap_path.moveToPoint_(AppKit.NSMakePoint(px - 8, py + 12 + hb_y))
         cap_path.curveToPoint_controlPoint1_controlPoint2_(
-            AppKit.NSMakePoint(px + 6, py + 22),
-            AppKit.NSMakePoint(px - 6, py + 23),
-            AppKit.NSMakePoint(px + 2, py + 24)
+            AppKit.NSMakePoint(px + 6, py + 22 + hb_y),
+            AppKit.NSMakePoint(px - 6, py + 23 + hb_y),
+            AppKit.NSMakePoint(px + 2, py + 24 + hb_y)
         )
-        cap_path.lineToPoint_(AppKit.NSMakePoint(px + 6, py + 18))
+        cap_path.lineToPoint_(AppKit.NSMakePoint(px + 6, py + 18 + hb_y))
         cap_path.curveToPoint_controlPoint1_controlPoint2_(
-            AppKit.NSMakePoint(px - 8, py + 12),
-            AppKit.NSMakePoint(px, py + 18),
-            AppKit.NSMakePoint(px - 5, py + 14)
+            AppKit.NSMakePoint(px - 8, py + 12 + hb_y),
+            AppKit.NSMakePoint(px, py + 18 + hb_y),
+            AppKit.NSMakePoint(px - 5, py + 14 + hb_y)
         )
         cap_path.closePath()
         cap_path.fill()
 
         # Cinghia occhialoni
         AppKit.NSColor.colorWithRed_green_blue_alpha_(0.25, 0.15, 0.08, 1.0).set()
-        AppKit.NSBezierPath.bezierPathWithRect_(AppKit.NSMakeRect(px - 8, py + 12.5, 18, 3.5)).fill()
+        AppKit.NSBezierPath.bezierPathWithRect_(AppKit.NSMakeRect(px - 8, py + 12.5 + hb_y, 18, 3.5)).fill()
 
         # Occhialone da aviatore dorato
-        goggle_frame = AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 1.5, py + 10, 12, 11))
+        goggle_frame = AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 1.5, py + 10 + hb_y, 12, 11))
         AppKit.NSColor.colorWithRed_green_blue_alpha_(0.92, 0.78, 0.25, 1.0).set()
         goggle_frame.setLineWidth_(2.4)
         goggle_frame.stroke()
@@ -205,11 +221,11 @@ class DuckPilotRenderer(BasePilotRenderer):
         AppKit.NSColor.whiteColor().colorWithAlphaComponent_(0.85).set()
         lens_glare = AppKit.NSBezierPath.bezierPath()
         lens_glare.setLineWidth_(1.4)
-        lens_glare.moveToPoint_(AppKit.NSMakePoint(px + 3, py + 18))
-        lens_glare.lineToPoint_(AppKit.NSMakePoint(px + 7, py + 13))
+        lens_glare.moveToPoint_(AppKit.NSMakePoint(px + 3, py + 18 + hb_y))
+        lens_glare.lineToPoint_(AppKit.NSMakePoint(px + 7, py + 13 + hb_y))
         lens_glare.stroke()
 
-        # 9. Ali Inferiori & Montanti Biplano
+        # 9. Ali Inferiori, Strobo di Navigazione & Propeller
         wing = AppKit.NSBezierPath.bezierPath()
         wing.moveToPoint_(AppKit.NSMakePoint(px - 18, py - 2))
         wing.lineToPoint_(AppKit.NSMakePoint(px + 18, py - 2))
@@ -226,5 +242,8 @@ class DuckPilotRenderer(BasePilotRenderer):
         wing_trim.setLineWidth_(2.0)
         wing_trim.stroke()
 
-        # Propeller
+        # Faro strobo di navigazione all'estremità dell'ala
+        self.draw_wingtip_strobe(px + 8.0, py - 24.0, tick)
+
+        # Propeller con 4-pale ad alti RPM
         self.draw_propeller(px + 32.0, py + 2.0, tick)

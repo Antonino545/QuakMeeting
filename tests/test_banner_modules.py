@@ -11,7 +11,12 @@ import sys
 
 from ui.common.banner_speech import build_pilot_speech_text, build_pilot_hover_speech_text
 from ui.common.banner_formatting import compute_countdown_text, format_travel_duration
-from ui.common.banner_particles import BannerParticleEngine
+from ui.common.banner_particles import (
+    BannerParticleEngine,
+    compute_airplane_flight_dynamics,
+    compute_towing_cable_hooks
+)
+from ui.linux.banner.renderers.duck_renderer import QtDuckRenderer
 
 HAS_APPKIT = False
 if sys.platform == "darwin":
@@ -422,6 +427,87 @@ class TestBannerModules(unittest.TestCase):
         self.assertEqual(t("banner_heads_up", lang="it"), "👀 Preavviso")
         self.assertEqual(t("banner_flyby_pill", lang="en"), "✈️ FLYBY")
         self.assertEqual(t("banner_flyby_pill", lang="it"), "✈️ AL VOLO")
+
+    def test_mascot_blinking_cycle(self):
+        renderer = QtDuckRenderer()
+        # Non-blinking ticks (eyes open during entry and level flight)
+        self.assertFalse(renderer.is_eye_blinking(0))
+        self.assertFalse(renderer.is_eye_blinking(50))
+        self.assertFalse(renderer.is_eye_blinking(123))
+        # Natural blink window (tick % 130 >= 124)
+        self.assertTrue(renderer.is_eye_blinking(124))
+        self.assertTrue(renderer.is_eye_blinking(125))
+        self.assertTrue(renderer.is_eye_blinking(129))
+        # Blink window ends and eyes reopen
+        self.assertFalse(renderer.is_eye_blinking(130))
+        # Next blink cycle
+        self.assertFalse(renderer.is_eye_blinking(253))
+        self.assertTrue(renderer.is_eye_blinking(254))
+
+    def test_airplane_flight_dynamics(self):
+        # 1. Paused mode: subtle hovering breathing oscillations
+        fx_p, fy_p, pitch_p = compute_airplane_flight_dynamics(tick=10, is_paused=True)
+        self.assertIsInstance(fx_p, float)
+        self.assertIsInstance(fy_p, float)
+        self.assertIsInstance(pitch_p, float)
+        self.assertLess(abs(pitch_p), 2.0, "Hover pitch must remain subtle (< 2 deg)")
+
+        # 2. Flying mode: dynamic engine thrust, aerodynamic lift, and pitch
+        fx_f, fy_f, pitch_f = compute_airplane_flight_dynamics(tick=0, is_paused=False)
+        self.assertIsInstance(fx_f, float)
+        self.assertIsInstance(fy_f, float)
+        self.assertIsInstance(pitch_f, float)
+        # At tick=0, cos(0) = 1.0, pitch should have positive dive tendency (+4.2)
+        self.assertGreater(pitch_f, 3.5)
+
+        # Dynamic variation across flight frames
+        _, _, pitch_climb = compute_airplane_flight_dynamics(tick=83, is_paused=False)
+        # math.cos(83 * 0.038) is close to -1.0 (climb angle)
+        self.assertLess(pitch_climb, -2.0, "Pitch should climb (negative angle) during ascent")
+
+    def test_towing_cable_hooks_geometry(self):
+        px, py = 600.0, 100.0
+
+        # Qt Coordinates (+Y is down)
+        (top_qt, bot_qt) = compute_towing_cable_hooks(px, py, pitch_deg=0.0, is_qt_coords=True)
+        self.assertAlmostEqual(top_qt[0], px - 36.0, delta=0.01)
+        self.assertAlmostEqual(top_qt[1], py - 4.0, delta=0.01) # Top is smaller Y
+        self.assertAlmostEqual(bot_qt[0], px - 36.0, delta=0.01)
+        self.assertAlmostEqual(bot_qt[1], py + 4.0, delta=0.01) # Bottom is larger Y
+
+        # Cocoa Coordinates (+Y is up)
+        (top_cocoa, bot_cocoa) = compute_towing_cable_hooks(px, py, pitch_deg=0.0, is_qt_coords=False)
+        self.assertAlmostEqual(top_cocoa[0], px - 36.0, delta=0.01)
+        self.assertAlmostEqual(top_cocoa[1], py + 4.0, delta=0.01) # Top is larger Y
+        self.assertAlmostEqual(bot_cocoa[0], px - 36.0, delta=0.01)
+        self.assertAlmostEqual(bot_cocoa[1], py - 4.0, delta=0.01) # Bottom is smaller Y
+
+        # Pitch rotation tests: when pitch rotates, hooks rotate around (px, py)
+        (top_rot, bot_rot) = compute_towing_cable_hooks(px, py, pitch_deg=10.0, is_qt_coords=True)
+        self.assertNotEqual(top_rot[0], px - 36.0)
+        self.assertNotEqual(top_rot[1], py - 4.0)
+
+    def test_qt_banner_dynamic_airplane_state(self):
+        try:
+            from PyQt6.QtWidgets import QApplication
+            from ui.linux.banner.qt_duck_banner import QtDuckBannerWindow
+        except ImportError:
+            self.skipTest("PyQt6 not available")
+        app = QApplication.instance() or QApplication(sys.argv)
+        banner = QtDuckBannerWindow({
+            "title": "Sync Meeting",
+            "provider": "Google Meet",
+            "start_time": datetime.now().astimezone(),
+        })
+        p0_x, p0_y, pitch0 = banner._get_airplane_dynamics()
+        banner.tick = 40
+        p1_x, p1_y, pitch1 = banner._get_airplane_dynamics()
+        self.assertNotEqual((p0_x, p0_y), (p1_x, p1_y), "Airplane must dynamically float across ticks")
+        self.assertNotEqual(pitch0, pitch1, "Airplane pitch angle must dynamically change across ticks")
+        # Step animation tick to test hover check, physics, and particle simulation without error
+        banner._step()
+        banner._timer.stop()
+        banner.close()
 
 if __name__ == "__main__":
     unittest.main()

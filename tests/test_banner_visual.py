@@ -213,5 +213,158 @@ class TestBannerVisualSnapshots(unittest.TestCase):
         self.assertTrue(os.path.exists(comparison_path))
         print(f"\n Visual comparison saved to: {comparison_path}")
 
+    def test_render_flight_animation_dynamics(self):
+        now = datetime.now().astimezone()
+
+        # 1. Airplane Climbing (Pitch nose-up, dynamic lift float, cable tension)
+        b_climb = QtDuckBannerWindow({
+            "title": "Aero Climb Dynamics",
+            "provider": "Google Meet",
+            "start_time": now + timedelta(minutes=15),
+            "pilot_type": "duck",
+            "animal": "duck",
+            "outfit": "aviator",
+        })
+        b_climb.resize(int(b_climb.win_w), int(b_climb.win_h))
+        b_climb.win_x = 0
+        b_climb.tick = 83 # Climb phase (negative pitch angle: nose up)
+        b_climb._update_countdown_text()
+
+        img_climb = QImage(int(b_climb.win_w), int(b_climb.win_h), QImage.Format.Format_ARGB32_Premultiplied)
+        img_climb.fill(QColor(0, 0, 0, 0))
+        p = QPainter(img_climb)
+        b_climb.render(p)
+        p.end()
+        b_climb._timer.stop()
+        b_climb.close()
+
+        # 2. Level Flight with Blinking Eye & Wingtip Strobe Flash (tick=1035)
+        b_blink = QtDuckBannerWindow({
+            "title": "Mascot Blinking & Wingtip Beacon",
+            "provider": "Google Meet",
+            "start_time": now + timedelta(minutes=10),
+            "pilot_type": "duck",
+            "animal": "duck",
+            "outfit": "aviator",
+        })
+        b_blink.resize(int(b_blink.win_w), int(b_blink.win_h))
+        b_blink.win_x = 0
+        b_blink.tick = 1035 # Simultaneous natural eye blink + wingtip strobe pulse
+        b_blink._update_countdown_text()
+
+        img_blink = QImage(int(b_blink.win_w), int(b_blink.win_h), QImage.Format.Format_ARGB32_Premultiplied)
+        img_blink.fill(QColor(0, 0, 0, 0))
+        p = QPainter(img_blink)
+        b_blink.render(p)
+        p.end()
+        b_blink._timer.stop()
+        b_blink.close()
+
+        # 3. Airplane Descending (Pitch nose-down, high-speed cable flutter)
+        b_dive = QtDuckBannerWindow({
+            "title": "Aero Descent Dynamics",
+            "provider": "Google Meet",
+            "start_time": now + timedelta(minutes=5),
+            "pilot_type": "duck",
+            "animal": "duck",
+            "outfit": "aviator",
+        })
+        b_dive.resize(int(b_dive.win_w), int(b_dive.win_h))
+        b_dive.win_x = 0
+        b_dive.tick = 0 # Descent phase (positive pitch angle: nose down)
+        b_dive._update_countdown_text()
+
+        img_dive = QImage(int(b_dive.win_w), int(b_dive.win_h), QImage.Format.Format_ARGB32_Premultiplied)
+        img_dive.fill(QColor(0, 0, 0, 0))
+        p = QPainter(img_dive)
+        b_dive.render(p)
+        p.end()
+        b_dive._timer.stop()
+        b_dive.close()
+
+        # 4. Modular Mascot: Gym Bunny with Floppy Ear Inertia & Nose Twitch
+        b_bunny = QtDuckBannerWindow({
+            "title": "HIIT Training Session",
+            "provider": "Gym Routine 🏋️",
+            "start_time": now + timedelta(minutes=30),
+            "pilot_type": "gym",
+            "animal": "bunny",
+            "outfit": "gym",
+        })
+        b_bunny.resize(int(b_bunny.win_w), int(b_bunny.win_h))
+        b_bunny.win_x = 0
+        b_bunny.tick = 42 # Active ear flutter & twitching pink nose
+        b_bunny._update_countdown_text()
+
+        img_bunny = QImage(int(b_bunny.win_w), int(b_bunny.win_h), QImage.Format.Format_ARGB32_Premultiplied)
+        img_bunny.fill(QColor(0, 0, 0, 0))
+        p = QPainter(img_bunny)
+        b_bunny.render(p)
+        p.end()
+        b_bunny._timer.stop()
+        b_bunny.close()
+
+        # 5. Combine into Animation Showcase image
+        total_w = int(b_climb.win_w)
+        banner_h = int(b_climb.win_h)
+        header_h = 75
+        total_h = (banner_h + header_h) * 4 + 20
+
+        combined = QImage(total_w, total_h, QImage.Format.Format_ARGB32_Premultiplied)
+        combined.fill(QColor(30, 30, 46))
+
+        p_comb = QPainter(combined)
+        p_comb.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        header_font = QFont("Inter, Arial", 13, QFont.Weight.Bold)
+        desc_font = QFont("Inter, Arial", 10)
+
+        # 1. Climb
+        y1 = 0
+        p_comb.setFont(header_font)
+        p_comb.setPen(QColor(166, 227, 161)) # Green
+        p_comb.drawText(20, y1 + 32, "1. Dynamic Pitch: Climbing Flight (Nose-Up ~4.2° • Aerodynamic Lift & Cable Tension)")
+        p_comb.setFont(desc_font)
+        p_comb.setPen(QColor(186, 194, 222))
+        p_comb.drawText(20, y1 + 52, "Features: Plane pitches up naturally during vertical ascent wave, towing cables dynamically track tail hook")
+        p_comb.drawImage(0, y1 + 65, img_climb)
+
+        # 2. Blinking & Strobe
+        y2 = y1 + banner_h + header_h
+        p_comb.setFont(header_font)
+        p_comb.setPen(QColor(180, 190, 254)) # Lavender
+        p_comb.drawText(20, y2 + 32, "2. Mascot Animation: Natural Eye Blink + Navigation Wingtip Strobe Flash")
+        p_comb.setFont(desc_font)
+        p_comb.setPen(QColor(186, 194, 222))
+        p_comb.drawText(20, y2 + 52, "Features: Pilot blinks with curved happy eyelid arc (⌒), upper wingtip emits pulsating emerald strobe bloom")
+        p_comb.drawImage(0, y2 + 65, img_blink)
+
+        # 3. Descent
+        y3 = y2 + banner_h + header_h
+        p_comb.setFont(header_font)
+        p_comb.setPen(QColor(243, 139, 168)) # Red
+        p_comb.drawText(20, y3 + 32, "3. Dynamic Pitch: Descending Flight (Nose-Down ~4.2° • Fluttering Cables & 4-Blade Propeller)")
+        p_comb.setFont(desc_font)
+        p_comb.setPen(QColor(186, 194, 222))
+        p_comb.drawText(20, y3 + 52, "Features: Plane pitches nose-down into descent slope, dual cross-blade composite spinning prop at high RPM")
+        p_comb.drawImage(0, y3 + 65, img_dive)
+
+        # 4. Modular Mascot Bunny
+        y4 = y3 + banner_h + header_h
+        p_comb.setFont(header_font)
+        p_comb.setPen(QColor(249, 226, 175)) # Yellow
+        p_comb.drawText(20, y4 + 32, "4. Mascot Expression: Gym Bunny with Floppy Ear Slipstream Inertia & Twitching Nose")
+        p_comb.setFont(desc_font)
+        p_comb.setPen(QColor(186, 194, 222))
+        p_comb.drawText(20, y4 + 52, "Features: Dynamic dual-wave ear tip physics, slipstream bobbing, twitching pink snout, headband & goggles")
+        p_comb.drawImage(0, y4 + 65, img_bunny)
+
+        p_comb.end()
+
+        anim_path = os.path.join(ARTIFACTS_DIR, "flight_animation_showcase.png")
+        combined.save(anim_path)
+        self.assertTrue(os.path.exists(anim_path))
+        print(f"\n Animation showcase saved to: {anim_path}")
+
 if __name__ == "__main__":
     unittest.main()

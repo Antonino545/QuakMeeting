@@ -83,92 +83,106 @@ class QtDuckRenderer(BaseQtPilotRenderer):
         p.drawLine(QPointF(px + 5, py + 5), QPointF(px + 1, py + 14))
         p.setPen(Qt.PenStyle.NoPen)
 
-        # 4. Animated Red Flying Scarf
-        scarf_wave1 = math.sin(tick * 0.28) * 5.0
-        scarf_wave2 = math.sin(tick * 0.28 + 1.2) * 6.5
+        # 4. Animated Red Flying Scarf (Dynamic multi-frequency fabric flutter)
+        hb_y = math.sin(tick * 0.14) * 1.2
+        scarf_wave1 = math.sin(tick * 0.30) * 5.5
+        scarf_wave2 = math.sin(tick * 0.30 + 1.2) * 7.0
+        scarf_wave3 = math.sin(tick * 0.38 + 2.0) * 8.5
 
         scarf = QPainterPath()
-        scarf.moveTo(px - 8, py + 5)
-        scarf.cubicTo(px - 15, py + 4 + scarf_wave1 * 0.5, px - 22, py + 10 + scarf_wave1, px - 28, py + 7 + scarf_wave1)
-        scarf.cubicTo(px - 34, py + 5 + scarf_wave1, px - 40, py + 8 + scarf_wave2, px - 46, py + 4 + scarf_wave2)
-        scarf.lineTo(px - 45, py - 1 + scarf_wave2)
-        scarf.cubicTo(px - 38, py + 3 + scarf_wave2, px - 32, py + scarf_wave1, px - 26, py + 2 + scarf_wave1)
+        scarf.moveTo(px - 8, py + 5 + hb_y)
+        scarf.cubicTo(px - 15, py + 4 + scarf_wave1 * 0.5 + hb_y, px - 22, py + 10 + scarf_wave1 + hb_y, px - 28, py + 7 + scarf_wave1 + hb_y)
+        scarf.cubicTo(px - 34, py + 5 + scarf_wave1 + hb_y, px - 40, py + 8 + scarf_wave2 + hb_y, px - 46, py + 4 + scarf_wave2 + hb_y)
+        scarf.lineTo(px - 45, py - 1 + scarf_wave2 + hb_y)
+        scarf.cubicTo(px - 38, py + 3 + scarf_wave2 + hb_y, px - 32, py + scarf_wave1 + hb_y, px - 26, py + 2 + scarf_wave1 + hb_y)
         scarf.closeSubpath()
         p.setBrush(c(0.92, 0.18, 0.18))
         p.drawPath(scarf)
 
-        # Golden scarf fringe
+        # Golden scarf fringe tassels fluttering
         p.setPen(QPen(c(1.0, 0.85, 0.25), 1.6))
-        p.drawLine(QPointF(px - 46, py + 4 + scarf_wave2), QPointF(px - 49, py + 3 + scarf_wave2))
-        p.drawLine(QPointF(px - 45, py + 1.5 + scarf_wave2), QPointF(px - 48, py + 0.5 + scarf_wave2))
+        p.drawLine(QPointF(px - 46, py + 4 + scarf_wave2 + hb_y), QPointF(px - 50, py + 3 + scarf_wave3 + hb_y))
+        p.drawLine(QPointF(px - 45, py + 1.5 + scarf_wave2 + hb_y), QPointF(px - 49, py + 0.5 + scarf_wave3 + hb_y))
         p.setPen(Qt.PenStyle.NoPen)
 
         # Neck knot
         p.setBrush(c(0.85, 0.15, 0.15))
-        p.drawEllipse(QRectF(px - 9, py + 2, 11, 7))
+        p.drawEllipse(QRectF(px - 9, py + 2 + hb_y, 11, 7))
 
-        # 5. Duck Head with warm highlights & rosy cheek
+        # 5. Duck Head with warm highlights & rosy cheek (bobs to engine vibration)
         p.setBrush(c(0.92, 0.65, 0.15))
-        p.drawEllipse(QRectF(px - 7, py + 2, 19, 18))
+        p.drawEllipse(QRectF(px - 7, py + 2 + hb_y, 19, 18))
         p.setBrush(c(1.0, 0.82, 0.24))
-        p.drawEllipse(QRectF(px - 8, py + 3, 20, 20))
+        p.drawEllipse(QRectF(px - 8, py + 3 + hb_y, 20, 20))
         p.setBrush(c(1.0, 0.92, 0.50, 0.70))
-        p.drawEllipse(QRectF(px - 5, py + 9, 14, 13))
+        p.drawEllipse(QRectF(px - 5, py + 9 + hb_y, 14, 13))
 
         # Rosy Cheek
         p.setBrush(c(1.0, 0.42, 0.42, 0.45))
-        p.drawEllipse(QRectF(px - 3, py + 5, 7, 5))
+        p.drawEllipse(QRectF(px - 3, py + 5 + hb_y, 7, 5))
 
-        # 6. Eye with double catchlight
-        p.setBrush(c(0.10, 0.10, 0.12))
-        p.drawEllipse(QRectF(px + 2.5, py + 12, 5.0, 5.5))
-        p.setBrush(Qt.GlobalColor.white)
-        p.drawEllipse(QRectF(px + 4.2, py + 14.2, 2.2, 2.2))
-        p.drawEllipse(QRectF(px + 3.2, py + 12.8, 1.0, 1.0))
+        # 6. Eye with natural blinking cycle
+        if self.is_eye_blinking(tick):
+            # Cute happy curved arc when blinking
+            eye_arc = QPainterPath()
+            eye_arc.moveTo(px + 1.5, py + 14.5 + hb_y)
+            eye_arc.quadTo(px + 4.5, py + 17.0 + hb_y, px + 7.5, py + 14.5 + hb_y)
+            p.setPen(QPen(c(0.10, 0.10, 0.12), 1.8, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawPath(eye_arc)
+            p.setPen(Qt.PenStyle.NoPen)
+        else:
+            # Alert wide open eye with double catchlights
+            p.setBrush(c(0.10, 0.10, 0.12))
+            p.drawEllipse(QRectF(px + 2.5, py + 12 + hb_y, 5.0, 5.5))
+            p.setBrush(Qt.GlobalColor.white)
+            p.drawEllipse(QRectF(px + 4.2, py + 14.2 + hb_y, 2.2, 2.2))
+            p.drawEllipse(QRectF(px + 3.2, py + 12.8 + hb_y, 1.0, 1.0))
 
-        # 7. 3D Beak with smile
+        # 7. 3D Beak with subtle breathing & smile
+        beak_bob = math.sin(tick * 0.12) * 0.7
         beak = QPainterPath()
-        beak.moveTo(px + 5, py + 12)
-        beak.cubicTo(px + 10, py + 13, px + 15, py + 12, px + 18, py + 9.5)
-        beak.cubicTo(px + 15, py + 7, px + 10, py + 6, px + 5, py + 5.5)
+        beak.moveTo(px + 5, py + 12 + hb_y)
+        beak.cubicTo(px + 10, py + 13 + hb_y + beak_bob, px + 15, py + 12 + hb_y + beak_bob, px + 18, py + 9.5 + hb_y + beak_bob)
+        beak.cubicTo(px + 15, py + 7 + hb_y, px + 10, py + 6 + hb_y, px + 5, py + 5.5 + hb_y)
         beak.closeSubpath()
         p.setBrush(c(1.0, 0.48, 0.02))
         p.drawPath(beak)
 
         # Beak lip reflection
         p.setPen(QPen(c(1.0, 0.72, 0.25, 0.85), 1.2))
-        p.drawLine(QPointF(px + 7, py + 11), QPointF(px + 14, py + 9.5))
+        p.drawLine(QPointF(px + 7, py + 11 + hb_y + beak_bob * 0.5), QPointF(px + 14, py + 9.5 + hb_y + beak_bob * 0.5))
         p.setPen(Qt.PenStyle.NoPen)
 
         # Nostril
         p.setBrush(c(0.75, 0.30, 0.0))
-        p.drawEllipse(QRectF(px + 8, py + 10.5, 1.5, 1.2))
+        p.drawEllipse(QRectF(px + 8, py + 10.5 + hb_y, 1.5, 1.2))
 
         # 8. Leather Aviator Cap & Gold Goggles
         cap = QPainterPath()
-        cap.moveTo(px - 8, py + 12)
-        cap.cubicTo(px - 6, py + 23, px + 2, py + 24, px + 6, py + 22)
-        cap.lineTo(px + 6, py + 18)
-        cap.cubicTo(px, py + 18, px - 5, py + 14, px - 8, py + 12)
+        cap.moveTo(px - 8, py + 12 + hb_y)
+        cap.cubicTo(px - 6, py + 23 + hb_y, px + 2, py + 24 + hb_y, px + 6, py + 22 + hb_y)
+        cap.lineTo(px + 6, py + 18 + hb_y)
+        cap.cubicTo(px, py + 18 + hb_y, px - 5, py + 14 + hb_y, px - 8, py + 12 + hb_y)
         cap.closeSubpath()
         p.setBrush(c(0.38, 0.22, 0.12))
         p.drawPath(cap)
 
         # Strap
         p.setBrush(c(0.25, 0.15, 0.08))
-        p.drawRect(QRectF(px - 8, py + 12.5, 18, 3.5))
+        p.drawRect(QRectF(px - 8, py + 12.5 + hb_y, 18, 3.5))
 
         # Gold goggle frame
         p.setPen(QPen(c(0.92, 0.78, 0.25), 2.4))
         p.setBrush(c(0.50, 0.85, 0.98, 0.85))
-        p.drawEllipse(QRectF(px - 1.5, py + 10, 12, 11))
+        p.drawEllipse(QRectF(px - 1.5, py + 10 + hb_y, 12, 11))
 
         # Lens glare
         p.setPen(QPen(QColor(255, 255, 255, 217), 1.4))
-        p.drawLine(QPointF(px + 3, py + 18), QPointF(px + 7, py + 13))
+        p.drawLine(QPointF(px + 3, py + 18 + hb_y), QPointF(px + 7, py + 13 + hb_y))
         p.setPen(Qt.PenStyle.NoPen)
 
-        # 9. Wings & Propeller
+        # 9. Wings, Navigation Strobe Beacon & Propeller
         wing = QPainterPath()
         wing.moveTo(px - 18, py - 2)
         wing.lineTo(px + 18, py - 2)
@@ -181,5 +195,9 @@ class QtDuckRenderer(BaseQtPilotRenderer):
         p.drawLine(QPointF(px - 12, py - 24), QPointF(px + 8, py - 24))
         p.setPen(Qt.PenStyle.NoPen)
 
+        # Wingtip navigation strobe beacon
+        self.draw_wingtip_strobe(p, px + 8.0, py - 24.0, tick)
+
+        # Propeller with 4-blade high-RPM blur
         self.draw_propeller(p, px + 32.0, py + 2.0, tick)
 

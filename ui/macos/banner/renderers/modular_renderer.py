@@ -82,6 +82,7 @@ class ModularPilotRenderer(BasePilotRenderer):
         AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 14, py, 26, 16)).fill()
 
         # Ala
+        # Ala
         wing = AppKit.NSBezierPath.bezierPath()
         wing.moveToPoint_(AppKit.NSMakePoint(px - 16, py - 4))
         wing.lineToPoint_(AppKit.NSMakePoint(px + 14, py - 4))
@@ -90,76 +91,110 @@ class ModularPilotRenderer(BasePilotRenderer):
         wing.closePath()
         wing.fill()
 
+        # Strobo di navigazione
+        self.draw_wingtip_strobe(px + 2.0, py - 26.0, tick)
+
     def _draw_duck(self, px: float, py: float, tick: int) -> None:
+        hb_y = math.sin(tick * 0.14) * 1.2
         # Testa Papero Dorato
         AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.82, 0.28, 1.0).set()
-        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 10, py + 2, 22, 20)).fill()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 10, py + 2 + hb_y, 22, 20)).fill()
 
-        # Becco d'anatra arancione
+        # Becco d'anatra con respiro
+        beak_bob = math.sin(tick * 0.12) * 0.7
         AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.48, 0.0, 1.0).set()
         beak = AppKit.NSBezierPath.bezierPath()
-        beak.moveToPoint_(AppKit.NSMakePoint(px + 4, py + 8))
-        beak.lineToPoint_(AppKit.NSMakePoint(px + 18, py + 6))
-        beak.lineToPoint_(AppKit.NSMakePoint(px + 4, py + 2))
+        beak.moveToPoint_(AppKit.NSMakePoint(px + 4, py + 8 + hb_y))
+        beak.lineToPoint_(AppKit.NSMakePoint(px + 18, py + 6 + hb_y + beak_bob))
+        beak.lineToPoint_(AppKit.NSMakePoint(px + 4, py + 2 + hb_y))
         beak.closePath()
         beak.fill()
 
-        # Occhio
-        AppKit.NSColor.blackColor().set()
-        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 2, py + 11, 4.5, 4.5)).fill()
-        AppKit.NSColor.whiteColor().set()
-        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 3.5, py + 12.5, 1.5, 1.5)).fill()
+        # Occhio con ciclo di ammiccamento
+        if self.is_eye_blinking(tick):
+            eye_arc = AppKit.NSBezierPath.bezierPath()
+            eye_arc.setLineWidth_(1.8)
+            eye_arc.setLineCapStyle_(AppKit.NSLineCapStyleRound)
+            eye_arc.moveToPoint_(AppKit.NSMakePoint(px + 1.5, py + 13.5 + hb_y))
+            eye_arc.curveToPoint_controlPoint1_controlPoint2_(
+                AppKit.NSMakePoint(px + 7.0, py + 13.5 + hb_y),
+                AppKit.NSMakePoint(px + 3.5, py + 16.0 + hb_y),
+                AppKit.NSMakePoint(px + 5.0, py + 16.0 + hb_y)
+            )
+            AppKit.NSColor.blackColor().set()
+            eye_arc.stroke()
+        else:
+            AppKit.NSColor.blackColor().set()
+            AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 2, py + 11 + hb_y, 4.5, 4.5)).fill()
+            AppKit.NSColor.whiteColor().set()
+            AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 3.5, py + 12.5 + hb_y, 1.5, 1.5)).fill()
 
     def _draw_owl(self, px: float, py: float, tick: int) -> None:
+        hb_y = math.sin(tick * 0.12) * 1.0
+        tuft_wave = math.sin(tick * 0.22) * 2.8
         # Piumaggio Gufo Saggio (Marrone Caffè / Grigio Tortora)
         AppKit.NSColor.colorWithRed_green_blue_alpha_(0.58, 0.46, 0.38, 1.0).set()
-        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 11, py + 1, 23, 21)).fill()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 11, py + 1 + hb_y, 23, 21)).fill()
 
-        # Ciuffi auricolari a punta da gufo
+        # Ciuffi auricolari a punta da gufo che ondeggiano nel vento
         tuft = AppKit.NSBezierPath.bezierPath()
-        tuft.moveToPoint_(AppKit.NSMakePoint(px - 9, py + 17))
-        tuft.lineToPoint_(AppKit.NSMakePoint(px - 13, py + 25))
-        tuft.lineToPoint_(AppKit.NSMakePoint(px - 4, py + 20))
+        tuft.moveToPoint_(AppKit.NSMakePoint(px - 9, py + 17 + hb_y))
+        tuft.lineToPoint_(AppKit.NSMakePoint(px - 13, py + 25 + hb_y + tuft_wave))
+        tuft.lineToPoint_(AppKit.NSMakePoint(px - 4, py + 20 + hb_y))
         tuft.closePath()
         tuft.fill()
 
         # Maschera facciale chiara
         AppKit.NSColor.colorWithRed_green_blue_alpha_(0.92, 0.88, 0.80, 1.0).set()
-        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 2, py + 4, 14, 14)).fill()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 2, py + 4 + hb_y, 14, 14)).fill()
 
         # Becco ricurvo
         AppKit.NSColor.colorWithRed_green_blue_alpha_(0.95, 0.65, 0.15, 1.0).set()
         beak = AppKit.NSBezierPath.bezierPath()
-        beak.moveToPoint_(AppKit.NSMakePoint(px + 7, py + 10))
-        beak.lineToPoint_(AppKit.NSMakePoint(px + 14, py + 7))
-        beak.lineToPoint_(AppKit.NSMakePoint(px + 7, py + 5))
+        beak.moveToPoint_(AppKit.NSMakePoint(px + 7, py + 10 + hb_y))
+        beak.lineToPoint_(AppKit.NSMakePoint(px + 14, py + 7 + hb_y))
+        beak.lineToPoint_(AppKit.NSMakePoint(px + 7, py + 5 + hb_y))
         beak.closePath()
         beak.fill()
 
-        # Occhio dorato
-        AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.80, 0.15, 1.0).set()
-        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 2, py + 10, 6.0, 6.0)).fill()
-        AppKit.NSColor.blackColor().set()
-        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 4, py + 11.5, 3.0, 3.0)).fill()
-        AppKit.NSColor.whiteColor().set()
-        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 5, py + 13, 1.2, 1.2)).fill()
+        # Occhio dorato con ammiccamento
+        if self.is_eye_blinking(tick):
+            eye_arc = AppKit.NSBezierPath.bezierPath()
+            eye_arc.setLineWidth_(2.0)
+            eye_arc.setLineCapStyle_(AppKit.NSLineCapStyleRound)
+            eye_arc.moveToPoint_(AppKit.NSMakePoint(px + 1.0, py + 12.5 + hb_y))
+            eye_arc.curveToPoint_controlPoint1_controlPoint2_(
+                AppKit.NSMakePoint(px + 9.0, py + 12.5 + hb_y),
+                AppKit.NSMakePoint(px + 4.0, py + 16.0 + hb_y),
+                AppKit.NSMakePoint(px + 6.0, py + 16.0 + hb_y)
+            )
+            AppKit.NSColor.colorWithRed_green_blue_alpha_(0.15, 0.12, 0.08, 1.0).set()
+            eye_arc.stroke()
+        else:
+            AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.80, 0.15, 1.0).set()
+            AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 2, py + 10 + hb_y, 6.0, 6.0)).fill()
+            AppKit.NSColor.blackColor().set()
+            AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 4, py + 11.5 + hb_y, 3.0, 3.0)).fill()
+            AppKit.NSColor.whiteColor().set()
+            AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 5, py + 13 + hb_y, 1.2, 1.2)).fill()
 
     def _draw_bunny(self, px: float, py: float, tick: int) -> None:
-        # 🐰 1. Orecchie Floppy da Coniglietto (waving in wind)
-        ear_wave = math.sin(tick * 0.15) * 2.5
+        hb_y = math.sin(tick * 0.14) * 1.2
+        ear_base_wave = math.sin(tick * 0.18) * 2.5
+        ear_tip_wave = math.sin(tick * 0.22 + 0.8) * 4.2
 
-        # Orecchio Sinistro
+        # 🐰 1. Orecchie Floppy da Coniglietto con inerzia aerodinamica
         ear_l = AppKit.NSBezierPath.bezierPath()
-        ear_l.moveToPoint_(AppKit.NSMakePoint(px - 8, py + 16))
+        ear_l.moveToPoint_(AppKit.NSMakePoint(px - 8, py + 16 + hb_y))
         ear_l.curveToPoint_controlPoint1_controlPoint2_(
-            AppKit.NSMakePoint(px - 14, py + 34 + ear_wave),
-            AppKit.NSMakePoint(px - 16, py + 24),
-            AppKit.NSMakePoint(px - 22, py + 30 + ear_wave)
+            AppKit.NSMakePoint(px - 16, py + 35 + ear_tip_wave + hb_y),
+            AppKit.NSMakePoint(px - 16, py + 24 + ear_base_wave + hb_y),
+            AppKit.NSMakePoint(px - 24, py + 30 + ear_tip_wave + hb_y)
         )
         ear_l.curveToPoint_controlPoint1_controlPoint2_(
-            AppKit.NSMakePoint(px - 3, py + 18),
-            AppKit.NSMakePoint(px - 8, py + 32 + ear_wave),
-            AppKit.NSMakePoint(px - 4, py + 24)
+            AppKit.NSMakePoint(px - 3, py + 18 + hb_y),
+            AppKit.NSMakePoint(px - 9, py + 32 + ear_tip_wave + hb_y),
+            AppKit.NSMakePoint(px - 4, py + 24 + hb_y)
         )
         ear_l.closePath()
         AppKit.NSColor.colorWithRed_green_blue_alpha_(0.98, 0.96, 0.94, 1.0).set()
@@ -167,83 +202,112 @@ class ModularPilotRenderer(BasePilotRenderer):
 
         # Interno Orecchio Rosa Pastello
         ear_inner = AppKit.NSBezierPath.bezierPath()
-        ear_inner.moveToPoint_(AppKit.NSMakePoint(px - 7, py + 18))
-        ear_inner.lineToPoint_(AppKit.NSMakePoint(px - 12, py + 30 + ear_wave))
-        ear_inner.lineToPoint_(AppKit.NSMakePoint(px - 5, py + 20))
+        ear_inner.moveToPoint_(AppKit.NSMakePoint(px - 7, py + 18 + hb_y))
+        ear_inner.lineToPoint_(AppKit.NSMakePoint(px - 14, py + 31 + ear_tip_wave + hb_y))
+        ear_inner.lineToPoint_(AppKit.NSMakePoint(px - 5, py + 20 + hb_y))
         ear_inner.closePath()
         AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.72, 0.78, 0.85).set()
         ear_inner.fill()
 
         # 2. Testa Bianca e Soffice
         AppKit.NSColor.colorWithRed_green_blue_alpha_(0.98, 0.96, 0.94, 1.0).set()
-        head = AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 9, py + 2, 21, 19))
+        head = AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 9, py + 2 + hb_y, 21, 19))
         head.fill()
 
         # Guancia e musetto soffice
         AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.88, 0.90, 0.60).set()
-        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 1, py + 3, 10, 8)).fill()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 1, py + 3 + hb_y, 10, 8)).fill()
 
-        # Occhio grande dolce con punto luce
-        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.22, 0.15, 0.28, 1.0).set()
-        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 2, py + 10, 5.0, 6.0)).fill()
-        AppKit.NSColor.whiteColor().set()
-        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 3.5, py + 12.5, 2.0, 2.0)).fill()
+        # Occhio con ammiccamento
+        if self.is_eye_blinking(tick):
+            eye_arc = AppKit.NSBezierPath.bezierPath()
+            eye_arc.setLineWidth_(1.8)
+            eye_arc.setLineCapStyle_(AppKit.NSLineCapStyleRound)
+            eye_arc.moveToPoint_(AppKit.NSMakePoint(px + 1.0, py + 12.5 + hb_y))
+            eye_arc.curveToPoint_controlPoint1_controlPoint2_(
+                AppKit.NSMakePoint(px + 8.0, py + 12.5 + hb_y),
+                AppKit.NSMakePoint(px + 3.5, py + 15.5 + hb_y),
+                AppKit.NSMakePoint(px + 5.5, py + 15.5 + hb_y)
+            )
+            AppKit.NSColor.colorWithRed_green_blue_alpha_(0.22, 0.15, 0.28, 1.0).set()
+            eye_arc.stroke()
+        else:
+            AppKit.NSColor.colorWithRed_green_blue_alpha_(0.22, 0.15, 0.28, 1.0).set()
+            AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 2, py + 10 + hb_y, 5.0, 6.0)).fill()
+            AppKit.NSColor.whiteColor().set()
+            AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 3.5, py + 12.5 + hb_y, 2.0, 2.0)).fill()
 
-        # Nasino rosa a triangolino
+        # Nasino rosa a triangolino che vibra
+        nose_twitch = 0.5 if (tick % 26) < 10 else 0.0
         AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.45, 0.60, 1.0).set()
         nose = AppKit.NSBezierPath.bezierPath()
-        nose.moveToPoint_(AppKit.NSMakePoint(px + 11, py + 7.5))
-        nose.lineToPoint_(AppKit.NSMakePoint(px + 14, py + 7.5))
-        nose.lineToPoint_(AppKit.NSMakePoint(px + 12.5, py + 5.5))
+        nose.moveToPoint_(AppKit.NSMakePoint(px + 11, py + 7.5 + hb_y + nose_twitch))
+        nose.lineToPoint_(AppKit.NSMakePoint(px + 14, py + 7.5 + hb_y + nose_twitch))
+        nose.lineToPoint_(AppKit.NSMakePoint(px + 12.5, py + 5.5 + hb_y))
         nose.closePath()
         nose.fill()
 
         # Baffetti da coniglietto
         AppKit.NSColor.colorWithRed_green_blue_alpha_(0.50, 0.45, 0.45, 0.70).set()
         whiskers = AppKit.NSBezierPath.bezierPath()
-        whiskers.moveToPoint_(AppKit.NSMakePoint(px + 13, py + 6.5))
-        whiskers.lineToPoint_(AppKit.NSMakePoint(px + 21, py + 8.5))
-        whiskers.moveToPoint_(AppKit.NSMakePoint(px + 13, py + 5.5))
-        whiskers.lineToPoint_(AppKit.NSMakePoint(px + 20, py + 3.5))
+        whiskers.moveToPoint_(AppKit.NSMakePoint(px + 13, py + 6.5 + hb_y))
+        whiskers.lineToPoint_(AppKit.NSMakePoint(px + 21, py + 8.5 + hb_y))
+        whiskers.moveToPoint_(AppKit.NSMakePoint(px + 13, py + 5.5 + hb_y))
+        whiskers.lineToPoint_(AppKit.NSMakePoint(px + 20, py + 3.5 + hb_y))
         whiskers.setLineWidth_(0.9)
         whiskers.stroke()
 
     def _draw_platypus(self, px: float, py: float, tick: int) -> None:
-        # Coda a castoro con griglia incrociata
+        hb_y = math.sin(tick * 0.14) * 1.2
+        tail_bob = math.sin(tick * 0.16) * 3.5
+        # Coda a castoro che ondeggia nel flusso
         tail_path = AppKit.NSBezierPath.bezierPath()
-        tail_path.moveToPoint_(AppKit.NSMakePoint(px - 36, py - 4))
-        tail_path.lineToPoint_(AppKit.NSMakePoint(px - 58, py + 4))
-        tail_path.lineToPoint_(AppKit.NSMakePoint(px - 62, py - 6))
-        tail_path.lineToPoint_(AppKit.NSMakePoint(px - 38, py - 12))
+        tail_path.moveToPoint_(AppKit.NSMakePoint(px - 36, py - 4 + tail_bob * 0.3))
+        tail_path.lineToPoint_(AppKit.NSMakePoint(px - 58, py + 4 + tail_bob))
+        tail_path.lineToPoint_(AppKit.NSMakePoint(px - 62, py - 6 + tail_bob))
+        tail_path.lineToPoint_(AppKit.NSMakePoint(px - 38, py - 12 + tail_bob * 0.3))
         tail_path.closePath()
         AppKit.NSColor.colorWithRed_green_blue_alpha_(0.42, 0.26, 0.16, 1.0).set()
         tail_path.fill()
 
         # Testa e corpo verde acqua / ottanio (Perry Teal)
         AppKit.NSColor.colorWithRed_green_blue_alpha_(0.15, 0.65, 0.62, 1.0).set()
-        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 10, py + 2, 23, 19)).fill()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 10, py + 2 + hb_y, 23, 19)).fill()
 
         # Becco piatto largo da ornitorinco
         AppKit.NSColor.colorWithRed_green_blue_alpha_(0.96, 0.52, 0.12, 1.0).set()
         beak = AppKit.NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(
-            AppKit.NSMakeRect(px + 4, py + 3, 19, 8), 3.0, 3.0
+            AppKit.NSMakeRect(px + 4, py + 3 + hb_y, 19, 8), 3.0, 3.0
         )
         beak.fill()
 
-        # Occhio attento da agente
-        AppKit.NSColor.blackColor().set()
-        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 3, py + 11, 4.5, 4.5)).fill()
-        AppKit.NSColor.whiteColor().set()
-        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 4.5, py + 12.5, 1.5, 1.5)).fill()
+        # Occhio con ammiccamento
+        if self.is_eye_blinking(tick):
+            eye_arc = AppKit.NSBezierPath.bezierPath()
+            eye_arc.setLineWidth_(1.8)
+            eye_arc.setLineCapStyle_(AppKit.NSLineCapStyleRound)
+            eye_arc.moveToPoint_(AppKit.NSMakePoint(px + 2.0, py + 13.0 + hb_y))
+            eye_arc.curveToPoint_controlPoint1_controlPoint2_(
+                AppKit.NSMakePoint(px + 8.0, py + 13.0 + hb_y),
+                AppKit.NSMakePoint(px + 4.5, py + 15.5 + hb_y),
+                AppKit.NSMakePoint(px + 6.0, py + 15.5 + hb_y)
+            )
+            AppKit.NSColor.blackColor().set()
+            eye_arc.stroke()
+        else:
+            AppKit.NSColor.blackColor().set()
+            AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 3, py + 11 + hb_y, 4.5, 4.5)).fill()
+            AppKit.NSColor.whiteColor().set()
+            AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 4.5, py + 12.5 + hb_y, 1.5, 1.5)).fill()
 
     def _draw_squirrel(self, px: float, py: float, tick: int) -> None:
-        # Coda foltissima scoiattolo
-        tail_wave = math.sin(tick * 0.18) * 3.0
+        hb_y = math.sin(tick * 0.14) * 1.2
+        tail_wave = math.sin(tick * 0.18) * 3.8
         tail = AppKit.NSBezierPath.bezierPath()
         tail.moveToPoint_(AppKit.NSMakePoint(px - 34, py - 4))
         tail.curveToPoint_controlPoint1_controlPoint2_(
             AppKit.NSMakePoint(px - 44, py + 26 + tail_wave),
-            AppKit.NSMakePoint(px - 48, py + 8),
+            AppKit.NSMakePoint(px - 48, py + 8 + tail_wave * 0.5),
             AppKit.NSMakePoint(px - 56, py + 22 + tail_wave)
         )
         tail.curveToPoint_controlPoint1_controlPoint2_(
@@ -257,21 +321,34 @@ class ModularPilotRenderer(BasePilotRenderer):
 
         # Testa castana
         AppKit.NSColor.colorWithRed_green_blue_alpha_(0.82, 0.46, 0.25, 1.0).set()
-        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 9, py + 2, 21, 19)).fill()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 9, py + 2 + hb_y, 21, 19)).fill()
 
         # Petto e guanciotte bianche
         AppKit.NSColor.colorWithRed_green_blue_alpha_(0.98, 0.95, 0.90, 1.0).set()
-        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 1, py + 3, 10, 8)).fill()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 1, py + 3 + hb_y, 10, 8)).fill()
 
         # Musetto e nasino
         AppKit.NSColor.colorWithRed_green_blue_alpha_(0.25, 0.15, 0.12, 1.0).set()
-        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 10, py + 6, 3.5, 3.5)).fill()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 10, py + 6 + hb_y, 3.5, 3.5)).fill()
 
-        # Occhio vispo
-        AppKit.NSColor.blackColor().set()
-        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 2, py + 10, 4.5, 5.0)).fill()
-        AppKit.NSColor.whiteColor().set()
-        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 3.5, py + 12, 1.8, 1.8)).fill()
+        # Occhio vispo con ammiccamento
+        if self.is_eye_blinking(tick):
+            eye_arc = AppKit.NSBezierPath.bezierPath()
+            eye_arc.setLineWidth_(1.8)
+            eye_arc.setLineCapStyle_(AppKit.NSLineCapStyleRound)
+            eye_arc.moveToPoint_(AppKit.NSMakePoint(px + 1.0, py + 12.0 + hb_y))
+            eye_arc.curveToPoint_controlPoint1_controlPoint2_(
+                AppKit.NSMakePoint(px + 7.0, py + 12.0 + hb_y),
+                AppKit.NSMakePoint(px + 3.5, py + 14.5 + hb_y),
+                AppKit.NSMakePoint(px + 5.0, py + 14.5 + hb_y)
+            )
+            AppKit.NSColor.blackColor().set()
+            eye_arc.stroke()
+        else:
+            AppKit.NSColor.blackColor().set()
+            AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 2, py + 10 + hb_y, 4.5, 5.0)).fill()
+            AppKit.NSColor.whiteColor().set()
+            AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 3.5, py + 12 + hb_y, 1.8, 1.8)).fill()
 
     def _draw_outfit(self, px: float, py: float, tick: int) -> None:
         if self.outfit == "student":
