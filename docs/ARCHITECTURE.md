@@ -107,7 +107,8 @@ Cross-platform presentation layer structured by operating system:
 - **`ui/linux/`**: Native Linux / Ubuntu UI using PyQt6 (Wayland / X11):
   - **`theme.py`**: Native `QColor` and RGBA string converters derived directly from `ui.common.theme.CatppuccinMocha`.
   - **`qt_tray_app.py`**: PyQt6 `QSystemTrayIcon` with custom Catppuccin context menu.
-  - **`qt_dashboard.py`**: PyQt6 Flight Deck window with capsule pill switcher and solid Catppuccin cards.
+  - **`qt_dashboard.py`**: PyQt6 Flight Deck window coordinator with capsule pill switcher and window lifecycle management.
+  - **`dashboard_tabs/`**: Dedicated modular tab views matching macOS (`agenda_tab.py`, `hangar_tab.py`, `settings_tab.py`).
   - **`banner/`**: PyQt6 Wayland/X11 animated overlay banner (`qt_duck_banner.py`) with dynamic pitch rotation and software update banners (`qt_update_banner.py`).
   - **`banner/renderers/`**: Pixel-identical PyQt6 vector renderers with multiplatform parity to macOS Quartz 2D.
 - **`ui/app_launcher.py`**: Platform-aware UI dispatcher and entrypoint.
@@ -129,7 +130,7 @@ The UI follows strict multiplatform parity where both macOS AppKit and Linux PyQ
 | ![macOS Agenda](../assets/screenshots/macos_agenda.png) | ![Linux Qt Agenda](../assets/screenshots/qt_agenda.png) |
 
 #### 2. 🦆 Pilot Hangar Tab
-*Interactive mascot flight testing with pilot-specific Catppuccin accent buttons.*
+*Interactive mascot flight testing with pilot-specific Catppuccin accent buttons, live vector animations, and in-card trigger keyword management for all 7 event categories (`study`, `food`, `travel`, `sport`, `in_person`, `health`, `general`).*
 
 | macOS (AppKit) | Linux (PyQt6) |
 | :---: | :---: |

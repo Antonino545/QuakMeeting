@@ -31,35 +31,37 @@ QuakMeeting stores all user preferences, timing thresholds, routing configuratio
 | `transport_mode` | `string` | `"transit"` | Default travel mode (`"transit"`, `"automobile"`, `"walking"`, `"bicycling"`). |
 | `enable_eta_service` | `bool` | `true` | Whether to calculate departure times and routing links via Apple Maps / Google Maps. |
 | `eta_buffer_minutes` | `int` | `10` | Buffer minutes added before departure to account for reaching transit stop/parking. |
-| `custom_keywords` | `dict` | `{...}` | Custom keyword mappings to trigger specific pilots based on event titles. |
+| `custom_keywords` | `dict` | `{...}` | Custom keyword mappings for the standard event categories (`study`, `food`, `travel`, `sport`, `in_person`, `health`, `general`). |
 
 ---
 
 ## 🏷️ Custom Keyword Rules (`custom_keywords`)
 
-You can add any custom keywords to trigger specific pilots and categorize events.
+Category keywords can be managed visually directly within the application's **Hangar** tab under each event category card, or edited manually in `~/.quakmeeting/config.json`:
 
 ```json
 {
   "custom_keywords": {
-    "chef": [
-      "cena", "pranzo", "dinner", "lunch", "ristorante", "pizza", "pizzeria", "sushi", "aperitivo", "apericena", "osteria", "trattoria", "cibo", "food", "mangiare", "pub", "burger"
-    ],
-    "captain": [
-      "flight", "volo", "airport", "aeroporto", "bus", "navetta", "shuttle", "pullman", "ryanair", "easyjet", "wizz", "ita airways", "treno", "frecciarossa", "italo", "stazione", "viaggio", "partenza", "gate", "terminal", "imbarco", "boarding", "taxi", "uber"
-    ],
-    "owl": [
+    "study": [
       "universit", "uni", "esame", "esami", "lezione", "lezioni", "politecnico", "tesi", "smartgrid", "building", "ict", "satellite", "ricerca operativa", "corso", "aula"
     ],
-    "gym": [
+    "food": [
+      "cena", "pranzo", "dinner", "lunch", "ristorante", "pizza", "pizzeria", "sushi", "aperitivo", "apericena", "osteria", "trattoria", "cibo", "food", "mangiare", "pub", "burger"
+    ],
+    "travel": [
+      "flight", "volo", "airport", "aeroporto", "bus", "navetta", "shuttle", "pullman", "ryanair", "easyjet", "wizz", "ita airways", "treno", "frecciarossa", "italo", "stazione", "viaggio", "partenza", "gate", "terminal", "imbarco", "boarding", "taxi", "uber"
+    ],
+    "sport": [
       "palestra", "gym", "workout", "allenamento", "crossfit", "fitness", "sport", "padel", "tennis", "calcio", "calcetto", "partita", "match", "nuoto", "swimming", "running", "corsa", "boxe", "boxing", "basket", "pallavolo", "pesi", "cardio", "training", "maratona", "pilates", "atletica"
     ],
-    "driver": [
+    "in_person": [
       "dentista", "dottore", "visita", "medico", "studio", "ufficio", "appuntamento"
     ],
-    "zen_duck": [
+    "health": [
       "serenis", "terapia", "yoga", "meditazione", "benessere", "relax"
-    ]
+    ],
+    "general": []
   }
 }
 ```
+

@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import MagicMock
 import sys
 from datetime import datetime
+from core.services.config_service import config
 
 HAS_APPKIT = False
 if sys.platform == "darwin":
@@ -39,9 +40,36 @@ class TestDashboardUI(unittest.TestCase):
             agenda_view = agenda.render(mock_container, 800, 600, meetings, False, mock_config)
             self.assertIsNotNone(agenda_view)
 
-            # Test Hangar render
+            # Test Hangar render and initial scroll to top
             hangar_view = hangar.render(mock_container, 800, 600)
             self.assertIsNotNone(hangar_view)
+            doc_h = hangar_view.documentView().frame().size.height
+            clip_y = hangar_view.contentView().bounds().origin.y
+            # Initial render should be scrolled to the top (doc_h - 600)
+            self.assertAlmostEqual(clip_y, max(0.0, doc_h - 600.0), delta=1.0)
+
+            # Test toggling a drawer preserves scroll offset from top
+            fake_sender = MagicMock()
+            fake_sender.identifier.return_value = "study"
+            hangar.onToggleKeywordsDrawer_(fake_sender)
+            self.assertIn("study", hangar.expanded_categories)
+
+            # Re-render simulates dashboard controller tab refresh
+            hangar_view_exp = hangar.render(mock_container, 800, 600)
+            new_doc_h = hangar_view_exp.documentView().frame().size.height
+            new_clip_y = hangar_view_exp.contentView().bounds().origin.y
+            # New clip y must be at new_doc_h - 600 (still at top, NOT 0 at bottom)
+            self.assertAlmostEqual(new_clip_y, max(0.0, new_doc_h - 600.0), delta=1.0)
+
+            # Test batch comma-separated keyword adding
+            fake_input = MagicMock()
+            fake_input.stringValue.return_value = "quantum, calculus, algebra"
+            hangar.kw_inputs["study"] = fake_input
+            hangar.onAddCategoryKeyword_(fake_sender)
+            study_kws = config.get_custom_keywords("study")
+            self.assertIn("quantum", study_kws)
+            self.assertIn("calculus", study_kws)
+            self.assertIn("algebra", study_kws)
 
             # Test Settings render
             cached_calendars = [{"name": "Work", "enabled": True}, {"name": "Personal", "enabled": False}]

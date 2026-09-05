@@ -1084,3 +1084,5 @@ class SettingsTabController(AppKit.NSObject):
             AppKit.NSWorkspace.sharedWorkspace().openURL_(
                 AppKit.NSURL.URLWithString_("https://github.com/Antonino545/QuakMeeting")
             )
+
+
