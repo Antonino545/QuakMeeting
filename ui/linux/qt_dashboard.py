@@ -28,6 +28,7 @@ from PyQt6.QtGui import QColor, QDesktopServices, QFont, QPixmap, QIcon, QPainte
 from ui.linux.animated_widgets import (
     BouncingMascotLabel, AnimatedSpinButton, AnimatedUpdateCard, UpdatingHUDWidget, ToggleSwitch
 )
+from ui.linux.components.address_autocomplete_widget import QtAddressAutocompleteWidget
 
 class QtUpdateBridge(QObject):
     update_event = pyqtSignal(str, dict)
@@ -40,6 +41,7 @@ from core.services.event_bus import event_bus
 from core.domain.models import format_duration, Meeting
 from core.domain.classifier import EventClassifier
 from core.logger import open_log_file, open_log_folder
+from core.services.language_service import t
 
 logger = logging.getLogger("QuakMeeting.QtDashboard")
 
@@ -622,132 +624,119 @@ class QtFlightDeckWindow(QMainWindow):
         ac_layout.addWidget(ac_title)
         ac_layout.addWidget(ac_sub)
 
-        # 1. Starting Address and Default City Inputs
-        inputs_row = QHBoxLayout()
-        inputs_row.setSpacing(10)
-
-        addr_col = QVBoxLayout()
-        addr_col.setSpacing(4)
+        # 1. Starting Address (Origin) - Google Maps Style
         addr_row_lbl = QLabel("<b>🏠 Starting Address (Origin)</b>", addr_card)
         addr_row_lbl.setStyleSheet("color: #cdd6f4; font-size: 12px;")
-        addr_entry = QLineEdit(addr_card)
-        addr_entry.setText(config.get("home_address", "") or "")
-        addr_entry.setPlaceholderText("e.g. Corso Duca degli Abruzzi 24, 10129 Torino, Italy")
-        addr_col.addWidget(addr_row_lbl)
-        addr_col.addWidget(addr_entry)
+        ac_layout.addWidget(addr_row_lbl)
 
-        city_col = QVBoxLayout()
-        city_col.setSpacing(4)
-        city_row_lbl = QLabel("<b>🏙️ Default City / Area</b>", addr_card)
-        city_row_lbl.setStyleSheet("color: #cdd6f4; font-size: 12px;")
-        city_entry = QLineEdit(addr_card)
-        city_entry.setText(config.get("home_city", "") or "")
-        city_entry.setPlaceholderText("e.g. Torino, Milano, Roma")
-        city_col.addWidget(city_row_lbl)
-        city_col.addWidget(city_entry)
-
-        save_addr_btn = QPushButton("💾 Save Location", addr_card)
-        save_addr_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        save_addr_btn.setFixedHeight(34)
-        save_addr_btn.setStyleSheet("""
-            QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #a6e3a1, stop:1 #94e2d5);
-                color: #11111b;
-                font-weight: bold;
-                font-size: 12px;
-                border-radius: 8px;
-                padding: 7px 16px;
-                border: 1px solid #a6e3a1;
-                margin-top: 18px;
-            }
-            QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #94e2d5, stop:1 #a6e3a1);
-                border: 1px solid #94e2d5;
-            }
-        """)
-
-        hint_lbl = QLabel("💡 Format: Street & Number, City, Postal Code, Country (e.g. Corso Duca degli Abruzzi 24, 10129 Torino, Italy)", addr_card)
-        hint_lbl.setStyleSheet("color: #a6adc8; font-size: 11px; margin-top: 2px;")
-
-        def _save_addr():
-            val_addr = addr_entry.text().strip()
-            val_city = city_entry.text().strip()
+        def _on_home_saved(val_addr, candidate):
             config.set("home_address", val_addr)
-            config.set("home_city", val_city)
+            if candidate and candidate.city:
+                config.set("home_city", candidate.city)
             from core.services.eta_service import eta_service
             eta_service.clear_cache()
             try:
                 event_bus.publish("CONFIG_CHANGED", key="home_address", value=val_addr)
             except Exception:
                 pass
-            if val_addr and len(val_addr) < 2:
-                hint_lbl.setText("⚠️ Please specify street, number, or city for accurate transit ETA.")
-                hint_lbl.setStyleSheet("color: #fab387; font-size: 11px; margin-top: 2px;")
-                QTimer.singleShot(3500, lambda: (
-                    hint_lbl.setText("💡 Format: Street & Number, City, Postal Code, Country (e.g. Corso Duca degli Abruzzi 24, 10129 Torino, Italy)"),
-                    hint_lbl.setStyleSheet("color: #a6adc8; font-size: 11px; margin-top: 2px;")
-                ))
-            else:
-                hint_lbl.setText("💡 Format: Street & Number, City, Postal Code, Country (e.g. Corso Duca degli Abruzzi 24, 10129 Torino, Italy)")
-                hint_lbl.setStyleSheet("color: #a6adc8; font-size: 11px; margin-top: 2px;")
-            save_addr_btn.setText("✓ Saved")
-            QTimer.singleShot(1500, lambda: save_addr_btn.setText("💾 Save Location"))
-        save_addr_btn.clicked.connect(_save_addr)
 
-        inputs_row.addLayout(addr_col, stretch=3)
-        inputs_row.addLayout(city_col, stretch=2)
-        inputs_row.addWidget(save_addr_btn, alignment=Qt.AlignmentFlag.AlignBottom)
-        ac_layout.addLayout(inputs_row)
-        ac_layout.addWidget(hint_lbl)
+        home_auto = QtAddressAutocompleteWidget(
+            placeholder="Search address, campus, or landmark (e.g. Corso Duca degli Abruzzi 24, Torino)",
+            initial_value=config.get("home_address", "") or "",
+            on_save_cb=_on_home_saved,
+            btn_gradient="green",
+            parent=addr_card
+        )
+        ac_layout.addWidget(home_auto)
 
         # 1b. Default Exam Campus / Location Row
-        exam_row_lbl = QLabel("<b>🎓 Default Exam Campus / Location</b>", addr_card)
+        exam_row_lbl = QLabel(f"<b>{t('settings_exam_location')}</b>", addr_card)
         exam_row_lbl.setStyleSheet("color: #cdd6f4; font-size: 12px; margin-top: 6px;")
         ac_layout.addWidget(exam_row_lbl)
 
-        exam_entry_row = QHBoxLayout()
-        exam_addr_entry = QLineEdit(addr_card)
-        exam_addr_entry.setText(config.get("exam_location", "") or "")
-        exam_addr_entry.setPlaceholderText("e.g. Politecnico di Torino, Corso Duca degli Abruzzi 24")
+        exam_hint_lbl = QLabel(t("settings_exam_location_hint"), addr_card)
+        exam_hint_lbl.setStyleSheet("color: #bac2de; font-size: 11px; margin-bottom: 2px;")
+        ac_layout.addWidget(exam_hint_lbl)
 
-        save_exam_btn = QPushButton("💾 Save Exam Location", addr_card)
-        save_exam_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        save_exam_btn.setStyleSheet("""
-            QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #cba6f7, stop:1 #b4befe);
-                color: #11111b;
-                font-weight: bold;
-                font-size: 12px;
-                border-radius: 8px;
-                padding: 7px 16px;
-                border: 1px solid #cba6f7;
-            }
-            QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #b4befe, stop:1 #cba6f7);
-                border: 1px solid #b4befe;
-            }
-        """)
+        preset_row = QHBoxLayout()
+        preset_row.setSpacing(6)
+        preset_lbl = QLabel(f"<b>{t('settings_exam_campus_presets')}</b>", addr_card)
+        preset_lbl.setStyleSheet("color: #bac2de; font-size: 11px;")
+        preset_row.addWidget(preset_lbl)
 
-        exam_hint_lbl = QLabel("💡 Default campus address automatically assigned to all exams for accurate travel ETA.", addr_card)
-        exam_hint_lbl.setStyleSheet("color: #a6adc8; font-size: 11px; margin-top: 2px;")
+        campus_presets = [
+            (t("campus_polito_main"), "Politecnico di Torino, Corso Duca degli Abruzzi 24, Torino"),
+            (t("campus_polito_mirafiori"), "Politecnico di Torino, Corso Settembrini 178, Torino"),
+            (t("campus_polito_lingotto"), "Politecnico di Torino, Via Nizza 230, Torino"),
+            (t("campus_unito"), "Università degli Studi di Torino, Lungo Dora Siena 100, Torino")
+        ]
+        curr_exam_val = config.get("exam_location", "") or ""
+        preset_btns = []
 
-        def _save_exam_addr():
-            val = exam_addr_entry.text().strip()
-            config.set("exam_location", val)
+        def _update_linux_chips(curr_text):
+            curr_low = (curr_text or "").lower()
+            for p_btn, p_addr in preset_btns:
+                is_active = bool(p_addr and (p_addr.lower() in curr_low or curr_low in p_addr.lower()))
+                if is_active:
+                    p_btn.setStyleSheet("""
+                        QPushButton {
+                            background: #cba6f7;
+                            color: #11111b;
+                            font-weight: bold;
+                            font-size: 10.5px;
+                            border-radius: 6px;
+                            padding: 3px 8px;
+                            border: 1px solid #b4befe;
+                        }
+                    """)
+                else:
+                    p_btn.setStyleSheet("""
+                        QPushButton {
+                            background: #313244;
+                            color: #cdd6f4;
+                            font-size: 10.5px;
+                            border-radius: 6px;
+                            padding: 3px 8px;
+                            border: 1px solid #45475a;
+                        }
+                        QPushButton:hover {
+                            background: #45475a;
+                        }
+                    """)
+
+        def _on_exam_saved(val_addr, candidate):
+            config.set("exam_location", val_addr)
             from core.services.eta_service import eta_service
             eta_service.clear_cache()
             try:
-                event_bus.publish("CONFIG_CHANGED", key="exam_location", value=val)
+                event_bus.publish("CONFIG_CHANGED", key="exam_location", value=val_addr)
             except Exception:
                 pass
-            save_exam_btn.setText("✓ Saved")
-            QTimer.singleShot(1500, lambda: save_exam_btn.setText("💾 Save Exam Location"))
-        save_exam_btn.clicked.connect(_save_exam_addr)
+            _update_linux_chips(val_addr)
 
-        exam_entry_row.addWidget(exam_addr_entry, stretch=1)
-        exam_entry_row.addWidget(save_exam_btn)
-        ac_layout.addLayout(exam_entry_row)
-        ac_layout.addWidget(exam_hint_lbl)
+        exam_auto = QtAddressAutocompleteWidget(
+            placeholder=t("settings_exam_location_placeholder"),
+            initial_value=curr_exam_val,
+            on_save_cb=_on_exam_saved,
+            btn_gradient="mauve",
+            parent=addr_card
+        )
+
+        for p_label, p_addr in campus_presets:
+            p_btn = QPushButton(p_label, addr_card)
+            p_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            preset_row.addWidget(p_btn)
+            preset_btns.append((p_btn, p_addr))
+            p_btn.clicked.connect(lambda checked, addr=p_addr: (
+                exam_auto.set_address(addr, trigger_save=True),
+                _update_linux_chips(addr)
+            ))
+        preset_row.addStretch()
+        ac_layout.addLayout(preset_row)
+        _update_linux_chips(curr_exam_val)
+        ac_layout.addWidget(exam_auto)
+
+
 
         # 2. Preferred Transport Mode
         mode_lbl = QLabel("<b>🚦 Transport Mode for Route Calculation</b>", addr_card)
@@ -862,7 +851,7 @@ class QtFlightDeckWindow(QMainWindow):
         def _test_polito_banner():
             try:
                 from core.services.eta_service import eta_service
-                orig = addr_entry.text().strip() or "Piazza Castello, Torino"
+                orig = home_auto.get_address() or "Piazza Castello, Torino"
                 dest = "Politecnico di Torino, Corso Duca degli Abruzzi 24, Torino"
                 t_mode = config.get("transport_mode", "transit")
                 res = eta_service.calculate_eta(orig, dest, mode=t_mode)

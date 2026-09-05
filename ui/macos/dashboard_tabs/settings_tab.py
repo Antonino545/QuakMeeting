@@ -11,6 +11,7 @@ from core.services.language_service import t, get_active_language
 from core.autostart import is_autostart_enabled, enable_autostart, disable_autostart
 from core.logger import open_log_file, open_log_folder
 from ui.macos.theme import Theme, ModernButton, ModernToggleSwitch
+from ui.macos.components.address_autocomplete_view import AddressAutocompleteView
 
 class SettingsTabController(AppKit.NSObject):
     def init(self):
@@ -62,7 +63,7 @@ class SettingsTabController(AppKit.NSObject):
         gap = 14.0
 
         c1_h = 362.0  # Notification Lead Times & Staged Reminders
-        c2_h = 356.0  # Home / Departure Address, Exam Location & Route ETA
+        c2_h = 422.0  # Home / Departure Address, Exam Campus & Route ETA
 
         # Calculate calendar section height dynamically based on wrapped rows
         cals = self.cached_calendars if self.cached_calendars else calendar_service.get_available_calendars()
@@ -332,12 +333,8 @@ class SettingsTabController(AppKit.NSObject):
             h, w
         )
 
-        # 1. Starting Address (Origin) and Default City (Area)
-        btn_w = 126.0
-        gap = 8.0
-        total_input_w = (w - 36.0) - btn_w - gap
-        addr_w = int(total_input_w * 0.62)
-        city_w = int(total_input_w - addr_w - gap)
+        # 1. Starting Address (Origin) - Google Maps Style
+        addr_w = w - 36.0
 
         t1 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 74, addr_w, 18))
         t1.setStringValue_(t("settings_starting_address"))
@@ -348,76 +345,38 @@ class SettingsTabController(AppKit.NSObject):
         t1.setEditable_(False)
         card.addSubview_(t1)
 
-        t1_city = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18 + addr_w + gap, h - 74, city_w, 18))
-        t1_city.setStringValue_("🏙️ Default City / Area")
-        t1_city.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.0))
-        t1_city.setTextColor_(Theme.TEXT)
-        t1_city.setBezeled_(False)
-        t1_city.setDrawsBackground_(False)
-        t1_city.setEditable_(False)
-        card.addSubview_(t1_city)
-
         curr_addr = str(self.config.get("home_address", "") or "")
-        curr_city = str(self.config.get("home_city", "") or "")
 
-        self.home_addr_field = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 108, addr_w, 28))
-        self.home_addr_field.setStringValue_(curr_addr)
-        self.home_addr_field.setPlaceholderString_(t("settings_address_placeholder"))
-        self.home_addr_field.setFont_(AppKit.NSFont.systemFontOfSize_(12))
-        self.home_addr_field.setTextColor_(Theme.TEXT)
-        self.home_addr_field.setTarget_(self)
-        self.home_addr_field.setAction_("onSaveHomeAddress:")
-        self.home_addr_field.setWantsLayer_(True)
-        self.home_addr_field.layer().setCornerRadius_(8.0)
-        self.home_addr_field.setBackgroundColor_(Theme.CRUST)
-        self.home_addr_field.setDrawsBackground_(True)
-        self.home_addr_field.layer().setBorderWidth_(1.0)
-        self.home_addr_field.layer().setBorderColor_(Theme.SURFACE0.CGColor())
-        self.home_addr_field.setFocusRingType_(AppKit.NSFocusRingTypeNone)
-        card.addSubview_(self.home_addr_field)
+        def _on_home_saved(addr_str, candidate):
+            self.config.set("home_address", addr_str)
+            if candidate and candidate.city:
+                self.config.set("home_city", candidate.city)
+            from core.services.eta_service import eta_service
+            eta_service.clear_cache()
+            try:
+                event_bus.publish("CONFIG_CHANGED", key="home_address", value=addr_str)
+            except Exception:
+                pass
+            self.refresh_data(force=True)
 
-        self.home_city_field = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18 + addr_w + gap, h - 108, city_w, 28))
-        self.home_city_field.setStringValue_(curr_city)
-        self.home_city_field.setPlaceholderString_("e.g. Torino, Milano")
-        self.home_city_field.setFont_(AppKit.NSFont.systemFontOfSize_(12))
-        self.home_city_field.setTextColor_(Theme.TEXT)
-        self.home_city_field.setTarget_(self)
-        self.home_city_field.setAction_("onSaveHomeAddress:")
-        self.home_city_field.setWantsLayer_(True)
-        self.home_city_field.layer().setCornerRadius_(8.0)
-        self.home_city_field.setBackgroundColor_(Theme.CRUST)
-        self.home_city_field.setDrawsBackground_(True)
-        self.home_city_field.layer().setBorderWidth_(1.0)
-        self.home_city_field.layer().setBorderColor_(Theme.SURFACE0.CGColor())
-        self.home_city_field.setFocusRingType_(AppKit.NSFocusRingTypeNone)
-        card.addSubview_(self.home_city_field)
-
-        self.home_save_btn = Theme.create_gradient_button(
-            AppKit.NSMakeRect(18 + addr_w + gap + city_w + gap, h - 108, btn_w, 28.0),
-            title=t("settings_save_location"),
-            start_color=Theme.GREEN,
-            end_color=Theme.TEAL,
-            text_color=Theme.CRUST,
-            corner_radius=8.0,
-            font_size=12.0,
-            bold=True
+        self.home_addr_auto = AddressAutocompleteView.alloc().initWithFrame_placeholder_initialValue_onSave_btnColor_(
+            AppKit.NSMakeRect(18, h - 128, addr_w, 50.0),
+            t("settings_address_placeholder"),
+            curr_addr,
+            _on_home_saved,
+            Theme.GREEN,
+            Theme.TEAL
         )
-        self.home_save_btn.setTarget_(self)
-        self.home_save_btn.setAction_("onSaveHomeAddress:")
-        card.addSubview_(self.home_save_btn)
+        card.addSubview_(self.home_addr_auto)
 
-        # 💡 Clear Address Formatting Guide Hint (Street, Number, City, CAP, Country)
-        self.home_addr_hint = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 124, w - 36, 16))
-        self.home_addr_hint.setStringValue_(t("settings_address_format_hint"))
-        self.home_addr_hint.setFont_(AppKit.NSFont.systemFontOfSize_(11.0))
-        self.home_addr_hint.setTextColor_(Theme.SUBTEXT0)
-        self.home_addr_hint.setBezeled_(False)
-        self.home_addr_hint.setDrawsBackground_(False)
-        self.home_addr_hint.setEditable_(False)
-        card.addSubview_(self.home_addr_hint)
+        # Subtle divider between Home and Exam
+        sep1 = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 140, addr_w, 1.0))
+        sep1.setWantsLayer_(True)
+        sep1.layer().setBackgroundColor_(Theme.SURFACE0.CGColor())
+        card.addSubview_(sep1)
 
-        # 2. Default Exam Campus / Location (University / Exam Hall)
-        t_exam = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 150, w - 36, 18))
+        # 2. Improved Default Exam Campus / Location (University / Exam Hall)
+        t_exam = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 164, addr_w, 18))
         t_exam.setStringValue_(t("settings_exam_location"))
         t_exam.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.0))
         t_exam.setTextColor_(Theme.TEXT)
@@ -426,49 +385,80 @@ class SettingsTabController(AppKit.NSObject):
         t_exam.setEditable_(False)
         card.addSubview_(t_exam)
 
+        t_exam_hint = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 182, addr_w, 15))
+        t_exam_hint.setStringValue_(t("settings_exam_location_hint"))
+        t_exam_hint.setFont_(AppKit.NSFont.systemFontOfSize_(11.0))
+        t_exam_hint.setTextColor_(Theme.SUBTEXT1)
+        t_exam_hint.setBezeled_(False)
+        t_exam_hint.setDrawsBackground_(False)
+        t_exam_hint.setEditable_(False)
+        card.addSubview_(t_exam_hint)
+
+        # Quick Campus Presets Row
+        t_preset = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 210, 110, 18))
+        t_preset.setStringValue_(t("settings_exam_campus_presets"))
+        t_preset.setFont_(AppKit.NSFont.boldSystemFontOfSize_(11.0))
+        t_preset.setTextColor_(Theme.SUBTEXT1)
+        t_preset.setBezeled_(False)
+        t_preset.setDrawsBackground_(False)
+        t_preset.setEditable_(False)
+        card.addSubview_(t_preset)
+
+        campus_presets = [
+            (t("campus_polito_main"), "Politecnico di Torino, Corso Duca degli Abruzzi 24, Torino", 120.0),
+            (t("campus_polito_mirafiori"), "Politecnico di Torino, Corso Settembrini 178, Torino", 90.0),
+            (t("campus_polito_lingotto"), "Politecnico di Torino, Via Nizza 230, Torino", 88.0),
+            (t("campus_unito"), "Università degli Studi di Torino, Lungo Dora Siena 100, Torino", 82.0)
+        ]
+        self.campus_preset_chips = []
+        x_chip = 134.0
+        for p_label, p_addr, p_w in campus_presets:
+            p_btn = ModernButton.alloc().initWithFrame_(AppKit.NSMakeRect(x_chip, h - 212, p_w, 22))
+            p_btn.setTitle_(p_label)
+            p_btn.setWantsLayer_(True)
+            p_btn.setBordered_(False)
+            p_btn.setFocusRingType_(AppKit.NSFocusRingTypeNone)
+            p_btn.setButtonType_(AppKit.NSButtonTypeMomentaryPushIn)
+            p_btn.layer().setCornerRadius_(6.0)
+            p_btn.layer().setMasksToBounds_(True)
+            p_btn.setTarget_(self)
+            p_btn.setAction_("onSelectCampusPreset:")
+            card.addSubview_(p_btn)
+            self.campus_preset_chips.append((p_btn, p_addr))
+            x_chip += (p_w + 6.0)
+
         curr_exam_addr = str(self.config.get("exam_location", "") or "")
-        field_w = w - 36.0 - 146.0
-        self.exam_addr_field = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 182, field_w, 28))
-        self.exam_addr_field.setStringValue_(curr_exam_addr)
-        self.exam_addr_field.setPlaceholderString_(t("settings_exam_location_placeholder"))
-        self.exam_addr_field.setFont_(AppKit.NSFont.systemFontOfSize_(12))
-        self.exam_addr_field.setTextColor_(Theme.TEXT)
-        self.exam_addr_field.setTarget_(self)
-        self.exam_addr_field.setAction_("onSaveExamAddress:")
-        self.exam_addr_field.setWantsLayer_(True)
-        self.exam_addr_field.layer().setCornerRadius_(8.0)
-        self.exam_addr_field.setBackgroundColor_(Theme.CRUST)
-        self.exam_addr_field.setDrawsBackground_(True)
-        self.exam_addr_field.layer().setBorderWidth_(1.0)
-        self.exam_addr_field.layer().setBorderColor_(Theme.SURFACE0.CGColor())
-        self.exam_addr_field.setFocusRingType_(AppKit.NSFocusRingTypeNone)
-        card.addSubview_(self.exam_addr_field)
 
-        self.exam_save_btn = Theme.create_gradient_button(
-            AppKit.NSMakeRect(18 + field_w + 8.0, h - 182, 138.0, 28.0),
-            title=t("settings_exam_save"),
-            start_color=Theme.MAUVE,
-            end_color=Theme.LAVENDER,
-            text_color=Theme.CRUST,
-            corner_radius=8.0,
-            font_size=12.0,
-            bold=True
+        def _on_exam_saved(addr_str, candidate):
+            self.config.set("exam_location", addr_str)
+            from core.services.eta_service import eta_service
+            eta_service.clear_cache()
+            try:
+                event_bus.publish("CONFIG_CHANGED", key="exam_location", value=addr_str)
+            except Exception:
+                pass
+            self._update_campus_preset_chips(addr_str)
+            self.refresh_data(force=True)
+
+        self.exam_addr_auto = AddressAutocompleteView.alloc().initWithFrame_placeholder_initialValue_onSave_btnColor_(
+            AppKit.NSMakeRect(18, h - 268, addr_w, 50.0),
+            t("settings_exam_location_placeholder"),
+            curr_exam_addr,
+            _on_exam_saved,
+            Theme.MAUVE,
+            Theme.LAVENDER
         )
-        self.exam_save_btn.setTarget_(self)
-        self.exam_save_btn.setAction_("onSaveExamAddress:")
-        card.addSubview_(self.exam_save_btn)
+        card.addSubview_(self.exam_addr_auto)
+        self._update_campus_preset_chips(curr_exam_addr)
 
-        self.exam_addr_hint = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 206, w - 36, 16))
-        self.exam_addr_hint.setStringValue_(t("settings_exam_location_hint"))
-        self.exam_addr_hint.setFont_(AppKit.NSFont.systemFontOfSize_(11.0))
-        self.exam_addr_hint.setTextColor_(Theme.SUBTEXT0)
-        self.exam_addr_hint.setBezeled_(False)
-        self.exam_addr_hint.setDrawsBackground_(False)
-        self.exam_addr_hint.setEditable_(False)
-        card.addSubview_(self.exam_addr_hint)
+        # Subtle divider between Exam and Transport
+        sep2 = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 280, addr_w, 1.0))
+        sep2.setWantsLayer_(True)
+        sep2.layer().setBackgroundColor_(Theme.SURFACE0.CGColor())
+        card.addSubview_(sep2)
 
         # 3. Transport Mode for Route Calculation
-        t2 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 234, w - 36, 18))
+        t2 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 302, w - 36, 18))
         t2.setStringValue_(t("settings_transport_calc"))
         t2.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.0))
         t2.setTextColor_(Theme.TEXT)
@@ -489,7 +479,7 @@ class SettingsTabController(AppKit.NSObject):
         btn_m_w = (w - 36.0 - 24.0) / 4.0
 
         for m_key, m_label in modes:
-            m_btn = ModernButton.alloc().initWithFrame_(AppKit.NSMakeRect(x_m, h - 272, btn_m_w, 30))
+            m_btn = ModernButton.alloc().initWithFrame_(AppKit.NSMakeRect(x_m, h - 340, btn_m_w, 30))
             m_btn.setTitle_(m_label)
             m_btn.setWantsLayer_(True)
             m_btn.setBordered_(False)
@@ -506,7 +496,7 @@ class SettingsTabController(AppKit.NSObject):
         self._update_transport_mode_buttons_ui(curr_mode)
 
         # 4. Departure Buffer Margin
-        t3 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 320, w - 240, 18))
+        t3 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 388, w - 240, 18))
         t3.setStringValue_(t("settings_departure_buffer"))
         t3.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.0))
         t3.setTextColor_(Theme.TEXT)
@@ -516,7 +506,7 @@ class SettingsTabController(AppKit.NSObject):
         card.addSubview_(t3)
 
         buf_val = self.config.get("eta_buffer_minutes", 10)
-        self.buf_popup = AppKit.NSPopUpButton.alloc().initWithFrame_pullsDown_(AppKit.NSMakeRect(w - 240, h - 324, 222, 26), False)
+        self.buf_popup = AppKit.NSPopUpButton.alloc().initWithFrame_pullsDown_(AppKit.NSMakeRect(w - 240, h - 392, 222, 26), False)
         self.buf_popup.setFont_(AppKit.NSFont.systemFontOfSize_(12.0))
         self.buf_popup.setTarget_(self)
         self.buf_popup.setAction_("onSelectETABuffer:")
@@ -546,6 +536,43 @@ class SettingsTabController(AppKit.NSObject):
                 btn.layer().setBorderColor_(Theme.SURFACE1.CGColor())
                 fg = Theme.SUBTEXT1
                 fnt = AppKit.NSFont.systemFontOfSize_weight_(12.0, AppKit.NSFontWeightMedium)
+
+            pstyle = AppKit.NSMutableParagraphStyle.alloc().init()
+            pstyle.setAlignment_(AppKit.NSTextAlignmentCenter)
+            attrs = {
+                AppKit.NSFontAttributeName: fnt,
+                AppKit.NSForegroundColorAttributeName: fg,
+                AppKit.NSParagraphStyleAttributeName: pstyle
+            }
+            attr_title = AppKit.NSAttributedString.alloc().initWithString_attributes_(btn.title() or "", attrs)
+            btn.setAttributedTitle_(attr_title)
+
+    @objc.IBAction
+    def onSelectCampusPreset_(self, sender):
+        for btn, chip_addr in getattr(self, "campus_preset_chips", []):
+            if btn == sender:
+                if hasattr(self, "exam_addr_auto"):
+                    self.exam_addr_auto.set_address(chip_addr, trigger_save=True)
+                self._update_campus_preset_chips(chip_addr)
+                break
+
+    @objc.python_method
+    def _update_campus_preset_chips(self, current_addr: str):
+        curr_lower = (current_addr or "").lower()
+        for btn, chip_addr in getattr(self, "campus_preset_chips", []):
+            is_active = bool(chip_addr and (chip_addr.lower() in curr_lower or curr_lower in chip_addr.lower()))
+            if is_active:
+                btn.layer().setBackgroundColor_(Theme.MAUVE.CGColor())
+                btn.layer().setBorderWidth_(1.0)
+                btn.layer().setBorderColor_(Theme.LAVENDER.CGColor())
+                fg = Theme.CRUST
+                fnt = AppKit.NSFont.boldSystemFontOfSize_(10.5)
+            else:
+                btn.layer().setBackgroundColor_(Theme.SURFACE0.CGColor())
+                btn.layer().setBorderWidth_(1.0)
+                btn.layer().setBorderColor_(Theme.SURFACE1.CGColor())
+                fg = Theme.TEXT
+                fnt = AppKit.NSFont.systemFontOfSize_(10.5)
 
             pstyle = AppKit.NSMutableParagraphStyle.alloc().init()
             pstyle.setAlignment_(AppKit.NSTextAlignmentCenter)
@@ -1055,135 +1082,14 @@ class SettingsTabController(AppKit.NSObject):
 
     @objc.IBAction
     def onSaveHomeAddress_(self, sender):
-        if hasattr(self, 'home_addr_field') and self.home_addr_field:
-            from core.services.eta_service import validate_address, eta_service
-            addr = str(self.home_addr_field.stringValue() or "").strip()
-
-            is_valid, err_code = validate_address(addr)
-            if not is_valid:
-                # Highlight error state
-                self.home_addr_field.layer().setBorderColor_(Theme.RED.CGColor())
-                if hasattr(self, 'home_addr_hint') and self.home_addr_hint:
-                    self.home_addr_hint.setStringValue_(t("settings_address_error_invalid"))
-                    self.home_addr_hint.setTextColor_(Theme.RED)
-                if hasattr(self, 'home_save_btn') and self.home_save_btn:
-                    self.home_save_btn.setTitle_(t("settings_address_error_btn"))
-
-                def _reset_err_ui():
-                    try:
-                        if hasattr(self, 'home_addr_field') and self.home_addr_field:
-                            self.home_addr_field.layer().setBorderColor_(Theme.SURFACE0.CGColor())
-                        if hasattr(self, 'home_addr_hint') and self.home_addr_hint:
-                            self.home_addr_hint.setStringValue_(t("settings_address_format_hint"))
-                            self.home_addr_hint.setTextColor_(Theme.SUBTEXT0)
-                        if hasattr(self, 'home_save_btn') and self.home_save_btn:
-                            self.home_save_btn.setTitle_(t("settings_save_location"))
-                    except Exception:
-                        pass
-
-                def _delayed_err_reset():
-                    time.sleep(3.5)
-                    AppKit.NSOperationQueue.mainQueue().addOperationWithBlock_(_reset_err_ui)
-
-                threading.Thread(target=_delayed_err_reset, daemon=True).start()
-                return
-
-            if hasattr(self, 'home_city_field') and self.home_city_field:
-                city = str(self.home_city_field.stringValue() or "").strip()
-                self.config.set("home_city", city)
-            eta_service.clear_cache()
-            try:
-                event_bus.publish("CONFIG_CHANGED", key="home_address", value=addr)
-            except Exception:
-                pass
-
-            self.home_addr_field.layer().setBorderColor_(Theme.GREEN.CGColor())
-            if hasattr(self, 'home_addr_hint') and self.home_addr_hint:
-                self.home_addr_hint.setStringValue_(t("settings_address_format_hint"))
-                self.home_addr_hint.setTextColor_(Theme.SUBTEXT0)
-
-            if hasattr(self, 'home_save_btn') and self.home_save_btn:
-                self.home_save_btn.setTitle_(f"✓ {t('saved')}")
-
-                def _reset_save_ui():
-                    try:
-                        if hasattr(self, 'home_save_btn') and self.home_save_btn:
-                            self.home_save_btn.setTitle_(t("settings_save_location"))
-                        if hasattr(self, 'home_addr_field') and self.home_addr_field:
-                            self.home_addr_field.layer().setBorderColor_(Theme.SURFACE0.CGColor())
-                    except Exception:
-                        pass
-
-                def _delayed_save_reset():
-                    time.sleep(1.5)
-                    AppKit.NSOperationQueue.mainQueue().addOperationWithBlock_(_reset_save_ui)
-
-                threading.Thread(target=_delayed_save_reset, daemon=True).start()
-            self.refresh_data(force=True)
+        if hasattr(self, 'home_addr_auto') and self.home_addr_auto:
+            self.home_addr_auto.onSaveClicked_(sender)
 
     @objc.IBAction
     def onSaveExamAddress_(self, sender):
-        if hasattr(self, 'exam_addr_field') and self.exam_addr_field:
-            addr = self.exam_addr_field.stringValue().strip()
+        if hasattr(self, 'exam_addr_auto') and self.exam_addr_auto:
+            self.exam_addr_auto.onSaveClicked_(sender)
 
-            from core.services.eta_service import eta_service
-            if addr and not eta_service.validate_address(addr):
-                self.exam_addr_field.layer().setBorderColor_(Theme.RED.CGColor())
-                if hasattr(self, 'exam_addr_hint') and self.exam_addr_hint:
-                    self.exam_addr_hint.setStringValue_(t("settings_address_error_invalid"))
-                    self.exam_addr_hint.setTextColor_(Theme.RED)
-                if hasattr(self, 'exam_save_btn') and self.exam_save_btn:
-                    self.exam_save_btn.setTitle_(t("settings_address_error_btn"))
-
-                def _reset_err_ui():
-                    try:
-                        if hasattr(self, 'exam_addr_field') and self.exam_addr_field:
-                            self.exam_addr_field.layer().setBorderColor_(Theme.SURFACE0.CGColor())
-                        if hasattr(self, 'exam_addr_hint') and self.exam_addr_hint:
-                            self.exam_addr_hint.setStringValue_(t("settings_exam_location_hint"))
-                            self.exam_addr_hint.setTextColor_(Theme.SUBTEXT0)
-                        if hasattr(self, 'exam_save_btn') and self.exam_save_btn:
-                            self.exam_save_btn.setTitle_(t("settings_exam_save"))
-                    except Exception:
-                        pass
-
-                def _delayed_err_reset():
-                    time.sleep(3.5)
-                    AppKit.NSOperationQueue.mainQueue().addOperationWithBlock_(_reset_err_ui)
-
-                threading.Thread(target=_delayed_err_reset, daemon=True).start()
-                return
-
-            self.config.set("exam_location", addr)
-            eta_service.clear_cache()
-            try:
-                event_bus.publish("CONFIG_CHANGED", key="exam_location", value=addr)
-            except Exception:
-                pass
-
-            self.exam_addr_field.layer().setBorderColor_(Theme.GREEN.CGColor())
-            if hasattr(self, 'exam_addr_hint') and self.exam_addr_hint:
-                self.exam_addr_hint.setStringValue_(t("settings_exam_location_hint"))
-                self.exam_addr_hint.setTextColor_(Theme.SUBTEXT0)
-
-            if hasattr(self, 'exam_save_btn') and self.exam_save_btn:
-                self.exam_save_btn.setTitle_(f"✓ {t('saved')}")
-
-                def _reset_save_ui():
-                    try:
-                        if hasattr(self, 'exam_save_btn') and self.exam_save_btn:
-                            self.exam_save_btn.setTitle_(t("settings_exam_save"))
-                        if hasattr(self, 'exam_addr_field') and self.exam_addr_field:
-                            self.exam_addr_field.layer().setBorderColor_(Theme.SURFACE0.CGColor())
-                    except Exception:
-                        pass
-
-                def _delayed_save_reset():
-                    time.sleep(1.5)
-                    AppKit.NSOperationQueue.mainQueue().addOperationWithBlock_(_reset_save_ui)
-
-                threading.Thread(target=_delayed_save_reset, daemon=True).start()
-            self.refresh_data(force=True)
 
     @objc.IBAction
     def onSelectETABuffer_(self, sender):
