@@ -10,11 +10,16 @@ import shutil
 import subprocess
 import threading
 import logging
+import time
 from typing import Optional
 
 from core.services.config_service import config
 
 logger = logging.getLogger("QuakMeeting.SoundService")
+
+_last_chime_time = 0.0
+_chime_lock = threading.Lock()
+_CHIME_COOLDOWN_SECONDS = 2.0
 
 
 def is_system_volume_on() -> bool:
@@ -138,6 +143,26 @@ def play_chime(
         if is_in_lesson_now(event_dict):
             logger.info("Chime muted: user is currently attending a lecture/lesson (mute_during_lessons enabled).")
             return
+
+    global _last_chime_time
+
+    # If running in automated test suite, skip real background audio playback unless sync=True (used by unit tests)
+    is_testing = bool(
+        "unittest" in sys.modules or
+        "pytest" in sys.modules or
+        os.environ.get("QUAKMEETING_TESTING") or
+        (event_dict and event_dict.get("is_test_banner"))
+    )
+    if is_testing and not sync:
+        return
+
+    # Debounce / rate-limiting: ensure at least 2.0s gap between chimes to prevent audio storms / loops
+    now = time.time()
+    with _chime_lock:
+        if not sync and (now - _last_chime_time) < _CHIME_COOLDOWN_SECONDS:
+            logger.debug("Chime debounced (cooldown active).")
+            return
+        _last_chime_time = now
 
     def _play_async():
         try:

@@ -16,8 +16,6 @@ from ui.common.banner_particles import (
     compute_airplane_flight_dynamics,
     compute_towing_cable_hooks
 )
-from ui.linux.banner.renderers.duck_renderer import QtDuckRenderer
-
 HAS_APPKIT = False
 if sys.platform == "darwin":
     try:
@@ -25,6 +23,14 @@ if sys.platform == "darwin":
         HAS_APPKIT = True
     except ImportError:
         HAS_APPKIT = False
+
+HAS_QT = False
+try:
+    from ui.linux.banner.renderers.duck_renderer import QtDuckRenderer
+    HAS_QT = True
+except ImportError:
+    QtDuckRenderer = None
+    HAS_QT = False
 
 class TestBannerModules(unittest.TestCase):
 
@@ -488,7 +494,13 @@ class TestBannerModules(unittest.TestCase):
         self.assertEqual(t("banner_im_here", lang="it"), "📍 Sono qui")
 
     def test_mascot_blinking_cycle(self):
-        renderer = QtDuckRenderer()
+        if HAS_APPKIT:
+            from ui.macos.banner.renderers.duck_renderer import DuckPilotRenderer
+            renderer = DuckPilotRenderer()
+        elif HAS_QT:
+            renderer = QtDuckRenderer()
+        else:
+            self.skipTest("Neither AppKit nor PyQt6 available")
         # Non-blinking ticks (eyes open during entry and level flight)
         self.assertFalse(renderer.is_eye_blinking(0))
         self.assertFalse(renderer.is_eye_blinking(50))

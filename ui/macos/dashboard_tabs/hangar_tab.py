@@ -493,7 +493,7 @@ class HangarTabController(AppKit.NSObject):
             "animal": animal,
             "outfit": outfit,
             "action_btn_text": "🚀 TEST FLIGHT",
-            "action_url": "https://calendar.apple.com",
+            "action_url": "https://meet.google.com/test-flight",
             "start_time": datetime.now().astimezone(),
             "is_travel": cat_key in ("food", "travel", "sport", "in_person")
         })

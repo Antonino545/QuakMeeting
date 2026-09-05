@@ -193,7 +193,7 @@ class QtDuckBannerWindow(QWidget):
         self._esc_shortcut = QShortcut(QKeySequence(Qt.Key.Key_Escape), self)
         self._esc_shortcut.activated.connect(self._dismiss)
 
-        if not self.is_quiet_reminder:
+        if not self.is_quiet_reminder and not self.event_data.get("is_test_banner") and "unittest" not in sys.modules:
             play_chime(event_dict=self.event_data)
 
         self._timer = QTimer(self)

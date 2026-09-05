@@ -13,10 +13,16 @@ os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtGui import QImage, QPainter, QColor, QFont
-
 from ui.linux.banner.qt_duck_banner import QtDuckBannerWindow
 
-ARTIFACTS_DIR = "/home/antonino54/.gemini/antigravity/brain/168cb871-30be-4d6b-a28d-b3dce1b10c61"
+import tempfile
+
+ARTIFACTS_DIR = os.environ.get("ARTIFACTS_DIR") or (
+    "/Users/antonino54/.gemini/antigravity/brain/b2fbaaeb-72cb-42f8-91b2-391d021cdf6d"
+    if os.path.exists("/Users/antonino54/.gemini/antigravity/brain/b2fbaaeb-72cb-42f8-91b2-391d021cdf6d")
+    else tempfile.gettempdir()
+)
+os.makedirs(ARTIFACTS_DIR, exist_ok=True)
 
 class TestBannerVisualSnapshots(unittest.TestCase):
 
