@@ -86,6 +86,12 @@ class AddressService:
         except Exception as e:
             logger.debug(f"Address cache save notice: {e}")
 
+    def clear_cache(self):
+        """Clears memory and disk address caches."""
+        self._suggestions_cache.clear()
+        self._verification_cache.clear()
+        self._save_cache()
+
     def search_suggestions(
         self,
         query: str,
@@ -181,17 +187,17 @@ class AddressService:
                     state = addr_info.get("state", "")
                     country = addr_info.get("country", "")
 
-                    short_parts = []
-                    if road:
-                        short_parts.append(road)
-                        if house_num:
-                            short_parts.append(house_num)
-                    elif item.get("name"):
-                        short_parts.append(item["name"])
-                    else:
-                        short_parts.append(item.get("display_name", "").split(",")[0])
+                    poi_name = item.get("name") or addr_info.get("amenity") or addr_info.get("university") or addr_info.get("college") or ""
+                    road_part = f"{road} {house_num}".strip() if road else ""
 
-                    short_addr = " ".join(short_parts)
+                    if poi_name and road_part and poi_name.lower() != road.lower():
+                        short_addr = f"{poi_name} ({road_part})"
+                    elif poi_name:
+                        short_addr = poi_name
+                    elif road_part:
+                        short_addr = road_part
+                    else:
+                        short_addr = item.get("display_name", "").split(",")[0]
 
                     # Build clean canonical display string
                     display_parts = []
@@ -199,7 +205,7 @@ class AddressService:
                         display_parts.append(short_addr)
                     if place_city and place_city not in short_addr:
                         display_parts.append(place_city)
-                    if state and state not in display_parts:
+                    if state and state not in display_parts and state != place_city:
                         display_parts.append(state)
                     if country and country not in display_parts:
                         display_parts.append(country)
@@ -253,24 +259,22 @@ class AddressService:
                     state = props.get("state", "")
                     country = props.get("country", "")
 
-                    short_parts = []
-                    if street:
-                        short_parts.append(street)
-                        if housenumber:
-                            short_parts.append(housenumber)
+                    street_part = f"{street} {housenumber}".strip() if street else ""
+                    if name and street_part and name.lower() != street.lower():
+                        short_addr = f"{name} ({street_part})"
                     elif name:
-                        short_parts.append(name)
+                        short_addr = name
+                    elif street_part:
+                        short_addr = street_part
                     else:
-                        short_parts.append(place_city or search_query)
-
-                    short_addr = " ".join(short_parts)
+                        short_addr = place_city or search_query
 
                     display_parts = []
                     if short_addr:
                         display_parts.append(short_addr)
                     if place_city and place_city not in short_addr:
                         display_parts.append(place_city)
-                    if state and state not in display_parts:
+                    if state and state not in display_parts and state != place_city:
                         display_parts.append(state)
                     if country and country not in display_parts:
                         display_parts.append(country)

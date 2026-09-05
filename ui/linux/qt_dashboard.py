@@ -649,7 +649,7 @@ class QtFlightDeckWindow(QMainWindow):
         )
         ac_layout.addWidget(home_auto)
 
-        # 1b. Default Exam Campus / Location Row
+        # 1b. General University & Exam Campus (Search by University or Campus Name)
         exam_row_lbl = QLabel(f"<b>{t('settings_exam_location')}</b>", addr_card)
         exam_row_lbl.setStyleSheet("color: #cdd6f4; font-size: 12px; margin-top: 6px;")
         ac_layout.addWidget(exam_row_lbl)
@@ -658,51 +658,7 @@ class QtFlightDeckWindow(QMainWindow):
         exam_hint_lbl.setStyleSheet("color: #bac2de; font-size: 11px; margin-bottom: 2px;")
         ac_layout.addWidget(exam_hint_lbl)
 
-        preset_row = QHBoxLayout()
-        preset_row.setSpacing(6)
-        preset_lbl = QLabel(f"<b>{t('settings_exam_campus_presets')}</b>", addr_card)
-        preset_lbl.setStyleSheet("color: #bac2de; font-size: 11px;")
-        preset_row.addWidget(preset_lbl)
-
-        campus_presets = [
-            (t("campus_polito_main"), "Politecnico di Torino, Corso Duca degli Abruzzi 24, Torino"),
-            (t("campus_polito_mirafiori"), "Politecnico di Torino, Corso Settembrini 178, Torino"),
-            (t("campus_polito_lingotto"), "Politecnico di Torino, Via Nizza 230, Torino"),
-            (t("campus_unito"), "Università degli Studi di Torino, Lungo Dora Siena 100, Torino")
-        ]
         curr_exam_val = config.get("exam_location", "") or ""
-        preset_btns = []
-
-        def _update_linux_chips(curr_text):
-            curr_low = (curr_text or "").lower()
-            for p_btn, p_addr in preset_btns:
-                is_active = bool(p_addr and (p_addr.lower() in curr_low or curr_low in p_addr.lower()))
-                if is_active:
-                    p_btn.setStyleSheet("""
-                        QPushButton {
-                            background: #cba6f7;
-                            color: #11111b;
-                            font-weight: bold;
-                            font-size: 10.5px;
-                            border-radius: 6px;
-                            padding: 3px 8px;
-                            border: 1px solid #b4befe;
-                        }
-                    """)
-                else:
-                    p_btn.setStyleSheet("""
-                        QPushButton {
-                            background: #313244;
-                            color: #cdd6f4;
-                            font-size: 10.5px;
-                            border-radius: 6px;
-                            padding: 3px 8px;
-                            border: 1px solid #45475a;
-                        }
-                        QPushButton:hover {
-                            background: #45475a;
-                        }
-                    """)
 
         def _on_exam_saved(val_addr, candidate):
             config.set("exam_location", val_addr)
@@ -712,7 +668,6 @@ class QtFlightDeckWindow(QMainWindow):
                 event_bus.publish("CONFIG_CHANGED", key="exam_location", value=val_addr)
             except Exception:
                 pass
-            _update_linux_chips(val_addr)
 
         exam_auto = QtAddressAutocompleteWidget(
             placeholder=t("settings_exam_location_placeholder"),
@@ -721,19 +676,6 @@ class QtFlightDeckWindow(QMainWindow):
             btn_gradient="mauve",
             parent=addr_card
         )
-
-        for p_label, p_addr in campus_presets:
-            p_btn = QPushButton(p_label, addr_card)
-            p_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            preset_row.addWidget(p_btn)
-            preset_btns.append((p_btn, p_addr))
-            p_btn.clicked.connect(lambda checked, addr=p_addr: (
-                exam_auto.set_address(addr, trigger_save=True),
-                _update_linux_chips(addr)
-            ))
-        preset_row.addStretch()
-        ac_layout.addLayout(preset_row)
-        _update_linux_chips(curr_exam_val)
         ac_layout.addWidget(exam_auto)
 
 

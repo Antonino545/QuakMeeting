@@ -63,7 +63,7 @@ class SettingsTabController(AppKit.NSObject):
         gap = 14.0
 
         c1_h = 362.0  # Notification Lead Times & Staged Reminders
-        c2_h = 422.0  # Home / Departure Address, Exam Campus & Route ETA
+        c2_h = 394.0  # Home / Departure Address, University & Exam Campus, Route ETA
 
         # Calculate calendar section height dynamically based on wrapped rows
         cals = self.cached_calendars if self.cached_calendars else calendar_service.get_available_calendars()
@@ -375,7 +375,7 @@ class SettingsTabController(AppKit.NSObject):
         sep1.layer().setBackgroundColor_(Theme.SURFACE0.CGColor())
         card.addSubview_(sep1)
 
-        # 2. Improved Default Exam Campus / Location (University / Exam Hall)
+        # 2. General University & Exam Campus (Search by University or Campus Name)
         t_exam = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 164, addr_w, 18))
         t_exam.setStringValue_(t("settings_exam_location"))
         t_exam.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.0))
@@ -394,39 +394,6 @@ class SettingsTabController(AppKit.NSObject):
         t_exam_hint.setEditable_(False)
         card.addSubview_(t_exam_hint)
 
-        # Quick Campus Presets Row
-        t_preset = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 210, 110, 18))
-        t_preset.setStringValue_(t("settings_exam_campus_presets"))
-        t_preset.setFont_(AppKit.NSFont.boldSystemFontOfSize_(11.0))
-        t_preset.setTextColor_(Theme.SUBTEXT1)
-        t_preset.setBezeled_(False)
-        t_preset.setDrawsBackground_(False)
-        t_preset.setEditable_(False)
-        card.addSubview_(t_preset)
-
-        campus_presets = [
-            (t("campus_polito_main"), "Politecnico di Torino, Corso Duca degli Abruzzi 24, Torino", 120.0),
-            (t("campus_polito_mirafiori"), "Politecnico di Torino, Corso Settembrini 178, Torino", 90.0),
-            (t("campus_polito_lingotto"), "Politecnico di Torino, Via Nizza 230, Torino", 88.0),
-            (t("campus_unito"), "Università degli Studi di Torino, Lungo Dora Siena 100, Torino", 82.0)
-        ]
-        self.campus_preset_chips = []
-        x_chip = 134.0
-        for p_label, p_addr, p_w in campus_presets:
-            p_btn = ModernButton.alloc().initWithFrame_(AppKit.NSMakeRect(x_chip, h - 212, p_w, 22))
-            p_btn.setTitle_(p_label)
-            p_btn.setWantsLayer_(True)
-            p_btn.setBordered_(False)
-            p_btn.setFocusRingType_(AppKit.NSFocusRingTypeNone)
-            p_btn.setButtonType_(AppKit.NSButtonTypeMomentaryPushIn)
-            p_btn.layer().setCornerRadius_(6.0)
-            p_btn.layer().setMasksToBounds_(True)
-            p_btn.setTarget_(self)
-            p_btn.setAction_("onSelectCampusPreset:")
-            card.addSubview_(p_btn)
-            self.campus_preset_chips.append((p_btn, p_addr))
-            x_chip += (p_w + 6.0)
-
         curr_exam_addr = str(self.config.get("exam_location", "") or "")
 
         def _on_exam_saved(addr_str, candidate):
@@ -437,11 +404,10 @@ class SettingsTabController(AppKit.NSObject):
                 event_bus.publish("CONFIG_CHANGED", key="exam_location", value=addr_str)
             except Exception:
                 pass
-            self._update_campus_preset_chips(addr_str)
             self.refresh_data(force=True)
 
         self.exam_addr_auto = AddressAutocompleteView.alloc().initWithFrame_placeholder_initialValue_onSave_btnColor_(
-            AppKit.NSMakeRect(18, h - 268, addr_w, 50.0),
+            AppKit.NSMakeRect(18, h - 238, addr_w, 50.0),
             t("settings_exam_location_placeholder"),
             curr_exam_addr,
             _on_exam_saved,
@@ -449,16 +415,15 @@ class SettingsTabController(AppKit.NSObject):
             Theme.LAVENDER
         )
         card.addSubview_(self.exam_addr_auto)
-        self._update_campus_preset_chips(curr_exam_addr)
 
         # Subtle divider between Exam and Transport
-        sep2 = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 280, addr_w, 1.0))
+        sep2 = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 250, addr_w, 1.0))
         sep2.setWantsLayer_(True)
         sep2.layer().setBackgroundColor_(Theme.SURFACE0.CGColor())
         card.addSubview_(sep2)
 
         # 3. Transport Mode for Route Calculation
-        t2 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 302, w - 36, 18))
+        t2 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 274, w - 36, 18))
         t2.setStringValue_(t("settings_transport_calc"))
         t2.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.0))
         t2.setTextColor_(Theme.TEXT)
@@ -479,7 +444,7 @@ class SettingsTabController(AppKit.NSObject):
         btn_m_w = (w - 36.0 - 24.0) / 4.0
 
         for m_key, m_label in modes:
-            m_btn = ModernButton.alloc().initWithFrame_(AppKit.NSMakeRect(x_m, h - 340, btn_m_w, 30))
+            m_btn = ModernButton.alloc().initWithFrame_(AppKit.NSMakeRect(x_m, h - 312, btn_m_w, 30))
             m_btn.setTitle_(m_label)
             m_btn.setWantsLayer_(True)
             m_btn.setBordered_(False)
@@ -496,7 +461,7 @@ class SettingsTabController(AppKit.NSObject):
         self._update_transport_mode_buttons_ui(curr_mode)
 
         # 4. Departure Buffer Margin
-        t3 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 388, w - 240, 18))
+        t3 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 360, w - 240, 18))
         t3.setStringValue_(t("settings_departure_buffer"))
         t3.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.0))
         t3.setTextColor_(Theme.TEXT)
@@ -536,43 +501,6 @@ class SettingsTabController(AppKit.NSObject):
                 btn.layer().setBorderColor_(Theme.SURFACE1.CGColor())
                 fg = Theme.SUBTEXT1
                 fnt = AppKit.NSFont.systemFontOfSize_weight_(12.0, AppKit.NSFontWeightMedium)
-
-            pstyle = AppKit.NSMutableParagraphStyle.alloc().init()
-            pstyle.setAlignment_(AppKit.NSTextAlignmentCenter)
-            attrs = {
-                AppKit.NSFontAttributeName: fnt,
-                AppKit.NSForegroundColorAttributeName: fg,
-                AppKit.NSParagraphStyleAttributeName: pstyle
-            }
-            attr_title = AppKit.NSAttributedString.alloc().initWithString_attributes_(btn.title() or "", attrs)
-            btn.setAttributedTitle_(attr_title)
-
-    @objc.IBAction
-    def onSelectCampusPreset_(self, sender):
-        for btn, chip_addr in getattr(self, "campus_preset_chips", []):
-            if btn == sender:
-                if hasattr(self, "exam_addr_auto"):
-                    self.exam_addr_auto.set_address(chip_addr, trigger_save=True)
-                self._update_campus_preset_chips(chip_addr)
-                break
-
-    @objc.python_method
-    def _update_campus_preset_chips(self, current_addr: str):
-        curr_lower = (current_addr or "").lower()
-        for btn, chip_addr in getattr(self, "campus_preset_chips", []):
-            is_active = bool(chip_addr and (chip_addr.lower() in curr_lower or curr_lower in chip_addr.lower()))
-            if is_active:
-                btn.layer().setBackgroundColor_(Theme.MAUVE.CGColor())
-                btn.layer().setBorderWidth_(1.0)
-                btn.layer().setBorderColor_(Theme.LAVENDER.CGColor())
-                fg = Theme.CRUST
-                fnt = AppKit.NSFont.boldSystemFontOfSize_(10.5)
-            else:
-                btn.layer().setBackgroundColor_(Theme.SURFACE0.CGColor())
-                btn.layer().setBorderWidth_(1.0)
-                btn.layer().setBorderColor_(Theme.SURFACE1.CGColor())
-                fg = Theme.TEXT
-                fnt = AppKit.NSFont.systemFontOfSize_(10.5)
 
             pstyle = AppKit.NSMutableParagraphStyle.alloc().init()
             pstyle.setAlignment_(AppKit.NSTextAlignmentCenter)
