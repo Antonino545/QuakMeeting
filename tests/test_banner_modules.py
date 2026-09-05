@@ -9,7 +9,7 @@ import unittest
 from datetime import datetime, timedelta
 import sys
 
-from ui.common.banner_speech import build_pilot_speech_text
+from ui.common.banner_speech import build_pilot_speech_text, build_pilot_hover_speech_text
 from ui.common.banner_formatting import compute_countdown_text, format_travel_duration
 from ui.common.banner_particles import BannerParticleEngine
 
@@ -55,6 +55,46 @@ class TestBannerModules(unittest.TestCase):
         owl_it_late = build_pilot_speech_text({"event_type": "study"}, animal="owl", outfit="student", is_late=True, lang="it")
         self.assertIn("DEVI STUDIARE", owl_it_late)
 
+        # 4. Advance Flyby mode speech (reminder_stage > 0)
+        duck_flyby_en = build_pilot_speech_text({}, animal="duck", outfit="aviator", is_late=False, lang="en", reminder_stage=10)
+        self.assertIn("flying by", duck_flyby_en.lower())
+
+        owl_flyby_en = build_pilot_speech_text({}, animal="owl", outfit="student", is_late=False, lang="en", reminder_stage=5)
+        self.assertIn("heads up", owl_flyby_en.lower())
+
+        duck_flyby_it = build_pilot_speech_text({}, animal="duck", outfit="aviator", is_late=False, lang="it", reminder_stage=10)
+        self.assertIn("al volo", duck_flyby_it.lower())
+
+        owl_flyby_it = build_pilot_speech_text({}, animal="owl", outfit="student", is_late=False, lang="it", reminder_stage=5)
+        self.assertIn("al volo", owl_flyby_it.lower())
+
+    def test_pilot_hover_speech_vocalizations(self):
+        animals = ["duck", "owl", "bunny", "squirrel", "platypus"]
+        for animal in animals:
+            quote_en = build_pilot_hover_speech_text(animal=animal, lang="en")
+            quote_it = build_pilot_hover_speech_text(animal=animal, lang="it")
+            self.assertTrue(len(quote_en) > 0, f"Empty hover quote EN for {animal}")
+            self.assertTrue(len(quote_it) > 0, f"Empty hover quote IT for {animal}")
+
+        # Spot check specific mascot vocalizations
+        duck_en = build_pilot_hover_speech_text(animal="duck", lang="en")
+        self.assertIn("Quak", duck_en)
+        self.assertIn("Hover mode", duck_en)
+
+        owl_it = build_pilot_hover_speech_text(animal="owl", lang="it")
+        self.assertIn("Uhu", owl_it)
+        self.assertIn("Osservo", owl_it)
+
+        bunny_en = build_pilot_hover_speech_text(animal="bunny", lang="en")
+        self.assertIn("Hop", bunny_en)
+        self.assertIn("Paused", bunny_en)
+
+        squirrel_it = build_pilot_hover_speech_text(animal="squirrel", lang="it")
+        self.assertIn("Squit", squirrel_it)
+
+        platypus_en = build_pilot_hover_speech_text(animal="platypus", lang="en")
+        self.assertIn("Kk-kk", platypus_en)
+
     def test_banner_formatting_and_urgency(self):
         now = datetime.now().astimezone()
 
@@ -80,6 +120,19 @@ class TestBannerModules(unittest.TestCase):
         )
         self.assertIn("3m", text_soon)
         self.assertTrue(urgent_soon)
+
+        # Stage 0 event (< 60s ahead -> "Starting Now!", no seconds)
+        start_secs = now + timedelta(seconds=15)
+        text_now, urgent_now = compute_countdown_text(
+            {}, start_secs, None, None, False, "transit", None, "duck", "Calendar", "Sync", lang="en"
+        )
+        self.assertEqual(text_now, "⏳ Starting Now!")
+        self.assertTrue(urgent_now)
+
+        text_now_it, _ = compute_countdown_text(
+            {}, start_secs, None, None, False, "transit", None, "duck", "Calendar", "Sync", lang="it"
+        )
+        self.assertEqual(text_now_it, "⏳ Inizia ora!")
 
         # Study session countdown formatting (English & Italian)
         start_study = now + timedelta(minutes=20, seconds=5)
@@ -276,5 +329,100 @@ class TestBannerModules(unittest.TestCase):
         banner._timer.stop()
         banner.close()
 
+    def test_advance_reminder_attributes(self):
+        try:
+            from PyQt6.QtWidgets import QApplication
+            from ui.linux.banner.qt_duck_banner import QtDuckBannerWindow
+        except ImportError:
+            self.skipTest("PyQt6 not available")
+
+        from core.services.language_service import t
+
+        app = QApplication.instance() or QApplication(sys.argv)
+
+        # Stage 10 (Advance reminder without URL -> Adaptive Slim Height 96px)
+        banner_advance = QtDuckBannerWindow({
+            "title": "General Sync",
+            "provider": "Reminder ⏰",
+            "start_time": datetime.now().astimezone() + timedelta(minutes=10),
+            "reminder_stage": 10,
+            "is_travel": False,
+        })
+        self.assertEqual(banner_advance.reminder_stage, 10)
+        self.assertFalse(banner_advance.has_real_url)
+        self.assertTrue(banner_advance.is_slim, "Advance reminder without URL must be slim")
+        self.assertEqual(banner_advance.card_h, 96.0, "Slim card height must be 96.0px")
+        self.assertIsNotNone(banner_advance._esc_shortcut, "Escape shortcut must be initialized")
+        self.assertTrue(len(banner_advance._cached_hover_speech_text) > 0, "Hover speech text must be precomputed")
+        self.assertIn("flying by", banner_advance._cached_speech_text.lower())
+        rects_adv = banner_advance._get_button_rects(banner_advance.CARD_X, banner_advance.CARD_Y)
+        self.assertEqual(rects_adv["action"].width(), 0.0, "No action button on non-URL advance reminder")
+        self.assertEqual(rects_adv["snooze1"].width(), 0.0, "No snooze button on advance reminder (Option A)")
+        self.assertEqual(rects_adv["snooze2"].width(), 0.0, "No skip button on advance reminder (Option A)")
+        banner_advance._timer.stop()
+        banner_advance.close()
+
+        # Advance reminder WITH real URL retains Join button only (standard 126px height)
+        banner_advance_url = QtDuckBannerWindow({
+            "title": "Strategy Call",
+            "provider": "Google Meet 🎥",
+            "action_url": "https://meet.google.com/abc-defg-hij",
+            "start_time": datetime.now().astimezone() + timedelta(minutes=10),
+            "reminder_stage": 10,
+            "is_travel": False,
+        })
+        self.assertTrue(banner_advance_url.has_real_url)
+        self.assertFalse(banner_advance_url.is_slim, "Advance reminder with URL must not be slim")
+        self.assertEqual(banner_advance_url.card_h, 126.0, "Standard card height must be 126.0px")
+        rects_adv_url = banner_advance_url._get_button_rects(banner_advance_url.CARD_X, banner_advance_url.CARD_Y)
+        self.assertEqual(rects_adv_url["action"].width(), 220.0, "Meeting advance reminder retains [🚀 Join Meeting]")
+        self.assertEqual(rects_adv_url["snooze1"].width(), 0.0, "No snooze button on meeting advance reminder")
+        self.assertEqual(rects_adv_url["snooze2"].width(), 0.0, "No skip button on meeting advance reminder")
+        banner_advance_url._timer.stop()
+        banner_advance_url.close()
+
+        # Stage 0 (Event-time reminder -> standard 126px height)
+        banner_zero = QtDuckBannerWindow({
+            "title": "General Sync",
+            "provider": "Reminder ⏰",
+            "start_time": datetime.now().astimezone(),
+            "reminder_stage": 0,
+            "is_travel": False,
+        })
+        self.assertEqual(banner_zero.reminder_stage, 0)
+        self.assertFalse(banner_zero.has_real_url)
+        self.assertFalse(banner_zero.is_slim, "Stage 0 reminder must not be slim")
+        self.assertEqual(banner_zero.card_h, 126.0, "Stage 0 card height must be 126.0px")
+        self.assertNotIn("flying by", banner_zero._cached_speech_text.lower())
+        rects_zero = banner_zero._get_button_rects(banner_zero.CARD_X, banner_zero.CARD_Y)
+        self.assertEqual(rects_zero["action"].width(), 220.0)
+        self.assertEqual(rects_zero["snooze1"].width(), 0.0)
+        banner_zero._timer.stop()
+        banner_zero.close()
+
+        # Stage 0 WITH real URL has Join button + Got it (standard 126px height)
+        banner_zero_url = QtDuckBannerWindow({
+            "title": "Strategy Call",
+            "provider": "Google Meet 🎥",
+            "action_url": "https://meet.google.com/abc-defg-hij",
+            "start_time": datetime.now().astimezone(),
+            "reminder_stage": 0,
+            "is_travel": False,
+        })
+        self.assertFalse(banner_zero_url.is_slim, "Stage 0 reminder with URL must not be slim")
+        self.assertEqual(banner_zero_url.card_h, 126.0, "Stage 0 card height must be 126.0px")
+        rects_zero_url = banner_zero_url._get_button_rects(banner_zero_url.CARD_X, banner_zero_url.CARD_Y)
+        self.assertEqual(rects_zero_url["action"].width(), 220.0)
+        self.assertEqual(rects_zero_url["snooze1"].width(), 208.0)
+        banner_zero_url._timer.stop()
+        banner_zero_url.close()
+
+        # Translations exist
+        self.assertEqual(t("banner_heads_up", lang="en"), "👀 Heads Up")
+        self.assertEqual(t("banner_heads_up", lang="it"), "👀 Preavviso")
+        self.assertEqual(t("banner_flyby_pill", lang="en"), "✈️ FLYBY")
+        self.assertEqual(t("banner_flyby_pill", lang="it"), "✈️ AL VOLO")
+
 if __name__ == "__main__":
     unittest.main()
+

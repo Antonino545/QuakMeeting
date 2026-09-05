@@ -147,6 +147,25 @@ The UI follows strict multiplatform parity where both macOS AppKit and Linux PyQ
 | :---: | :---: |
 | ![macOS Downloading](../assets/screenshots/macos_update_downloading.png) | ![macOS Installed](../assets/screenshots/macos_update_installed.png) |
 
+#### 5. 🦆 Advance Flyby Reminder vs. Event-Time Looping Banner
+QuakMeeting provides clear visual and functional distinction between advance heads-up reminders and event-time alarms:
+- **Advance Flyby Reminder (`reminder_stage > 0`, e.g., 20m, 10m, 5m, 2m)**:
+  - Single-pass non-looping flight across the screen that auto-dismisses upon exiting the display.
+  - Distinctive `[✈️ FLYBY]` / `[✈️ AL VOLO]` badge pill and soft Lavender accent border (`Theme.LAVENDER`).
+  - Contextual flyby speech quotes across all mascots (e.g., *"Quak! Heads up! Just flying by! 🦆✈️"*).
+  - **Adaptive Slim Height (`96px`)**: For buttonless general event reminders (advance reminders with no online meeting URL or transit link), the banner card dynamically shrinks from `126px` to `96px`. This completely eliminates bottom whitespace while keeping symmetrical 18px content padding, with towing cables and the pilot plane automatically re-centering.
+  - **Zero bottom buttons for general events**: Since the reminder engine automatically re-alerts at subsequent stages (e.g., 5m, 2m), manual snooze is redundant. The card serves as a pure ambient heads-up widget without buttons prompting unnecessary clicks.
+  - **Single `[🚀 Join Meeting]` button for online meetings**: Retained at standard `126px` height so users can enter calls early with 1 click, without redundant snooze or skip controls.
+  - **`[📍 I'm Here]` button for travel events**: Retained at standard `126px` height when transit destinations have location/maps links to allow early arrival acknowledgement.
+- **Event-Time Looping Banner (`reminder_stage == 0`)**:
+  - Persistent alert looping across the screen at standard `126px` height until acknowledged by the user.
+  - High-visibility styling and urgent countdown pill (`⏳ Starting Now!` / `⏳ Inizia ora!`).
+  - Prominent confirmation action (`[✅ Got it]` or `[🚀 Join Meeting]`) required for dismissal.
+- **Interactive Keyboard & Mascot Controls (Both macOS & Linux)**:
+  - **Instant `Esc` Dismissal**: Pressing the `Escape` key immediately dismisses any active flying banner via Qt `QShortcut` / `keyPressEvent` on Linux and `NSEvent` monitor / `keyDown_` on macOS.
+  - **Playful Mascot Hover Reaction**: Hovering the cursor over the pilot mascot airplane pauses flight progression and triggers an animal-specific playful speech quote (e.g., *"Quak! Hover mode engaged! 🛸"*, *"Uhu! Osservo dall'alto! 🦉✨"*), smoothly restoring the normal reminder speech when the mouse leaves.
+
+
 ---
 
 ## ⚙️ Lifecycle & Threading Model
