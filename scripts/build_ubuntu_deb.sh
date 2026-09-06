@@ -36,7 +36,46 @@ sed -i "s/__version__ = .*/__version__ = \"$VERSION\"/" "$BUILD_ROOT/opt/quakmee
 
 # 2. Icon & Desktop integration
 if [ -f "$ROOT_DIR/assets/icon.png" ]; then
+    # Always install 512x512 base icon directly
+    mkdir -p "$BUILD_ROOT/usr/share/icons/hicolor/512x512/apps"
     cp "$ROOT_DIR/assets/icon.png" "$BUILD_ROOT/usr/share/icons/hicolor/512x512/apps/quakmeeting.png"
+
+    # Generate multi-resolution icons (PIL -> PyQt6 fallback -> safe continue)
+    python3 -c "
+import os
+src = '$ROOT_DIR/assets/icon.png'
+sizes = [16, 24, 32, 48, 64, 128, 256, 512]
+
+# 1. Try PIL (Pillow)
+try:
+    from PIL import Image
+    im = Image.open(src)
+    for sz in sizes:
+        dest_dir = f'$BUILD_ROOT/usr/share/icons/hicolor/{sz}x{sz}/apps'
+        os.makedirs(dest_dir, exist_ok=True)
+        resized = im.resize((sz, sz), Image.Resampling.LANCZOS)
+        resized.save(os.path.join(dest_dir, 'quakmeeting.png'))
+    exit(0)
+except ImportError:
+    pass
+
+# 2. Try PyQt6 QImage
+try:
+    from PyQt6.QtGui import QImage
+    from PyQt6.QtCore import Qt
+    im = QImage(src)
+    if not im.isNull():
+        for sz in sizes:
+            dest_dir = f'$BUILD_ROOT/usr/share/icons/hicolor/{sz}x{sz}/apps'
+            os.makedirs(dest_dir, exist_ok=True)
+            scaled = im.scaled(sz, sz, Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.SmoothTransformation)
+            scaled.save(os.path.join(dest_dir, 'quakmeeting.png'))
+        exit(0)
+except ImportError:
+    pass
+
+print('ℹ️ PIL and PyQt6 not available for multi-resolution scaling; base 512x512 icon preserved.')
+" || true
 fi
 
 cat << 'DESKTOP_EOF' > "$BUILD_ROOT/usr/share/applications/quakmeeting.desktop"
@@ -50,6 +89,7 @@ Type=Application
 Categories=Office;Calendar;Utility;
 Keywords=Meeting;Calendar;Reminder;Timer;HUD;
 StartupNotify=true
+StartupWMClass=quakmeeting
 DESKTOP_EOF
 
 # 3. Launcher executable script

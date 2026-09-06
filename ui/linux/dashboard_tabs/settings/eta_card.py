@@ -10,6 +10,8 @@ from PyQt6.QtCore import Qt
 from core.services.config_service import config
 from core.services.event_bus import event_bus
 from ui.linux.components.address_autocomplete_widget import QtAddressAutocompleteWidget
+from ui.linux.theme import get_combo_box_qss
+
 
 
 class ETACardWidget(QFrame):
@@ -153,17 +155,8 @@ class ETACardWidget(QFrame):
 
         self.buf_combo = QComboBox(self)
         self.buf_combo.setFixedHeight(30)
-        self.buf_combo.setStyleSheet("""
-            QComboBox {
-                background: #242438;
-                color: #cdd6f4;
-                border: 1px solid #45475a;
-                border-radius: 6px;
-                padding: 3px 10px;
-                font-size: 11.5px;
-                min-width: 170px;
-            }
-        """)
+        self.buf_combo.setStyleSheet(get_combo_box_qss(bg_color="#242438", min_width=170))
+
         buf_options = [
             (0, "0 minutes (Exact ETA)"),
             (5, "5 minutes"),

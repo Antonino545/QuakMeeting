@@ -49,3 +49,75 @@ class Theme:
         """Returns css rgba(r, g, b, a) string."""
         return f"rgba({qcolor.red()}, {qcolor.green()}, {qcolor.blue()}, {alpha:.2f})"
 
+
+def get_asset_path(filename: str) -> str:
+    """Resolves asset path from workspace or system package directory."""
+    import os
+    root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    candidate = os.path.join(root_dir, "assets", filename)
+    if os.path.exists(candidate):
+        return candidate
+    opt_candidate = os.path.join("/opt", "quakmeeting", "assets", filename)
+    if os.path.exists(opt_candidate):
+        return opt_candidate
+    return candidate
+
+
+def get_combo_box_qss(bg_color: str = "#313244", min_width: int = 150) -> str:
+    """Returns standardized Catppuccin Mocha stylesheet for QComboBox including dropdown popup and arrow."""
+    arrow_path = get_asset_path("chevron_down.svg")
+    return f"""
+        QComboBox {{
+            background-color: {bg_color};
+            color: #cdd6f4;
+            border: 1px solid #45475a;
+            border-radius: 6px;
+            padding: 3px 26px 3px 10px;
+            font-size: 11.5px;
+            min-width: {min_width}px;
+        }}
+        QComboBox:hover {{
+            border-color: #89b4fa;
+            background-color: #363a4f;
+        }}
+        QComboBox:focus {{
+            border-color: #cba6f7;
+        }}
+        QComboBox::drop-down {{
+            subcontrol-origin: padding;
+            subcontrol-position: top right;
+            width: 24px;
+            border-left: none;
+        }}
+        QComboBox::down-arrow {{
+            image: url("{arrow_path}");
+            width: 11px;
+            height: 11px;
+            margin-right: 8px;
+        }}
+        QComboBox QAbstractItemView {{
+            background-color: #1e1e2e;
+            color: #cdd6f4;
+            selection-background-color: #45475a;
+            selection-color: #cdd6f4;
+            border: 1px solid #45475a;
+            border-radius: 8px;
+            padding: 4px;
+            outline: 0px;
+        }}
+        QComboBox QAbstractItemView::item {{
+            padding: 6px 10px;
+            border-radius: 4px;
+            min-height: 24px;
+        }}
+        QComboBox QAbstractItemView::item:hover {{
+            background-color: #313244;
+            color: #cdd6f4;
+        }}
+        QComboBox QAbstractItemView::item:selected {{
+            background-color: #45475a;
+            color: #cdd6f4;
+        }}
+    """
+
+
