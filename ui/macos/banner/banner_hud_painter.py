@@ -25,6 +25,14 @@ class BannerHUDPainter:
         self.color_urgent_time = Theme.RED
         self.color_normal_time = Theme.YELLOW
 
+    @staticmethod
+    def _centered_text_point(text, rect, attributes):
+        text_size = text.sizeWithAttributes_(attributes)
+        return AppKit.NSMakePoint(
+            rect.origin.x + (rect.size.width - text_size.width) / 2.0,
+            rect.origin.y + (rect.size.height - text_size.height) / 2.0,
+        )
+
     def draw_towing_cables(self, bx: float, by: float, bw: float, bh: float, px: float, py: float, is_late: bool, pitch_deg: float = 0.0, tick: int = 0):
         cable_col = Theme.RED.colorWithAlphaComponent_(0.75) if is_late else Theme.SUBTEXT1.colorWithAlphaComponent_(0.45)
         cable_col.set()
@@ -204,8 +212,9 @@ class BannerHUDPainter:
             AppKit.NSFontAttributeName: self.font_btn_sec,
             AppKit.NSForegroundColorAttributeName: Theme.TEXT if is_hovered else Theme.SUBTEXT0
         }
-        AppKit.NSString.stringWithString_("✕").drawAtPoint_withAttributes_(
-            AppKit.NSMakePoint(btn_rect.origin.x + 7.0, btn_rect.origin.y + 4.0),
+        close_text = AppKit.NSString.stringWithString_("✕")
+        close_text.drawAtPoint_withAttributes_(
+            self._centered_text_point(close_text, btn_rect, close_attrs),
             close_attrs
         )
 

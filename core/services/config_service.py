@@ -181,8 +181,14 @@ class ConfigService:
             self._save_raw(self.config)
         try:
             import sys
-            cmd = ["open", CONFIG_PATH] if sys.platform == "darwin" else ["xdg-open", CONFIG_PATH]
-            subprocess.Popen(cmd)
+            if sys.platform == "win32":
+                if hasattr(os, "startfile"):
+                    os.startfile(CONFIG_PATH)
+                else:
+                    subprocess.Popen(["cmd", "/c", "start", "", CONFIG_PATH], shell=True)
+            else:
+                cmd = ["open", CONFIG_PATH] if sys.platform == "darwin" else ["xdg-open", CONFIG_PATH]
+                subprocess.Popen(cmd)
         except Exception as e:
             logger.error(f"Error opening config editor: {e}")
 

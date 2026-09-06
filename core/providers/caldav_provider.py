@@ -28,10 +28,13 @@ class CalDAVCalendarProvider(BaseCalendarProvider):
         if not calendar_sources:
             # Check default local calendars directory or test ICS
             local_cal_dir = os.path.expanduser("~/.quakmeeting/calendars")
-            if os.path.exists(local_cal_dir):
-                for fname in os.listdir(local_cal_dir):
-                    if fname.endswith(".ics"):
-                        calendar_sources.append(os.path.join(local_cal_dir, fname))
+            if os.path.isdir(local_cal_dir):
+                try:
+                    for fname in os.listdir(local_cal_dir):
+                        if fname.endswith(".ics"):
+                            calendar_sources.append(os.path.join(local_cal_dir, fname))
+                except OSError:
+                    pass
 
         if not calendar_sources:
             return []

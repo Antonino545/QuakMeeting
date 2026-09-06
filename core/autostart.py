@@ -15,8 +15,68 @@ PLIST_LABEL = "com.quakmeeting.app"
 PLIST_PATH = os.path.expanduser(f"~/Library/LaunchAgents/{PLIST_LABEL}.plist")
 
 IS_LINUX = platform.system() == "Linux"
+IS_WINDOWS = sys.platform == "win32"
 LINUX_AUTOSTART_DIR = os.path.expanduser("~/.config/autostart")
 LINUX_DESKTOP_FILE = os.path.join(LINUX_AUTOSTART_DIR, "quakmeeting.desktop")
+
+WINREG_RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
+WINREG_VAL_NAME = "QuakMeeting"
+
+def _get_windows_executable_cmd() -> str:
+    if getattr(sys, "frozen", False) and hasattr(sys, "executable"):
+        return f'"{sys.executable}" --silent --autostart'
+    project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    main_py = os.path.join(project_dir, "main.py")
+    py_dir = os.path.dirname(sys.executable)
+    pyw = os.path.join(py_dir, "pythonw.exe")
+    exec_bin = pyw if os.path.exists(pyw) else sys.executable
+    return f'"{exec_bin}" "{main_py}" --silent --autostart'
+
+def _is_autostart_enabled_windows() -> bool:
+    try:
+        import winreg
+        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, WINREG_RUN_KEY, 0, winreg.KEY_READ)
+        try:
+            val, _ = winreg.QueryValueEx(key, WINREG_VAL_NAME)
+            return bool(val)
+        except FileNotFoundError:
+            return False
+        finally:
+            winreg.CloseKey(key)
+    except Exception as e:
+        logger.debug(f"Windows autostart check failed: {e}")
+        return False
+
+def _enable_autostart_windows() -> bool:
+    try:
+        import winreg
+        cmd = _get_windows_executable_cmd()
+        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, WINREG_RUN_KEY, 0, winreg.KEY_SET_VALUE)
+        try:
+            winreg.SetValueEx(key, WINREG_VAL_NAME, 0, winreg.REG_SZ, cmd)
+            logger.info(f"✅ Successfully registered Windows autostart Run key: {cmd}")
+            return True
+        finally:
+            winreg.CloseKey(key)
+    except Exception as e:
+        logger.error(f"Failed to enable Windows autostart: {e}")
+        return False
+
+def _disable_autostart_windows() -> bool:
+    try:
+        import winreg
+        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, WINREG_RUN_KEY, 0, winreg.KEY_SET_VALUE)
+        try:
+            winreg.DeleteValue(key, WINREG_VAL_NAME)
+            logger.info("Successfully removed Windows autostart Run key.")
+            return True
+        except FileNotFoundError:
+            return True
+        finally:
+            winreg.CloseKey(key)
+    except Exception as e:
+        logger.error(f"Failed to disable Windows autostart: {e}")
+        return False
 
 def _get_linux_executable_path() -> str:
     # If installed via deb package, it's in /usr/bin/quakmeeting
@@ -145,7 +205,9 @@ def _check_smappservice_status() -> Optional[bool]:
 
 
 def is_autostart_enabled() -> bool:
-    """Determines whether QuakMeeting is configured to launch at macOS/Linux login."""
+    """Determines whether QuakMeeting is configured to launch at macOS/Linux/Windows login."""
+    if IS_WINDOWS:
+        return _is_autostart_enabled_windows()
     if IS_LINUX:
         return os.path.exists(LINUX_DESKTOP_FILE)
         
@@ -157,9 +219,12 @@ def is_autostart_enabled() -> bool:
 
 
 def enable_autostart() -> bool:
-    """Enables launch at login using SMAppService (macOS 13+) or LaunchAgent plist, or .desktop on Linux."""
+    """Enables launch at login using Windows Registry, SMAppService / LaunchAgent on macOS, or .desktop on Linux."""
     logger.info("Enabling Launch-at-Login for QuakMeeting...")
     
+    if IS_WINDOWS:
+        return _enable_autostart_windows()
+
     if IS_LINUX:
         return _enable_autostart_linux()
         
@@ -208,9 +273,12 @@ def enable_autostart() -> bool:
 
 
 def disable_autostart() -> bool:
-    """Disables launch at login by unregistering SMAppService and removing LaunchAgent plist or .desktop on Linux."""
+    """Disables launch at login by removing Registry Run key on Windows, unregistering on macOS, or removing .desktop on Linux."""
     logger.info("Disabling Launch-at-Login for QuakMeeting...")
     
+    if IS_WINDOWS:
+        return _disable_autostart_windows()
+
     if IS_LINUX:
         return _disable_autostart_linux()
         

@@ -59,6 +59,9 @@ class CalendarService:
         elif sys.platform == "darwin":
             self._provider = EventKitCalendarProvider(self.config)
             self.provider_name = "macOS EventKit"
+        elif sys.platform == "win32":
+            self._provider = CalDAVCalendarProvider(self.config)
+            self.provider_name = "CalDAV"
         else:
             from core.providers.eds_provider import EDSCalendarProvider
             eds = EDSCalendarProvider(self.config)

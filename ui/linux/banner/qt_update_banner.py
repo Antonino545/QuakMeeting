@@ -6,10 +6,10 @@ from typing import Dict, Any
 
 try:
     from PyQt6.QtWidgets import QApplication, QWidget
-    from PyQt6.QtCore import Qt, QTimer, QRect, QRectF
+    from PyQt6.QtCore import Qt, QTimer, QRect, QRectF, QPointF
     from PyQt6.QtGui import (
         QColor, QPainter, QPen, QFont,
-        QLinearGradient, QFontMetrics
+        QLinearGradient, QFontMetrics, QCursor
     )
 except ImportError:
     pass
@@ -52,6 +52,7 @@ class QtUpdateBannerWindow(QWidget):
         self.tick = 0
         self.is_paused = False
         self._hover = None   # "join" | "snooze" | "close"
+        self._cursor_override_active = False
 
         self.install_mode = False
         self.install_progress = 0.0
@@ -77,12 +78,14 @@ class QtUpdateBannerWindow(QWidget):
         self.stay_ticks = 0
         self.max_stay_ticks = 600  # 10s auto-dismiss
 
-        self.setWindowFlags(
+        flags = (
             Qt.WindowType.FramelessWindowHint |
             Qt.WindowType.WindowStaysOnTopHint |
-            Qt.WindowType.Tool |
-            Qt.WindowType.X11BypassWindowManagerHint
+            Qt.WindowType.Tool
         )
+        if sys.platform.startswith("linux"):
+            flags |= Qt.WindowType.X11BypassWindowManagerHint
+        self.setWindowFlags(flags)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
@@ -109,6 +112,11 @@ class QtUpdateBannerWindow(QWidget):
 
     def _step(self):
         self.tick += 1
+
+        try:
+            self._update_hover_state(QPointF(self.mapFromGlobal(QCursor.pos())))
+        except Exception:
+            pass
 
         if getattr(self, "is_closing", False):
             # Slide back UP out of the screen
@@ -160,28 +168,50 @@ class QtUpdateBannerWindow(QWidget):
 
     # ── Mouse ─────────────────────────────────────────────────────────────────
 
-    def mouseMoveEvent(self, ev):
-        p = ev.position()
+    def _update_hover_state(self, pos):
         old = self._hover
-        if self._close_rect().contains(p):
+        if self._close_rect().contains(pos):
             self._hover = "close"
             self.is_paused = True
-        elif self._join_rect().contains(p):
+        elif self._join_rect().contains(pos):
             self._hover = "join"
             self.is_paused = True
-        elif self._snooze_rect().contains(p):
+        elif self._snooze_rect().contains(pos):
             self._hover = "snooze"
             self.is_paused = True
-        elif QRectF(6, 6, CARD_W, CARD_H).contains(p):
+        elif QRectF(6, 6, CARD_W, CARD_H).contains(pos):
             self._hover = None
             self.is_paused = True
         else:
             self._hover = None
             self.is_paused = False
-        cur = Qt.CursorShape.PointingHandCursor if self._hover else Qt.CursorShape.ArrowCursor
-        self.setCursor(cur)
+
+        interactive = {"close", "join", "snooze"}
+        self._set_cursor_shape(
+            Qt.CursorShape.PointingHandCursor
+            if self._hover in interactive
+            else Qt.CursorShape.ArrowCursor
+        )
         if old != self._hover:
             self.update()
+
+    def _set_cursor_shape(self, cursor_shape):
+        if cursor_shape == Qt.CursorShape.PointingHandCursor:
+            cursor = QCursor(cursor_shape)
+            if self._cursor_override_active:
+                QApplication.changeOverrideCursor(cursor)
+            else:
+                QApplication.setOverrideCursor(cursor)
+                self._cursor_override_active = True
+            return
+
+        if self._cursor_override_active:
+            QApplication.restoreOverrideCursor()
+            self._cursor_override_active = False
+        self.setCursor(cursor_shape)
+
+    def mouseMoveEvent(self, ev):
+        self._update_hover_state(ev.position())
 
     def mousePressEvent(self, ev):
         if ev.button() != Qt.MouseButton.LeftButton:
@@ -201,6 +231,7 @@ class QtUpdateBannerWindow(QWidget):
     def leaveEvent(self, ev):
         self.is_paused = False
         self._hover = None
+        self._set_cursor_shape(Qt.CursorShape.ArrowCursor)
         self.update()
 
     # ── Paint ─────────────────────────────────────────────────────────────────
@@ -352,6 +383,7 @@ class QtUpdateBannerWindow(QWidget):
 
     def _finish_dismiss(self):
         self._timer.stop()
+        self._set_cursor_shape(Qt.CursorShape.ArrowCursor)
         self.close()
         from .qt_banner import _active_banners
         if self in _active_banners:

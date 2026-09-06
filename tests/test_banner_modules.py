@@ -217,6 +217,26 @@ class TestBannerModules(unittest.TestCase):
         self.assertGreater(plane_rect.size.height, 50.0)
 
     @unittest.skipUnless(HAS_APPKIT, "macOS AppKit required")
+    def test_close_glyph_is_centered_in_button(self):
+        from ui.macos.banner.banner_hud_painter import BannerHUDPainter
+        painter = BannerHUDPainter()
+        rect = AppKit.NSMakeRect(100.0, 200.0, 24.0, 24.0)
+        text = AppKit.NSString.stringWithString_("✕")
+        attributes = {AppKit.NSFontAttributeName: painter.font_btn_sec}
+
+        point = painter._centered_text_point(text, rect, attributes)
+        text_size = text.sizeWithAttributes_(attributes)
+
+        self.assertAlmostEqual(
+            point.x + text_size.width / 2.0,
+            rect.origin.x + rect.size.width / 2.0,
+        )
+        self.assertAlmostEqual(
+            point.y + text_size.height / 2.0,
+            rect.origin.y + rect.size.height / 2.0,
+        )
+
+    @unittest.skipUnless(HAS_APPKIT, "macOS AppKit required")
     def test_banner_hittest_and_click_through(self):
         import AppKit
         from ui.macos.banner.banner_view import QuakPitBannerView
@@ -283,18 +303,6 @@ class TestBannerModules(unittest.TestCase):
             for outfit in outfits:
                 for is_late in is_lates:
                     for lang in langs:
-                        quote = build_pilot_speech_text(
-                            {"title": "Important Team Synchronization", "classroom": "Aula Magna - Edificio Principale"},
-                            animal=animal,
-                            outfit=outfit,
-                            is_late=is_late,
-                            lang=lang
-                        )
-                        bubble_w = fm.horizontalAdvance(quote) + 24.0
-                        ideal_bx = px - bubble_w * 0.5
-                        bx = max(min_bx, ideal_bx)
-                        right_edge = bx + bubble_w
-
                         # Test window initialization with this event
                         event_data = {
                             "title": "Important Team Synchronization",
@@ -307,6 +315,15 @@ class TestBannerModules(unittest.TestCase):
                             "is_late": is_late
                         }
                         banner = QtDuckBannerWindow(event_data)
+
+                        actual_quote = max(
+                            (banner._cached_speech_text, banner._cached_hover_speech_text),
+                            key=fm.horizontalAdvance,
+                        )
+                        bubble_w = fm.horizontalAdvance(actual_quote) + 24.0
+                        ideal_bx = px - bubble_w * 0.5
+                        bx = max(min_bx, ideal_bx)
+                        right_edge = bx + bubble_w
 
                         # Assert the speech bubble does not overlap the card
                         self.assertGreaterEqual(bx, min_bx)
@@ -337,6 +354,54 @@ class TestBannerModules(unittest.TestCase):
 
         self.assertTrue(banner.has_real_url)
         self.assertIn("Online Meeting", banner._cached_detail_text)
+        banner._timer.stop()
+        banner.close()
+
+    def test_qt_duck_banner_updates_cursor_for_stationary_hover(self):
+        try:
+            from PyQt6.QtCore import QPointF, Qt
+            from PyQt6.QtWidgets import QApplication
+            from ui.linux.banner.qt_duck_banner import QtDuckBannerWindow
+        except ImportError:
+            self.skipTest("PyQt6 not available")
+
+        app = QApplication.instance() or QApplication(sys.argv)
+        banner = QtDuckBannerWindow({
+            "title": "Stationary Cursor Test",
+            "start_time": datetime.now().astimezone(),
+            "reminder_stage": 0,
+            "is_test_banner": True,
+        })
+        close_rect = banner._get_button_rects(banner.CARD_X, banner.CARD_Y)["close_hit"]
+
+        banner._update_hover_state(QPointF(close_rect.center()))
+
+        self.assertEqual(banner.hovered_button, "close")
+        self.assertEqual(QApplication.overrideCursor().shape(), Qt.CursorShape.PointingHandCursor)
+        banner._set_cursor_shape(Qt.CursorShape.ArrowCursor)
+        banner._timer.stop()
+        banner.close()
+
+    def test_qt_update_banner_updates_cursor_for_stationary_hover(self):
+        try:
+            from PyQt6.QtCore import QPointF, Qt
+            from PyQt6.QtWidgets import QApplication
+            from ui.linux.banner.qt_update_banner import QtUpdateBannerWindow
+        except ImportError:
+            self.skipTest("PyQt6 not available")
+
+        app = QApplication.instance() or QApplication(sys.argv)
+        banner = QtUpdateBannerWindow({
+            "title": "Stationary Cursor Update Test",
+            "is_test_banner": True,
+        })
+        close_rect = banner._close_rect()
+
+        banner._update_hover_state(QPointF(close_rect.center()))
+
+        self.assertEqual(banner._hover, "close")
+        self.assertEqual(QApplication.overrideCursor().shape(), Qt.CursorShape.PointingHandCursor)
+        banner._set_cursor_shape(Qt.CursorShape.ArrowCursor)
         banner._timer.stop()
         banner.close()
 

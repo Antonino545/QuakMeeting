@@ -229,8 +229,8 @@ def show_qt_banner(event_data: Dict[str, Any]) -> None:
         except Exception:
             pass
 
-    # Wayland blocks window positioning — use XWayland instead
-    if "WAYLAND_DISPLAY" in os.environ or os.environ.get("XDG_SESSION_TYPE") == "wayland":
+    # Wayland blocks window positioning on Linux — use XWayland instead
+    if sys.platform.startswith("linux") and ("WAYLAND_DISPLAY" in os.environ or os.environ.get("XDG_SESSION_TYPE") == "wayland"):
         os.environ.setdefault("QT_QPA_PLATFORM", "xcb")
 
     app = QApplication.instance()

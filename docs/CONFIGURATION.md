@@ -24,7 +24,7 @@ QuakMeeting stores all user preferences, timing thresholds, routing configuratio
 | `sound_name` | `string` | `"Glass"` | System sound name to play (`"Glass"`, `"Hero"`, `"Ping"`, `"Pop"`, `"Submarine"`). |
 | `mute_during_lessons` | `bool` | `true` | Automatically mute banner chime when attending a university lecture/lesson or when the event is a class. |
 | `ignored_calendars` | `list[str]` | `[...]` | Exact names of calendars to exclude from scanning (e.g., `"Birthdays"`, `"Holidays"`). |
-| `calendar_urls` | `list[str]` | `[]` | URLs for remote ICS / CalDAV feeds, primarily used on Linux. |
+| `calendar_urls` | `list[str]` | `[]` | URLs for remote ICS / CalDAV feeds, used on Linux and Windows. |
 | `home_address` | `string` | `""` | Origin street address for ETA calculations (e.g., `"Via Pietro Cossa 11"`). |
 | `home_city` | `string` | `""` | Default city/metro area to automatically qualify local addresses (e.g., `"Torino"`). |
 | `exam_location` | `string` | `""` | Default campus or university address automatically assigned to all exam events (e.g., `"Politecnico di Torino, Corso Duca degli Abruzzi 24"`). |

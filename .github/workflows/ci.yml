@@ -97,3 +97,4 @@ jobs:
           name: Test-QuakMeeting-Ubuntu-DEB
           path: deb_dist/*.deb
           retention-days: 7
+

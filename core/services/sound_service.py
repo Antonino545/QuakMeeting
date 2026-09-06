@@ -51,6 +51,9 @@ def is_system_volume_on() -> bool:
             logger.debug(f"macOS volume detection fallback: {e}")
             return True
 
+    if sys.platform == "win32":
+        return True
+
     # Linux (PipeWire / PulseAudio / ALSA)
     if shutil.which("wpctl"):
         try:
@@ -186,6 +189,27 @@ def play_chime(
                         pass
                 return
 
+            if sys.platform == "win32":
+                try:
+                    import winsound
+                    media_dir = os.path.join(os.environ.get("SystemRoot", r"C:\Windows"), "Media")
+                    candidates = [
+                        os.path.join(media_dir, "Windows Notify System Generic.wav"),
+                        os.path.join(media_dir, "Windows Background.wav"),
+                        os.path.join(media_dir, "chimes.wav"),
+                        os.path.join(media_dir, "ding.wav"),
+                    ]
+                    for p in candidates:
+                        if os.path.exists(p):
+                            flags = winsound.SND_FILENAME | (0 if sync else winsound.SND_ASYNC)
+                            winsound.PlaySound(p, flags)
+                            return
+                    winsound.MessageBeep(winsound.MB_ICONASTERISK)
+                    return
+                except Exception as e:
+                    logger.debug(f"Windows chime error: {e}")
+                    return
+
             # Linux Sound Playback
             # 1. libcanberra (Standard freedesktop event sounds)
             if shutil.which("canberra-gtk-play"):
@@ -255,6 +279,26 @@ def play_test_chime(sound_name: Optional[str] = None) -> None:
                     except Exception:
                         pass
                 return
+
+            if sys.platform == "win32":
+                try:
+                    import winsound
+                    media_dir = os.path.join(os.environ.get("SystemRoot", r"C:\Windows"), "Media")
+                    candidates = [
+                        os.path.join(media_dir, "Windows Notify System Generic.wav"),
+                        os.path.join(media_dir, "Windows Background.wav"),
+                        os.path.join(media_dir, "chimes.wav"),
+                        os.path.join(media_dir, "ding.wav"),
+                    ]
+                    for p in candidates:
+                        if os.path.exists(p):
+                            winsound.PlaySound(p, winsound.SND_FILENAME)
+                            return
+                    winsound.MessageBeep(winsound.MB_ICONASTERISK)
+                    return
+                except Exception as e:
+                    logger.debug(f"Windows test chime error: {e}")
+                    return
 
             if shutil.which("canberra-gtk-play"):
                 res = subprocess.run(

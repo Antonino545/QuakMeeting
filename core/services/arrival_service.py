@@ -4,6 +4,7 @@ Detects whether the user has already arrived at a venue (Campus Wi-Fi / Geofenci
 or is already participating in an online video call (Google Meet, Zoom, MS Teams).
 Supports manual "I'm Here" suppression.
 """
+import sys
 import subprocess
 import logging
 import threading
@@ -43,7 +44,24 @@ class ArrivalService:
         return meeting_id in self._manually_arrived_ids
 
     def get_current_wifi_ssid(self) -> Optional[str]:
-        """Queries current Wi-Fi SSID on macOS via airport or system_profiler."""
+        """Queries current Wi-Fi SSID on macOS or Windows."""
+        if sys.platform == "win32":
+            try:
+                res = subprocess.run(
+                    ["netsh", "wlan", "show", "interfaces"],
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=1.5
+                )
+                for line in res.stdout.splitlines():
+                    if "SSID" in line and "BSSID" not in line:
+                        parts = line.split(":", 1)
+                        if len(parts) == 2:
+                            ssid = parts[1].strip()
+                            if ssid:
+                                return ssid
+            except Exception:
+                pass
+            return None
+
         try:
             cmd = ["/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport", "-I"]
             res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=1.5)
@@ -54,6 +72,16 @@ class ArrivalService:
             pass
         return None
 
+    def _is_process_running_windows(self, process_name: str) -> bool:
+        try:
+            res = subprocess.run(
+                ["tasklist", "/FI", f"IMAGENAME eq {process_name}", "/NH"],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=1.5
+            )
+            return process_name.lower() in res.stdout.lower()
+        except Exception:
+            return False
+
     def is_active_video_call_running(self, meeting: Meeting) -> bool:
         """
         Detects if user is already in an active video call for this meeting.
@@ -61,6 +89,14 @@ class ArrivalService:
         """
         url = meeting.action_url or meeting.meeting_url
         if not url:
+            return False
+
+        # Windows Process Check
+        if sys.platform == "win32":
+            if "zoom.us" in url:
+                return self._is_process_running_windows("Zoom.exe")
+            if "teams.microsoft.com" in url or "teams.live.com" in url:
+                return self._is_process_running_windows("Teams.exe") or self._is_process_running_windows("ms-teams.exe")
             return False
 
         # 1. Zoom App Running Check

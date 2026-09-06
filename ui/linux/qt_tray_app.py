@@ -316,14 +316,17 @@ def run_qt_tray_app():
 
     app.setQuitOnLastWindowClosed(False)
     
-    try:
-        import gi
-        gi.require_version('AppIndicator3', '0.1')
-        from ui.linux.app_indicator_tray import AppIndicatorTrayApp
-        tray = AppIndicatorTrayApp(app)
-        logger.info("Successfully initialized AppIndicator3 for native GNOME text support.")
-    except Exception as e:
-        logger.info(f"AppIndicator3 not available, falling back to QSystemTrayIcon: {e}")
+    if sys.platform.startswith("linux"):
+        try:
+            import gi
+            gi.require_version('AppIndicator3', '0.1')
+            from ui.linux.app_indicator_tray import AppIndicatorTrayApp
+            tray = AppIndicatorTrayApp(app)
+            logger.info("Successfully initialized AppIndicator3 for native GNOME text support.")
+        except Exception as e:
+            logger.info(f"AppIndicator3 not available, falling back to QSystemTrayIcon: {e}")
+            tray = QuakMeetingTrayApp(app)
+    else:
         tray = QuakMeetingTrayApp(app)
 
     if "--silent" not in sys.argv:

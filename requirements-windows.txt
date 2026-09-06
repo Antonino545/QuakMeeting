@@ -1,0 +1,2 @@
+# Windows Python requirements for QuakMeeting
+PyQt6>=6.4.0

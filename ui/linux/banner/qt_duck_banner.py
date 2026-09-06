@@ -138,6 +138,7 @@ class QtDuckBannerWindow(QWidget):
         # Hover & Click Interaction State
         self.hovered_button = None
         self.pressed_button = None
+        self._cursor_override_active = False
 
         # Determine slim card layout for buttonless advance flyby
         self.is_slim = bool(
@@ -177,12 +178,14 @@ class QtDuckBannerWindow(QWidget):
         self.base_y = float(self.screen_y + 24)
         self.is_quiet_reminder = bool(event_data.get("is_quiet_reminder", False))
 
-        self.setWindowFlags(
+        flags = (
             Qt.WindowType.FramelessWindowHint |
             Qt.WindowType.WindowStaysOnTopHint |
-            Qt.WindowType.Tool |
-            Qt.WindowType.X11BypassWindowManagerHint
+            Qt.WindowType.Tool
         )
+        if sys.platform.startswith("linux"):
+            flags |= Qt.WindowType.X11BypassWindowManagerHint
+        self.setWindowFlags(flags)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
@@ -457,17 +460,11 @@ class QtDuckBannerWindow(QWidget):
         # Check hover even if mouse is stationary
         try:
             cursor_pos = QPointF(self.mapFromGlobal(QCursor.pos()))
-            rects = self._get_button_rects(self.CARD_X, self.CARD_Y)
-            dyn_px, dyn_py, _ = self._get_airplane_dynamics()
-            plane_rect = QRectF(dyn_px - 65.0, dyn_py - 30.0, 115.0, 60.0)
-            if (
-                rects["card"].contains(cursor_pos) or
-                rects["close_hit"].contains(cursor_pos) or
-                plane_rect.contains(cursor_pos)
-            ):
-                self.is_paused = True
+            self._update_hover_state(cursor_pos)
         except Exception:
             pass
+
+        dyn_px, dyn_py, _ = self._get_airplane_dynamics()
 
         # Update countdown once every 30 frames (~0.5s) to save CPU
         if self.tick % 30 == 0:
@@ -481,14 +478,7 @@ class QtDuckBannerWindow(QWidget):
 
     # ── Mouse & Keyboard Interaction ───────────────────────────────────────────
 
-    def keyPressEvent(self, ev: QKeyEvent):
-        if ev.key() == Qt.Key.Key_Escape:
-            self._dismiss()
-        else:
-            super().keyPressEvent(ev)
-
-    def mouseMoveEvent(self, ev):
-        pos = ev.position()
+    def _update_hover_state(self, pos):
         rects = self._get_button_rects(self.CARD_X, self.CARD_Y)
         dyn_px, dyn_py, _ = self._get_airplane_dynamics()
         plane_rect = QRectF(dyn_px - 65.0, dyn_py - 30.0, 115.0, 60.0)
@@ -519,11 +509,40 @@ class QtDuckBannerWindow(QWidget):
             self.hovered_button = None
             self.is_paused = False
 
-        cur = Qt.CursorShape.PointingHandCursor if self.hovered_button in ["close", "action", "arrived", "snooze1", "snooze2", "plane"] else Qt.CursorShape.ArrowCursor
-        self.setCursor(cur)
+        interactive = {"close", "action", "arrived", "snooze1", "snooze2", "plane"}
+        cursor_shape = (
+            Qt.CursorShape.PointingHandCursor
+            if self.hovered_button in interactive
+            else Qt.CursorShape.ArrowCursor
+        )
+        self._set_cursor_shape(cursor_shape)
 
         if old_hover != self.hovered_button:
             self.update()
+
+    def _set_cursor_shape(self, cursor_shape):
+        if cursor_shape == Qt.CursorShape.PointingHandCursor:
+            cursor = QCursor(cursor_shape)
+            if self._cursor_override_active:
+                QApplication.changeOverrideCursor(cursor)
+            else:
+                QApplication.setOverrideCursor(cursor)
+                self._cursor_override_active = True
+            return
+
+        if self._cursor_override_active:
+            QApplication.restoreOverrideCursor()
+            self._cursor_override_active = False
+        self.setCursor(cursor_shape)
+
+    def keyPressEvent(self, ev: QKeyEvent):
+        if ev.key() == Qt.Key.Key_Escape:
+            self._dismiss()
+        else:
+            super().keyPressEvent(ev)
+
+    def mouseMoveEvent(self, ev):
+        self._update_hover_state(ev.position())
 
     def mousePressEvent(self, ev):
         if ev.button() != Qt.MouseButton.LeftButton:
@@ -641,7 +660,7 @@ class QtDuckBannerWindow(QWidget):
         self.is_paused = False
         self.pressed_button = None
         self.hovered_button = None
-        self.setCursor(Qt.CursorShape.ArrowCursor)
+        self._set_cursor_shape(Qt.CursorShape.ArrowCursor)
         self.update()
 
     # ── Paint Event ────────────────────────────────────────────────────────────
@@ -1067,6 +1086,7 @@ class QtDuckBannerWindow(QWidget):
 
     def _dismiss(self):
         self._timer.stop()
+        self._set_cursor_shape(Qt.CursorShape.ArrowCursor)
         self.close()
         from .qt_banner import _active_banners
         if self in _active_banners:
