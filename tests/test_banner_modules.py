@@ -360,6 +360,54 @@ class TestBannerModules(unittest.TestCase):
         banner._timer.stop()
         banner.close()
 
+    def test_qt_duck_banner_updates_cursor_for_stationary_hover(self):
+        try:
+            from PyQt6.QtCore import QPointF, Qt
+            from PyQt6.QtWidgets import QApplication
+            from ui.linux.banner.qt_duck_banner import QtDuckBannerWindow
+        except ImportError:
+            self.skipTest("PyQt6 not available")
+
+        app = QApplication.instance() or QApplication(sys.argv)
+        banner = QtDuckBannerWindow({
+            "title": "Stationary Cursor Test",
+            "start_time": datetime.now().astimezone(),
+            "reminder_stage": 0,
+            "is_test_banner": True,
+        })
+        close_rect = banner._get_button_rects(banner.CARD_X, banner.CARD_Y)["close_hit"]
+
+        banner._update_hover_state(QPointF(close_rect.center()))
+
+        self.assertEqual(banner.hovered_button, "close")
+        self.assertEqual(QApplication.overrideCursor().shape(), Qt.CursorShape.PointingHandCursor)
+        banner._set_cursor_shape(Qt.CursorShape.ArrowCursor)
+        banner._timer.stop()
+        banner.close()
+
+    def test_qt_update_banner_updates_cursor_for_stationary_hover(self):
+        try:
+            from PyQt6.QtCore import QPointF, Qt
+            from PyQt6.QtWidgets import QApplication
+            from ui.linux.banner.qt_update_banner import QtUpdateBannerWindow
+        except ImportError:
+            self.skipTest("PyQt6 not available")
+
+        app = QApplication.instance() or QApplication(sys.argv)
+        banner = QtUpdateBannerWindow({
+            "title": "Stationary Cursor Update Test",
+            "is_test_banner": True,
+        })
+        close_rect = banner._close_rect()
+
+        banner._update_hover_state(QPointF(close_rect.center()))
+
+        self.assertEqual(banner._hover, "close")
+        self.assertEqual(QApplication.overrideCursor().shape(), Qt.CursorShape.PointingHandCursor)
+        banner._set_cursor_shape(Qt.CursorShape.ArrowCursor)
+        banner._timer.stop()
+        banner.close()
+
     def test_advance_reminder_attributes(self):
         try:
             from PyQt6.QtWidgets import QApplication
