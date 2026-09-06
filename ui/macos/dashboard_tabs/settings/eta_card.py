@@ -174,10 +174,13 @@ class ETACardController(AppKit.NSObject):
         card.addSubview_(t3)
 
         buf_val = self.config.get("eta_buffer_minutes", 10)
-        self.buf_popup = AppKit.NSPopUpButton.alloc().initWithFrame_pullsDown_(AppKit.NSMakeRect(w - 240, h - 392, 222, 26), False)
+        
+        # FIX: Changed 'h - 392' to 'h - 364' so it aligns horizontally with the label
+        self.buf_popup = AppKit.NSPopUpButton.alloc().initWithFrame_pullsDown_(AppKit.NSMakeRect(w - 240, h - 364, 222, 26), False)
         self.buf_popup.setFont_(AppKit.NSFont.systemFontOfSize_(12.0))
         self.buf_popup.setTarget_(self)
         self.buf_popup.setAction_("onSelectETABuffer:")
+        
         for opt_title, opt_val in [
             (t("buffer_5m"), 5), (t("buffer_10m_rec"), 10), (t("buffer_15m"), 15), (t("buffer_20m"), 20)
         ]:
@@ -249,4 +252,3 @@ class ETACardController(AppKit.NSObject):
             event_bus.publish("CONFIG_CHANGED", key="eta_buffer_minutes", value=int(val_buf))
         except Exception:
             pass
-        self.parent.refresh_data(force=True)
