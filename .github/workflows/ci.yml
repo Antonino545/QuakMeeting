@@ -73,7 +73,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            python3-gi python3-pyqt6 gir1.2-edataserver-1.2 gir1.2-ecal-2.0 dpkg-dev
+            python3-gi python3-pyqt6 python3-pil gir1.2-edataserver-1.2 gir1.2-ecal-2.0 dpkg-dev
 
       - name: Install Python tooling
         run: |
