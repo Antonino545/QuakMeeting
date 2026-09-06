@@ -2,11 +2,12 @@
 
 # 🦆 QuakMeeting
 ### Multiplatform Native Flight Deck & Smart Meeting Reminder Assistant
-*macOS (Sonoma / Sequoia) & Ubuntu Linux (Wayland / X11)*  
+*macOS (Sonoma / Sequoia), Ubuntu Linux (Wayland / X11), & Microsoft Windows (10 / 11)*  
 *Inspired by [QuakPit](https://github.com/Ooble-Studio/QuakPit) — Designed for Timing Precision, Travel Readiness, & 1-Click Meeting Joins.*
 
 [![macOS](https://img.shields.io/badge/macOS-12.0%2B-blue?logo=apple&style=flat-square)](https://apple.com)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-22.04%20%7C%2024.04%20(Wayland)-orange?logo=ubuntu&style=flat-square)](https://ubuntu.com)
+[![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows&style=flat-square)](https://microsoft.com/windows)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-yellow?logo=python&style=flat-square)](https://python.org)
 [![Release](https://img.shields.io/badge/Release-v1.0.5-success?style=flat-square)](https://github.com/Antonino545/QuakMeeting/releases)
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
@@ -24,6 +25,7 @@
 Instead of tiny, easily-missed system notification banners, QuakMeeting animates a **mascot aircraft towing an interactive HUD banner** across your display:
 - **macOS**: Built with native **AppKit / Quartz 2D** with frosted glass cards, smooth 60fps animations, and in-process runtime.
 - **Ubuntu Linux (Wayland & X11)**: Native **PyQt6** animated overlay banner with solid Catppuccin cards and **GNOME AppIndicator3** status item.
+- **Microsoft Windows (10 & 11)**: Native **PyQt6** animated overlay banner, system tray integration (`QSystemTrayIcon`), registry launch-at-login, and native audio via `winsound`.
 
 <div align="center">
   <img src="assets/animations/banner_flight.gif" width="85%" alt="QuakMeeting Interactive HUD Banner in Flight" />
@@ -117,6 +119,12 @@ QuakMeeting delivers a unified **Catppuccin Mocha** visual experience across mac
    ```
 3. Launch **QuakMeeting** from your Application Grid or run `quakmeeting`.
 
+### 🪟 Microsoft Windows (`.zip` Standalone / Portable)
+1. Download **`QuakMeeting-Windows.zip`** from [Latest Releases](https://github.com/Antonino545/QuakMeeting/releases/latest).
+2. Extract the ZIP archive anywhere on your PC.
+3. Double-click **`run_windows.bat`** (or `QuakMeeting.exe`) to launch!
+   *(Or clone the repository and run with Python 3.10+: `pip install -r requirements-windows.txt` then `python main.py`)*
+
 ---
 
 ## 🏗️ Project Architecture
@@ -127,6 +135,8 @@ QuakMeeting/
 ├── build_macos_app.py             # Bundles standalone macOS .app with embedded Python & codesign
 ├── scripts/
 │   ├── build_ubuntu_deb.sh        # Debian/Ubuntu .deb package builder for Linux (Wayland/X11)
+│   ├── build_windows_release.py   # Windows standalone PyInstaller release packager
+│   ├── run_windows.bat            # Double-clickable Windows runner script
 │   └── install_linux_deps.sh      # Installs system dependencies for Linux
 ├── assets/                        # App icons (PNG & ICNS), audio files
 ├── core/
@@ -136,7 +146,8 @@ QuakMeeting/
 │   ├── providers/
 │   │   ├── base.py                # BaseCalendarProvider abstract class
 │   │   ├── eventkit_provider.py   # Native Apple EventKit bridge (macOS)
-│   │   └── caldav_provider.py     # CalDAV calendar provider (Linux)
+│   │   ├── eds_provider.py        # GNOME Evolution Data Server calendar provider (Linux)
+│   │   └── caldav_provider.py     # Universal CalDAV / .ics calendar provider (Linux & Windows)
 │   ├── services/
 │   │   ├── calendar_service.py    # Synchronizes & caches Today-only events (00:00 to 23:59:59)
 │   │   ├── reminder_engine.py     # Multi-stage notification triggers (evaluates leave vs start time)
@@ -166,7 +177,7 @@ QuakMeeting/
 │       ├── qt_tray_app.py         # PyQt6 QSystemTrayIcon menu & status
 │       ├── qt_dashboard.py        # PyQt6 Flight Deck window
 │       └── banner/                # PyQt6 animated banner overlay & pilot renderers
-└── tests/                         # Full automated unit test suite (90+ tests)
+└── tests/                         # Full automated unit test suite (170+ tests)
 ```
 
 ---
@@ -175,7 +186,7 @@ QuakMeeting/
 
 ### 1. Run Automated Unit Tests
 ```bash
-/opt/miniconda3/bin/python3 -m unittest discover -s tests -v
+python3 -m unittest discover -s tests -v
 ```
 
 ### 2. Build macOS App
@@ -188,9 +199,15 @@ QuakMeeting/
 bash scripts/build_ubuntu_deb.sh
 ```
 
+### 4. Build Windows Standalone Release
+```powershell
+pip install pyinstaller pillow
+python scripts/build_windows_release.py
+```
+
 ---
 
 ## 🤝 Credits & Acknowledgments
 - Inspired by the open-source concept of [QuakPit](https://github.com/Ooble-Studio/QuakPit).
 - Visual design tokens based on [Catppuccin](https://github.com/catppuccin/catppuccin) Mocha palette.
-- Built with **Python 3**, **Apple AppKit/Quartz 2D** (macOS), and **PyQt6** (Linux Wayland/X11).
+- Built with **Python 3**, **Apple AppKit/Quartz 2D** (macOS), and **PyQt6** (Linux Wayland/X11 & Microsoft Windows).
