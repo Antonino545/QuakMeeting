@@ -58,7 +58,7 @@ def build():
     # Include runner batch script in the distribution
     shutil.copyfile(os.path.join(PROJECT_ROOT, "scripts", "run_windows.bat"), os.path.join(dist_dir, "run_windows.bat"))
 
-    zip_name = f"QuakMeeting-Windows.zip"
+    zip_name = "QuakMeeting-Windows.zip"
     zip_path = os.path.join(PROJECT_ROOT, zip_name)
     print(f"Compressing distribution into {zip_path}...")
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
