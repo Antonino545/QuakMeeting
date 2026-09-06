@@ -16,10 +16,16 @@ class AgendaTabController(AppKit.NSObject):
         self.config = None
         self._cached_view = None
         self._cached_sig = None
+        self._saved_dist_from_top = None
         return self
 
     @objc.python_method
     def invalidate_cache(self):
+        if self._cached_view and self._cached_view.contentView() and self._cached_view.documentView():
+            old_doc_h = self._cached_view.documentView().frame().size.height
+            clip_y = self._cached_view.contentView().bounds().origin.y
+            clip_h = self._cached_view.contentView().bounds().size.height
+            self._saved_dist_from_top = max(0.0, old_doc_h - (clip_y + clip_h))
         self._cached_view = None
         self._cached_sig = None
 
@@ -84,7 +90,12 @@ class AgendaTabController(AppKit.NSObject):
 
         scroll_view.setDocumentView_(doc_view)
         if scroll_view.contentView():
-            scroll_view.contentView().scrollToPoint_(AppKit.NSMakePoint(0, content_h - h))
+            if hasattr(self, "_saved_dist_from_top") and self._saved_dist_from_top is not None:
+                target_y = max(0.0, min(content_h - h, content_h - h - self._saved_dist_from_top))
+            else:
+                target_y = max(0.0, content_h - h)
+            scroll_view.contentView().scrollToPoint_(AppKit.NSMakePoint(0, target_y))
+            scroll_view.reflectScrolledClipView_(scroll_view.contentView())
         return scroll_view
 
     @objc.python_method

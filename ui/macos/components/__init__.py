@@ -13,6 +13,7 @@ from ui.macos.components.card_view import CardView
 from ui.macos.components.section_header import HairlineDivider, SectionHeaderView
 from ui.macos.components.keyword_chip_view import KeywordChipView
 from ui.macos.components.mascot_mini_canvas_view import MascotMiniCanvasView
+from ui.macos.components.layout import BaseStack, VBox, HBox
 
 __all__ = [
     "AddressAutocompleteView",
@@ -26,4 +27,7 @@ __all__ = [
     "SectionHeaderView",
     "KeywordChipView",
     "MascotMiniCanvasView",
+    "BaseStack",
+    "VBox",
+    "HBox",
 ]

@@ -178,6 +178,11 @@ class HangarTabController(AppKit.NSObject):
 
     @objc.python_method
     def invalidate_cache(self):
+        if self._cached_view and self._cached_view.contentView() and self._cached_view.documentView():
+            old_doc_h = self._cached_view.documentView().frame().size.height
+            clip_y = self._cached_view.contentView().bounds().origin.y
+            clip_h = self._cached_view.contentView().bounds().size.height
+            self._saved_dist_from_top = max(0.0, old_doc_h - (clip_y + clip_h))
         self.stop_animation_timer()
         self._cached_view = None
         self._cached_sig = None
