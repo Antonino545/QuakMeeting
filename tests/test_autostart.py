@@ -23,9 +23,12 @@ class TestAutostartService(unittest.TestCase):
     def setUp(self):
         # Default mock to macOS behavior for existing tests
         self.patcher = patch('core.autostart.IS_LINUX', False)
+        self.windows_patcher = patch('core.autostart.IS_WINDOWS', False)
         self.patcher.start()
+        self.windows_patcher.start()
 
     def tearDown(self):
+        self.windows_patcher.stop()
         self.patcher.stop()
 
     @patch('core.autostart.IS_LINUX', True)

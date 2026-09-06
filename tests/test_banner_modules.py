@@ -303,18 +303,6 @@ class TestBannerModules(unittest.TestCase):
             for outfit in outfits:
                 for is_late in is_lates:
                     for lang in langs:
-                        quote = build_pilot_speech_text(
-                            {"title": "Important Team Synchronization", "classroom": "Aula Magna - Edificio Principale"},
-                            animal=animal,
-                            outfit=outfit,
-                            is_late=is_late,
-                            lang=lang
-                        )
-                        bubble_w = fm.horizontalAdvance(quote) + 24.0
-                        ideal_bx = px - bubble_w * 0.5
-                        bx = max(min_bx, ideal_bx)
-                        right_edge = bx + bubble_w
-
                         # Test window initialization with this event
                         event_data = {
                             "title": "Important Team Synchronization",
@@ -327,6 +315,15 @@ class TestBannerModules(unittest.TestCase):
                             "is_late": is_late
                         }
                         banner = QtDuckBannerWindow(event_data)
+
+                        actual_quote = max(
+                            (banner._cached_speech_text, banner._cached_hover_speech_text),
+                            key=fm.horizontalAdvance,
+                        )
+                        bubble_w = fm.horizontalAdvance(actual_quote) + 24.0
+                        ideal_bx = px - bubble_w * 0.5
+                        bx = max(min_bx, ideal_bx)
+                        right_edge = bx + bubble_w
 
                         # Assert the speech bubble does not overlap the card
                         self.assertGreaterEqual(bx, min_bx)
