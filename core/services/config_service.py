@@ -261,7 +261,7 @@ class ConfigService:
 def is_debug_mode() -> bool:
     """Returns True if debug mode is active via CLI flag, environment variable, or configuration."""
     import sys
-    if "--debug" in sys.argv:
+    if "--debug" in sys.argv or "-d" in sys.argv:
         return True
     if os.environ.get("QUAKMEETING_DEBUG", "").strip().lower() in ("1", "true", "yes", "on"):
         return True

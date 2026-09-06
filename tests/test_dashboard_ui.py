@@ -191,6 +191,44 @@ class TestDashboardUI(unittest.TestCase):
             action_texts = [act.text() for act in tray_app.tray.contextMenu().actions()]
             self.assertIn("📄 View Logs & Diagnostics...", action_texts)
 
+    def test_qt_settings_system_card_debug_visibility(self):
+        try:
+            from PyQt6.QtWidgets import QApplication
+            from ui.linux.dashboard_tabs.settings.system_card import SystemCardWidget
+            from core.services.language_service import t
+            from core.services.updater_service import updater_service
+        except (ImportError, ModuleNotFoundError):
+            self.skipTest("PyQt6 not available for Qt system card testing")
+
+        app = QApplication.instance() or QApplication(sys.argv)
+
+        # 1. Non-debug mode: diagnostics row hidden, update status hidden (no update available)
+        with unittest.mock.patch("ui.linux.dashboard_tabs.settings.system_card.is_debug_mode", return_value=False), \
+             unittest.mock.patch.object(updater_service, "latest_release_info", None):
+            card = SystemCardWidget()
+            self.assertEqual(card.uc_title.text(), t("settings_system_lang"))
+            self.assertTrue(card.sys_row_widget.isHidden())
+            self.assertTrue(card.update_status_box.isHidden())
+
+        # 2. Debug mode: diagnostics row visible, update status visible
+        with unittest.mock.patch("ui.linux.dashboard_tabs.settings.system_card.is_debug_mode", return_value=True), \
+             unittest.mock.patch.object(updater_service, "latest_release_info", None):
+            card_debug = SystemCardWidget()
+            self.assertEqual(card_debug.uc_title.text(), t("settings_system_lang_diag"))
+            self.assertFalse(card_debug.sys_row_widget.isHidden())
+            self.assertFalse(card_debug.update_status_box.isHidden())
+
+        # 3. Dynamic toggle via set_debug_visibility
+        card.set_debug_visibility(True)
+        self.assertEqual(card.uc_title.text(), t("settings_system_lang_diag"))
+        self.assertFalse(card.sys_row_widget.isHidden())
+        self.assertFalse(card.update_status_box.isHidden())
+
+        card.set_debug_visibility(False)
+        self.assertEqual(card.uc_title.text(), t("settings_system_lang"))
+        self.assertTrue(card.sys_row_widget.isHidden())
+        self.assertTrue(card.update_status_box.isHidden())
+
     def test_qt_agenda_serenis_redirect_button(self):
         try:
             from PyQt6.QtWidgets import QApplication, QPushButton

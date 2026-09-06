@@ -3,11 +3,11 @@ Card 4: System, Language & Diagnostics for Linux Flight Deck.
 """
 
 from PyQt6.QtWidgets import (
-    QFrame, QLabel, QPushButton, QHBoxLayout, QVBoxLayout, QMessageBox,
+    QFrame, QLabel, QPushButton, QHBoxLayout, QVBoxLayout, QMessageBox, QWidget,
 )
 from PyQt6.QtCore import Qt, QTimer, QObject, pyqtSignal
 
-from core.services.config_service import config
+from core.services.config_service import config, is_debug_mode
 from core.services.updater_service import updater_service
 from core.autostart import is_autostart_enabled, enable_autostart, disable_autostart
 from core.services.event_bus import event_bus
@@ -21,6 +21,7 @@ from ui.linux.animated_widgets import (
 class QtUpdateBridge(QObject):
     """Bridge for receiving background updater events and emitting Qt signals."""
     update_event = pyqtSignal(str, dict)
+    debug_event = pyqtSignal(bool)
 
 
 class SystemCardWidget(QFrame):
@@ -35,9 +36,10 @@ class SystemCardWidget(QFrame):
         uc_layout.setContentsMargins(18, 14, 18, 14)
         uc_layout.setSpacing(10)
 
-        uc_title = QLabel("⚙️ System, Language & Diagnostics", self)
-        uc_title.setObjectName("CardTitle")
-        uc_layout.addWidget(uc_title)
+        is_dbg = is_debug_mode()
+        self.uc_title = QLabel(t("settings_system_lang_diag") if is_dbg else t("settings_system_lang"), self)
+        self.uc_title.setObjectName("CardTitle")
+        uc_layout.addWidget(self.uc_title)
 
         # 1. Language selector row
         lang_row = QHBoxLayout()
@@ -60,6 +62,8 @@ class SystemCardWidget(QFrame):
                 event_bus.publish("CONFIG_CHANGED", key="language", value=l_key)
             except Exception:
                 pass
+            if hasattr(self, "uc_title"):
+                self.uc_title.setText(t("settings_system_lang_diag") if is_debug_mode() else t("settings_system_lang"))
             for k, b in self.lang_btns.items():
                 is_sel = (k == l_key)
                 if is_sel:
@@ -136,25 +140,27 @@ class SystemCardWidget(QFrame):
         mute_row.addWidget(mute_switch)
         uc_layout.addLayout(mute_row)
 
-        # 4. Action Buttons Row
-        sys_row = QHBoxLayout()
+        # 4. Action Buttons Row (Diagnostics - only in debug mode)
+        self.sys_row_widget = QWidget(self)
+        sys_row = QHBoxLayout(self.sys_row_widget)
+        sys_row.setContentsMargins(0, 0, 0, 0)
         sys_row.setSpacing(8)
 
-        self.up_btn = AnimatedSpinButton("🔍 Check for Updates", self)
+        self.up_btn = AnimatedSpinButton(f"🔍 {t('check_updates')}", self.sys_row_widget)
         self.up_btn.setObjectName("OutlineBtn")
         self.up_btn.setCursor(Qt.CursorShape.PointingHandCursor)
 
-        edit_btn = QPushButton("⚙️ Edit config.json", self)
+        edit_btn = QPushButton(t("settings_config_json"), self.sys_row_widget)
         edit_btn.setObjectName("OutlineBtn")
         edit_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         edit_btn.clicked.connect(config.open_config_in_editor)
 
-        log_btn = QPushButton("📄 View Logs", self)
+        log_btn = QPushButton(t("settings_view_logs"), self.sys_row_widget)
         log_btn.setObjectName("OutlineBtn")
         log_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         log_btn.clicked.connect(open_log_file)
 
-        demo_up_btn = QPushButton("🚀 Live Demo", self)
+        demo_up_btn = QPushButton("🚀 Live Demo", self.sys_row_widget)
         demo_up_btn.setObjectName("OutlineBtn")
         demo_up_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         demo_up_btn.setToolTip("Preview the rich Animated Updating HUD and Jet Rocket Thruster")
@@ -182,7 +188,7 @@ class SystemCardWidget(QFrame):
             msg.setStandardButtons(QMessageBox.StandardButton.Ok)
             msg.exec()
 
-        lic_btn = QPushButton("📜 License & Info", self)
+        lic_btn = QPushButton("📜 License & Info", self.sys_row_widget)
         lic_btn.setObjectName("OutlineBtn")
         lic_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         lic_btn.clicked.connect(_on_show_license)
@@ -192,7 +198,8 @@ class SystemCardWidget(QFrame):
         sys_row.addWidget(log_btn)
         sys_row.addWidget(demo_up_btn)
         sys_row.addWidget(lic_btn)
-        uc_layout.addLayout(sys_row)
+        uc_layout.addWidget(self.sys_row_widget)
+        self.sys_row_widget.setVisible(is_dbg)
 
         # Animated Update status card with radar scanning and celebratory states
         self.update_status_box = AnimatedUpdateCard(self)
@@ -250,6 +257,7 @@ class SystemCardWidget(QFrame):
         usb_layout.addLayout(act_row)
 
         uc_layout.addWidget(self.update_status_box)
+        self.update_status_box.setVisible(is_dbg or bool(updater_service.latest_release_info and updater_service.latest_release_info.get("has_update")))
 
         # Interactive animation preview simulation
         def _run_update_animation_demo():
@@ -285,6 +293,7 @@ class SystemCardWidget(QFrame):
 
         def _on_update_avail(version=None, tag_name=None, name=None, body=None, **k):
             self.up_btn.stop_spinning("🔍 Check for Updates")
+            self.update_status_box.setVisible(True)
             v_name = tag_name or version or "New Version"
             self.update_status_box.set_update_available(v_name)
             self.update_icon_lbl.setText("🚀")
@@ -310,6 +319,8 @@ class SystemCardWidget(QFrame):
                     self.update_status_lbl.setText(f"<span style='color:#a6e3a1;'><b>You are on the latest version!</b></span>  <b>v{current_version or updater_service.current_version}</b>")
                 self.install_btn.setVisible(False)
                 self.changelog_lbl.setVisible(False)
+                if not is_debug_mode():
+                    self.update_status_box.setVisible(False)
 
         def _on_downloading(file_name=None, **k):
             self.update_icon_lbl.setText("📥")
@@ -372,5 +383,22 @@ class SystemCardWidget(QFrame):
         event_bus.subscribe("UPDATE_INSTALLED", lambda **k: self.update_bridge.update_event.emit("UPDATE_INSTALLED", k))
         event_bus.subscribe("UPDATE_FAILED", lambda **k: self.update_bridge.update_event.emit("UPDATE_FAILED", k))
 
+        self.update_bridge.debug_event.connect(self.set_debug_visibility)
+
+        def _on_config_changed(key=None, value=None, **k):
+            if key == "debug_mode":
+                self.update_bridge.debug_event.emit(bool(value))
+
+        event_bus.subscribe("CONFIG_CHANGED", _on_config_changed)
+
         if updater_service.latest_release_info and updater_service.latest_release_info.get("has_update"):
             _on_update_avail(**updater_service.latest_release_info)
+
+    def set_debug_visibility(self, visible: bool):
+        if hasattr(self, "uc_title"):
+            self.uc_title.setText(t("settings_system_lang_diag") if visible else t("settings_system_lang"))
+        if hasattr(self, "sys_row_widget"):
+            self.sys_row_widget.setVisible(visible)
+        if hasattr(self, "update_status_box"):
+            has_update = updater_service.latest_release_info and updater_service.latest_release_info.get("has_update")
+            self.update_status_box.setVisible(visible or bool(has_update))
