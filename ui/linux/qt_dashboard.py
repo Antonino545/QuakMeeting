@@ -30,9 +30,11 @@ from ui.linux.animated_widgets import (
 from ui.linux.dashboard_tabs import (
     QtAgendaTab, QtHangarTab, QtSettingsTab, QtMascotMiniWidget, QtUpdateBridge
 )
+from ui.linux.theme import get_asset_path
 from core.services.calendar_service import calendar_service
 
 logger = logging.getLogger("QuakMeeting.QtDashboard")
+
 
 QT_DASHBOARD_QSS = """
 /* Catppuccin Mocha Palette */
@@ -182,7 +184,59 @@ QSizeGrip {
     height: 0px;
     background: transparent;
 }
-"""
+
+/* Catppuccin Mocha QComboBox & Popup styling */
+QComboBox {
+    background-color: #313244;
+    color: #cdd6f4;
+    border: 1px solid #45475a;
+    border-radius: 6px;
+    padding: 3px 26px 3px 10px;
+    font-size: 11.5px;
+}
+QComboBox:hover {
+    border-color: #89b4fa;
+    background-color: #363a4f;
+}
+QComboBox:focus {
+    border-color: #cba6f7;
+}
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 24px;
+    border-left: none;
+}
+QComboBox::down-arrow {
+    image: url("__ARROW_SVG_PLACEHOLDER__");
+    width: 11px;
+    height: 11px;
+    margin-right: 8px;
+}
+QComboBox QAbstractItemView {
+    background-color: #1e1e2e;
+    color: #cdd6f4;
+    selection-background-color: #45475a;
+    selection-color: #cdd6f4;
+    border: 1px solid #45475a;
+    border-radius: 8px;
+    padding: 4px;
+    outline: 0px;
+}
+QComboBox QAbstractItemView::item {
+    padding: 6px 10px;
+    border-radius: 4px;
+    min-height: 24px;
+}
+QComboBox QAbstractItemView::item:hover {
+    background-color: #313244;
+    color: #cdd6f4;
+}
+QComboBox QAbstractItemView::item:selected {
+    background-color: #45475a;
+    color: #cdd6f4;
+}
+""".replace("__ARROW_SVG_PLACEHOLDER__", get_asset_path("chevron_down.svg"))
 
 
 class QtFlightDeckWindow(QMainWindow):
@@ -217,7 +271,7 @@ class QtFlightDeckWindow(QMainWindow):
         header_layout.setContentsMargins(18, 14, 18, 14)
         header_layout.setSpacing(16)
 
-        icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "icon.png")
+        icon_path = get_asset_path("icon.png")
         pix = None
         if os.path.exists(icon_path):
             pix = QPixmap(icon_path).scaled(48, 48, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)

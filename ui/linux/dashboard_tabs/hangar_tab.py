@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 
 from PyQt6.QtWidgets import (
     QWidget, QLabel, QPushButton, QHBoxLayout, QVBoxLayout,
-    QScrollArea, QFrame, QComboBox, QLineEdit
+    QScrollArea, QFrame, QComboBox, QLineEdit, QSizePolicy
 )
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QPainter
@@ -16,6 +16,37 @@ from PyQt6.QtGui import QPainter
 from core.services.config_service import config
 from core.services.event_bus import event_bus
 from core.services.language_service import t, get_active_language
+from ui.common.theme import get_combo_title
+from ui.linux.theme import get_combo_box_qss
+
+
+def get_animals():
+    return [
+        ("duck", t("animal_duck")),
+        ("owl", t("animal_owl")),
+        ("bunny", t("animal_bunny")),
+        ("platypus", t("animal_platypus")),
+        ("squirrel", t("animal_squirrel"))
+    ]
+
+
+CATEGORIES_DEF = [
+    ("study", "cat_study_title", "cat_study_desc", "student", "owl", "#cba6f7"),
+    ("food", "cat_food_title", "cat_food_desc", "chef", "duck", "#fab387"),
+    ("travel", "cat_travel_title", "cat_travel_desc", "captain", "duck", "#74c7ec"),
+    ("sport", "cat_sport_title", "cat_sport_desc", "gym", "bunny", "#f38ba8"),
+    ("in_person", "cat_in_person_title", "cat_in_person_desc", "racer", "squirrel", "#f9e2af"),
+    ("health", "cat_health_title", "cat_health_desc", "zen", "bunny", "#94e2d5"),
+    ("general", "cat_general_title", "cat_general_desc", "aviator", "duck", "#a6e3a1")
+]
+
+
+def get_categories():
+    return [
+        (k, t(t_key), t(d_key), fo, da, col)
+        for (k, t_key, d_key, fo, da, col) in CATEGORIES_DEF
+    ]
+
 
 
 class QtMascotMiniWidget(QFrame):
@@ -146,11 +177,14 @@ class QtHangarTab(QWidget):
                 border-radius: 12px;
             }
         """)
+        ANIMALS = get_animals()
+        CATEGORIES = get_categories()
+
         r_box = QHBoxLayout(header_card)
         r_box.setContentsMargins(18, 10, 18, 10)
         r_box.setSpacing(10)
 
-        r_title = QLabel("🦆 Mascot Workshop & Pilot Hangar", header_card)
+        r_title = QLabel(t("hangar_header_title"), header_card)
         r_title.setStyleSheet("color: #cdd6f4; font-weight: bold; font-size: 13.5px;")
         r_box.addWidget(r_title, stretch=1)
 
@@ -180,7 +214,7 @@ class QtHangarTab(QWidget):
             event_bus.publish("CONFIG_CHANGED", key="mascot_customization", value=defs)
             self.refresh_hangar()
 
-        chime_btn = QPushButton("🔔 Test Chime", header_card)
+        chime_btn = QPushButton(t("hangar_test_chime"), header_card)
         chime_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         chime_btn.setStyleSheet("background: #313244; color: #cdd6f4; border: 1px solid #45475a; border-radius: 6px; padding: 5px 12px; font-size: 11px;")
         def _on_test_chime():
@@ -189,13 +223,13 @@ class QtHangarTab(QWidget):
         chime_btn.clicked.connect(_on_test_chime)
         r_box.addWidget(chime_btn)
 
-        sur_btn = QPushButton("🎲 Surprise Me", header_card)
+        sur_btn = QPushButton(t("hangar_surprise_me"), header_card)
         sur_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         sur_btn.setStyleSheet("background: #313244; color: #cdd6f4; border: 1px solid #45475a; border-radius: 6px; padding: 5px 12px; font-size: 11px;")
         sur_btn.clicked.connect(_on_surprise)
         r_box.addWidget(sur_btn)
 
-        res_btn = QPushButton("🔄 Reset Presets", header_card)
+        res_btn = QPushButton(t("hangar_reset_presets"), header_card)
         res_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         res_btn.setStyleSheet("background: #313244; color: #a6adc8; border: 1px solid #45475a; border-radius: 6px; padding: 5px 12px; font-size: 11px;")
         res_btn.clicked.connect(_on_reset)
@@ -203,24 +237,6 @@ class QtHangarTab(QWidget):
 
         self.h_layout.addWidget(header_card)
 
-        # 2. Category Mascot Customizer Cards
-        ANIMALS = [
-            ("duck", "🦆 Aviator Duck"),
-            ("owl", "🦉 Academic Owl"),
-            ("bunny", "🐰 Clever Bunny"),
-            ("platypus", "🕵️‍♂️ Secret Platypus"),
-            ("squirrel", "🐿️ Hyper Squirrel")
-        ]
-
-        CATEGORIES = [
-            ("study", "🎓 University & Study Sessions", "Lectures, exams, self-study, homework & thesis.", "student", "owl", "#cba6f7"),
-            ("food", "🍕 Dining, Lunch & Restaurants", "Dinners, lunch dates, pizzerias & food routes.", "chef", "duck", "#fab387"),
-            ("travel", "✈️ Travel, Flights & Trains", "Airports, flights, high-speed trains & trips.", "captain", "duck", "#74c7ec"),
-            ("sport", "🏋️ Gym, Palestra & Sports", "Workouts, crossfit, padel, tennis & running.", "gym", "bunny", "#f38ba8"),
-            ("in_person", "🏎️ In-Person & Commute", "Doctor visits, dentist & real-time navigation.", "racer", "squirrel", "#f9e2af"),
-            ("health", "🌸 Wellness & Therapy", "Serenis sessions, yoga, meditation & calm.", "zen", "bunny", "#94e2d5"),
-            ("general", "⏰ General Meetings & Reminders", "Video conferences (Meet, Zoom, Teams) & alerts.", "aviator", "duck", "#a6e3a1")
-        ]
 
         for idx, (cat_key, cat_title, cat_desc, fixed_outfit, def_animal, cat_color) in enumerate(CATEGORIES):
             current_setting = customs.get(cat_key, {})
@@ -250,42 +266,40 @@ class QtHangarTab(QWidget):
             top_row.addWidget(mini_preview)
 
             p_box = QVBoxLayout()
-            p_box.setSpacing(2)
+            p_box.setSpacing(3)
             n_l = QLabel(cat_title, card)
             n_l.setStyleSheet("color: #cdd6f4; font-weight: bold; font-size: 13px;")
-            d_l = QLabel(f"{cat_desc}  •  <span style='color:{cat_color}; font-weight:bold;'>✨ Active Pilot: {current_animal.capitalize()}</span>", card)
+            active_pilot_name = get_combo_title(current_animal, fixed_outfit)
+            d_l = QLabel(
+                f"{cat_desc}<br><span style='color:{cat_color}; font-weight:bold;'>✨ {t('hangar_active_pilot_label')}: {active_pilot_name}</span>",
+                card,
+            )
             d_l.setStyleSheet("color: #a6adc8; font-size: 11px;")
+            d_l.setWordWrap(True)
+            d_l.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
             p_box.addWidget(n_l)
             p_box.addWidget(d_l)
             top_row.addLayout(p_box, stretch=1)
 
-            # Controls Box
-            ctrl_box = QVBoxLayout()
-            ctrl_box.setSpacing(3)
-            a_lbl = QLabel("Animal Mascot:", card)
-            a_lbl.setStyleSheet("color: #a6adc8; font-size: 10px; font-weight: bold;")
+            # Controls Cluster on Right (macOS Parity: stacked 2-row layout)
+            ctrl_widget = QWidget(card)
+            ctrl_widget.setFixedWidth(195)
+            ctrl_box = QVBoxLayout(ctrl_widget)
+            ctrl_box.setContentsMargins(0, 0, 0, 0)
+            ctrl_box.setSpacing(4)
+
+            a_lbl = QLabel(t("hangar_animal_mascot"), ctrl_widget)
+            a_lbl.setStyleSheet("color: #a6adc8; font-size: 10.5px; font-weight: bold;")
             ctrl_box.addWidget(a_lbl)
 
-            btn_row = QHBoxLayout()
-            btn_row.setSpacing(10)
-
-            a_combo = QComboBox(card)
+            a_combo = QComboBox(ctrl_widget)
             for a_id, a_name in ANIMALS:
                 a_combo.addItem(a_name, a_id)
             a_idx = next((i for i, (a_id, _) in enumerate(ANIMALS) if a_id == current_animal), 0)
             a_combo.setCurrentIndex(a_idx)
-            a_combo.setFixedHeight(32)
-            a_combo.setStyleSheet("""
-                QComboBox {
-                    background: #313244;
-                    color: #cdd6f4;
-                    border: 1px solid #45475a;
-                    border-radius: 6px;
-                    padding: 4px 10px;
-                    font-size: 11.5px;
-                    min-width: 145px;
-                }
-            """)
+            a_combo.setFixedHeight(28)
+            a_combo.setStyleSheet(get_combo_box_qss(bg_color="#313244", min_width=160))
+
             def _make_animal_cb(ck, fo):
                 def _on_a_changed(i_val):
                     sel_a = ANIMALS[i_val][0]
@@ -303,7 +317,7 @@ class QtHangarTab(QWidget):
                 return _on_a_changed
 
             a_combo.currentIndexChanged.connect(_make_animal_cb(cat_key, fixed_outfit))
-            btn_row.addWidget(a_combo)
+            ctrl_box.addWidget(a_combo)
 
             # Test Flight Button
             def _make_test_flight_cb(ck, fo):
@@ -325,7 +339,7 @@ class QtHangarTab(QWidget):
                     now = datetime.now().astimezone()
                     evt = {
                         "title": titles.get(ck, "Custom Mascot Test Flight"),
-                        "provider": f"{an.capitalize()} wearing {out.capitalize()} Hat ✨",
+                        "provider": get_combo_title(an, out),
                         "pilot_type": f"{an}_{out}",
                         "animal": an,
                         "outfit": out,
@@ -344,21 +358,8 @@ class QtHangarTab(QWidget):
                     show_qt_banner(evt)
                 return _trigger_test
 
-            t_btn = QPushButton("🚀 Test", card)
-            t_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            t_btn.setFixedHeight(32)
-            t_btn.setStyleSheet(f"""
-                QPushButton {{
-                    background: {cat_color};
-                    color: #11111b;
-                    font-weight: bold;
-                    font-size: 11.5px;
-                    border-radius: 6px;
-                    padding: 6px 16px;
-                    border: 1px solid {cat_color};
-                }}
-            """)
-            t_btn.clicked.connect(_make_test_flight_cb(cat_key, fixed_outfit))
+            btn_row = QHBoxLayout()
+            btn_row.setSpacing(6)
 
             if cat_key == "study":
                 kw_count = (
@@ -374,10 +375,10 @@ class QtHangarTab(QWidget):
                     "hangar_keywords_toggle_btn_open" if is_exp else "hangar_keywords_toggle_btn",
                     count=kw_count,
                 ),
-                card,
+                ctrl_widget,
             )
             kw_toggle_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            kw_toggle_btn.setFixedHeight(32)
+            kw_toggle_btn.setFixedHeight(28)
             if is_exp:
                 kw_toggle_btn.setStyleSheet("""
                     QPushButton {
@@ -386,7 +387,7 @@ class QtHangarTab(QWidget):
                         font-size: 11px;
                         font-weight: bold;
                         border-radius: 6px;
-                        padding: 6px 12px;
+                        padding: 4px 8px;
                         border: 1px solid #89b4fa;
                     }
                 """)
@@ -398,7 +399,7 @@ class QtHangarTab(QWidget):
                         font-size: 11px;
                         font-weight: 500;
                         border-radius: 6px;
-                        padding: 6px 12px;
+                        padding: 4px 8px;
                         border: 1px solid #45475a;
                     }
                     QPushButton:hover {
@@ -406,12 +407,32 @@ class QtHangarTab(QWidget):
                         color: #ffffff;
                     }
                 """)
-            btn_row.addWidget(kw_toggle_btn)
+            btn_row.addWidget(kw_toggle_btn, stretch=1)
+
+            t_btn = QPushButton(t("hangar_test_btn"), ctrl_widget)
+            t_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            t_btn.setFixedHeight(28)
+            t_btn.setStyleSheet(f"""
+                QPushButton {{
+                    background: {cat_color};
+                    color: #11111b;
+                    font-weight: bold;
+                    font-size: 11px;
+                    border-radius: 6px;
+                    padding: 4px 10px;
+                    border: 1px solid {cat_color};
+                }}
+                QPushButton:hover {{
+                    opacity: 0.9;
+                }}
+            """)
+            t_btn.clicked.connect(_make_test_flight_cb(cat_key, fixed_outfit))
             btn_row.addWidget(t_btn)
 
             ctrl_box.addLayout(btn_row)
-            top_row.addLayout(ctrl_box)
+            top_row.addWidget(ctrl_widget)
             card_layout.addLayout(top_row)
+
 
             # ── Hairline Divider ──
             h_line = QFrame(card)
@@ -440,7 +461,7 @@ class QtHangarTab(QWidget):
                 ]
                 cur_sc = self.active_study_subcat
                 for s_key, s_lbl in subcats:
-                    sc_btn = QPushButton(s_lbl, drawer)
+                    sc_btn = QPushButton(s_lbl.replace("&", "&&"), drawer)
                     sc_btn.setCursor(Qt.CursorShape.PointingHandCursor)
                     sc_btn.setFixedHeight(28)
                     is_active = (s_key == cur_sc)
@@ -504,17 +525,8 @@ class QtHangarTab(QWidget):
                 for a_id, a_name in ANIMALS:
                     sc_combo.addItem(a_name, a_id)
                 sc_combo.setFixedHeight(28)
-                sc_combo.setStyleSheet("""
-                    QComboBox {
-                        background: #313244;
-                        color: #cdd6f4;
-                        border: 1px solid #45475a;
-                        border-radius: 6px;
-                        padding: 2px 8px;
-                        font-size: 11px;
-                        min-width: 170px;
-                    }
-                """)
+                sc_combo.setStyleSheet(get_combo_box_qss(bg_color="#313244", min_width=170))
+
                 c_dict = config.get("mascot_customization", {})
                 sc_val = c_dict.get(cur_sc)
                 sc_an = sc_val.get("animal") if isinstance(sc_val, dict) else sc_val
@@ -633,7 +645,6 @@ class QtHangarTab(QWidget):
                             background-color: #313244;
                             border: 1px solid #45475a;
                             border-radius: 4px;
-                            padding: 2px 6px;
                         }
                     """)
                     tl = QHBoxLayout(tag)
@@ -645,6 +656,7 @@ class QtHangarTab(QWidget):
                     tl.addWidget(klbl)
 
                     del_b = QPushButton("✕", tag)
+                    del_b.setFixedSize(14, 14)
                     del_b.setCursor(Qt.CursorShape.PointingHandCursor)
                     del_b.setStyleSheet("""
                         QPushButton {
@@ -653,7 +665,7 @@ class QtHangarTab(QWidget):
                             border: none;
                             font-size: 10px;
                             font-weight: bold;
-                            padding: 0px 2px;
+                            padding: 0px;
                         }
                         QPushButton:hover { color: #eba0ac; }
                     """)
@@ -674,10 +686,12 @@ class QtHangarTab(QWidget):
                         return _del_action
 
                     del_b.clicked.connect(_make_del())
+                    tl.addWidget(del_b)
                     if idx % 2 == 0:
                         row1_lay.addWidget(tag)
                     else:
                         row2_lay.addWidget(tag)
+
 
                 row1_lay.addStretch()
                 row2_lay.addStretch()
