@@ -313,5 +313,50 @@ class TestEventClassifier(unittest.TestCase):
                         f"Expected pilot_type {expected_pilot.value} for title '{title}', got {meeting.pilot_type}"
                     )
 
+    def test_academic_subcategories_custom_keywords(self):
+        custom_kw = {
+            "study": ["pomodoro", "schemi riassuntivi"],
+            "class": ["seminario_robotica", "tutorato_analisi"],
+            "exam": ["parziale_algebra", "colloquio_tirocinio"]
+        }
+
+        # Test Study keyword triggers STUDY
+        m_study = self.classifier.classify(title="Sessione Pomodoro", custom_keywords=custom_kw)
+        self.assertEqual(m_study.event_type, EventCategory.STUDY.value)
+
+        # Test Class keyword triggers CLASS
+        m_class = self.classifier.classify(title="Tutorato_analisi 1", custom_keywords=custom_kw)
+        self.assertEqual(m_class.event_type, EventCategory.CLASS.value)
+
+        # Test Exam keyword triggers EXAM
+        m_exam = self.classifier.classify(title="Parziale_algebra Lineare", custom_keywords=custom_kw)
+        self.assertEqual(m_exam.event_type, EventCategory.EXAM.value)
+
+    def test_academic_subcategories_mascot_customization(self):
+        with unittest.mock.patch("core.services.config_service.config.get", side_effect=lambda k, d=None: {
+            "mascot_customization": {
+                "study": {"animal": "bunny", "outfit": "student"},
+                "class": {"animal": "owl", "outfit": "student"},
+                "exam": {"animal": "platypus", "outfit": "student"}
+            }
+        }.get(k, d)):
+            m_study = self.classifier.classify(title="Ripasso per conto mio")
+            self.assertEqual(m_study.event_type, EventCategory.STUDY.value)
+            self.assertEqual(m_study.animal, "bunny")
+            self.assertEqual(m_study.outfit, "student")
+            self.assertEqual(m_study.pilot_type, "bunny_student")
+
+            m_class = self.classifier.classify(title="Lezione di Sistemi Operativi")
+            self.assertEqual(m_class.event_type, EventCategory.CLASS.value)
+            self.assertEqual(m_class.animal, "owl")
+            self.assertEqual(m_class.outfit, "student")
+            self.assertEqual(m_class.pilot_type, "owl")
+
+            m_exam = self.classifier.classify(title="Appello d'Esame di Fisica")
+            self.assertEqual(m_exam.event_type, EventCategory.EXAM.value)
+            self.assertEqual(m_exam.animal, "platypus")
+            self.assertEqual(m_exam.outfit, "student")
+            self.assertEqual(m_exam.pilot_type, "platypus_student")
+
 
 

@@ -534,7 +534,11 @@ class EventClassifier:
             keywords_dict.update(cls.keywords)
 
         category_to_targets = {
-            "study": ["owl", "class", "exam"],
+            "study": ["owl"],
+            "self_study": ["owl"],
+            "class": ["class"],
+            "lesson": ["class"],
+            "exam": ["exam"],
             "food": ["chef"],
             "travel": ["captain"],
             "sport": ["gym"],

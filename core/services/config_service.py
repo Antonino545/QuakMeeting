@@ -58,10 +58,21 @@ DEFAULT_CONFIG = {
     },
     "custom_keywords": {
         "study": [
-            "study", "studying", "homework", "assignment", "revision", "self-study", "exam",
-            "test", "thesis", "library", "research", "lecture", "class", "course", "classroom",
-            "studio", "studiare", "compiti", "ripasso", "esame", "esami", "tesi", "laurea",
-            "lezione", "lezioni", "corso", "aula", "universit", "politecnico", "biblioteca"
+            "study", "studying", "homework", "assignment", "revision", "self-study", "self study", "selfstudy",
+            "thesis", "dissertation", "library", "research", "paper", "reading", "textbook",
+            "studio", "studiare", "studio individuale", "studio autonomo", "compiti", "ripasso",
+            "tesi", "tesina", "laurea", "biblioteca", "ricerca", "dispense", "esercitazione", "appunti"
+        ],
+        "class": [
+            "lecture", "classes", "course", "classroom", "seminar", "workshop", "tutorial",
+            "lab", "laboratory", "university", "college", "professor", "prof", "academic",
+            "lezione", "lezioni", "corso", "aula", "seminario", "laboratorio", "universit",
+            "politecnico", "professore", "docente"
+        ],
+        "exam": [
+            "exam", "exams", "esame", "esami", "appello", "parziale", "midterm", "final exam",
+            "oral exam", "written exam", "esonero", "prova scritta", "prova orale", "colloquio",
+            "test d'esame", "exam prep", "preparazione esame"
         ],
         "food": [
             "dinner", "lunch", "breakfast", "brunch", "restaurant", "pizza", "pizzeria", "sushi",
@@ -99,8 +110,11 @@ DEFAULT_CONFIG = {
 
 PILOT_TO_CATEGORY_MAP = {
     "owl": "study",
-    "class": "study",
-    "exam": "study",
+    "self_study": "study",
+    "class": "class",
+    "lesson": "class",
+    "lecture": "class",
+    "exam": "exam",
     "chef": "food",
     "captain": "travel",
     "gym": "sport",

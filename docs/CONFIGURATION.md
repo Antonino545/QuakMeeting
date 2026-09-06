@@ -31,19 +31,26 @@ QuakMeeting stores all user preferences, timing thresholds, routing configuratio
 | `transport_mode` | `string` | `"transit"` | Default travel mode (`"transit"`, `"automobile"`, `"walking"`, `"bicycling"`). |
 | `enable_eta_service` | `bool` | `true` | Whether to calculate departure times and routing links via Apple Maps / Google Maps. |
 | `eta_buffer_minutes` | `int` | `10` | Buffer minutes added before departure to account for reaching transit stop/parking. |
-| `custom_keywords` | `dict` | `{...}` | Custom keyword mappings for the standard event categories (`study`, `food`, `travel`, `sport`, `in_person`, `health`, `general`). |
+| `custom_keywords` | `dict` | `{...}` | Custom keyword mappings for standard event categories (`study`, `class`, `exam`, `food`, `travel`, `sport`, `in_person`, `health`, `general`). |
+| `category_pilots` | `dict` | `{...}` | Mascot assignment per event category or academic subcategory (`study`, `class`, `exam`, `food`, etc.). |
 
 ---
 
 ## 🏷️ Custom Keyword Rules (`custom_keywords`)
 
-Category keywords can be managed visually directly within the application's **Hangar** tab under each event category card, or edited manually in `~/.quakmeeting/config.json`:
+Category keywords can be managed visually directly within the application's **Hangar** tab under each event category card, or edited manually in `~/.quakmeeting/config.json`. The Academic category is divided into three distinct subcategories with their own keywords and mascots:
 
 ```json
 {
   "custom_keywords": {
     "study": [
-      "universit", "uni", "esame", "esami", "lezione", "lezioni", "politecnico", "tesi", "smartgrid", "building", "ict", "satellite", "ricerca operativa", "corso", "aula"
+      "universit", "uni", "politecnico", "tesi", "smartgrid", "ricerca operativa", "studio", "studiare", "focus", "ripasso", "progetto", "homework", "compiti", "laboratorio"
+    ],
+    "class": [
+      "lezione", "lezioni", "corso", "aula", "classe", "lecture", "seminar", "seminario", "workshop"
+    ],
+    "exam": [
+      "esame", "esami", "appello", "parziale", "esonero", "orale", "scritto", "test", "midterm", "final exam"
     ],
     "food": [
       "cena", "pranzo", "dinner", "lunch", "ristorante", "pizza", "pizzeria", "sushi", "aperitivo", "apericena", "osteria", "trattoria", "cibo", "food", "mangiare", "pub", "burger"

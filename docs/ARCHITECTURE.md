@@ -97,7 +97,11 @@ Cross-platform presentation layer structured by operating system:
   - **`theme.py`**: Native `NSColor` and `CGColor` bridges derived directly from `ui.common.theme.CatppuccinMocha`.
   - **`menu_bar_app.py`**: AppKit `NSStatusItem` menu bar controller.
   - **`dashboard_window.py`**: Native `NSWindow` Flight Deck HUD with custom segmented capsule pill switcher.
-  - **`dashboard_tabs/`**: Dedicated native tab views (`agenda_tab.py`, `hangar_tab.py`, `settings_tab.py`).
+  - **`dashboard_tabs/`**: Dedicated native tab views:
+    - `agenda_tab.py`: Today's flight agenda and meeting launch cards.
+    - `hangar_tab.py`: Hangar pilot selection, personality traits, and test flights.
+    - `settings_tab.py`: High-level coordinator delegating to modular cards in `settings/`.
+    - `settings/`: Decomposed sub-card controllers (`timing_card.py`, `eta_card.py`, `calendars_card.py`, `system_card.py`, `helpers.py`).
   - **`banner/`**: Quartz 2D animated HUD banners:
     - `banner_view.py`: Streamlined Cocoa `NSView` managing animation timer ticks, dynamic airplane pitch rotation transforms, flight motion, and mouse event dispatch.
     - `banner_layout.py`: Bounding boxes, button positions, and hit testing targets.
@@ -108,7 +112,11 @@ Cross-platform presentation layer structured by operating system:
   - **`theme.py`**: Native `QColor` and RGBA string converters derived directly from `ui.common.theme.CatppuccinMocha`.
   - **`qt_tray_app.py`**: PyQt6 `QSystemTrayIcon` with custom Catppuccin context menu.
   - **`qt_dashboard.py`**: PyQt6 Flight Deck window coordinator with capsule pill switcher and window lifecycle management.
-  - **`dashboard_tabs/`**: Dedicated modular tab views matching macOS (`agenda_tab.py`, `hangar_tab.py`, `settings_tab.py`).
+  - **`dashboard_tabs/`**: Dedicated modular tab views matching macOS:
+    - `agenda_tab.py`: Today's flight agenda and meeting launch cards.
+    - `hangar_tab.py`: Hangar pilot selection and test flight controls.
+    - `settings_tab.py`: High-level coordinator delegating to modular cards in `settings/`.
+    - `settings/`: Decomposed sub-card widgets (`timing_card.py`, `eta_card.py`, `calendars_card.py`, `system_card.py`).
   - **`banner/`**: PyQt6 Wayland/X11 animated overlay banner (`qt_duck_banner.py`) with dynamic pitch rotation and software update banners (`qt_update_banner.py`).
   - **`banner/renderers/`**: Pixel-identical PyQt6 vector renderers with multiplatform parity to macOS Quartz 2D.
 - **`ui/app_launcher.py`**: Platform-aware UI dispatcher and entrypoint.
@@ -130,7 +138,7 @@ The UI follows strict multiplatform parity where both macOS AppKit and Linux PyQ
 | ![macOS Agenda](../assets/screenshots/macos_agenda.png) | ![Linux Qt Agenda](../assets/screenshots/qt_agenda.png) |
 
 #### 2. 🦆 Pilot Hangar Tab
-*Interactive mascot flight testing with pilot-specific Catppuccin accent buttons, live vector animations, and in-card trigger keyword management for all 7 event categories (`study`, `food`, `travel`, `sport`, `in_person`, `health`, `general`).*
+*Interactive mascot flight testing with pilot-specific Catppuccin accent buttons, live vector animations, and in-card trigger keyword management for all event categories. Includes the **Academic Master Card** with unified macro-presentation and 3 dedicated subcategories (📖 Self-Study, 🏫 Classes & Lectures, 🎓 Exams & Finals) featuring contextual explainer guides, independent mascot selectors, tailored keyword chips, and live simulation buttons.*
 
 | macOS (AppKit) | Linux (PyQt6) |
 | :---: | :---: |
