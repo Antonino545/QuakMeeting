@@ -177,12 +177,14 @@ class QtDuckBannerWindow(QWidget):
         self.base_y = float(self.screen_y + 24)
         self.is_quiet_reminder = bool(event_data.get("is_quiet_reminder", False))
 
-        self.setWindowFlags(
+        flags = (
             Qt.WindowType.FramelessWindowHint |
             Qt.WindowType.WindowStaysOnTopHint |
-            Qt.WindowType.Tool |
-            Qt.WindowType.X11BypassWindowManagerHint
+            Qt.WindowType.Tool
         )
+        if sys.platform.startswith("linux"):
+            flags |= Qt.WindowType.X11BypassWindowManagerHint
+        self.setWindowFlags(flags)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)

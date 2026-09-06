@@ -146,9 +146,43 @@ jobs:
           name: QuakMeeting-Ubuntu-DEB
           path: deb_dist/*.deb
 
+  build-windows:
+    name: Build Windows Release
+    needs: [prepare-tag]
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-windows.txt
+          pip install pyinstaller pillow
+
+      - name: Run Unit Tests
+        run: |
+          python -m unittest discover -s tests -v
+
+      - name: Build Windows Package
+        run: |
+          python scripts/build_windows_release.py "${{ needs.prepare-tag.outputs.release_tag }}"
+
+      - name: Upload Windows Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: QuakMeeting-Windows-ZIP
+          path: QuakMeeting-Windows.zip
+
   publish-release:
     name: Publish GitHub Release
-    needs: [prepare-tag, build-macos, build-ubuntu]
+    needs: [prepare-tag, build-macos, build-ubuntu, build-windows]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
     steps:
@@ -165,6 +199,12 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: QuakMeeting-Ubuntu-DEB
+          path: release_assets/
+
+      - name: Download Windows Artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: QuakMeeting-Windows-ZIP
           path: release_assets/
 
       - name: Create GitHub Release

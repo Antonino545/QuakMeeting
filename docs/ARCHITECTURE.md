@@ -9,7 +9,7 @@ This document outlines the internal architecture, cross-platform capabilities, a
 QuakMeeting has been heavily refactored to fully decouple business logic from the presentation layer. The codebase is organized into two primary packages:
 
 1. **`core/`**: Platform-agnostic business logic, data models, services, and repository layers.
-2. **`ui/`**: Presentation layer containing UI components specific to macOS (Cocoa/Quartz) and Linux (Qt/Wayland/AppIndicator).
+2. **`ui/`**: Presentation layer containing UI components specific to macOS (Cocoa/Quartz) and Linux/Windows (PyQt6).
 
 ```mermaid
 flowchart TD
@@ -66,18 +66,20 @@ Contains pure Python data classes and enums.
 ### 2. Providers (`core/providers/`)
 Data ingestion layer fetching events from various platforms.
 - **`eventkit_provider.py`**: Uses PyObjC to natively query macOS EventKit for local and synchronized calendars.
-- **`caldav_provider.py`**: Standard protocol provider used primarily on Linux to fetch remote `.ics` feeds.
+- **`eds_provider.py`**: Queries GNOME Evolution Data Server (EDS) for system calendars on Linux.
+- **`caldav_provider.py`**: Pure Python calendar provider used on Windows and Linux to synchronize remote `.ics` feeds, CalDAV endpoints, and local calendar files.
 
 ### 3. Services (`core/services/`)
 Orchestrates business use cases.
-- **`calendar_service.py`**: Filters events strictly for **Today**, performs smart multi-calendar deduplication for exams and lectures, manages the on-disk JSON cache, and enriches travel events with transit/driving ETA from home or default exam locations.
+- **`calendar_service.py`**: Filters events strictly for **Today**, performs smart multi-calendar deduplication for exams and lectures, manages the on-disk JSON cache, and enriches travel events with transit/driving ETA from home or default exam locations. Automatically selects EventKit on macOS, EDS on GNOME/Linux, and CalDAV on Windows.
 - **`reminder_engine.py`**: Evaluates when to fire notifications. It differentiates between standard events (fires relative to `start_time`) and travel events (fires relative to `departure_time`).
 - **`address_service.py`**: Centralized address search, live autocomplete, and geocoding validation service querying OpenStreetMap Nominatim with Photon fallback, disk/memory caching (`address_cache.json`), and platform map deep links.
-- **`eta_service.py`**: Calculates multi-modal travel times and builds Apple Maps / Google Maps deep links. On macOS, queries Apple's native `MKDirections` (MapKit) for live transit timetables and traffic-aware driving durations; on Linux/Ubuntu, queries open-source OpenStreetMap / OSRM routing networks (`routed-car`, `routed-bike`, `routed-foot`, and calibrated transit models) with offline Haversine fallback.
+- **`eta_service.py`**: Calculates multi-modal travel times and builds Apple Maps / Google Maps deep links. On macOS, queries Apple's native `MKDirections` (MapKit) for live transit timetables and traffic-aware driving durations; on Linux and Windows, queries open-source OpenStreetMap / OSRM routing networks (`routed-car`, `routed-bike`, `routed-foot`, and calibrated transit models) with offline Haversine fallback.
 - **`event_bus.py`**: Decouples UI updates from background logic. Components publish events (e.g., `CALENDAR_UPDATED`, `CONFIG_CHANGED`) that the UI subscribes to.
-- **`updater_service.py`**: Checks GitHub Releases for new releases, fetches platform packages (.dmg/.zip on macOS, .deb on Ubuntu), performs in-place upgrades, and publishes update progress events.
-- **`language_service.py`**: Internationalization and localization service with OS language auto-detection (macOS `AppKit.NSLocale` & Linux `$LANG`), user language override, and centralized bilingual translations (English & Italian).
-- **`sound_service.py`**: Audio and volume service managing notification chime playback with system volume and mute state detection across macOS and Linux.
+- **`updater_service.py`**: Checks GitHub Releases for new releases, fetches platform packages (.dmg/.zip on macOS, .deb on Ubuntu, .exe/.zip on Windows), performs in-place upgrades, and publishes update progress events.
+- **`language_service.py`**: Internationalization and localization service with OS language auto-detection (macOS `AppKit.NSLocale`, Linux `$LANG`, Windows locale), user language override, and centralized bilingual translations (English & Italian).
+- **`sound_service.py`**: Audio and volume service managing notification chime playback with system volume and mute state detection across macOS (`afplay`), Linux (`canberra-gtk-play`/`pw-play`), and Windows (`winsound`).
+- **`autostart.py`**: Launch-at-login manager supporting macOS SMAppService & LaunchAgent, Linux XDG `.desktop` entries, and Windows Registry (`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`).
 - **`app_controller.py`**: The central orchestrator that launches a background thread to poll services (Calendar, Reminders) without blocking the UI main loop.
 
 ### 4. UI Layer (`ui/`)

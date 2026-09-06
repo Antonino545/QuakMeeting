@@ -173,3 +173,28 @@ Existing test suites:
 - `tests/test_config_service.py` (Default configuration, fallback handling)
 - `tests/test_arrival_service.py` (Manual & presence arrival state)
 - `tests/test_dashboard_ui.py` (UI rendering and app launcher routing)
+- `tests/test_windows_compat.py` (Windows registry autostart, audio via winsound, process/Wi-Fi detection, os.startfile, updater)
+
+---
+
+## 🪟 Windows Setup & Execution
+
+### Prerequisites
+- Python 3.10+ (with "Add Python to PATH" enabled)
+- Install requirements:
+  ```powershell
+  pip install -r requirements-windows.txt
+  ```
+
+### Running on Windows
+Double-click `scripts\run_windows.bat` or run from terminal:
+```powershell
+python main.py
+```
+
+### Building Windows Standalone Release
+```powershell
+pip install pyinstaller pillow
+python scripts/build_windows_release.py 1.0.0
+```
+This produces `QuakMeeting-Windows.zip` containing the standalone executable and all required assets.

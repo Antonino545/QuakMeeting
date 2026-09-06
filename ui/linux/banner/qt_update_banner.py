@@ -77,12 +77,14 @@ class QtUpdateBannerWindow(QWidget):
         self.stay_ticks = 0
         self.max_stay_ticks = 600  # 10s auto-dismiss
 
-        self.setWindowFlags(
+        flags = (
             Qt.WindowType.FramelessWindowHint |
             Qt.WindowType.WindowStaysOnTopHint |
-            Qt.WindowType.Tool |
-            Qt.WindowType.X11BypassWindowManagerHint
+            Qt.WindowType.Tool
         )
+        if sys.platform.startswith("linux"):
+            flags |= Qt.WindowType.X11BypassWindowManagerHint
+        self.setWindowFlags(flags)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)

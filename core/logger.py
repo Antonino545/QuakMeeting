@@ -145,8 +145,14 @@ def open_log_file() -> bool:
             os.makedirs(LOG_DIR, exist_ok=True)
             with open(LOG_FILE, "w", encoding="utf-8") as f:
                 f.write("QuakMeeting Log Initialized\n")
-        cmd = ["open", LOG_FILE] if sys.platform == "darwin" else ["xdg-open", LOG_FILE]
-        subprocess.run(cmd, check=True)
+        if sys.platform == "win32":
+            if hasattr(os, "startfile"):
+                os.startfile(LOG_FILE)
+            else:
+                subprocess.run(["cmd", "/c", "start", "", LOG_FILE], shell=True, check=True)
+        else:
+            cmd = ["open", LOG_FILE] if sys.platform == "darwin" else ["xdg-open", LOG_FILE]
+            subprocess.run(cmd, check=True)
         return True
     except Exception as e:
         logger.error(f"Failed to open log file: {e}")
@@ -157,8 +163,14 @@ def open_log_folder() -> bool:
     try:
         import subprocess
         os.makedirs(LOG_DIR, exist_ok=True)
-        cmd = ["open", LOG_DIR] if sys.platform == "darwin" else ["xdg-open", LOG_DIR]
-        subprocess.run(cmd, check=True)
+        if sys.platform == "win32":
+            if hasattr(os, "startfile"):
+                os.startfile(LOG_DIR)
+            else:
+                subprocess.run(["cmd", "/c", "start", "", LOG_DIR], shell=True, check=True)
+        else:
+            cmd = ["open", LOG_DIR] if sys.platform == "darwin" else ["xdg-open", LOG_DIR]
+            subprocess.run(cmd, check=True)
         return True
     except Exception as e:
         logger.error(f"Failed to open log folder: {e}")

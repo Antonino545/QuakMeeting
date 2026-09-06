@@ -178,13 +178,16 @@ class UpdaterService:
             return _worker()
 
     def get_platform_asset(self, assets: list) -> Optional[Dict[str, Any]]:
-        """Selects the best asset for the current OS (macOS DMG/ZIP vs Ubuntu DEB)."""
+        """Selects the best asset for the current OS (macOS DMG/ZIP vs Ubuntu DEB vs Windows EXE/ZIP)."""
         is_mac = sys.platform == "darwin"
         is_linux = sys.platform.startswith("linux")
+        is_windows = sys.platform == "win32"
 
         for asset in assets:
             name = asset.get("name", "").lower()
-            if is_mac and (name.endswith(".dmg") or (name.endswith(".zip") and "macos" in name)):
+            if is_windows and (name.endswith(".exe") or (name.endswith(".zip") and "win" in name) or name.endswith(".msi")):
+                return asset
+            elif is_mac and (name.endswith(".dmg") or (name.endswith(".zip") and "macos" in name)):
                 return asset
             elif is_linux and name.endswith(".deb"):
                 return asset
@@ -239,6 +242,8 @@ class UpdaterService:
                     return self._install_macos_update(target_path, temp_dir)
                 elif sys.platform.startswith("linux"):
                     return self._install_linux_update(target_path)
+                elif sys.platform == "win32":
+                    return self._install_windows_update(target_path, temp_dir)
                 return False
             except Exception as e:
                 logger.error(f"Failed to install update: {e}")
@@ -353,6 +358,32 @@ class UpdaterService:
                 return True
         except Exception as e:
             logger.error(f"Linux update installation failed: {e}")
+            event_bus.publish("UPDATE_FAILED", error=str(e))
+            return False
+
+    def _install_windows_update(self, package_path: str, temp_dir: str) -> bool:
+        """Installs .exe/.msi or extracts .zip update on Windows."""
+        try:
+            event_bus.publish("UPDATE_STEP", step_id="install", step_name="Launching Windows installer...")
+            if package_path.endswith(".exe") or package_path.endswith(".msi"):
+                if hasattr(os, "startfile"):
+                    os.startfile(package_path)
+                else:
+                    subprocess.Popen([package_path], shell=True)
+                event_bus.publish("UPDATE_INSTALLED")
+                return True
+            elif package_path.endswith(".zip"):
+                import zipfile
+                with zipfile.ZipFile(package_path, 'r') as zip_ref:
+                    extract_dir = os.path.join(temp_dir, "extracted")
+                    zip_ref.extractall(extract_dir)
+                event_bus.publish("UPDATE_INSTALLED")
+                if hasattr(os, "startfile"):
+                    os.startfile(extract_dir)
+                return True
+            return False
+        except Exception as e:
+            logger.error(f"Windows update installation failed: {e}")
             event_bus.publish("UPDATE_FAILED", error=str(e))
             return False
 
