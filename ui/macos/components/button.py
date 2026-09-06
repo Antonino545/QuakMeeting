@@ -7,7 +7,13 @@ class ModernButton(AppKit.NSButton):
     """Modern macOS Button with pointing hand cursor, hover feedback, and tactile click animation."""
 
     def resetCursorRects(self):
-        self.addCursorRect_cursor_(self.bounds(), AppKit.NSCursor.pointingHandCursor())
+        objc.super(ModernButton, self).resetCursorRects()
+        cursor = (
+            AppKit.NSCursor.pointingHandCursor()
+            if self.isEnabled()
+            else AppKit.NSCursor.arrowCursor()
+        )
+        self.addCursorRect_cursor_(self.bounds(), cursor)
 
     def updateTrackingAreas(self):
         objc.super(ModernButton, self).updateTrackingAreas()
@@ -15,11 +21,23 @@ class ModernButton(AppKit.NSButton):
             self.removeTrackingArea_(self._tracking_area)
         self._tracking_area = AppKit.NSTrackingArea.alloc().initWithRect_options_owner_userInfo_(
             self.bounds(),
-            AppKit.NSTrackingMouseEnteredAndExited | AppKit.NSTrackingActiveAlways | AppKit.NSTrackingInVisibleRect,
+            AppKit.NSTrackingMouseEnteredAndExited
+            | AppKit.NSTrackingCursorUpdate
+            | AppKit.NSTrackingActiveAlways
+            | AppKit.NSTrackingInVisibleRect,
             self,
             None,
         )
         self.addTrackingArea_(self._tracking_area)
+
+    def cursorUpdate_(self, event):
+        cursor = (
+            AppKit.NSCursor.pointingHandCursor()
+            if self.isEnabled()
+            else AppKit.NSCursor.arrowCursor()
+        )
+        if cursor is not None and hasattr(cursor, "set"):
+            cursor.set()
 
     def mouseEntered_(self, event):
         try:
