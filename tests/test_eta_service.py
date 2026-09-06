@@ -202,7 +202,17 @@ class TestETAService(unittest.TestCase):
         self.assertEqual(MODE_LABELS["transit"], "Public Transit")
         self.assertEqual(MODE_LABELS["automobile"], "Driving")
 
-    def test_validate_address_formats(self):
+    @patch("core.services.address_service.address_service.verify_address")
+    def test_validate_address_formats(self, mock_verify):
+        def _mock_verify_impl(addr, city_context=None):
+            cleaned = (addr or "").strip()
+            if not cleaned:
+                return True, None, None
+            if len(cleaned) < 3:
+                return False, None, "too_short"
+            return True, MagicMock(), None
+
+        mock_verify.side_effect = _mock_verify_impl
         from core.services.eta_service import validate_address
 
         # Valid cases

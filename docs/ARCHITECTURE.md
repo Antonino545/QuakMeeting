@@ -130,7 +130,7 @@ The UI follows strict multiplatform parity where both macOS AppKit and Linux PyQ
 | ![macOS Agenda](../assets/screenshots/macos_agenda.png) | ![Linux Qt Agenda](../assets/screenshots/qt_agenda.png) |
 
 #### 2. 🦆 Pilot Hangar Tab
-*Interactive mascot flight testing with pilot-specific Catppuccin accent buttons, live vector animations, and in-card trigger keyword management for all 7 event categories (`study`, `food`, `travel`, `sport`, `in_person`, `health`, `general`).*
+*Interactive mascot flight testing with pilot-specific Catppuccin accent buttons, live vector animations, and in-card trigger keyword management for all event categories. Includes the **Academic Master Card** with unified macro-presentation and 3 dedicated subcategories (📖 Self-Study, 🏫 Classes & Lectures, 🎓 Exams & Finals) featuring contextual explainer guides, independent mascot selectors, tailored keyword chips, and live simulation buttons.*
 
 | macOS (AppKit) | Linux (PyQt6) |
 | :---: | :---: |

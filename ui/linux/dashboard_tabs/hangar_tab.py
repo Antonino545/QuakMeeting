@@ -15,7 +15,7 @@ from PyQt6.QtGui import QPainter
 
 from core.services.config_service import config
 from core.services.event_bus import event_bus
-from core.services.language_service import t
+from core.services.language_service import t, get_active_language
 
 
 class QtMascotMiniWidget(QFrame):
@@ -67,6 +67,7 @@ class QtHangarTab(QWidget):
         self.h_mini_widgets = []
         self.hangar_anim_timer = None
         self.expanded_categories = set()
+        self.active_study_subcat = "study"
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -292,6 +293,10 @@ class QtHangarTab(QWidget):
                     if not isinstance(c_dict, dict):
                         c_dict = {}
                     c_dict[ck] = {"animal": sel_a, "outfit": fo}
+                    if ck == "study":
+                        for sub in ("class", "exam"):
+                            if sub not in c_dict or not isinstance(c_dict[sub], dict):
+                                c_dict[sub] = {"animal": sel_a, "outfit": "student"}
                     config.set("mascot_customization", c_dict)
                     event_bus.publish("CONFIG_CHANGED", key="mascot_customization", value=c_dict)
                     self.refresh_hangar()
@@ -355,7 +360,14 @@ class QtHangarTab(QWidget):
             """)
             t_btn.clicked.connect(_make_test_flight_cb(cat_key, fixed_outfit))
 
-            kw_count = len(config.get_custom_keywords(cat_key))
+            if cat_key == "study":
+                kw_count = (
+                    len(config.get_custom_keywords("study"))
+                    + len(config.get_custom_keywords("class"))
+                    + len(config.get_custom_keywords("exam"))
+                )
+            else:
+                kw_count = len(config.get_custom_keywords(cat_key))
             is_exp = cat_key in self.expanded_categories
             kw_toggle_btn = QPushButton(
                 t(
@@ -417,14 +429,129 @@ class QtHangarTab(QWidget):
             drawer_layout.setSpacing(6)
             card_layout.addWidget(drawer)
 
-            # Drawer Guidance Subtitle
-            guide_lbl = QLabel(t("hangar_keywords_drawer_subtitle"), drawer)
-            guide_lbl.setStyleSheet("color: #a6adc8; font-size: 10.5px; font-style: italic; border: none;")
-            drawer_layout.addWidget(guide_lbl)
+            if cat_key == "study":
+                # 🎓 ACADEMIC MASTER DRAWER (Linux)
+                subcat_tabs_row = QHBoxLayout()
+                subcat_tabs_row.setSpacing(8)
+                subcats = [
+                    ("study", t("hangar_subcat_study")),
+                    ("class", t("hangar_subcat_class")),
+                    ("exam", t("hangar_subcat_exam"))
+                ]
+                cur_sc = self.active_study_subcat
+                for s_key, s_lbl in subcats:
+                    sc_btn = QPushButton(s_lbl, drawer)
+                    sc_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+                    sc_btn.setFixedHeight(28)
+                    is_active = (s_key == cur_sc)
+                    if is_active:
+                        sc_btn.setStyleSheet("""
+                            QPushButton {
+                                background-color: #45475a;
+                                color: #cdd6f4;
+                                font-size: 11px;
+                                font-weight: bold;
+                                border: 1px solid #cba6f7;
+                                border-radius: 6px;
+                                padding: 4px 10px;
+                            }
+                        """)
+                    else:
+                        sc_btn.setStyleSheet("""
+                            QPushButton {
+                                background-color: #181825;
+                                color: #a6adc8;
+                                font-size: 11px;
+                                font-weight: 500;
+                                border: 1px solid #313244;
+                                border-radius: 6px;
+                                padding: 4px 10px;
+                            }
+                            QPushButton:hover {
+                                background-color: #313244;
+                                color: #cdd6f4;
+                            }
+                        """)
+                    def _make_sc_click(sk=s_key):
+                        def _set_sc():
+                            self.active_study_subcat = sk
+                            self.refresh_hangar()
+                        return _set_sc
+                    sc_btn.clicked.connect(_make_sc_click())
+                    subcat_tabs_row.addWidget(sc_btn)
+                drawer_layout.addLayout(subcat_tabs_row)
 
-            # Spacious Keywords Scroll Area
+                # Explainer Guide
+                guide_keys = {
+                    "study": "hangar_subcat_study_guide",
+                    "class": "hangar_subcat_class_guide",
+                    "exam": "hangar_subcat_exam_guide"
+                }
+                guide_lbl = QLabel(t(guide_keys.get(cur_sc, "hangar_subcat_study_guide")), drawer)
+                guide_lbl.setStyleSheet("color: #bac2de; font-size: 10.5px; font-style: italic; border: none; padding: 2px 0;")
+                guide_lbl.setWordWrap(True)
+                drawer_layout.addWidget(guide_lbl)
+
+                # Subcategory Mascot Selector Row
+                sc_mascot_row = QHBoxLayout()
+                sc_mascot_row.setSpacing(10)
+                m_lbl = QLabel(t("hangar_subcat_mascot_label"), drawer)
+                m_lbl.setStyleSheet("color: #a6adc8; font-size: 10.5px; font-weight: bold;")
+                sc_mascot_row.addWidget(m_lbl)
+
+                sc_combo = QComboBox(drawer)
+                sc_combo.addItem(t("hangar_subcat_mascot_sync"), "sync")
+                for a_id, a_name in ANIMALS:
+                    sc_combo.addItem(a_name, a_id)
+                sc_combo.setFixedHeight(28)
+                sc_combo.setStyleSheet("""
+                    QComboBox {
+                        background: #313244;
+                        color: #cdd6f4;
+                        border: 1px solid #45475a;
+                        border-radius: 6px;
+                        padding: 2px 8px;
+                        font-size: 11px;
+                        min-width: 170px;
+                    }
+                """)
+                c_dict = config.get("mascot_customization", {})
+                sc_val = c_dict.get(cur_sc)
+                sc_an = sc_val.get("animal") if isinstance(sc_val, dict) else sc_val
+                if sc_an and sc_an != current_animal:
+                    idx = next((i + 1 for i, (a_id, _) in enumerate(ANIMALS) if a_id == sc_an), 0)
+                    sc_combo.setCurrentIndex(idx)
+                else:
+                    sc_combo.setCurrentIndex(0)
+
+                def _on_sc_mascot_changed(idx_val):
+                    cd = config.get("mascot_customization", {})
+                    if not isinstance(cd, dict):
+                        cd = {}
+                    if idx_val == 0:
+                        main_study = cd.get("study", {})
+                        main_a = main_study.get("animal", "owl") if isinstance(main_study, dict) else (main_study or "owl")
+                        cd[self.active_study_subcat] = {"animal": main_a, "outfit": "student"}
+                    else:
+                        chosen_a = ANIMALS[idx_val - 1][0]
+                        cd[self.active_study_subcat] = {"animal": chosen_a, "outfit": "student"}
+                    config.set("mascot_customization", cd)
+                    event_bus.publish("CONFIG_CHANGED", key="mascot_customization", value=cd)
+                    self.refresh_hangar()
+
+                sc_combo.currentIndexChanged.connect(_on_sc_mascot_changed)
+                sc_mascot_row.addWidget(sc_combo)
+                sc_mascot_row.addStretch()
+                drawer_layout.addLayout(sc_mascot_row)
+            else:
+                # Drawer Guidance Subtitle for standard categories
+                guide_lbl = QLabel(t("hangar_keywords_drawer_subtitle"), drawer)
+                guide_lbl.setStyleSheet("color: #a6adc8; font-size: 10.5px; font-style: italic; border: none;")
+                drawer_layout.addWidget(guide_lbl)
+
+            # Spacious Keywords Scroll Area (2-row layout with 10px vertical spacing)
             kw_scroll = QScrollArea(drawer)
-            kw_scroll.setFixedHeight(64)
+            kw_scroll.setFixedHeight(76)
             kw_scroll.setWidgetResizable(True)
             kw_scroll.setFrameShape(QFrame.Shape.NoFrame)
             kw_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
@@ -439,9 +566,9 @@ class QtHangarTab(QWidget):
 
             chips_widget = QWidget()
             chips_widget.setStyleSheet("background: transparent;")
-            chips_lay = QHBoxLayout(chips_widget)
+            chips_lay = QVBoxLayout(chips_widget)
             chips_lay.setContentsMargins(8, 4, 8, 4)
-            chips_lay.setSpacing(6)
+            chips_lay.setSpacing(10)
             kw_scroll.setWidget(chips_widget)
             drawer_layout.addWidget(kw_scroll)
 
@@ -462,12 +589,18 @@ class QtHangarTab(QWidget):
                             if s.widget():
                                 s.widget().deleteLater()
 
-                keywords = config.get_custom_keywords(ck)
+                target_k = self.active_study_subcat if ck == "study" else ck
+                keywords = config.get_custom_keywords(target_k)
                 is_open = d_frame.isVisible()
+                total_cnt = (
+                    (len(config.get_custom_keywords("study")) + len(config.get_custom_keywords("class")) + len(config.get_custom_keywords("exam")))
+                    if ck == "study"
+                    else len(keywords)
+                )
                 btn.setText(
                     t(
                         "hangar_keywords_toggle_btn_open" if is_open else "hangar_keywords_toggle_btn",
-                        count=len(keywords),
+                        count=total_cnt,
                     )
                 )
 
@@ -478,7 +611,22 @@ class QtHangarTab(QWidget):
                     container.addStretch()
                     return
 
-                for kw in keywords:
+                row1_widget = QWidget(c_widget)
+                row1_widget.setStyleSheet("background: transparent; border: none;")
+                row1_lay = QHBoxLayout(row1_widget)
+                row1_lay.setContentsMargins(0, 0, 0, 0)
+                row1_lay.setSpacing(6)
+
+                row2_widget = QWidget(c_widget)
+                row2_widget.setStyleSheet("background: transparent; border: none;")
+                row2_lay = QHBoxLayout(row2_widget)
+                row2_lay.setContentsMargins(0, 0, 0, 0)
+                row2_lay.setSpacing(6)
+
+                container.addWidget(row1_widget)
+                container.addWidget(row2_widget)
+
+                for idx, kw in enumerate(keywords):
                     tag = QFrame(c_widget)
                     tag.setStyleSheet("""
                         QFrame {
@@ -510,7 +658,7 @@ class QtHangarTab(QWidget):
                         QPushButton:hover { color: #eba0ac; }
                     """)
 
-                    def _make_del(kw_del=kw, k_cat=ck):
+                    def _make_del(kw_del=kw, k_cat=target_k):
                         def _del_action():
                             config.remove_custom_keyword(k_cat, kw_del)
                             try:
@@ -521,15 +669,18 @@ class QtHangarTab(QWidget):
                                 )
                             except Exception:
                                 pass
-                            _render_cat_chips(k_cat, container, c_widget, btn, d_frame)
+                            _render_cat_chips(ck, container, c_widget, btn, d_frame)
 
                         return _del_action
 
                     del_b.clicked.connect(_make_del())
-                    tl.addWidget(del_b)
-                    container.addWidget(tag)
+                    if idx % 2 == 0:
+                        row1_lay.addWidget(tag)
+                    else:
+                        row2_lay.addWidget(tag)
 
-                container.addStretch()
+                row1_lay.addStretch()
+                row2_lay.addStretch()
 
             _render_cat_chips(cat_key, chips_lay, chips_widget, kw_toggle_btn, drawer)
 
@@ -578,13 +729,14 @@ class QtHangarTab(QWidget):
                 d_frame=drawer,
             ):
                 def _add_action():
+                    target_k = self.active_study_subcat if ck == "study" else ck
                     txt = inp.text().strip()
                     if not txt:
                         return
                     tokens = [t.strip() for t in txt.split(",") if t.strip()]
                     any_added = False
                     for tok in tokens:
-                        if config.add_custom_keyword(ck, tok):
+                        if config.add_custom_keyword(target_k, tok):
                             any_added = True
                     if any_added:
                         inp.clear()
@@ -627,7 +779,8 @@ class QtHangarTab(QWidget):
                 d_frame=drawer,
             ):
                 def _rst_action():
-                    config.reset_custom_keywords(ck)
+                    target_k = self.active_study_subcat if ck == "study" else ck
+                    config.reset_custom_keywords(target_k)
                     try:
                         event_bus.publish(
                             "CONFIG_CHANGED",
@@ -642,6 +795,102 @@ class QtHangarTab(QWidget):
 
             rst_btn.clicked.connect(_make_rst())
             act_bar.addWidget(rst_btn)
+
+            if cat_key == "study":
+                cur_sc = self.active_study_subcat
+                test_subcat_keys = {
+                    "study": "hangar_test_study_btn",
+                    "class": "hangar_test_class_btn",
+                    "exam": "hangar_test_exam_btn"
+                }
+                subcat_test_btn = QPushButton(t(test_subcat_keys.get(cur_sc, "hangar_test_study_btn")), drawer)
+                subcat_test_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+                subcat_test_btn.setFixedHeight(28)
+                subcat_test_btn.setStyleSheet("""
+                    QPushButton {
+                        background: #cba6f7;
+                        color: #11111b;
+                        font-weight: bold;
+                        font-size: 11px;
+                        border-radius: 5px;
+                        padding: 4px 12px;
+                        border: 1px solid #cba6f7;
+                    }
+                    QPushButton:hover { background: #b4befe; }
+                """)
+
+                def _make_sc_test(sc=cur_sc):
+                    def _test_fn():
+                        cd = config.get("mascot_customization", {})
+                        val = cd.get(sc, cd.get("study", {}))
+                        an = val.get("animal", "owl") if isinstance(val, dict) else (val or "owl")
+                        out = "student"
+                        now = datetime.now().astimezone()
+                        if sc == "study":
+                            evt = {
+                                "title": "Sessione di Studio Individuale - Biblioteca" if get_active_language() == "it" else "Deep Focus & Solo Study Session",
+                                "provider": "Study Session 📖",
+                                "pilot_type": f"{an}_{out}",
+                                "animal": an,
+                                "outfit": out,
+                                "event_type": "study",
+                                "category": "study",
+                                "action_btn_text": "⚡ TEMPO DI STUDIARE! 📖" if get_active_language() == "it" else "⚡ TIME TO STUDY! DO IT 📖",
+                                "action_url": "https://calendar.google.com",
+                                "start_time": now + timedelta(minutes=10),
+                                "end_time": now + timedelta(minutes=70),
+                                "reminder_stage": 10,
+                                "is_travel": False,
+                                "is_test_banner": True,
+                                "is_late": False
+                            }
+                        elif sc == "class":
+                            evt = {
+                                "title": "Lezione di Reti Neurali & AI (Aula 3B)" if get_active_language() == "it" else "Neural Networks & AI Lecture (Room 3B)",
+                                "provider": "Class / Lecture 🏫 Aula 3B",
+                                "pilot_type": f"{an}_{out}",
+                                "animal": an,
+                                "outfit": out,
+                                "event_type": "class",
+                                "category": "class",
+                                "classroom": "Aula 3B",
+                                "teacher": "Prof. Rossi",
+                                "action_btn_text": "🏫 AULA 3B & NOTE" if get_active_language() == "it" else "🏫 ROOM 3B & NOTES",
+                                "action_url": "https://maps.google.com",
+                                "start_time": now + timedelta(minutes=10),
+                                "end_time": now + timedelta(minutes=70),
+                                "reminder_stage": 10,
+                                "is_travel": True,
+                                "is_test_banner": True,
+                                "is_late": False
+                            }
+                        elif sc == "exam":
+                            evt = {
+                                "title": "Esame di Fisica Generale - Appello Orale (Aula Magna)" if get_active_language() == "it" else "General Physics Final Exam (Main Hall)",
+                                "provider": "Exam 🎓 Aula Magna",
+                                "pilot_type": f"{an}_{out}",
+                                "animal": an,
+                                "outfit": out,
+                                "event_type": "exam",
+                                "category": "exam",
+                                "classroom": "Aula Magna",
+                                "action_btn_text": "🎓 AULA MAGNA & NOTE" if get_active_language() == "it" else "🎓 MAIN HALL & NOTES",
+                                "action_url": "https://maps.google.com",
+                                "start_time": now + timedelta(minutes=10),
+                                "end_time": now + timedelta(minutes=70),
+                                "reminder_stage": 10,
+                                "is_travel": True,
+                                "is_test_banner": True,
+                                "is_late": False
+                            }
+                        from core.services.sound_service import play_test_chime
+                        play_test_chime()
+                        from ui.linux.banner.qt_banner import show_qt_banner
+                        show_qt_banner(evt)
+                    return _test_fn
+
+                subcat_test_btn.clicked.connect(_make_sc_test())
+                act_bar.addWidget(subcat_test_btn)
 
             hide_btn = QPushButton(t("hangar_keywords_drawer_hide"), drawer)
             hide_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -671,7 +920,14 @@ class QtHangarTab(QWidget):
                     now_open = ck in self.expanded_categories
                     d.setVisible(now_open)
                     hl.setVisible(now_open)
-                    cnt = len(config.get_custom_keywords(ck))
+                    if ck == "study":
+                        cnt = (
+                            len(config.get_custom_keywords("study"))
+                            + len(config.get_custom_keywords("class"))
+                            + len(config.get_custom_keywords("exam"))
+                        )
+                    else:
+                        cnt = len(config.get_custom_keywords(ck))
                     b.setText(
                         t(
                             "hangar_keywords_toggle_btn_open" if now_open else "hangar_keywords_toggle_btn",

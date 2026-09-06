@@ -12,7 +12,8 @@ from typing import Optional, Callable, List
 
 from core.services.address_service import address_service, AddressCandidate, AddressService
 from core.services.language_service import t
-from ui.macos.theme import Theme, ModernButton
+from ui.macos.theme import Theme
+from ui.macos.components.button import ModernButton
 
 logger = logging.getLogger("QuakMeeting.AddressAutocompleteView")
 

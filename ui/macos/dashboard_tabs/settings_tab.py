@@ -8,10 +8,17 @@ from core.services.event_bus import event_bus
 from core.services.updater_service import updater_service
 from core.services.config_service import is_debug_mode
 from core.services.language_service import t, get_active_language
-from core.autostart import is_autostart_enabled, enable_autostart, disable_autostart
 from core.logger import open_log_file, open_log_folder
-from ui.macos.theme import Theme, ModernButton, ModernToggleSwitch
-from ui.macos.components.address_autocomplete_view import AddressAutocompleteView
+from core.autostart import is_autostart_enabled, enable_autostart, disable_autostart
+from ui.macos.theme import Theme
+from ui.macos.components import (
+    AddressAutocompleteView,
+    CardView,
+    HairlineDivider,
+    ModernButton,
+    ModernToggleSwitch,
+    SectionHeaderView,
+)
 
 class SettingsTabController(AppKit.NSObject):
     def init(self):
@@ -123,43 +130,23 @@ class SettingsTabController(AppKit.NSObject):
     @objc.python_method
     def _create_card_container(self, x, y, w, h):
         """Creates a solid card container with Catppuccin Mocha styling."""
-        card = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(x, y, w, h))
-        card.setWantsLayer_(True)
-        card.layer().setBackgroundColor_(Theme.MANTLE.CGColor())
-        card.layer().setCornerRadius_(12.0)
-        card.layer().setMasksToBounds_(True)
-        card.layer().setBorderWidth_(1.0)
-        card.layer().setBorderColor_(Theme.SURFACE0.CGColor())
-        return card
+        return CardView.create(
+            AppKit.NSMakeRect(x, y, w, h),
+            bg_color=Theme.MANTLE,
+            corner_radius=12.0,
+        )
 
     @objc.python_method
     def _add_section_header(self, parent, title, subtitle, h, w):
         """Qt-matching section header: clean bold title with emoji, subtitle underneath."""
-        t_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 34, w - 36, 22))
-        t_lbl.setStringValue_(title)
-        t_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(14.5))
-        t_lbl.setTextColor_(Theme.TEXT)
-        t_lbl.setBezeled_(False)
-        t_lbl.setDrawsBackground_(False)
-        t_lbl.setEditable_(False)
-        parent.addSubview_(t_lbl)
-
-        if subtitle:
-            s_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 52, w - 36, 16))
-            s_lbl.setStringValue_(subtitle)
-            s_lbl.setFont_(AppKit.NSFont.systemFontOfSize_(11.5))
-            s_lbl.setTextColor_(Theme.SUBTEXT0)
-            s_lbl.setBezeled_(False)
-            s_lbl.setDrawsBackground_(False)
-            s_lbl.setEditable_(False)
-            parent.addSubview_(s_lbl)
+        SectionHeaderView.add_to_parent(
+            parent, title, subtitle=subtitle, h=h, w=w, x=18.0
+        )
 
     @objc.python_method
     def _add_hairline_divider(self, parent, y, w):
         """Adds a subtle inner hairline divider matching Qt #313244."""
-        div = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(18, y, w - 36, 1))
-        div.setWantsLayer_(True)
-        div.layer().setBackgroundColor_(Theme.SURFACE0.CGColor())
+        div = HairlineDivider.create(18, y, w - 36)
         parent.addSubview_(div)
 
     @objc.python_method
