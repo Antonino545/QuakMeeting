@@ -61,15 +61,15 @@ QuakMeeting/
 ├── core/
 │   ├── domain/
 │   │   ├── models.py              # Meeting dataclass, PilotType, TransportMode, format_duration()
-│   │   └── classifier.py          # Smart keyword matching & categorization
+│   │   └── classifier.py          # Smart keyword matching, category classification & video URL extraction
 │   ├── providers/
 │   │   ├── base.py                # BaseCalendarProvider abstract class
 │   │   ├── eventkit_provider.py   # Native Apple EventKit bridge (macOS)
-│   │   └── caldav_provider.py     # CalDAV calendar provider (Linux)
+│   │   └── caldav_provider.py     # CalDAV/ICS provider with RRULE expansion, TZID & fallback cache
 │   ├── services/
 │   │   ├── calendar_service.py    # Synchronizes & caches Today-only events (00:00 to 23:59:59)
 │   │   ├── reminder_engine.py     # Multi-stage notification triggers (evaluates leave vs start time)
-│   │   ├── eta_service.py         # Apple Maps URL builder & departure time calculator
+│   │   ├── eta_service.py         # Apple Maps route URLs & departure time calculator
 │   │   ├── arrival_service.py     # Automatic/manual arrival detection and suppression
 │   │   ├── config_service.py      # Configuration manager (~/.quakmeeting/config.json)
 │   │   └── event_bus.py           # Decoupled pub/sub event system
@@ -97,7 +97,7 @@ QuakMeeting/
 │       └── banner/                # PyQt6 animated banner overlay
 │           ├── qt_banner.py
 │           └── renderers/         # Modular PyQt6 pilot renderers
-└── tests/                         # Full automated unit test suite (40+ tests)
+└── tests/                         # Full automated unit test suite (185+ tests)
 ```
 
 ---

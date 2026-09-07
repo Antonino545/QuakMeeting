@@ -36,6 +36,27 @@ class TestEventClassifier(unittest.TestCase):
         serenis_text = "Link: https://app.serenis.it/join/abc_123"
         self.assertEqual(EventClassifier.extract_meeting_url(serenis_text), "https://app.serenis.it/join/abc_123")
 
+        webex_text = "Join Webex: https://mycompany.webex.com/meet/john.doe"
+        self.assertEqual(EventClassifier.extract_meeting_url(webex_text), "https://mycompany.webex.com/meet/john.doe")
+
+        jitsi_text = "Join Jitsi: https://meet.jit.si/daily-team-huddle"
+        self.assertEqual(EventClassifier.extract_meeting_url(jitsi_text), "https://meet.jit.si/daily-team-huddle")
+
+        whereby_text = "Room: https://whereby.com/my-room-123"
+        self.assertEqual(EventClassifier.extract_meeting_url(whereby_text), "https://whereby.com/my-room-123")
+
+        gotomeeting_text = "Call link: https://global.gotomeeting.com/join/123456789"
+        self.assertEqual(EventClassifier.extract_meeting_url(gotomeeting_text), "https://global.gotomeeting.com/join/123456789")
+
+        skype_text = "Skype call: https://join.skype.com/abcdef123456"
+        self.assertEqual(EventClassifier.extract_meeting_url(skype_text), "https://join.skype.com/abcdef123456")
+
+        discord_text = "Hang out in voice: https://discord.gg/invite/gaming-room"
+        self.assertEqual(EventClassifier.extract_meeting_url(discord_text), "https://discord.gg/invite/gaming-room")
+
+        slack_text = "Slack channel huddle: https://team.slack.com/archives/C12345678"
+        self.assertEqual(EventClassifier.extract_meeting_url(slack_text), "https://team.slack.com/archives/C12345678")
+
         self.assertIsNone(EventClassifier.extract_meeting_url(None))
         self.assertIsNone(EventClassifier.extract_meeting_url("missing value"))
         self.assertIsNone(EventClassifier.extract_meeting_url("No link here at all"))

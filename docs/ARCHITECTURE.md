@@ -61,13 +61,13 @@ flowchart TD
 ### 1. Domain (`core/domain/`)
 Contains pure Python data classes and enums. 
 - **`models.py`**: The central `Meeting` dataclass holding event info, travel metadata, and UI theme attributes. Includes logic for duration formatting and event categories (`exam`, `class`, `study`, `food`, `travel`, `sport`, etc.).
-- **`classifier.py`**: Heuristic keyword, regex, and temporal anchor engine to automatically assign pilots (Duck, Captain, Chef, Owl, etc.) and categories (`exam`, `class`, `study`, `food`, `travel`, `sport`, `in_person`, `health`, etc.) based on event titles, metadata, closed-vocabulary prefixes, idiom overrides, and iterative temporal anchor masking.
+- **`classifier.py`**: Heuristic keyword, regex, and temporal anchor engine to automatically assign pilots (Duck, Captain, Chef, Owl, etc.) and categories (`exam`, `class`, `study`, `food`, `travel`, `sport`, `in_person`, `health`, etc.) based on event titles, metadata, closed-vocabulary prefixes, idiom overrides, and iterative temporal anchor masking. Extracts video meeting and telemedicine URLs across Google Meet, Zoom, Microsoft Teams, Cisco Webex, Jitsi Meet, Whereby, GoToMeeting, Skype, Discord, Slack Huddle, and Serenis.
 
 ### 2. Providers (`core/providers/`)
 Data ingestion layer fetching events from various platforms.
 - **`eventkit_provider.py`**: Uses PyObjC to natively query macOS EventKit for local and synchronized calendars.
 - **`eds_provider.py`**: Queries GNOME Evolution Data Server (EDS) for system calendars on Linux.
-- **`caldav_provider.py`**: Pure Python calendar provider used on Windows and Linux to synchronize remote `.ics` feeds, CalDAV endpoints, and local calendar files.
+- **`caldav_provider.py`**: Pure Python calendar provider used on Windows and Linux to synchronize remote `.ics` feeds, CalDAV endpoints, and local calendar files. Features intelligent Today-only recurring `RRULE` expansion (`FREQ=DAILY/WEEKLY/MONTHLY`, `INTERVAL`, `BYDAY`, `UNTIL`, `COUNT`, `EXDATE`), timezone resolution via `TZID` and Python stdlib `zoneinfo.ZoneInfo`, and persistent in-memory/fallback caching for remote feeds.
 
 ### 3. Services (`core/services/`)
 Orchestrates business use cases.

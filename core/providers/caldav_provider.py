@@ -19,8 +19,11 @@ logger = logging.getLogger("QuakMeeting.CalDAVProvider")
 class CalDAVCalendarProvider(BaseCalendarProvider):
     """Calendar provider supporting CalDAV endpoints, webcal feeds, and local .ics files."""
 
+    DAY_CODES = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"]
+
     def __init__(self, config: Optional[ConfigService] = None):
         self.config = config or config_service
+        self._feed_cache: Dict[str, str] = {}
 
     def fetch_events(self, start_offset_hours: int = 2, end_offset_hours: int = 24) -> List[Meeting]:
         """Fetch today's events from configured remote calendar feeds or local .ics files."""
@@ -121,11 +124,18 @@ class CalDAVCalendarProvider(BaseCalendarProvider):
             if source.startswith("http://") or source.startswith("https://"):
                 req = urllib.request.Request(source, headers={"User-Agent": "QuakMeeting/1.0"})
                 with urllib.request.urlopen(req, timeout=10) as resp:
-                    return resp.read().decode("utf-8", errors="ignore")
+                    content = resp.read().decode("utf-8", errors="ignore")
+                    self._feed_cache[source] = content
+                    return content
             elif os.path.exists(source):
                 with open(source, "r", encoding="utf-8", errors="ignore") as f:
-                    return f.read()
+                    content = f.read()
+                    self._feed_cache[source] = content
+                    return content
         except Exception as e:
+            if source in self._feed_cache:
+                logger.warning(f"Failed to load calendar source {source} ({e}). Serving cached version.")
+                return self._feed_cache[source]
             logger.warning(f"Failed to load calendar source {source}: {e}")
         return None
 
@@ -137,7 +147,7 @@ class CalDAVCalendarProvider(BaseCalendarProvider):
         return base or "Linux Calendar"
 
     def _parse_ics_events(self, ics_text: str) -> List[Dict[str, Any]]:
-        """Parses VEVENT components from raw iCalendar text."""
+        """Parses VEVENT components from raw iCalendar text with RRULE expansion for Today."""
         events = []
         in_event = False
         current_event: Dict[str, Any] = {}
@@ -165,12 +175,25 @@ class CalDAVCalendarProvider(BaseCalendarProvider):
                 current_event = {}
             elif line == "END:VEVENT":
                 if in_event and "title" in current_event and "start_time" in current_event:
-                    events.append(current_event)
+                    # Evaluate recurring event for Today
+                    if "rrule" in current_event:
+                        today_occ = self._expand_rrule_for_today(current_event)
+                        if today_occ:
+                            events.append(today_occ)
+                    else:
+                        events.append(current_event)
                 in_event = False
             elif in_event and not in_alarm:
                 if ":" in line:
                     raw_key, val = line.split(":", 1)
                     key = raw_key.split(";")[0].upper()
+
+                    # Extract TZID parameter if present (e.g. DTSTART;TZID=Europe/Rome:20260907T100000)
+                    tzid = None
+                    if ";" in raw_key:
+                        for param in raw_key.split(";")[1:]:
+                            if param.upper().startswith("TZID="):
+                                tzid = param.split("=", 1)[1].strip().strip('"\'')
 
                     if key == "SUMMARY":
                         current_event["title"] = self._unescape_ics(val)
@@ -190,29 +213,176 @@ class CalDAVCalendarProvider(BaseCalendarProvider):
                         current_event["uid"] = val.strip()
                     elif key == "RECURRENCE-ID":
                         current_event["recurrence_id"] = val.strip()
+                    elif key == "RRULE":
+                        current_event["rrule"] = val.strip()
+                    elif key == "EXDATE":
+                        current_event.setdefault("exdates", []).extend([x.strip() for x in val.split(",") if x.strip()])
                     elif key == "DTSTART":
-                        dt, is_all_day = self._parse_ics_datetime(val)
+                        dt, is_all_day = self._parse_ics_datetime(val, tzid=tzid)
                         current_event["start_time"] = dt
                         if is_all_day:
                             current_event["is_all_day"] = True
                     elif key == "DTEND":
-                        dt, _ = self._parse_ics_datetime(val)
+                        dt, _ = self._parse_ics_datetime(val, tzid=tzid)
                         current_event["end_time"] = dt
 
         return events
 
-    def _parse_ics_datetime(self, val: str):
+    def _expand_rrule_for_today(self, event: Dict[str, Any], target_date: Optional[date] = None) -> Optional[Dict[str, Any]]:
+        """
+        Evaluates RRULE on a VEVENT dictionary to check if an occurrence falls on target_date (default: today).
+        Returns a cloned event dictionary for today with updated start_time, end_time, and UID, or None.
+        """
+        rrule_str = event.get("rrule")
+        if not rrule_str:
+            return None
+
+        s_dt = event.get("start_time")
+        if not s_dt:
+            return None
+
+        now = datetime.now().astimezone()
+        today = target_date or now.date()
+
+        rrule_params = {}
+        for item in rrule_str.split(";"):
+            if "=" in item:
+                k, v = item.split("=", 1)
+                rrule_params[k.strip().upper()] = v.strip().upper()
+
+        freq = rrule_params.get("FREQ")
+        if not freq:
+            return None
+
+        interval = int(rrule_params.get("INTERVAL", 1))
+        byday_str = rrule_params.get("BYDAY")
+        until_str = rrule_params.get("UNTIL")
+        count = int(rrule_params.get("COUNT", 0)) if "COUNT" in rrule_params else None
+
+        s_local = s_dt.astimezone()
+        s_date = s_local.date()
+
+        # 1. Has recurrence started?
+        if today < s_date:
+            return None
+
+        # 2. Has recurrence expired via UNTIL?
+        if until_str:
+            until_dt, _ = self._parse_ics_datetime(until_str)
+            if until_dt:
+                until_date = until_dt.astimezone().date()
+                if today > until_date:
+                    return None
+
+        # 3. Check EXDATE (exception/cancelled dates)
+        exdates = event.get("exdates", [])
+        for ex in exdates:
+            clean_ex = ex.replace("-", "").replace(":", "")[:8]
+            if clean_ex == today.strftime("%Y%m%d"):
+                return None
+
+        # 4. Frequency evaluation
+        matches = False
+        today_weekday_code = self.DAY_CODES[today.weekday()]
+
+        if freq == "WEEKLY":
+            if byday_str:
+                allowed_days = [re.sub(r'^[+-]?\d+', '', d).strip() for d in byday_str.split(",")]
+                if today_weekday_code in allowed_days:
+                    weeks_diff = (today - s_date).days // 7
+                    if interval <= 1 or (weeks_diff % interval == 0):
+                        matches = True
+            else:
+                if today.weekday() == s_date.weekday():
+                    weeks_diff = (today - s_date).days // 7
+                    if interval <= 1 or (weeks_diff % interval == 0):
+                        matches = True
+
+        elif freq == "DAILY":
+            days_diff = (today - s_date).days
+            if interval <= 1 or (days_diff % interval == 0):
+                matches = True
+
+        elif freq == "MONTHLY":
+            if byday_str:
+                allowed_days = [re.sub(r'^[+-]?\d+', '', d).strip() for d in byday_str.split(",")]
+                if today_weekday_code in allowed_days:
+                    months_diff = (today.year - s_date.year) * 12 + (today.month - s_date.month)
+                    if interval <= 1 or (months_diff % interval == 0):
+                        matches = True
+            elif today.day == s_date.day:
+                months_diff = (today.year - s_date.year) * 12 + (today.month - s_date.month)
+                if interval <= 1 or (months_diff % interval == 0):
+                    matches = True
+
+        if not matches:
+            return None
+
+        # 5. Check COUNT limit if specified
+        if count is not None and count > 0:
+            if freq == "DAILY":
+                occ_num = ((today - s_date).days // interval) + 1
+            elif freq == "WEEKLY":
+                occ_num = 0
+                cur = s_date
+                while cur <= today:
+                    c_code = self.DAY_CODES[cur.weekday()]
+                    w_diff = (cur - s_date).days // 7
+                    if interval <= 1 or (w_diff % interval == 0):
+                        if byday_str:
+                            allowed_days = [re.sub(r'^[+-]?\d+', '', d).strip() for d in byday_str.split(",")]
+                            if c_code in allowed_days:
+                                occ_num += 1
+                        elif cur.weekday() == s_date.weekday():
+                            occ_num += 1
+                    cur += timedelta(days=1)
+            else:
+                occ_num = 1
+            if occ_num > count:
+                return None
+
+        # 6. Construct today's occurrence
+        duration = (event["end_time"] - s_dt) if event.get("end_time") else timedelta(hours=1)
+        today_start_local = datetime.combine(today, s_local.time(), tzinfo=s_local.tzinfo)
+        today_start_utc = today_start_local.astimezone(timezone.utc)
+        today_end_utc = today_start_utc + duration
+
+        clone = dict(event)
+        clone["start_time"] = today_start_utc
+        clone["end_time"] = today_end_utc
+        base_uid = event.get("uid", "event")
+        clone["uid"] = f"{base_uid}_rrule_{today.isoformat()}"
+        clone["is_recurring"] = True
+        return clone
+
+    def _parse_ics_datetime(self, val: str, tzid: Optional[str] = None) -> Tuple[Optional[datetime], bool]:
         val = val.strip()
+        tz = None
+        if tzid:
+            try:
+                import zoneinfo
+                tz = zoneinfo.ZoneInfo(tzid)
+            except Exception:
+                tz = None
+
         try:
             if val.endswith("Z"):
                 dt = datetime.strptime(val, "%Y%m%dT%H%M%SZ").replace(tzinfo=timezone.utc)
                 return dt, False
             elif "T" in val:
-                dt = datetime.strptime(val[:15], "%Y%m%dT%H%M%S").astimezone(timezone.utc)
-                return dt, False
+                dt_naive = datetime.strptime(val[:15], "%Y%m%dT%H%M%S")
+                if tz:
+                    dt = dt_naive.replace(tzinfo=tz)
+                else:
+                    dt = dt_naive.astimezone()
+                return dt.astimezone(timezone.utc), False
             elif len(val) == 8:
-                dt = datetime.strptime(val, "%Y%m%d").replace(hour=0, minute=0, second=0).astimezone(timezone.utc)
-                return dt, True
+                dt_naive = datetime.strptime(val, "%Y%m%d").replace(hour=0, minute=0, second=0)
+                if tz:
+                    dt = dt_naive.replace(tzinfo=tz)
+                else:
+                    dt = dt_naive.astimezone()
+                return dt.astimezone(timezone.utc), True
         except Exception:
             pass
         return None, False
