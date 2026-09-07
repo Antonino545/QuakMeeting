@@ -140,30 +140,15 @@ class SystemCardWidget(QFrame):
         mute_row.addWidget(mute_switch)
         uc_layout.addLayout(mute_row)
 
-        # 4. Action Buttons Row (Diagnostics - only in debug mode)
-        self.sys_row_widget = QWidget(self)
-        sys_row = QHBoxLayout(self.sys_row_widget)
-        sys_row.setContentsMargins(0, 0, 0, 0)
-        sys_row.setSpacing(8)
+        # 4. User Action Buttons Row (Always visible: Check for Updates & License)
+        self.action_row_widget = QWidget(self)
+        action_row = QHBoxLayout(self.action_row_widget)
+        action_row.setContentsMargins(0, 0, 0, 0)
+        action_row.setSpacing(8)
 
-        self.up_btn = AnimatedSpinButton(f"🔍 {t('check_updates')}", self.sys_row_widget)
+        self.up_btn = AnimatedSpinButton(f"🔍 {t('check_updates')}", self.action_row_widget)
         self.up_btn.setObjectName("OutlineBtn")
         self.up_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-
-        edit_btn = QPushButton(t("settings_config_json"), self.sys_row_widget)
-        edit_btn.setObjectName("OutlineBtn")
-        edit_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        edit_btn.clicked.connect(config.open_config_in_editor)
-
-        log_btn = QPushButton(t("settings_view_logs"), self.sys_row_widget)
-        log_btn.setObjectName("OutlineBtn")
-        log_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        log_btn.clicked.connect(open_log_file)
-
-        demo_up_btn = QPushButton("🚀 Live Demo", self.sys_row_widget)
-        demo_up_btn.setObjectName("OutlineBtn")
-        demo_up_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        demo_up_btn.setToolTip("Preview the rich Animated Updating HUD and Jet Rocket Thruster")
 
         def _on_show_license():
             msg = QMessageBox(self)
@@ -188,16 +173,41 @@ class SystemCardWidget(QFrame):
             msg.setStandardButtons(QMessageBox.StandardButton.Ok)
             msg.exec()
 
-        lic_btn = QPushButton("📜 License & Info", self.sys_row_widget)
+        lic_btn = QPushButton("📜 License && Info", self.action_row_widget)
         lic_btn.setObjectName("OutlineBtn")
         lic_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         lic_btn.clicked.connect(_on_show_license)
 
-        sys_row.addWidget(self.up_btn)
+        action_row.addWidget(self.up_btn)
+        action_row.addWidget(lic_btn)
+        action_row.addStretch()
+        uc_layout.addWidget(self.action_row_widget)
+
+        # 5. Diagnostic Buttons Row (Only in debug mode)
+        self.sys_row_widget = QWidget(self)
+        sys_row = QHBoxLayout(self.sys_row_widget)
+        sys_row.setContentsMargins(0, 0, 0, 0)
+        sys_row.setSpacing(8)
+
+        edit_btn = QPushButton(t("settings_config_json"), self.sys_row_widget)
+        edit_btn.setObjectName("OutlineBtn")
+        edit_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        edit_btn.clicked.connect(config.open_config_in_editor)
+
+        log_btn = QPushButton(t("settings_view_logs"), self.sys_row_widget)
+        log_btn.setObjectName("OutlineBtn")
+        log_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        log_btn.clicked.connect(open_log_file)
+
+        demo_up_btn = QPushButton("🚀 Live Demo", self.sys_row_widget)
+        demo_up_btn.setObjectName("OutlineBtn")
+        demo_up_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        demo_up_btn.setToolTip("Preview the rich Animated Updating HUD and Jet Rocket Thruster")
+
         sys_row.addWidget(edit_btn)
         sys_row.addWidget(log_btn)
         sys_row.addWidget(demo_up_btn)
-        sys_row.addWidget(lic_btn)
+        sys_row.addStretch()
         uc_layout.addWidget(self.sys_row_widget)
         self.sys_row_widget.setVisible(is_dbg)
 
@@ -231,7 +241,7 @@ class SystemCardWidget(QFrame):
         # Action Buttons Row
         act_row = QHBoxLayout()
         act_row.setContentsMargins(0, 4, 0, 0)
-        self.install_btn = QPushButton("⚡ Download & Install Update", self.update_status_box)
+        self.install_btn = QPushButton("⚡ Download && Install Update", self.update_status_box)
         self.install_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.install_btn.setStyleSheet("""
             QPushButton {
@@ -284,6 +294,7 @@ class SystemCardWidget(QFrame):
 
         def _on_check_clicked():
             self.up_btn.start_spinning("Checking...")
+            self.update_status_box.setVisible(True)
             self.update_status_box.set_scanning(True)
             self.update_icon_lbl.setText("📡")
             self.update_status_lbl.setText("<span style='color:#89b4fa;'><b>Scanning GitHub repository for releases...</b></span>")
@@ -320,7 +331,7 @@ class SystemCardWidget(QFrame):
                 self.install_btn.setVisible(False)
                 self.changelog_lbl.setVisible(False)
                 if not is_debug_mode():
-                    self.update_status_box.setVisible(False)
+                    QTimer.singleShot(4000, lambda: self.update_status_box.setVisible(False) if not is_debug_mode() and not (updater_service.latest_release_info and updater_service.latest_release_info.get("has_update")) else None)
 
         def _on_downloading(file_name=None, **k):
             self.update_icon_lbl.setText("📥")
