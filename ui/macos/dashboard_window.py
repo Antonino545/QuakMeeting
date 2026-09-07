@@ -38,10 +38,13 @@ class DashboardWindowDelegate(AppKit.NSObject):
         if self.controller:
             if hasattr(self.controller, "hangar_tab") and hasattr(self.controller.hangar_tab, "stop_animation_timer"):
                 self.controller.hangar_tab.stop_animation_timer()
+            if hasattr(self.controller, "settings_tab") and hasattr(self.controller.settings_tab, "close_suggestions"):
+                self.controller.settings_tab.close_suggestions()
             self.controller.window.orderOut_(None)
         else:
             sender.orderOut_(None)
         return False
+
 
 class DashboardWindowController(AppKit.NSObject):
     _shared_instance = None
@@ -426,12 +429,23 @@ class DashboardWindowController(AppKit.NSObject):
         m_sig = tuple((m.get("title"), str(m.get("start_time")), m.get("travel_time_minutes")) for m in self.meetings)
         sync_time_str = calendar_service.last_sync_time.isoformat() if calendar_service.last_sync_time else ""
         current_sig = (self.current_tab, self.is_loading, len(self.meetings), m_sig, sync_time_str, get_active_language())
+
+        if self.current_tab == 2 and self.content_container.subviews():
+            # Tab 2 (Settings) is already rendered. Background sync must not wipe the view.
+            if self._last_rendered_signature and self._last_rendered_signature[0] == 2 and self._last_rendered_signature[5] == get_active_language():
+                self._last_rendered_signature = current_sig
+                return
+
         if self._last_rendered_signature == current_sig:
             return
         self._last_rendered_signature = current_sig
 
+        if self.current_tab != 2 and hasattr(self.settings_tab, "close_suggestions"):
+            self.settings_tab.close_suggestions()
+
         for sub in list(self.content_container.subviews()):
             sub.removeFromSuperview()
+
 
         if self.current_tab != 1 and hasattr(self.hangar_tab, "stop_animation_timer"):
             self.hangar_tab.stop_animation_timer()

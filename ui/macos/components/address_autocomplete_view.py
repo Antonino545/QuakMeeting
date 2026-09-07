@@ -300,16 +300,35 @@ class AddressAutocompleteView(AppKit.NSView):
         parent_window.addChildWindow_ordered_(self._overlay_window, AppKit.NSWindowAbove)
         self._overlay_window.orderFront_(None)
 
+    def viewWillMoveToWindow_(self, new_window):
+        if new_window is None:
+            self._close_overlay()
+        objc.super(AddressAutocompleteView, self).viewWillMoveToWindow_(new_window)
+
+
+    def close_suggestions(self):
+        self._close_overlay()
+
     def _close_overlay(self):
+        if self._search_timer:
+            self._search_timer.invalidate()
+            self._search_timer = None
         if self._overlay_window:
             parent_window = self.window()
             if parent_window and self._overlay_window in (parent_window.childWindows() or []):
-                parent_window.removeChildWindow_(self._overlay_window)
-            self._overlay_window.orderOut_(None)
+                try:
+                    parent_window.removeChildWindow_(self._overlay_window)
+                except Exception:
+                    pass
+            try:
+                self._overlay_window.orderOut_(None)
+            except Exception:
+                pass
             self._overlay_window = None
 
     @objc.IBAction
     def onSelectSuggestionRow_(self, sender):
+
         idx = getattr(sender, "tag", 0)
         if 0 <= idx < len(self._candidates):
             cand = self._candidates[idx]

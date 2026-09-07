@@ -6,7 +6,9 @@ from core.services.language_service import t
 from ui.macos.components import (
     ModernButton,
     ModernToggleSwitch,
+    style_button,
 )
+
 from ui.macos.dashboard_tabs.settings.helpers import add_section_header
 from ui.macos.theme import Theme
 
@@ -131,11 +133,15 @@ class ArrivalCardController(AppKit.NSObject):
         diag_hdr.setEditable_(False)
         diag_bg.addSubview_(diag_hdr)
 
-        refresh_btn = ModernButton.alloc().initWithFrame_(AppKit.NSMakeRect(addr_w - 96, 64, 86, 22))
-        refresh_btn.setTitle_(t("settings_arrival_refresh_btn"))
-        refresh_btn.setFont_(AppKit.NSFont.systemFontOfSize_(11.0))
-        refresh_btn.layer().setCornerRadius_(5.0)
-        refresh_btn.layer().setBackgroundColor_(Theme.SURFACE1.CGColor())
+        refresh_btn = Theme.create_button(
+            AppKit.NSMakeRect(addr_w - 96, 64, 86, 22),
+            title=t("settings_arrival_refresh_btn"),
+            bg_color=Theme.SURFACE1,
+            text_color=Theme.TEXT,
+            border_color=Theme.SURFACE2,
+            corner_radius=5.0,
+            font_size=11.0,
+        )
         refresh_btn.setTarget_(self)
         refresh_btn.setAction_("onRefreshDiagnostics:")
         diag_bg.addSubview_(refresh_btn)
@@ -148,10 +154,15 @@ class ArrivalCardController(AppKit.NSObject):
         self.diag_wifi_lbl.setEditable_(False)
         diag_bg.addSubview_(self.diag_wifi_lbl)
 
-        self.add_wifi_btn = ModernButton.alloc().initWithFrame_(AppKit.NSMakeRect(addr_w - 160, 42, 150, 20))
-        self.add_wifi_btn.setFont_(AppKit.NSFont.boldSystemFontOfSize_(10.5))
-        self.add_wifi_btn.layer().setCornerRadius_(4.0)
-        self.add_wifi_btn.layer().setBackgroundColor_(Theme.GREEN.CGColor())
+        self.add_wifi_btn = Theme.create_button(
+            AppKit.NSMakeRect(addr_w - 160, 42, 150, 20),
+            title="",
+            bg_color=Theme.GREEN,
+            text_color=Theme.CRUST,
+            corner_radius=4.0,
+            font_size=10.5,
+            bold=True,
+        )
         self.add_wifi_btn.setTarget_(self)
         self.add_wifi_btn.setAction_("onAddCurrentWiFi:")
         self.add_wifi_btn.setHidden_(True)
@@ -194,40 +205,66 @@ class ArrivalCardController(AppKit.NSObject):
 
         curr_ssids = self.config.get("arrival_wifi_ssids", ["eduroam", "polito", "campus", "universit", "studenti", "unito", "polimi"])
         self.ssid_field = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 330, addr_w, 24))
+        self.ssid_field.setWantsLayer_(True)
         self.ssid_field.setStringValue_(", ".join(curr_ssids))
         self.ssid_field.setFont_(AppKit.NSFont.systemFontOfSize_(12.0))
         self.ssid_field.setTextColor_(Theme.TEXT)
         self.ssid_field.setBackgroundColor_(Theme.MANTLE)
+        self.ssid_field.setFocusRingType_(AppKit.NSFocusRingTypeNone)
         self.ssid_field.layer().setCornerRadius_(6.0)
         self.ssid_field.layer().setBorderWidth_(1.0)
         self.ssid_field.layer().setBorderColor_(Theme.SURFACE1.CGColor())
         card.addSubview_(self.ssid_field)
 
         # Buttons Row
-        self.save_btn = ModernButton.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 368, 110, 28))
-        self.save_btn.setTitle_(t("settings_arrival_save_btn"))
-        self.save_btn.layer().setCornerRadius_(7.0)
-        self.save_btn.layer().setBackgroundColor_(Theme.SAPPHIRE.CGColor())
+        self.save_btn = Theme.create_button(
+            AppKit.NSMakeRect(18, h - 368, 110, 28),
+            title=t("settings_arrival_save_btn"),
+            bg_color=Theme.SAPPHIRE,
+            text_color=Theme.CRUST,
+            corner_radius=7.0,
+            font_size=11.5,
+            bold=True,
+        )
         self.save_btn.setTarget_(self)
         self.save_btn.setAction_("onSaveSSIDs:")
         card.addSubview_(self.save_btn)
 
-        reset_btn = ModernButton.alloc().initWithFrame_(AppKit.NSMakeRect(136, h - 368, 140, 28))
-        reset_btn.setTitle_(t("settings_arrival_reset_btn"))
-        reset_btn.layer().setCornerRadius_(7.0)
-        reset_btn.layer().setBackgroundColor_(Theme.SURFACE0.CGColor())
+        reset_btn = Theme.create_button(
+            AppKit.NSMakeRect(136, h - 368, 140, 28),
+            title=t("settings_arrival_reset_btn"),
+            bg_color=Theme.SURFACE0,
+            text_color=Theme.TEXT,
+            border_color=Theme.SURFACE1,
+            corner_radius=7.0,
+            font_size=11.5,
+        )
         reset_btn.setTarget_(self)
         reset_btn.setAction_("onResetSSIDs:")
         card.addSubview_(reset_btn)
+
+        master_enabled = bool(self.config.get("enable_arrival_detection", True))
+        if self.calls_sw:
+            self.calls_sw.setEnabled_(master_enabled)
+        if self.wifi_sw:
+            self.wifi_sw.setEnabled_(master_enabled)
 
         self.update_diagnostics()
 
     @objc.python_method
     def onToggleMasterSwitch(self, checked):
-        self.config.set("enable_arrival_detection", bool(checked))
+        is_on = bool(checked)
+        self.config.set("enable_arrival_detection", is_on)
+        if self.calls_sw:
+            self.calls_sw.setEnabled_(is_on)
+            self.calls_sw.setNeedsDisplay_(True)
+        if self.wifi_sw:
+            self.wifi_sw.setEnabled_(is_on)
+            self.wifi_sw.setNeedsDisplay_(True)
         try:
-            event_bus.publish("CONFIG_CHANGED", key="enable_arrival_detection", value=bool(checked))
+            event_bus.publish("CONFIG_CHANGED", key="enable_arrival_detection", value=is_on)
         except Exception:
+
             pass
         self.update_diagnostics()
 
@@ -265,6 +302,14 @@ class ArrivalCardController(AppKit.NSObject):
                 pass
             if self.save_btn:
                 self.save_btn.setTitle_("✓ " + t("saved"))
+                style_button(
+                    self.save_btn,
+                    bg_color=Theme.GREEN,
+                    text_color=Theme.CRUST,
+                    corner_radius=7.0,
+                    font_size=11.5,
+                    bold=True,
+                )
                 AppKit.NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
                     1.5, self, "restoreSaveBtnTitle:", None, False
                 )
@@ -274,6 +319,15 @@ class ArrivalCardController(AppKit.NSObject):
     def restoreSaveBtnTitle_(self, timer):
         if self.save_btn:
             self.save_btn.setTitle_(t("settings_arrival_save_btn"))
+            style_button(
+                self.save_btn,
+                bg_color=Theme.SAPPHIRE,
+                text_color=Theme.CRUST,
+                corner_radius=7.0,
+                font_size=11.5,
+                bold=True,
+            )
+
 
     @objc.IBAction
     def onResetSSIDs_(self, sender):

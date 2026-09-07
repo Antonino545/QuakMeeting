@@ -60,7 +60,6 @@ class ETACardController(AppKit.NSObject):
                 event_bus.publish("CONFIG_CHANGED", key="home_address", value=addr_str)
             except Exception:
                 pass
-            self.parent.refresh_data(force=True)
 
         self.home_addr_auto = AddressAutocompleteView.alloc().initWithFrame_placeholder_initialValue_onSave_btnColor_(
             AppKit.NSMakeRect(18, h - 128, addr_w, 50.0),
@@ -107,7 +106,7 @@ class ETACardController(AppKit.NSObject):
                 event_bus.publish("CONFIG_CHANGED", key="exam_location", value=addr_str)
             except Exception:
                 pass
-            self.parent.refresh_data(force=True)
+
 
         self.exam_addr_auto = AddressAutocompleteView.alloc().initWithFrame_placeholder_initialValue_onSave_btnColor_(
             AppKit.NSMakeRect(18, h - 238, addr_w, 50.0),
@@ -231,7 +230,6 @@ class ETACardController(AppKit.NSObject):
                     event_bus.publish("CONFIG_CHANGED", key="transport_mode", value=k)
                 except Exception:
                     pass
-                self.parent.refresh_data(force=True)
                 break
 
     @objc.IBAction
@@ -246,9 +244,21 @@ class ETACardController(AppKit.NSObject):
 
     @objc.IBAction
     def onSelectETABuffer_(self, sender):
-        val_buf = sender.selectedItem().representedObject()
-        self.config.set("eta_buffer_minutes", int(val_buf))
-        try:
-            event_bus.publish("CONFIG_CHANGED", key="eta_buffer_minutes", value=int(val_buf))
-        except Exception:
-            pass
+        item = sender.selectedItem()
+        if not item:
+            return
+        val_buf = item.representedObject()
+        if val_buf is not None:
+            self.config.set("eta_buffer_minutes", int(val_buf))
+            try:
+                event_bus.publish("CONFIG_CHANGED", key="eta_buffer_minutes", value=int(val_buf))
+            except Exception:
+                pass
+
+    @objc.python_method
+    def close_suggestions(self):
+        if hasattr(self, "home_addr_auto") and self.home_addr_auto:
+            self.home_addr_auto.close_suggestions()
+        if hasattr(self, "exam_addr_auto") and self.exam_addr_auto:
+            self.exam_addr_auto.close_suggestions()
+

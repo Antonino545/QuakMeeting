@@ -50,6 +50,7 @@ class CalendarsCardController(AppKit.NSObject):
         pill_gap = 8.0
         y_offset = h - 72.0 - pill_h
         x_offset = 18.0
+        ignored = set(self.config.get("ignored_calendars", []))
 
         for idx, cal in enumerate(cals):
             cal_name = cal.get("name", "Calendar")
@@ -60,11 +61,12 @@ class CalendarsCardController(AppKit.NSObject):
                 x_offset = 18.0
                 y_offset -= (pill_h + pill_gap)
 
+            is_cal_enabled = (cal_name not in ignored)
             btn = create_pill_chip(
                 card,
                 title,
                 idx,
-                cal.get("enabled", True),
+                is_cal_enabled,
                 "onToggleCalendarSource:",
                 x_offset,
                 y_offset,
@@ -91,4 +93,4 @@ class CalendarsCardController(AppKit.NSObject):
             event_bus.publish("CONFIG_CHANGED", key="ignored_calendars", value=list(ignored))
         except Exception:
             pass
-        self.parent.refresh_data(force=True)
+

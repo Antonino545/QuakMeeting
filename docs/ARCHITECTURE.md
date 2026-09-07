@@ -88,7 +88,9 @@ Orchestrates business use cases.
 Cross-platform presentation layer structured by operating system:
 - **`ui/macos/components/`**: Reusable AppKit components:
   - **`layout.py`**: Qt-style declarative relative layout helpers (`VBox`, `HBox` wrapping `NSStackView`) providing `add_widget()`, `add_widgets()`, `add_stretch()`, `set_spacing()`, and padding.
-  - **`address_autocomplete_view.py`**: Generic `NSView` providing debounced keystroke search (350ms), floating `NSPopover` candidate list, verification status badges (`🟢 Verified`), manual check button, and native Apple Maps links.
+  - **`address_autocomplete_view.py`**: Generic `NSView` providing debounced keystroke search (350ms), floating suggestions window (`NonActivatingSuggestionsWindow`), verification status badges (`🟢 Verified`), and manual check button.
+  - **`button.py`**: Layer-backed `ModernButton` with pointing hand cursor, hover feedback, tactile click animation, and clean empty-title initialization.
+  - **`toggle_switch.py`**: Tactile spring-animated `ModernToggleSwitch` supporting immediate `mouseDown_` response, state tracking, and first-mouse window activation.
 - **`ui/linux/components/`**: Reusable PyQt6 components:
   - **`address_autocomplete_widget.py`**: Generic `QWidget` providing debounced `QTimer` search, popup `QListWidget` suggestions, canonical address badges, and browser map preview links.
 - **`ui/common/`**: Platform-independent design tokens and view logic:
