@@ -87,12 +87,12 @@ def main():
             else:
                 print("\n🚀 Running Notification Banner Test...")
 
+            from ui.common.banner_presets import get_test_preset
+
             if sys.platform == "darwin" and not force_qt:
                 import AppKit
                 from ui.macos.banner.banner_controller import QuakPitFlyingBanner
                 from ui.macos.banner.banner_view import QuakPitBannerView
-                # Preset mapping
-                from ui.linux.banner import get_test_preset
                 test_m = dict(get_test_preset(pilot_type))
                 if stage_val is not None:
                     test_m["reminder_stage"] = stage_val
@@ -105,7 +105,7 @@ def main():
                 controller.show()
                 app.run()
             else:
-                from ui.linux.banner import get_test_preset, show_qt_banner
+                from ui.linux.banner import show_qt_banner
                 test_m = dict(get_test_preset(pilot_type))
                 if stage_val is not None:
                     test_m["reminder_stage"] = stage_val

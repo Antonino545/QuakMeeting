@@ -96,6 +96,7 @@ Cross-platform presentation layer structured by operating system:
   - **`banner_speech.py`**: Animal-specific vocalization generator (`duck`, `owl`, `bunny`, `squirrel`, `platypus`) and context-aware dialogue builder.
   - **`banner_particles.py`**: Physics simulation engine for turbo afterburner flames, exhaust smoke puffs, magical sparkles, dynamic flight pitch & thrust calculation (`compute_airplane_flight_dynamics`), and rotated towing cable hook anchors (`compute_towing_cable_hooks`).
   - **`banner_formatting.py`**: Time differentials, countdown text, urgency flags, and travel duration formatting.
+  - **`banner_presets.py`**: Platform-independent mock meeting payloads for mascot test flights and software update banners.
 - **`ui/macos/`**: Native macOS UI using PyObjC:
   - **`theme.py`**: Native `NSColor` and `CGColor` bridges derived directly from `ui.common.theme.CatppuccinMocha`.
   - **`menu_bar_app.py`**: AppKit `NSStatusItem` menu bar controller.

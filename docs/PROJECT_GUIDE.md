@@ -32,11 +32,14 @@ python3 -m unittest discover -s tests -v
 # 2. Build the Ubuntu .deb package
 bash scripts/build_ubuntu_deb.sh
 
-# 3. Install and run (if testing installation)
+# 3. Optional: Build Flatpak bundle
+bash scripts/build_flatpak.sh
+
+# 4. Install and run (if testing installation)
 sudo apt-get install --reinstall ./deb_dist/quakmeeting_*_amd64.deb
 pkill -f "quakmeeting" 2>/dev/null; sleep 1; quakmeeting &
 
-# 4. Verify live logs
+# 5. Verify live logs
 tail -15 ~/.quakmeeting/quakmeeting.log
 ```
 
@@ -73,10 +76,10 @@ QuakMeeting/
 │   └── logger.py                  # Dual console & file logger (~/.quakmeeting/quakmeeting.log)
 ├── ui/
 │   ├── app_launcher.py            # Platform-aware UI dispatcher
-│   ├── common/                    # Shared UI helpers, theme & viewmodels
 │   │   ├── theme.py               # Central Catppuccin Mocha palette & pilot mappings (Single source of truth)
 │   │   ├── tray_viewmodel.py      # Status formatting & stage logic
-│   │   └── banner_queue.py        # Cross-platform banner sequencing queue
+│   │   ├── banner_queue.py        # Cross-platform banner sequencing queue
+│   │   └── banner_presets.py      # Cross-platform test & update mock banner presets
 │   ├── macos/                     # macOS Native UI (PyObjC, AppKit, Quartz 2D)
 │   │   ├── theme.py               # Catppuccin Mocha AppKit NSColor/CGColor palette
 │   │   ├── menu_bar_app.py        # NSStatusItem status bar controller & dropdown
@@ -139,6 +142,13 @@ QuakMeeting/
 
 ### 6. Cross-Platform UI Parity Invariant
 - **Rule**: Whenever UI components, layout structures, settings cards, or visual styling are added or modified on macOS (`ui/macos/`), always replicate and maintain identical design, hierarchy, and functionality on Linux/Ubuntu (`ui/linux/`), and vice-versa. Both platforms must stay visually consistent under Catppuccin Mocha theme.
+
+### 7. Platform Packaging Isolation
+- **Rule**: Distribution builds must exclusively contain the target platform's UI layer and common design tokens:
+  - **macOS (`QuakMeeting.app`)**: Packages only `ui/macos/` and `ui/common/`. The Qt UI tree (`ui/linux/`) is excluded.
+  - **Linux (`.deb` & Flatpak)**: Packages only `ui/linux/` and `ui/common/`. The Cocoa/AppKit UI tree (`ui/macos/`) is excluded.
+  - **Windows**: PyInstaller packaging excludes `ui.macos`.
+  - **Shared Presets**: Test and update presets must live in `ui/common/banner_presets.py` to avoid cross-platform dependencies.
 
 ---
 

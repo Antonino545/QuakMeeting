@@ -119,6 +119,17 @@ QuakMeeting delivers a unified **Catppuccin Mocha** visual experience across mac
    ```
 3. Launch **QuakMeeting** from your Application Grid or run `quakmeeting`.
 
+### 📦 Flatpak (Universal Linux)
+Build and install standalone Flatpak bundle:
+```bash
+# Build standalone bundle
+bash scripts/build_flatpak.sh
+
+# Install and run
+flatpak install --user flatpak_dist/quakmeeting.flatpak
+flatpak run com.quakmeeting.QuakMeeting
+```
+
 ### 🪟 Microsoft Windows (`.zip` Standalone / Portable)
 1. Download **`QuakMeeting-Windows.zip`** from [Latest Releases](https://github.com/Antonino545/QuakMeeting/releases/latest).
 2. Extract the ZIP archive anywhere on your PC.

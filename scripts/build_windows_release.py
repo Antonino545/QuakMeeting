@@ -45,6 +45,7 @@ def build():
         "--hidden-import=PyQt6.QtCore",
         "--hidden-import=PyQt6.QtGui",
         "--hidden-import=PyQt6.QtWidgets",
+        "--exclude-module=ui.macos",
         "main.py"
     ]
     if ico_path and os.path.exists(ico_path):

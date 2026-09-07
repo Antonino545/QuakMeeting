@@ -116,8 +116,19 @@ def build_bundle():
         shutil.copy2(os.path.join(PROJECT_DIR, "assets", "icon.png"), os.path.join(assets_dest, "icon.png"))
 
     # 3. Copy Python module directories (core/ and ui/) and main.py
-    shutil.copytree(os.path.join(PROJECT_DIR, "core"), os.path.join(RESOURCES_DIR, "core"), dirs_exist_ok=True)
-    shutil.copytree(os.path.join(PROJECT_DIR, "ui"), os.path.join(RESOURCES_DIR, "ui"), dirs_exist_ok=True)
+    # Note: ui/linux (Qt runtime) is explicitly excluded from macOS bundle for clean packaging
+    shutil.copytree(
+        os.path.join(PROJECT_DIR, "core"),
+        os.path.join(RESOURCES_DIR, "core"),
+        ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
+        dirs_exist_ok=True
+    )
+    shutil.copytree(
+        os.path.join(PROJECT_DIR, "ui"),
+        os.path.join(RESOURCES_DIR, "ui"),
+        ignore=shutil.ignore_patterns("linux", "__pycache__", "*.pyc"),
+        dirs_exist_ok=True
+    )
     shutil.copy2(os.path.join(PROJECT_DIR, "main.py"), os.path.join(RESOURCES_DIR, "main.py"))
 
     # Resolve dynamic version
