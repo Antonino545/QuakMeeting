@@ -102,7 +102,7 @@ class DashboardWindowController(AppKit.NSObject):
         self.refresh_data()
 
     def _create_window(self):
-        width, height = 830.0, 610.0
+        width, height = 920.0, 640.0
         screen = AppKit.NSScreen.mainScreen()
         screen_rect = screen.frame() if screen else AppKit.NSMakeRect(0, 0, 1440, 900)
         x_pos = (screen_rect.size.width - width) * 0.5

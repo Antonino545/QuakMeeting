@@ -47,10 +47,12 @@ class CalendarsCardWidget(QFrame):
             for cal in avail_cals:
                 c_name = cal.get("name", "Calendar")
                 c_enabled = cal.get("enabled", True)
-                btn = QPushButton(f"📅 {c_name}", grid_widget)
+                display_name = c_name.replace("&", "&&")
+                btn = QPushButton(f"📅 {display_name}", grid_widget)
                 btn.setCheckable(True)
                 btn.setCursor(Qt.CursorShape.PointingHandCursor)
                 btn.setChecked(c_enabled)
+                btn.setMinimumWidth(btn.sizeHint().width() + 16)
                 btn.setStyleSheet("""
                     QPushButton {
                         background: #242438;
@@ -83,7 +85,7 @@ class CalendarsCardWidget(QFrame):
 
                 row_layout.addWidget(btn)
                 count_in_row += 1
-                if count_in_row >= 3:
+                if count_in_row >= 2:
                     row_layout.addStretch()
                     grid_layout.addLayout(row_layout)
                     row_layout = QHBoxLayout()

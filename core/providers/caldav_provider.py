@@ -2,13 +2,14 @@
 Universal CalDAV / iCalendar (.ics / webcal) Calendar Provider for QuakMeeting.
 Pure Python calendar provider for Ubuntu/Linux and cross-platform feed sync.
 """
+from __future__ import annotations
 import os
 import re
 import html
 import urllib.request
 import logging
 from datetime import datetime, timedelta, timezone, date
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from core.domain.models import Meeting
 from core.domain.classifier import EventClassifier
 from core.services.config_service import config_service, ConfigService

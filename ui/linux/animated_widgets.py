@@ -475,10 +475,14 @@ class ToggleSwitch(QWidget):
     def isChecked(self):
         return self._checked
 
-    def setChecked(self, val):
-        self._checked = val
-        self._pos = 22.0 if val else 2.0
+    def setChecked(self, val, trigger_callback=True):
+        new_val = bool(val)
+        changed = (self._checked != new_val)
+        self._checked = new_val
+        self._pos = 22.0 if new_val else 2.0
         self.update()
+        if changed and trigger_callback and self.toggled:
+            self.toggled(self._checked)
 
     def mousePressEvent(self, ev):
         if ev.button() == Qt.MouseButton.LeftButton:
@@ -493,15 +497,22 @@ class ToggleSwitch(QWidget):
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         
         # Catppuccin Mocha colors
-        c_off = Theme.SURFACE0 # Surface0
-        c_on = Theme.MAUVE  # Mauve
-        c_knob = Theme.CRUST if self._checked else Theme.TEXT
+        c_off = Theme.SURFACE0
+        c_on = Theme.GREEN if hasattr(Theme, 'GREEN') else Theme.MAUVE
+        c_knob = QColor("#ffffff") if self._checked else Theme.SUBTEXT1
 
         bg = c_on if self._checked else c_off
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(bg)
         p.drawRoundedRect(0, 0, self.width(), self.height(), 12, 12)
 
+        # Subtle border on track when off
+        if not self._checked:
+            p.setPen(Theme.SURFACE1)
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawRoundedRect(0, 0, self.width(), self.height(), 12, 12)
+
+        p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(c_knob)
         p.drawEllipse(QRectF(self._pos, 2.0, 20.0, 20.0))
         p.end()

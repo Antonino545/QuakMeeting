@@ -39,6 +39,26 @@ def _ensure_gui_python_environment():
                 logger.warning(f"Auto-switch to system python failed: {err}")
 
 def main():
+    if "--help" in sys.argv or "-h" in sys.argv:
+        print("Usage: python3 main.py [OPTIONS]")
+        print("\nSmart Meeting Reminders & Flight Deck inspired by QuakPit.\n")
+        print("Options:")
+        print("  -c, --check, --diagnostics  Run system health & arrival diagnostics check")
+        print("  --test                      Trigger notification banner test flight")
+        print("  --delay <sec>               Wait <sec> before launching test banner")
+        print("  --pilot <mascot>            Pilot mascot for test (duck, owl, bunny)")
+        print("  --stage <minutes>           Reminder stage to simulate (0, 2, 5, 10, 20, 30, 45)")
+        print("  -d, --debug                 Enable debug logging and diagnostic UI cards")
+        print("  --qt                        Force Qt6 UI on macOS (overrides native AppKit)")
+        print("  -h, --help                  Show this help message and exit")
+        return
+
+    if "--check" in sys.argv or "-c" in sys.argv or "--diagnostics" in sys.argv:
+        from core.diagnostics import run_system_diagnostics_check, format_diagnostics_report
+        diag = run_system_diagnostics_check()
+        print(format_diagnostics_report(diag))
+        sys.exit(0 if diag.get("status") != "ERROR" else 1)
+
     _ensure_gui_python_environment()
     if "--debug" in sys.argv or "-d" in sys.argv:
         os.environ["QUAKMEETING_DEBUG"] = "1"

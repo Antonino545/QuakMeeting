@@ -248,7 +248,12 @@ class QtAddressAutocompleteWidget(QWidget):
         self.status_label.setStyleSheet("color: #a6e3a1; font-weight: bold; font-size: 11.5px;")
 
         self.save_btn.setText(f"✓ {t('saved')}")
-        QTimer.singleShot(1500, lambda: self.save_btn.setText(f"💾 {t('save')}"))
+        def _restore_save():
+            try:
+                self.save_btn.setText(f"💾 {t('save')}")
+            except (RuntimeError, AttributeError):
+                pass
+        QTimer.singleShot(1500, _restore_save)
 
         if self.on_save_cb:
             self.on_save_cb(chosen_text, candidate)
@@ -274,7 +279,12 @@ class QtAddressAutocompleteWidget(QWidget):
             if self.on_save_cb:
                 self.on_save_cb("", None)
             self.save_btn.setText(f"✓ {t('saved')}")
-            QTimer.singleShot(1500, lambda: self.save_btn.setText(f"💾 {t('save')}"))
+            def _restore_save():
+                try:
+                    self.save_btn.setText(f"💾 {t('save')}")
+                except (RuntimeError, AttributeError):
+                    pass
+            QTimer.singleShot(1500, _restore_save)
             return
 
         self.status_label.setText(t("settings_address_searching"))

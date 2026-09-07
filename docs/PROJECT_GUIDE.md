@@ -70,7 +70,7 @@ QuakMeeting/
 │   │   ├── calendar_service.py    # Synchronizes & caches Today-only events (00:00 to 23:59:59)
 │   │   ├── reminder_engine.py     # Multi-stage notification triggers (evaluates leave vs start time)
 │   │   ├── eta_service.py         # Apple Maps route URLs & departure time calculator
-│   │   ├── arrival_service.py     # Automatic/manual arrival detection and suppression
+│   │   ├── arrival_service.py     # Multiplatform presence detection (call apps, venue Wi-Fi, diagnostics)
 │   │   ├── config_service.py      # Configuration manager (~/.quakmeeting/config.json)
 │   │   └── event_bus.py           # Decoupled pub/sub event system
 │   └── logger.py                  # Dual console & file logger (~/.quakmeeting/quakmeeting.log)
@@ -97,7 +97,7 @@ QuakMeeting/
 │       └── banner/                # PyQt6 animated banner overlay
 │           ├── qt_banner.py
 │           └── renderers/         # Modular PyQt6 pilot renderers
-└── tests/                         # Full automated unit test suite (185+ tests)
+└── tests/                         # Full automated unit test suite (195+ tests)
 ```
 
 ---
@@ -156,13 +156,16 @@ QuakMeeting/
 
 | Flag | Description | Example |
 | :--- | :--- | :--- |
-| *(no flags)* | Launches the default platform UI (AppKit on macOS, PyQt6 on Linux/Windows). | `/opt/miniconda3/bin/python3 main.py` |
-| `--qt` | Forces the PyQt6 UI runtime on macOS (useful for development and cross-platform testing). | `/opt/miniconda3/bin/python3 main.py --qt` |
-| `--silent` | Launches in background / menu bar without opening the Flight Deck dashboard window. | `/opt/miniconda3/bin/python3 main.py --silent` |
-| `--test` | Runs a standalone banner test without starting background loops. | `/opt/miniconda3/bin/python3 main.py --test` |
-| `--pilot <name>` | *(With `--test`)* Selects pilot mascot skin (`duck`, `zen`, `captain`, `driver`, `gym`, `chef`, `owl`). | `/opt/miniconda3/bin/python3 main.py --test --pilot duck` |
-| `--stage <0-3>` | *(With `--test`)* Simulates specific reminder stage. | `/opt/miniconda3/bin/python3 main.py --test --stage 0` |
-| `--delay <sec>` | *(With `--test`)* Adds delay countdown before triggering banner. | `/opt/miniconda3/bin/python3 main.py --test --delay 3` |
+| *(no flags)* | Launches the default platform UI (AppKit on macOS, PyQt6 on Linux/Windows). | `python3 main.py` |
+| `-c`, `--check`, `--diagnostics` | Runs a complete system health and arrival diagnostics check with clear actionable report. | `python3 main.py --check` |
+| `--qt` | Forces the PyQt6 UI runtime on macOS (useful for development and cross-platform testing). | `python3 main.py --qt` |
+| `--silent` | Launches in background / menu bar without opening the Flight Deck dashboard window. | `python3 main.py --silent` |
+| `--test` | Runs a standalone banner test without starting background loops. | `python3 main.py --test` |
+| `--pilot <name>` | *(With `--test`)* Selects pilot mascot skin (`duck`, `owl`, `bunny`). | `python3 main.py --test --pilot duck` |
+| `--stage <0-3>` | *(With `--test`)* Simulates specific reminder stage. | `python3 main.py --test --stage 0` |
+| `--delay <sec>` | *(With `--test`)* Adds delay countdown before triggering banner. | `python3 main.py --test --delay 3` |
+| `-d`, `--debug` | Activates debug mode logging and developer UI cards. | `python3 main.py --debug` |
+| `-h`, `--help` | Displays command line usage options. | `python3 main.py --help` |
 
 ---
 

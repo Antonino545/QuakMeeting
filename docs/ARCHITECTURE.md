@@ -73,6 +73,7 @@ Data ingestion layer fetching events from various platforms.
 Orchestrates business use cases.
 - **`calendar_service.py`**: Filters events strictly for **Today**, performs smart multi-calendar deduplication for exams and lectures, manages the on-disk JSON cache, and enriches travel events with transit/driving ETA from home or default exam locations. Automatically selects EventKit on macOS, EDS on GNOME/Linux, and CalDAV on Windows.
 - **`reminder_engine.py`**: Evaluates when to fire notifications. It differentiates between standard events (fires relative to `start_time`) and travel events (fires relative to `departure_time`).
+- **`arrival_service.py`**: Automatic presence detection and arrival suppression engine across macOS (`airport`), Linux (`nmcli`/`iwgetid`), and Windows (`netsh`). Detects active video call processes (Zoom, Microsoft Teams, Webex, Skype, Slack) and matches current Wi-Fi against customizable venue SSIDs (Eduroam, university campus, office), providing live presence diagnostics to the UI.
 - **`address_service.py`**: Centralized address search, live autocomplete, and geocoding validation service querying OpenStreetMap Nominatim with Photon fallback, disk/memory caching (`address_cache.json`), and platform map deep links.
 - **`eta_service.py`**: Calculates multi-modal travel times and builds Apple Maps / Google Maps deep links. On macOS, queries Apple's native `MKDirections` (MapKit) for live transit timetables and traffic-aware driving durations; on Linux and Windows, queries open-source OpenStreetMap / OSRM routing networks (`routed-car`, `routed-bike`, `routed-foot`, and calibrated transit models) with offline Haversine fallback.
 - **`event_bus.py`**: Decouples UI updates from background logic. Components publish events (e.g., `CALENDAR_UPDATED`, `CONFIG_CHANGED`) that the UI subscribes to.
@@ -80,6 +81,7 @@ Orchestrates business use cases.
 - **`language_service.py`**: Internationalization and localization service with OS language auto-detection (macOS `AppKit.NSLocale`, Linux `$LANG`, Windows locale), user language override, and centralized bilingual translations (English & Italian).
 - **`sound_service.py`**: Audio and volume service managing notification chime playback with system volume and mute state detection across macOS (`afplay`), Linux (`canberra-gtk-play`/`pw-play`), and Windows (`winsound`).
 - **`autostart.py`**: Launch-at-login manager supporting macOS SMAppService & LaunchAgent, Linux XDG `.desktop` entries, and Windows Registry (`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`).
+- **`diagnostics.py`**: Pre-flight and runtime system health inspector (Python runtime, window server, calendar providers, presence status, audio devices, and storage paths) with structured diagnostics data and formatted CLI (`--check`) reporting.
 - **`app_controller.py`**: The central orchestrator that launches a background thread to poll services (Calendar, Reminders) without blocking the UI main loop.
 
 ### 4. UI Layer (`ui/`)
@@ -102,10 +104,10 @@ Cross-platform presentation layer structured by operating system:
   - **`menu_bar_app.py`**: AppKit `NSStatusItem` menu bar controller.
   - **`dashboard_window.py`**: Native `NSWindow` Flight Deck HUD with custom segmented capsule pill switcher.
   - **`dashboard_tabs/`**: Dedicated native tab views:
-    - `agenda_tab.py`: Today's flight agenda and meeting launch cards.
+    - `agenda_tab.py`: Today's flight agenda, arrival status badges (`[✅ Arrived]`, `[🟢 In Call]`, `[📍 On Site]`), and meeting launch cards.
     - `hangar_tab.py`: Hangar pilot selection, personality traits, and test flights.
-    - `settings_tab.py`: High-level coordinator delegating to modular cards in `settings/`.
-    - `settings/`: Decomposed sub-card controllers (`timing_card.py`, `eta_card.py`, `calendars_card.py`, `system_card.py`, `helpers.py`).
+    - `settings_tab.py`: High-level coordinator featuring a modern Two-Pane Sidebar Navigation layout (Left: Category navigation sidebar; Right: Dedicated card scroll pane).
+    - `settings/`: Decomposed sub-card controllers (`timing_card.py`, `eta_card.py`, `arrival_card.py`, `calendars_card.py`, `system_card.py`, `helpers.py`).
   - **`banner/`**: Quartz 2D animated HUD banners:
     - `banner_view.py`: Streamlined Cocoa `NSView` managing animation timer ticks, dynamic airplane pitch rotation transforms, flight motion, and mouse event dispatch.
     - `banner_layout.py`: Bounding boxes, button positions, and hit testing targets.
@@ -117,10 +119,10 @@ Cross-platform presentation layer structured by operating system:
   - **`qt_tray_app.py`**: PyQt6 `QSystemTrayIcon` with custom Catppuccin context menu.
   - **`qt_dashboard.py`**: PyQt6 Flight Deck window coordinator with capsule pill switcher and window lifecycle management.
   - **`dashboard_tabs/`**: Dedicated modular tab views matching macOS:
-    - `agenda_tab.py`: Today's flight agenda and meeting launch cards.
+    - `agenda_tab.py`: Today's flight agenda, arrival status badges (`[✅ Arrived]`, `[🟢 In Call]`, `[📍 On Site]`), and meeting launch cards.
     - `hangar_tab.py`: Hangar pilot selection and test flight controls.
-    - `settings_tab.py`: High-level coordinator delegating to modular cards in `settings/`.
-    - `settings/`: Decomposed sub-card widgets (`timing_card.py`, `eta_card.py`, `calendars_card.py`, `system_card.py`).
+    - `settings_tab.py`: High-level coordinator featuring a modern Two-Pane Sidebar Navigation layout (Left: Category navigation sidebar; Right: Dedicated card scroll pane).
+    - `settings/`: Decomposed sub-card widgets (`timing_card.py`, `eta_card.py`, `arrival_card.py`, `calendars_card.py`, `system_card.py`).
   - **`banner/`**: PyQt6 Wayland/X11 animated overlay banner (`qt_duck_banner.py`) with dynamic pitch rotation and software update banners (`qt_update_banner.py`).
   - **`banner/renderers/`**: Pixel-identical PyQt6 vector renderers with multiplatform parity to macOS Quartz 2D.
 - **`ui/app_launcher.py`**: Platform-aware UI dispatcher and entrypoint.

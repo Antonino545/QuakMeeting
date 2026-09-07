@@ -58,6 +58,9 @@ Instead of tiny, easily-missed system notification banners, QuakMeeting animates
   - **Timezone-Aware (`TZID`) & Offline Resilient**: Resolves native IANA timezones via Python stdlib `zoneinfo` and maintains fallback cache on transient network drops.
 - 🚀 **Universal 1-Click Meeting Detection**:
   - Automatically identifies video conference links and launches them in 1 click: **Google Meet, Zoom, Microsoft Teams, Cisco Webex, Jitsi Meet, Whereby, GoToMeeting, Skype, Discord, Slack Huddle**, and telemedicine portals (**Serenis**).
+- 📍 **Smart Presence & Auto-Arrival Detection**:
+  - Automatically suppresses redundant reminder banners when already in an active video call (Zoom, Teams, Webex, Skype, Slack) or connected to venue Wi-Fi (Eduroam, university campus, office networks).
+  - Dedicated Settings card with customizable SSIDs, call/Wi-Fi toggles, live presence diagnostics, and transparent badges in Today's Agenda (`[✅ Arrived]`, `[🟢 In Call]`, `[📍 On Site]`).
 - 🔒 **Privacy-First & Local**: No telemetry, tracking, or cloud account requirements.
 
 ---
@@ -193,7 +196,7 @@ QuakMeeting/
 │       ├── qt_tray_app.py         # PyQt6 QSystemTrayIcon menu & status
 │       ├── qt_dashboard.py        # PyQt6 Flight Deck window
 │       └── banner/                # PyQt6 animated banner overlay & pilot renderers
-└── tests/                         # Full automated unit test suite (185+ tests)
+└── tests/                         # Full automated unit test suite (195+ tests)
 ```
 
 ---

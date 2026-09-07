@@ -245,13 +245,14 @@ class QtFlightDeckWindow(QMainWindow):
     def __init__(self, tab_index: int = 0):
         super().__init__()
         self.setWindowTitle("QuakMeeting — Flight Deck Control Center")
-        self.resize(840, 620)
+        self.resize(920, 640)
+        self.setMinimumSize(880, 580)
 
         # Center on screen
         screen = QApplication.primaryScreen()
         if screen:
             geo = screen.availableGeometry()
-            self.move((geo.width() - 840) // 2, (geo.height() - 620) // 2)
+            self.move((geo.width() - 920) // 2, (geo.height() - 640) // 2)
 
         self.setStyleSheet(QT_DASHBOARD_QSS)
         self.setStatusBar(None)
