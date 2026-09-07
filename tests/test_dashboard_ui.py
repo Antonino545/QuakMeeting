@@ -202,30 +202,38 @@ class TestDashboardUI(unittest.TestCase):
 
         app = QApplication.instance() or QApplication(sys.argv)
 
-        # 1. Non-debug mode: diagnostics row hidden, update status hidden (no update available)
+        # 1. Non-debug mode: diagnostics row hidden, update status hidden (no update available), user actions visible
         with unittest.mock.patch("ui.linux.dashboard_tabs.settings.system_card.is_debug_mode", return_value=False), \
              unittest.mock.patch.object(updater_service, "latest_release_info", None):
             card = SystemCardWidget()
             self.assertEqual(card.uc_title.text(), t("settings_system_lang"))
+            self.assertFalse(card.action_row_widget.isHidden())
+            self.assertFalse(card.up_btn.isHidden())
             self.assertTrue(card.sys_row_widget.isHidden())
             self.assertTrue(card.update_status_box.isHidden())
 
-        # 2. Debug mode: diagnostics row visible, update status visible
+        # 2. Debug mode: diagnostics row visible, update status visible, user actions visible
         with unittest.mock.patch("ui.linux.dashboard_tabs.settings.system_card.is_debug_mode", return_value=True), \
              unittest.mock.patch.object(updater_service, "latest_release_info", None):
             card_debug = SystemCardWidget()
             self.assertEqual(card_debug.uc_title.text(), t("settings_system_lang_diag"))
+            self.assertFalse(card_debug.action_row_widget.isHidden())
+            self.assertFalse(card_debug.up_btn.isHidden())
             self.assertFalse(card_debug.sys_row_widget.isHidden())
             self.assertFalse(card_debug.update_status_box.isHidden())
 
         # 3. Dynamic toggle via set_debug_visibility
         card.set_debug_visibility(True)
         self.assertEqual(card.uc_title.text(), t("settings_system_lang_diag"))
+        self.assertFalse(card.action_row_widget.isHidden())
+        self.assertFalse(card.up_btn.isHidden())
         self.assertFalse(card.sys_row_widget.isHidden())
         self.assertFalse(card.update_status_box.isHidden())
 
         card.set_debug_visibility(False)
         self.assertEqual(card.uc_title.text(), t("settings_system_lang"))
+        self.assertFalse(card.action_row_widget.isHidden())
+        self.assertFalse(card.up_btn.isHidden())
         self.assertTrue(card.sys_row_widget.isHidden())
         self.assertTrue(card.update_status_box.isHidden())
 
