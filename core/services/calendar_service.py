@@ -171,26 +171,28 @@ class CalendarService:
                 elif origin_query and dest:
                     eta_res = eta_service.calculate_eta(origin_query, dest, transport_mode)
                     if eta_res:
+                        actual_mode = eta_res.get("transport_mode", transport_mode)
                         m.travel_time_minutes = eta_res["duration_minutes"]
                         m.travel_distance_km = eta_res["distance_km"]
-                        m.transport_mode = transport_mode
+                        m.transport_mode = actual_mode
                         m.origin_address = origin_query
                         m.departure_time = eta_service.get_departure_time(m.start_time, m.travel_time_minutes, buffer_minutes)
                         m._is_calculated_eta = True
 
                         dur_str = format_duration(m.travel_time_minutes)
-                        icon = MODE_ICONS.get(mode, "🚆")
+                        icon = eta_res.get("mode_icon") or MODE_ICONS.get(actual_mode, "🚆")
                         dep_str = m.departure_time.astimezone().strftime("%H:%M")
-                        m.eta_text = f"{icon} ~{dur_str} • Leave at {dep_str}"
+                        auto_badge = " (🚶 Walk)" if eta_res.get("auto_walking") and transport_mode != "walking" else ""
+                        m.eta_text = f"{icon} ~{dur_str}{auto_badge} • Leave at {dep_str}"
                         m.action_url = eta_res["maps_url"]
 
-                        if mode == "transit":
+                        if actual_mode == "transit":
                             m.action_btn_text = f"🗺️ PUBLIC TRANSIT (~{dur_str})"
-                        elif mode == "automobile":
+                        elif actual_mode == "automobile":
                             m.action_btn_text = f"🗺️ DRIVE WITH MAPS (~{dur_str})"
-                        elif mode == "walking":
+                        elif actual_mode == "walking":
                             m.action_btn_text = f"🗺️ WALKING ROUTE (~{dur_str})"
-                        elif mode == "bicycling":
+                        elif actual_mode == "bicycling":
                             m.action_btn_text = f"🗺️ CYCLING ROUTE (~{dur_str})"
 
     def _save_cache_to_disk(self, meetings: List[Meeting]) -> None:

@@ -96,7 +96,8 @@ class AddressService:
         self,
         query: str,
         city_context: Optional[str] = None,
-        limit: int = 5
+        limit: int = 5,
+        proximity_coords: Optional[Tuple[float, float]] = None
     ) -> List[AddressCandidate]:
         """
         Searches address autocomplete candidates with context bias.
@@ -107,13 +108,14 @@ class AddressService:
             return []
 
         city = (city_context or "").strip()
-        cache_key = f"{cleaned_query.lower()}|{city.lower()}|{limit}"
+        prox_str = f"|{proximity_coords[0]:.3f},{proximity_coords[1]:.3f}" if proximity_coords else ""
+        cache_key = f"{cleaned_query.lower()}|{city.lower()}|{limit}{prox_str}"
         if cache_key in self._suggestions_cache:
             return self._suggestions_cache[cache_key]
 
-        candidates = self._query_nominatim(cleaned_query, city, limit)
+        candidates = self._query_nominatim(cleaned_query, city, limit, proximity_coords=proximity_coords)
         if not candidates:
-            candidates = self._query_photon(cleaned_query, city, limit)
+            candidates = self._query_photon(cleaned_query, city, limit, proximity_coords=proximity_coords)
 
         if candidates:
             self._suggestions_cache[cache_key] = candidates
@@ -124,7 +126,8 @@ class AddressService:
     def verify_address(
         self,
         address: str,
-        city_context: Optional[str] = None
+        city_context: Optional[str] = None,
+        proximity_coords: Optional[Tuple[float, float]] = None
     ) -> Tuple[bool, Optional[AddressCandidate], Optional[str]]:
         """
         Validates an address against real-world map data.
@@ -139,14 +142,15 @@ class AddressService:
             return False, None, "too_short"
 
         city = (city_context or "").strip()
-        cache_key = f"verify_{cleaned.lower()}|{city.lower()}"
+        prox_str = f"|{proximity_coords[0]:.3f},{proximity_coords[1]:.3f}" if proximity_coords else ""
+        cache_key = f"verify_{cleaned.lower()}|{city.lower()}{prox_str}"
         if cache_key in self._verification_cache:
             cand = self._verification_cache[cache_key]
             if cand:
                 return True, cand, None
             return False, None, "not_found"
 
-        candidates = self.search_suggestions(cleaned, city_context=city, limit=1)
+        candidates = self.search_suggestions(cleaned, city_context=city, limit=1, proximity_coords=proximity_coords)
         if candidates:
             best = candidates[0]
             self._verification_cache[cache_key] = best
@@ -157,14 +161,24 @@ class AddressService:
         self._save_cache()
         return False, None, "not_found"
 
-    def _query_nominatim(self, query: str, city: str, limit: int) -> List[AddressCandidate]:
+    def _query_nominatim(
+        self,
+        query: str,
+        city: str,
+        limit: int,
+        proximity_coords: Optional[Tuple[float, float]] = None
+    ) -> List[AddressCandidate]:
         """Queries OpenStreetMap Nominatim search API."""
         search_query = query
         if city and city.lower() not in query.lower() and "," not in query:
             search_query = f"{query}, {city}"
 
         encoded = urllib.parse.quote(search_query)
-        url = f"https://nominatim.openstreetmap.org/search?q={encoded}&format=json&addressdetails=1&limit={limit}"
+        viewbox_param = ""
+        if proximity_coords:
+            p_lat, p_lon = proximity_coords
+            viewbox_param = f"&viewbox={p_lon-0.35:.4f},{p_lat+0.35:.4f},{p_lon+0.35:.4f},{p_lat-0.35:.4f}&bounded=0"
+        url = f"https://nominatim.openstreetmap.org/search?q={encoded}{viewbox_param}&format=json&addressdetails=1&limit={limit}"
         headers = {"User-Agent": "QuakMeeting/1.0 (https://github.com/Antonino545/QuakMeeting)"}
 
         try:
@@ -229,14 +243,24 @@ class AddressService:
             logger.debug(f"Nominatim search notice for '{query}': {e}")
             return []
 
-    def _query_photon(self, query: str, city: str, limit: int) -> List[AddressCandidate]:
+    def _query_photon(
+        self,
+        query: str,
+        city: str,
+        limit: int,
+        proximity_coords: Optional[Tuple[float, float]] = None
+    ) -> List[AddressCandidate]:
         """Queries Photon (Komoot OSM) geocoder as an ultra-fast autocomplete fallback."""
         search_query = query
         if city and city.lower() not in query.lower() and "," not in query:
             search_query = f"{query} {city}"
 
         encoded = urllib.parse.quote(search_query)
-        url = f"https://photon.komoot.io/api/?q={encoded}&limit={limit}"
+        loc_param = ""
+        if proximity_coords:
+            p_lat, p_lon = proximity_coords
+            loc_param = f"&lat={p_lat:.4f}&lon={p_lon:.4f}"
+        url = f"https://photon.komoot.io/api/?q={encoded}{loc_param}&limit={limit}"
         headers = {"User-Agent": "QuakMeeting/1.0"}
 
         try:

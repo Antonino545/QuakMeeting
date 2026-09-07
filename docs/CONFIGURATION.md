@@ -31,6 +31,7 @@ QuakMeeting stores all user preferences, timing thresholds, routing configuratio
 | `transport_mode` | `string` | `"transit"` | Default travel mode (`"transit"`, `"automobile"`, `"walking"`, `"bicycling"`). |
 | `enable_eta_service` | `bool` | `true` | Whether to calculate departure times and routing links via Apple Maps / Google Maps. |
 | `eta_buffer_minutes` | `int` | `10` | Buffer minutes added before departure to account for reaching transit stop/parking. |
+| `auto_walking_threshold_km` | `float` | `1.2` | Distance threshold (in km) to automatically suggest/switch to walking route ETA instead of public transit/driving. Set to `0` to disable. |
 | `custom_keywords` | `dict` | `{...}` | Custom keyword mappings for standard event categories (`study`, `class`, `exam`, `food`, `travel`, `sport`, `in_person`, `health`, `general`). |
 | `category_pilots` | `dict` | `{...}` | Mascot assignment per event category or academic subcategory (`study`, `class`, `exam`, `food`, etc.). |
 
