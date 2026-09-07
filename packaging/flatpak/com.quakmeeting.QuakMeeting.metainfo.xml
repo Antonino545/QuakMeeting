@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.quakmeeting.QuakMeeting</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>QuakMeeting</name>
+  <summary>Smart Meeting Reminders &amp; Flight Deck HUD</summary>
+  <description>
+    <p>
+      QuakMeeting is a cross-platform desktop application that provides smart meeting reminders,
+      flight deck timeline agendas, and multi-modal transit leave-time alerts with customizable mascot pilots.
+    </p>
+    <p>Features include:</p>
+    <ul>
+      <li>Today-only calendar sync with zero-latency caching</li>
+      <li>Multi-stage notification banners with mascot aviators</li>
+      <li>Smart departure ETA calculations for public transit, driving, cycling, and walking</li>
+      <li>Clean Catppuccin Mocha aesthetic with full Wayland and X11 support</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">com.quakmeeting.QuakMeeting.desktop</launchable>
+  <url type="homepage">https://github.com/Antonino545/QuakMeeting</url>
+  <url type="bugtracker">https://github.com/Antonino545/QuakMeeting/issues</url>
+  <provides>
+    <binary>quakmeeting</binary>
+  </provides>
+  <content_rating type="oars-1.1" />
+  <releases>
+    <release version="1.0.5" date="2026-09-07">
+      <description>
+        <p>Release 1.0.5: Repository hygiene, packaging isolation, and Flatpak support.</p>
+      </description>
+    </release>
+  </releases>
+</component>

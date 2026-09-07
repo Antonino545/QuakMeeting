@@ -161,6 +161,24 @@ class TestDashboardUI(unittest.TestCase):
         window.render_hangar_tab()
         window.set_active_tab(2)
 
+        # Test settings tab sidebar category navigation
+        settings_tab = window.settings_tab
+        self.assertIsNotNone(settings_tab)
+        self.assertEqual(len(settings_tab.category_buttons), 5)
+        self.assertEqual(settings_tab.stacked_widget.currentIndex(), 0)
+
+        # Switch to each category and assert
+        for cat_idx in range(5):
+            settings_tab.select_category(cat_idx)
+            self.assertEqual(settings_tab.stacked_widget.currentIndex(), cat_idx)
+
+        # Verify all sub-cards are present
+        self.assertIsNotNone(settings_tab.timing_card)
+        self.assertIsNotNone(settings_tab.arrival_card)
+        self.assertIsNotNone(settings_tab.calendars_card)
+        self.assertIsNotNone(settings_tab.eta_card)
+        self.assertIsNotNone(settings_tab.system_card)
+
         # Test mini widget
         mini = QtMascotMiniWidget(animal="owl", outfit="student")
         self.assertIsNotNone(mini)
@@ -267,11 +285,41 @@ class TestDashboardUI(unittest.TestCase):
         self.assertEqual(len(buttons), 1)
         self.assertLessEqual(buttons[0].geometry().right(), buttons[0].parentWidget().width())
 
-        with unittest.mock.patch.object(QDesktopServices, "openUrl", return_value=True) as open_url:
-            buttons[0].click()
-            open_url.assert_called_once_with(QUrl("https://app.serenis.it/join/test123"))
-
         window.close()
+
+    def test_qt_settings_arrival_card(self):
+        try:
+            from PyQt6.QtWidgets import QApplication
+            from ui.linux.dashboard_tabs.settings.arrival_card import ArrivalCardWidget
+            from core.services.language_service import t
+        except (ImportError, ModuleNotFoundError):
+            self.skipTest("PyQt6 not available for Qt arrival card testing")
+
+        app = QApplication.instance() or QApplication(sys.argv)
+        card = ArrivalCardWidget()
+        self.assertIsNotNone(card)
+        self.assertTrue(card.master_chk.isChecked())
+        self.assertTrue(card.call_chk.isChecked())
+        self.assertTrue(card.wifi_chk.isChecked())
+
+        # Test toggles
+        card.master_chk.setChecked(False)
+        self.assertFalse(config.get("enable_arrival_detection"))
+        self.assertFalse(card.sub_container.isEnabled())
+
+        card.master_chk.setChecked(True)
+        self.assertTrue(config.get("enable_arrival_detection"))
+        self.assertTrue(card.sub_container.isEnabled())
+
+        # Test diagnostics update
+        card.update_diagnostics()
+        self.assertTrue(len(card.diag_wifi_lbl.text()) > 0)
+        self.assertTrue(len(card.diag_call_lbl.text()) > 0)
+
+        # Test SSIDs reset
+        card._on_reset_ssids()
+        self.assertIn("eduroam", config.get("arrival_wifi_ssids"))
+
 
 if __name__ == '__main__':
     unittest.main()

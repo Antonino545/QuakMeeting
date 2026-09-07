@@ -98,6 +98,7 @@ class Meeting:
     classroom: Optional[str] = None
     teacher: Optional[str] = None
     is_arrived: bool = False
+    arrival_reason: Optional[str] = None
     is_quiet_reminder: bool = False
 
     # Modular Animal & Outfit
@@ -198,6 +199,7 @@ class Meeting:
             "classroom": self.classroom,
             "teacher": self.teacher,
             "is_arrived": self.is_arrived,
+            "arrival_reason": self.arrival_reason,
             "is_quiet_reminder": self.is_quiet_reminder,
             "animal": self.animal,
             "outfit": self.outfit
@@ -259,6 +261,7 @@ class Meeting:
             classroom=d.get("classroom"),
             teacher=d.get("teacher"),
             is_arrived=bool(d.get("is_arrived", False)),
+            arrival_reason=d.get("arrival_reason"),
             is_quiet_reminder=bool(d.get("is_quiet_reminder", False)),
             animal=d.get("animal"),
             outfit=d.get("outfit")

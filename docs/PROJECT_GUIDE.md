@@ -32,11 +32,14 @@ python3 -m unittest discover -s tests -v
 # 2. Build the Ubuntu .deb package
 bash scripts/build_ubuntu_deb.sh
 
-# 3. Install and run (if testing installation)
+# 3. Optional: Build Flatpak bundle
+bash scripts/build_flatpak.sh
+
+# 4. Install and run (if testing installation)
 sudo apt-get install --reinstall ./deb_dist/quakmeeting_*_amd64.deb
 pkill -f "quakmeeting" 2>/dev/null; sleep 1; quakmeeting &
 
-# 4. Verify live logs
+# 5. Verify live logs
 tail -15 ~/.quakmeeting/quakmeeting.log
 ```
 
@@ -58,25 +61,25 @@ QuakMeeting/
 ├── core/
 │   ├── domain/
 │   │   ├── models.py              # Meeting dataclass, PilotType, TransportMode, format_duration()
-│   │   └── classifier.py          # Smart keyword matching & categorization
+│   │   └── classifier.py          # Smart keyword matching, category classification & video URL extraction
 │   ├── providers/
 │   │   ├── base.py                # BaseCalendarProvider abstract class
 │   │   ├── eventkit_provider.py   # Native Apple EventKit bridge (macOS)
-│   │   └── caldav_provider.py     # CalDAV calendar provider (Linux)
+│   │   └── caldav_provider.py     # CalDAV/ICS provider with RRULE expansion, TZID & fallback cache
 │   ├── services/
 │   │   ├── calendar_service.py    # Synchronizes & caches Today-only events (00:00 to 23:59:59)
 │   │   ├── reminder_engine.py     # Multi-stage notification triggers (evaluates leave vs start time)
-│   │   ├── eta_service.py         # Apple Maps URL builder & departure time calculator
-│   │   ├── arrival_service.py     # Automatic/manual arrival detection and suppression
+│   │   ├── eta_service.py         # Apple Maps route URLs & departure time calculator
+│   │   ├── arrival_service.py     # Multiplatform presence detection (call apps, venue Wi-Fi, diagnostics)
 │   │   ├── config_service.py      # Configuration manager (~/.quakmeeting/config.json)
 │   │   └── event_bus.py           # Decoupled pub/sub event system
 │   └── logger.py                  # Dual console & file logger (~/.quakmeeting/quakmeeting.log)
 ├── ui/
 │   ├── app_launcher.py            # Platform-aware UI dispatcher
-│   ├── common/                    # Shared UI helpers, theme & viewmodels
 │   │   ├── theme.py               # Central Catppuccin Mocha palette & pilot mappings (Single source of truth)
 │   │   ├── tray_viewmodel.py      # Status formatting & stage logic
-│   │   └── banner_queue.py        # Cross-platform banner sequencing queue
+│   │   ├── banner_queue.py        # Cross-platform banner sequencing queue
+│   │   └── banner_presets.py      # Cross-platform test & update mock banner presets
 │   ├── macos/                     # macOS Native UI (PyObjC, AppKit, Quartz 2D)
 │   │   ├── theme.py               # Catppuccin Mocha AppKit NSColor/CGColor palette
 │   │   ├── menu_bar_app.py        # NSStatusItem status bar controller & dropdown
@@ -94,7 +97,7 @@ QuakMeeting/
 │       └── banner/                # PyQt6 animated banner overlay
 │           ├── qt_banner.py
 │           └── renderers/         # Modular PyQt6 pilot renderers
-└── tests/                         # Full automated unit test suite (40+ tests)
+└── tests/                         # Full automated unit test suite (195+ tests)
 ```
 
 ---
@@ -140,19 +143,29 @@ QuakMeeting/
 ### 6. Cross-Platform UI Parity Invariant
 - **Rule**: Whenever UI components, layout structures, settings cards, or visual styling are added or modified on macOS (`ui/macos/`), always replicate and maintain identical design, hierarchy, and functionality on Linux/Ubuntu (`ui/linux/`), and vice-versa. Both platforms must stay visually consistent under Catppuccin Mocha theme.
 
+### 7. Platform Packaging Isolation
+- **Rule**: Distribution builds must exclusively contain the target platform's UI layer and common design tokens:
+  - **macOS (`QuakMeeting.app`)**: Packages only `ui/macos/` and `ui/common/`. The Qt UI tree (`ui/linux/`) is excluded.
+  - **Linux (`.deb` & Flatpak)**: Packages only `ui/linux/` and `ui/common/`. The Cocoa/AppKit UI tree (`ui/macos/`) is excluded.
+  - **Windows**: PyInstaller packaging excludes `ui.macos`.
+  - **Shared Presets**: Test and update presets must live in `ui/common/banner_presets.py` to avoid cross-platform dependencies.
+
 ---
 
 ## 💻 CLI Flags & Runtime Options
 
 | Flag | Description | Example |
 | :--- | :--- | :--- |
-| *(no flags)* | Launches the default platform UI (AppKit on macOS, PyQt6 on Linux/Windows). | `/opt/miniconda3/bin/python3 main.py` |
-| `--qt` | Forces the PyQt6 UI runtime on macOS (useful for development and cross-platform testing). | `/opt/miniconda3/bin/python3 main.py --qt` |
-| `--silent` | Launches in background / menu bar without opening the Flight Deck dashboard window. | `/opt/miniconda3/bin/python3 main.py --silent` |
-| `--test` | Runs a standalone banner test without starting background loops. | `/opt/miniconda3/bin/python3 main.py --test` |
-| `--pilot <name>` | *(With `--test`)* Selects pilot mascot skin (`duck`, `zen`, `captain`, `driver`, `gym`, `chef`, `owl`). | `/opt/miniconda3/bin/python3 main.py --test --pilot duck` |
-| `--stage <0-3>` | *(With `--test`)* Simulates specific reminder stage. | `/opt/miniconda3/bin/python3 main.py --test --stage 0` |
-| `--delay <sec>` | *(With `--test`)* Adds delay countdown before triggering banner. | `/opt/miniconda3/bin/python3 main.py --test --delay 3` |
+| *(no flags)* | Launches the default platform UI (AppKit on macOS, PyQt6 on Linux/Windows). | `python3 main.py` |
+| `-c`, `--check`, `--diagnostics` | Runs a complete system health and arrival diagnostics check with clear actionable report. | `python3 main.py --check` |
+| `--qt` | Forces the PyQt6 UI runtime on macOS (useful for development and cross-platform testing). | `python3 main.py --qt` |
+| `--silent` | Launches in background / menu bar without opening the Flight Deck dashboard window. | `python3 main.py --silent` |
+| `--test` | Runs a standalone banner test without starting background loops. | `python3 main.py --test` |
+| `--pilot <name>` | *(With `--test`)* Selects pilot mascot skin (`duck`, `owl`, `bunny`). | `python3 main.py --test --pilot duck` |
+| `--stage <0-3>` | *(With `--test`)* Simulates specific reminder stage. | `python3 main.py --test --stage 0` |
+| `--delay <sec>` | *(With `--test`)* Adds delay countdown before triggering banner. | `python3 main.py --test --delay 3` |
+| `-d`, `--debug` | Activates debug mode logging and developer UI cards. | `python3 main.py --debug` |
+| `-h`, `--help` | Displays command line usage options. | `python3 main.py --help` |
 
 ---
 

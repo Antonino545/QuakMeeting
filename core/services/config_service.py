@@ -42,6 +42,13 @@ DEFAULT_CONFIG = {
     "transport_mode": "transit",       # "transit" (Mezzi Pubblici), "automobile" (Auto), "walking" (A Piedi), "bicycling" (Bici)
     "enable_eta_service": True,
     "eta_buffer_minutes": 10,          # Margine di anticipo per raggiungere la fermata/parcheggio
+    # Smart Presence & Arrival Detection
+    "enable_arrival_detection": True,  # Auto-suppress reminders when arrived or in a call
+    "arrival_detect_active_calls": True,  # Auto-detect Zoom, Teams, Webex, Skype running processes
+    "arrival_detect_venue_wifi": True,    # Auto-detect campus/office Wi-Fi networks
+    "arrival_wifi_ssids": [
+        "eduroam", "polito", "campus", "universit", "studenti", "unito", "polimi"
+    ],
     "debug_mode": False,               # Show developer & diagnostics test banners and tools
     "default_pilot": "duck",           # Active default mascot ("duck", "owl", "bunny")
     "force_default_pilot": False,      # If True, always uses default_pilot for all notifications instead of auto-categorization

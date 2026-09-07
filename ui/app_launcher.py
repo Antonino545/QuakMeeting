@@ -11,10 +11,18 @@ def launch_application():
     """Starts QuakMeeting menu bar status item and event listeners."""
     force_qt = "--qt" in sys.argv
     if sys.platform == "darwin" and not force_qt:
-        from ui.macos.menu_bar_app import run_menu_bar_app
+        try:
+            from ui.macos.menu_bar_app import run_menu_bar_app
+        except ImportError as e:
+            logger.error(f"Native macOS AppKit runtime (ui/macos) could not be loaded: {e}")
+            sys.exit(1)
         run_menu_bar_app()
     elif sys.platform.startswith("linux") or sys.platform == "win32" or force_qt:
-        from ui.linux.qt_tray_app import run_qt_tray_app
+        try:
+            from ui.linux.qt_tray_app import run_qt_tray_app
+        except ImportError as e:
+            logger.error(f"Qt runtime (ui/linux) could not be loaded: {e}")
+            sys.exit(1)
         run_qt_tray_app()
     else:
         logger.error(f"Unsupported operating system: {sys.platform}")

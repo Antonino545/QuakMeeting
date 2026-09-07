@@ -15,6 +15,8 @@ from PyQt6.QtCore import Qt, QUrl, QTimer
 from PyQt6.QtGui import QDesktopServices
 
 from core.services.calendar_service import calendar_service
+from core.services.arrival_service import arrival_service
+from core.services.language_service import t
 from core.domain.models import format_duration
 from core.domain.classifier import EventClassifier
 
@@ -119,6 +121,16 @@ class QtAgendaTab(QWidget):
                     sub_txt += f"  •  <span style='color:#f9e2af;'>🚗 Leave at {m.departure_time.astimezone().strftime('%H:%M')}</span>"
                 if m.classroom:
                     sub_txt += f"  •  <span style='color:#cba6f7;'>🏫 {m.classroom}</span>"
+
+                # Check if arrived (manually or via presence)
+                if arrival_service.is_meeting_arrived(m):
+                    reason = m.arrival_reason or arrival_service.get_arrival_reason(m.id) or "manual"
+                    if "call" in reason:
+                        sub_txt += f"  •  <span style='color:#a6e3a1; font-weight:bold;'>🟢 {t('agenda_in_call_badge', default='In Call')}</span>"
+                    elif "wifi" in reason:
+                        sub_txt += f"  •  <span style='color:#a6e3a1; font-weight:bold;'>📍 {t('agenda_on_site_badge', default='On Site')}</span>"
+                    else:
+                        sub_txt += f"  •  <span style='color:#a6e3a1; font-weight:bold;'>✅ {t('agenda_arrived_badge', default='Arrived')}</span>"
 
                 s_l = QLabel(sub_txt, card)
                 s_l.setObjectName("CardSub")

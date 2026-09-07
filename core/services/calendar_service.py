@@ -83,6 +83,10 @@ class CalendarService:
         self._fetch_lock = threading.Lock()
         self._initialized = True
 
+    def get_active_provider(self) -> Optional[BaseCalendarProvider]:
+        """Returns the active calendar provider instance."""
+        return getattr(self, "_provider", None)
+
     def set_provider(self, provider: BaseCalendarProvider) -> None:
         self._provider = provider
         self.provider_name = provider.__class__.__name__

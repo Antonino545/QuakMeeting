@@ -6,6 +6,7 @@ import time
 from datetime import datetime
 from core.domain.models import format_duration
 from core.services.eta_service import MODE_ICONS
+from core.services.arrival_service import arrival_service
 from core.services.language_service import t, get_active_language
 from ui.macos.theme import Theme
 
@@ -150,6 +151,15 @@ class AgendaTabController(AppKit.NSObject):
                 sub_str += f"  •  ⏱️ {icon} ~{dur_str} (Leave at {dep_dt.astimezone().strftime('%H:%M')})"
             else:
                 sub_str += f"  •  ⏱️ {icon} ~{dur_str} travel"
+
+        if m.get("is_arrived") or arrival_service.is_manually_arrived(m.get("id", "")):
+            reason = m.get("arrival_reason") or arrival_service.get_arrival_reason(m.get("id", "")) or "manual"
+            if "call" in reason:
+                sub_str += f"  •  🟢 {t('agenda_in_call_badge')}"
+            elif "wifi" in reason:
+                sub_str += f"  •  📍 {t('agenda_on_site_badge')}"
+            else:
+                sub_str += f"  •  ✅ {t('agenda_arrived_badge')}"
 
         sub_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(62, 16, w - 275, 20))
         sub_lbl.setStringValue_(sub_str)

@@ -20,6 +20,13 @@ MEETING_PATTERNS = [
     (r"https://[a-zA-Z0-9-]+\.zoom\.us/[jsw]/[0-9a-zA-Z?=&_-]+", "Zoom Meeting 🔷", "duck", "🚀 JOIN ZOOM MEETING"),
     (r"https://teams\.microsoft\.com/l/meetup-join/[0-9a-zA-Z%?=&_-]+", "Microsoft Teams 🟣", "duck", "🚀 JOIN TEAMS MEETING"),
     (r"https://teams\.live\.com/meet/[0-9a-zA-Z?=&_-]+", "Microsoft Teams 🟣", "duck", "🚀 JOIN TEAMS MEETING"),
+    (r"https://[a-zA-Z0-9-]+\.webex\.com/(?:meet|join|wbxmjs)/[0-9a-zA-Z?=&_/\.-]+", "Cisco Webex 🟢", "duck", "🚀 JOIN WEBEX"),
+    (r"https://(?:meet\.jit\.si|8x8\.vc)/[0-9a-zA-Z?=&_/\.-]+", "Jitsi Meet 🌐", "duck", "🚀 JOIN JITSI MEET"),
+    (r"https://whereby\.com/[0-9a-zA-Z_\.-]+", "Whereby 🌿", "duck", "🚀 JOIN WHEREBY"),
+    (r"https://(?:global|app)\.gotomeeting\.com/join/[0-9a-zA-Z?=&_\.-]+", "GoToMeeting 🟠", "duck", "🚀 JOIN GOTOMEETING"),
+    (r"https://join\.skype\.com/[0-9a-zA-Z_\.-]+", "Skype 🔵", "duck", "🚀 JOIN SKYPE"),
+    (r"https://discord\.(?:com|gg)/(?:channels|invite)/[0-9a-zA-Z/_\.-]+", "Discord 💬", "duck", "🚀 JOIN DISCORD"),
+    (r"https://[a-zA-Z0-9-]+\.slack\.com/archives/[0-9a-zA-Z/_\.-]+", "Slack Huddle 📱", "squirrel", "⚡ JOIN SLACK HUDDLE"),
     (r"https://app\.serenis\.it/join/[0-9a-zA-Z_-]+", "Serenis 🛋️", "zen_duck", "🚀 JOIN SESSION")
 ]
 

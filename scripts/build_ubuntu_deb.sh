@@ -27,6 +27,9 @@ mkdir -p "$BUILD_ROOT/usr/share/icons/hicolor/512x512/apps"
 # 1. Copy Application payload
 cp -R "$ROOT_DIR/core" "$BUILD_ROOT/opt/quakmeeting/"
 cp -R "$ROOT_DIR/ui" "$BUILD_ROOT/opt/quakmeeting/"
+# Exclude macOS-specific UI files (AppKit/Quartz) and pycache from Linux package
+rm -rf "$BUILD_ROOT/opt/quakmeeting/ui/macos"
+find "$BUILD_ROOT/opt/quakmeeting" -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 cp -R "$ROOT_DIR/assets" "$BUILD_ROOT/opt/quakmeeting/"
 cp "$ROOT_DIR/main.py" "$BUILD_ROOT/opt/quakmeeting/"
 

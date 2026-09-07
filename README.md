@@ -51,9 +51,16 @@ Instead of tiny, easily-missed system notification banners, QuakMeeting animates
   - Custom vector graphics and speech vocalizations tailored to event context.
 - 🔄 **In-App GitHub Releases Auto-Updater**:
   - Checks for updates automatically with live download/installation progress tracking.
-- ⚡ **Multiplatform Calendar Sync**:
+- ⚡ **Multiplatform Calendar Sync & Recurrence Engine**:
   - **macOS**: Native Apple EventKit API bridge (`EventKitProvider`).
-  - **Ubuntu Linux**: Universal iCalendar / CalDAV engine (`CalDAVProvider`) syncing Google Calendar, iCloud, Nextcloud, and Outlook `.ics` feeds.
+  - **Linux & Windows**: Universal iCalendar / CalDAV engine (`CalDAVProvider`) syncing Google Calendar, iCloud, Nextcloud, and university/work `.ics` feeds.
+  - **Intelligent Today `RRULE` Recurrence**: Automatically expands daily, weekly, and monthly repeating events (`BYDAY`, `INTERVAL`, `UNTIL`, `COUNT`, `EXDATE`) strictly for Today.
+  - **Timezone-Aware (`TZID`) & Offline Resilient**: Resolves native IANA timezones via Python stdlib `zoneinfo` and maintains fallback cache on transient network drops.
+- 🚀 **Universal 1-Click Meeting Detection**:
+  - Automatically identifies video conference links and launches them in 1 click: **Google Meet, Zoom, Microsoft Teams, Cisco Webex, Jitsi Meet, Whereby, GoToMeeting, Skype, Discord, Slack Huddle**, and telemedicine portals (**Serenis**).
+- 📍 **Smart Presence & Auto-Arrival Detection**:
+  - Automatically suppresses redundant reminder banners when already in an active video call (Zoom, Teams, Webex, Skype, Slack) or connected to venue Wi-Fi (Eduroam, university campus, office networks).
+  - Dedicated Settings card with customizable SSIDs, call/Wi-Fi toggles, live presence diagnostics, and transparent badges in Today's Agenda (`[✅ Arrived]`, `[🟢 In Call]`, `[📍 On Site]`).
 - 🔒 **Privacy-First & Local**: No telemetry, tracking, or cloud account requirements.
 
 ---
@@ -69,7 +76,7 @@ QuakMeeting features a diverse crew of animal pilots automatically chosen based 
 
 | Live Animation | Mascot Animal | Persona | Accent Color | Triggers & Context | 1-Click Action |
 | :---: | :--- | :--- | :--- | :--- | :--- |
-| <img src="assets/animations/duck_flight.gif" width="110" alt="Mallard Duck" /> | 🦆 **Mallard Duck** | **Aviator Pilot** | Catppuccin Green | Google Meet, Zoom, MS Teams, Webex, Online calls | `[🚀 JOIN MEETING]` |
+| <img src="assets/animations/duck_flight.gif" width="110" alt="Mallard Duck" /> | 🦆 **Mallard Duck** | **Aviator Pilot** | Catppuccin Green | Google Meet, Zoom, MS Teams, Webex, Jitsi, Whereby, Skype, Discord, Slack calls | `[🚀 JOIN MEETING]` |
 | <img src="assets/animations/owl_flight.gif" width="110" alt="Wise Owl" /> | 🦉 **Wise Owl** | **Academic Scholar** | Catppuccin Mauve | University lectures, exams, campus study, research | `[📚 CLASSROOM & NOTES]` |
 | <img src="assets/animations/bunny_flight.gif" width="110" alt="Athletic Bunny" /> | 🐰 **Athletic Bunny** | **Gym & Sport Hero** | Catppuccin Red | Palestra, Gym, CrossFit, Padel, Tennis, Football, Running | `[🗺️ GYM DIRECTIONS]` |
 | <img src="assets/animations/platypus_flight.gif" width="110" alt="Zen Platypus" /> | 🦔 **Zen Platypus** | **Mindfulness Guru** | Catppuccin Teal | Serenis, Therapy, Yoga, Wellness, Meditation | `[🛋️ JOIN SESSION]` |
@@ -119,6 +126,17 @@ QuakMeeting delivers a unified **Catppuccin Mocha** visual experience across mac
    ```
 3. Launch **QuakMeeting** from your Application Grid or run `quakmeeting`.
 
+### 📦 Flatpak (Universal Linux)
+Build and install standalone Flatpak bundle:
+```bash
+# Build standalone bundle
+bash scripts/build_flatpak.sh
+
+# Install and run
+flatpak install --user flatpak_dist/quakmeeting.flatpak
+flatpak run com.quakmeeting.QuakMeeting
+```
+
 ### 🪟 Microsoft Windows (`.zip` Standalone / Portable)
 1. Download **`QuakMeeting-Windows.zip`** from [Latest Releases](https://github.com/Antonino545/QuakMeeting/releases/latest).
 2. Extract the ZIP archive anywhere on your PC.
@@ -147,7 +165,7 @@ QuakMeeting/
 │   │   ├── base.py                # BaseCalendarProvider abstract class
 │   │   ├── eventkit_provider.py   # Native Apple EventKit bridge (macOS)
 │   │   ├── eds_provider.py        # GNOME Evolution Data Server calendar provider (Linux)
-│   │   └── caldav_provider.py     # Universal CalDAV / .ics calendar provider (Linux & Windows)
+│   │   └── caldav_provider.py     # CalDAV / .ics provider with Today RRULE expansion & TZID (Linux/Windows)
 │   ├── services/
 │   │   ├── calendar_service.py    # Synchronizes & caches Today-only events (00:00 to 23:59:59)
 │   │   ├── reminder_engine.py     # Multi-stage notification triggers (evaluates leave vs start time)
@@ -166,7 +184,8 @@ QuakMeeting/
 │   │   ├── banner_speech.py       # Animal vocalization generator (duck, owl, bunny, squirrel, platypus)
 │   │   ├── banner_formatting.py   # Time differentials & travel badges
 │   │   ├── banner_particles.py    # Turbo afterburner & exhaust smoke physics engine
-│   │   └── banner_queue.py        # Cross-platform banner sequencing queue
+│   │   ├── banner_queue.py        # Cross-platform banner sequencing queue
+│   │   └── banner_presets.py      # Shared test and update banner presets
 │   ├── macos/                     # macOS Native UI (PyObjC, AppKit, Quartz 2D)
 │   │   ├── menu_bar_app.py        # NSStatusItem status bar controller & dropdown
 │   │   ├── dashboard_window.py    # Native NSWindow Flight Deck HUD
@@ -177,7 +196,7 @@ QuakMeeting/
 │       ├── qt_tray_app.py         # PyQt6 QSystemTrayIcon menu & status
 │       ├── qt_dashboard.py        # PyQt6 Flight Deck window
 │       └── banner/                # PyQt6 animated banner overlay & pilot renderers
-└── tests/                         # Full automated unit test suite (170+ tests)
+└── tests/                         # Full automated unit test suite (195+ tests)
 ```
 
 ---

@@ -134,6 +134,119 @@ END:VCALENDAR
         self.assertEqual(len(meetings), 1)
         self.assertEqual(meetings[0].meeting_url, "https://app.serenis.it/join/test123")
         self.assertEqual(meetings[0].action_url, "https://app.serenis.it/join/test123")
+    def test_rrule_weekly_matching_today(self):
+        now = datetime.now().astimezone()
+        day_code = self.provider.DAY_CODES[now.weekday()]
+        past_start = now - timedelta(days=28) # 4 weeks ago
+        dt_start_str = past_start.strftime("%Y%m%dT100000")
+        dt_end_str = past_start.strftime("%Y%m%dT110000")
+
+        ics_payload = f"""BEGIN:VCALENDAR
+BEGIN:VEVENT
+UID:weekly-class-123
+SUMMARY:Weekly Algorithms Lecture
+LOCATION:Campus Aula 3
+DTSTART:{dt_start_str}
+DTEND:{dt_end_str}
+RRULE:FREQ=WEEKLY;BYDAY={day_code}
+END:VEVENT
+END:VCALENDAR
+"""
+        events = self.provider._parse_ics_events(ics_payload)
+        self.assertEqual(len(events), 1)
+        ev = events[0]
+        self.assertEqual(ev["title"], "Weekly Algorithms Lecture")
+        self.assertTrue(ev.get("is_recurring"))
+        self.assertEqual(ev["start_time"].astimezone().date(), now.date())
+        self.assertEqual(ev["start_time"].astimezone().hour, 10)
+        self.assertEqual(ev["end_time"].astimezone().hour, 11)
+
+    def test_rrule_weekly_different_day(self):
+        now = datetime.now().astimezone()
+        # Pick a different day
+        diff_day = self.provider.DAY_CODES[(now.weekday() + 2) % 7]
+        past_start = now - timedelta(days=28)
+        dt_start_str = past_start.strftime("%Y%m%dT100000")
+        dt_end_str = past_start.strftime("%Y%m%dT110000")
+
+        ics_payload = f"""BEGIN:VCALENDAR
+BEGIN:VEVENT
+UID:weekly-class-456
+SUMMARY:Weekly Algorithms Lecture
+DTSTART:{dt_start_str}
+DTEND:{dt_end_str}
+RRULE:FREQ=WEEKLY;BYDAY={diff_day}
+END:VEVENT
+END:VCALENDAR
+"""
+        events = self.provider._parse_ics_events(ics_payload)
+        self.assertEqual(len(events), 0)
+
+    def test_rrule_expired_until(self):
+        now = datetime.now().astimezone()
+        day_code = self.provider.DAY_CODES[now.weekday()]
+        past_start = now - timedelta(days=60)
+        until_date = now - timedelta(days=5) # Expired last week
+
+        ics_payload = f"""BEGIN:VCALENDAR
+BEGIN:VEVENT
+UID:expired-class-789
+SUMMARY:Past Semester Lecture
+DTSTART:{past_start.strftime("%Y%m%dT100000")}
+DTEND:{past_start.strftime("%Y%m%dT110000")}
+RRULE:FREQ=WEEKLY;BYDAY={day_code};UNTIL={until_date.strftime("%Y%m%dT235959Z")}
+END:VEVENT
+END:VCALENDAR
+"""
+        events = self.provider._parse_ics_events(ics_payload)
+        self.assertEqual(len(events), 0)
+
+    def test_rrule_cancelled_in_exdate(self):
+        now = datetime.now().astimezone()
+        day_code = self.provider.DAY_CODES[now.weekday()]
+        past_start = now - timedelta(days=14)
+        today_str = now.strftime("%Y%m%d")
+
+        ics_payload = f"""BEGIN:VCALENDAR
+BEGIN:VEVENT
+UID:cancelled-class-101
+SUMMARY:Cancelled Lecture Today
+DTSTART:{past_start.strftime("%Y%m%dT100000")}
+DTEND:{past_start.strftime("%Y%m%dT110000")}
+RRULE:FREQ=WEEKLY;BYDAY={day_code}
+EXDATE:{today_str}
+END:VEVENT
+END:VCALENDAR
+"""
+        events = self.provider._parse_ics_events(ics_payload)
+        self.assertEqual(len(events), 0)
+
+    def test_tzid_timezone_parsing(self):
+        ics_payload = """BEGIN:VCALENDAR
+BEGIN:VEVENT
+UID:tz-event-1
+SUMMARY:Rome Meeting
+DTSTART;TZID=Europe/Rome:20260907T143000
+DTEND;TZID=Europe/Rome:20260907T153000
+END:VEVENT
+END:VCALENDAR
+"""
+        events = self.provider._parse_ics_events(ics_payload)
+        self.assertEqual(len(events), 1)
+        ev = events[0]
+        # In summer (CEST), Rome is UTC+2: 14:30 Europe/Rome == 12:30 UTC
+        # In winter (CET), Rome is UTC+1: 14:30 Europe/Rome == 13:30 UTC
+        self.assertEqual(ev["start_time"].tzinfo.tzname(None), "UTC")
+        self.assertIn(ev["start_time"].hour, (12, 13))
+
+    def test_feed_cache_fallback_on_network_error(self):
+        source = "https://example.com/calendar.ics"
+        self.provider._feed_cache[source] = "CACHED_ICS_DATA"
+        # Simulate network failure
+        with unittest.mock.patch("urllib.request.urlopen", side_effect=Exception("Connection timed out")):
+            content = self.provider._load_ics_content(source)
+            self.assertEqual(content, "CACHED_ICS_DATA")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -58,7 +58,7 @@ class ModernToggleSwitch(AppKit.NSControl):
         knob_rect = AppKit.NSMakeRect(self._knob_x, 2.0, 20.0, 20.0)
         knob_path = AppKit.NSBezierPath.bezierPathWithOvalInRect_(knob_rect)
         if self._checked:
-            Theme.CRUST.setFill()
+            AppKit.NSColor.whiteColor().setFill()
         else:
-            Theme.TEXT.setFill()
+            Theme.SUBTEXT1.setFill()
         knob_path.fill()
