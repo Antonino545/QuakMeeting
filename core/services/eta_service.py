@@ -252,46 +252,19 @@ class ETAService:
         default_city: Optional[str] = None,
         proximity_coords: Optional[Tuple[float, float]] = None
     ) -> Optional[Tuple[float, float]]:
-        """Geocodes an address string to (latitude, longitude) coordinates with smart local context bias."""
-        cleaned_addr = address.strip()
-        city_context = (default_city or "").strip()
-        cache_key = f"geo_{cleaned_addr.lower()}_{city_context.lower()}"
-        if cache_key in self._memory_cache:
-            coords = self._memory_cache[cache_key]
-            return coords["lat"], coords["lon"]
+        """Geocodes an address string to (latitude, longitude) coordinates using central AddressService."""
+        cleaned_addr = (address or "").strip()
+        if not cleaned_addr:
+            return None
 
-        raw_key = f"geo_{cleaned_addr.lower()}"
-        if raw_key in self._memory_cache and not city_context:
-            coords = self._memory_cache[raw_key]
-            return coords["lat"], coords["lon"]
-
-        headers = {"User-Agent": "QuakMeeting/1.0"}
-
-        queries = []
-        if city_context and city_context.lower() not in cleaned_addr.lower() and "," not in cleaned_addr:
-            queries.append(f"{cleaned_addr}, {city_context}")
-        queries.append(cleaned_addr)
-
-        viewbox_param = ""
-        if proximity_coords:
-            p_lat, p_lon = proximity_coords
-            viewbox_param = f"&viewbox={p_lon-0.35:.4f},{p_lat+0.35:.4f},{p_lon+0.35:.4f},{p_lat-0.35:.4f}&bounded=0"
-
-        for q in queries:
-            try:
-                url = f"https://nominatim.openstreetmap.org/search?q={urllib.parse.quote(q)}{viewbox_param}&format=json&limit=1"
-                req = urllib.request.Request(url, headers=headers)
-                with urllib.request.urlopen(req, timeout=4) as resp:
-                    data = json.loads(resp.read().decode("utf-8"))
-                    if data and len(data) > 0:
-                        lat = float(data[0]["lat"])
-                        lon = float(data[0]["lon"])
-                        self._memory_cache[cache_key] = {"lat": lat, "lon": lon}
-                        self._memory_cache[raw_key] = {"lat": lat, "lon": lon}
-                        self._save_cache()
-                        return lat, lon
-            except Exception as e:
-                logger.debug(f"Geocoding error for '{q}': {e}")
+        from core.services.address_service import address_service
+        is_valid, cand, _ = address_service.verify_address(
+            cleaned_addr,
+            city_context=default_city,
+            proximity_coords=proximity_coords
+        )
+        if is_valid and cand and (cand.lat != 0.0 or cand.lon != 0.0):
+            return cand.lat, cand.lon
         return None
 
     def _query_opensource_route(self, coords_orig: Tuple[float, float], coords_dest: Tuple[float, float], mode: str) -> Optional[Tuple[int, float]]:
@@ -348,9 +321,16 @@ class ETAService:
 
         return None
 
-    def calculate_eta(self, origin: str, destination: str, mode: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    def calculate_eta(
+        self,
+        origin: str,
+        destination: str,
+        mode: Optional[str] = None,
+        allow_auto_mode: bool = True
+    ) -> Optional[Dict[str, Any]]:
         """
         Calculates travel duration (minutes) and distance (km) for the specified mode.
+        Auto-suggests walking route if destination is within walking distance (< threshold_km).
         Returns dict with minutes, km, mode, and ready-to-use Maps URL.
         """
         if not origin or not destination or origin.strip() == "" or destination.strip() == "":
@@ -371,10 +351,28 @@ class ETAService:
 
         duration_minutes = 30
         distance_km = 8.0
+        auto_walking = False
 
         if coords_orig and coords_dest:
             lat1, lon1 = coords_orig
             lat2, lon2 = coords_dest
+
+            # Straight-line distance estimate (Haversine)
+            dlat = math.radians(lat2 - lat1)
+            dlon = math.radians(lon2 - lon1)
+            a = math.sin(dlat / 2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2)**2
+            c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+            est_distance_km = round(6371.0 * c, 2)
+
+            auto_threshold = float(self.config.get("auto_walking_threshold_km", 1.2)) if self.config else 1.2
+            if (
+                allow_auto_mode
+                and auto_threshold > 0
+                and selected_mode in ("transit", "automobile")
+                and est_distance_km <= auto_threshold
+            ):
+                selected_mode = "walking"
+                auto_walking = True
 
             # 1. On macOS: Native Apple Maps live ETA via MapKit
             apple_eta = self._calculate_apple_maps_eta(coords_orig, coords_dest, selected_mode)
@@ -387,11 +385,7 @@ class ETAService:
                     duration_minutes, distance_km = os_eta
                 else:
                     # 3. Offline geometry fallback: Haversine distance
-                    dlat = math.radians(lat2 - lat1)
-                    dlon = math.radians(lon2 - lon1)
-                    a = math.sin(dlat / 2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2)**2
-                    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-                    distance_km = round(6371.0 * c * 1.35, 1)
+                    distance_km = round(est_distance_km * 1.35, 1)
 
                     if selected_mode == "automobile":
                         duration_minutes = max(5, round((distance_km / 25.0) * 60.0 + 4))
@@ -410,6 +404,7 @@ class ETAService:
             "duration_minutes": duration_minutes,
             "distance_km": distance_km,
             "transport_mode": selected_mode,
+            "auto_walking": auto_walking,
             "mode_icon": mode_icon,
             "mode_label": mode_label,
             "maps_url": maps_url,

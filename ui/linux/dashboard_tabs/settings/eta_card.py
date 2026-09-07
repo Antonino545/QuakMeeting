@@ -185,3 +185,42 @@ class ETACardWidget(QFrame):
         buf_row.addWidget(self.buf_combo)
         buf_row.addStretch()
         ac_layout.addLayout(buf_row)
+
+        # 5. Smart Auto-Walking Threshold
+        walk_row = QHBoxLayout()
+        walk_row.setSpacing(10)
+        walk_lbl = QLabel("🚶 Smart Auto-Walking (auto-switch if venue is close):", self)
+        walk_lbl.setStyleSheet("color: #cdd6f4; font-size: 12px; font-weight: bold;")
+        walk_row.addWidget(walk_lbl)
+
+        self.walk_combo = QComboBox(self)
+        self.walk_combo.setFixedHeight(30)
+        self.walk_combo.setStyleSheet(get_combo_box_qss(bg_color="#242438", min_width=170))
+
+        walk_options = [
+            (0.0, "Disabled"),
+            (0.8, "Under 800 m"),
+            (1.2, "Under 1.2 km (Recommended)"),
+            (1.5, "Under 1.5 km"),
+            (2.0, "Under 2.0 km")
+        ]
+        curr_walk = float(config.get("auto_walking_threshold_km", 1.2))
+        curr_walk_idx = 2
+        for idx, (w_val, w_lbl) in enumerate(walk_options):
+            self.walk_combo.addItem(w_lbl, w_val)
+            if abs(w_val - curr_walk) < 0.01:
+                curr_walk_idx = idx
+        self.walk_combo.setCurrentIndex(curr_walk_idx)
+
+        def _walk_changed(idx_val):
+            val_walk = float(self.walk_combo.itemData(idx_val))
+            config.set("auto_walking_threshold_km", val_walk)
+            try:
+                event_bus.publish("CONFIG_CHANGED", key="auto_walking_threshold_km", value=val_walk)
+            except Exception:
+                pass
+        self.walk_combo.currentIndexChanged.connect(_walk_changed)
+
+        walk_row.addWidget(self.walk_combo)
+        walk_row.addStretch()
+        ac_layout.addLayout(walk_row)

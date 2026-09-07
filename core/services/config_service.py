@@ -42,6 +42,7 @@ DEFAULT_CONFIG = {
     "transport_mode": "transit",       # "transit" (Mezzi Pubblici), "automobile" (Auto), "walking" (A Piedi), "bicycling" (Bici)
     "enable_eta_service": True,
     "eta_buffer_minutes": 10,          # Margine di anticipo per raggiungere la fermata/parcheggio
+    "auto_walking_threshold_km": 1.2,  # Auto-switch to walking ETA if venue is within this distance (km, 0 to disable)
     # Smart Presence & Arrival Detection
     "enable_arrival_detection": True,  # Auto-suppress reminders when arrived or in a call
     "arrival_detect_active_calls": True,  # Auto-detect Zoom, Teams, Webex, Skype running processes

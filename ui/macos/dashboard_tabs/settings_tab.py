@@ -3,7 +3,7 @@ import objc
 from core.services.calendar_service import calendar_service
 from core.services.config_service import is_debug_mode
 from core.services.language_service import t
-from ui.macos.components import CardView, create_button
+from ui.macos.components import CardView, ModernButton
 from ui.macos.dashboard_tabs.settings import (
     CalendarsCardController,
     ETACardController,
@@ -12,6 +12,13 @@ from ui.macos.dashboard_tabs.settings import (
     TimingCardController,
 )
 from ui.macos.theme import Theme
+
+
+class FlippedView(AppKit.NSView):
+    """Container view with Cocoa top-left coordinate origin for natural vertical layout."""
+
+    def isFlipped(self):
+        return True
 
 
 class SettingsTabController(AppKit.NSObject):
@@ -24,8 +31,10 @@ class SettingsTabController(AppKit.NSObject):
         self.cached_calendars = []
         self._cached_view = None
         self._cached_sig = None
-        self._saved_dist_from_top = None
         self.selected_category = 0
+        self.category_buttons = []
+        self.right_container = None
+        self._category_pages = {}
 
         self.timing_card = TimingCardController.alloc().initWithParent_(self)
         self.eta_card = ETACardController.alloc().initWithParent_(self)
@@ -36,15 +45,24 @@ class SettingsTabController(AppKit.NSObject):
 
     @objc.python_method
     def invalidate_cache(self):
+        self.close_suggestions()
         self._cached_view = None
         self._cached_sig = None
-        self._saved_dist_from_top = None
+        self._category_pages.clear()
+        self.category_buttons = []
+        self.right_container = None
+
+    @objc.python_method
+    def close_suggestions(self):
+        if hasattr(self, "eta_card") and hasattr(self.eta_card, "close_suggestions"):
+            self.eta_card.close_suggestions()
 
     @objc.python_method
     def refresh_data(self, force=False):
-        self.invalidate_cache()
-        if self.dashboard_controller and hasattr(self.dashboard_controller, "refresh_current_tab"):
-            self.dashboard_controller.refresh_current_tab()
+        if force:
+            self.invalidate_cache()
+            if self.dashboard_controller and hasattr(self.dashboard_controller, "refresh_current_tab"):
+                self.dashboard_controller.refresh_current_tab()
 
     @objc.python_method
     def render(self, container, w, h, config, cached_calendars):
@@ -55,24 +73,17 @@ class SettingsTabController(AppKit.NSObject):
         current_sig = (
             w,
             h,
-            self.selected_category,
             is_debug_mode(),
             len(cached_calendars or []),
-            config.get("transport_mode", "transit"),
-            config.get("home_address", ""),
-            config.get("exam_location", ""),
-            config.get("eta_buffer_minutes", 10),
             config.get("language", "system"),
-            config.get("mute_during_lessons", True),
-            tuple(sorted(config.get("meeting_reminder_stages", []))),
-            tuple(sorted(config.get("general_reminder_stages", []))),
-            tuple(sorted(config.get("travel_reminder_stages", []))),
-            tuple(sorted(config.get("ignored_calendars", []))),
         )
 
         if self._cached_view and self._cached_sig == current_sig:
             return self._cached_view
 
+        self.close_suggestions()
+        self._category_pages.clear()
+        self.category_buttons = []
         view = self._render_settings_tab(w, h)
         self._cached_view = view
         self._cached_sig = current_sig
@@ -90,18 +101,166 @@ class SettingsTabController(AppKit.NSObject):
         self._build_sidebar(sidebar, sidebar_w, h)
         main_view.addSubview_(sidebar)
 
-        # 2. Right Content Scroll Area
-        scroll_view = AppKit.NSScrollView.alloc().initWithFrame_(
+        # 2. Right Content Container Area
+        self.right_container = AppKit.NSView.alloc().initWithFrame_(
             AppKit.NSMakeRect(sidebar_w + gap, 0, content_w, h)
+        )
+        main_view.addSubview_(self.right_container)
+
+        # Display currently selected category
+        self.select_category(self.selected_category)
+        return main_view
+
+    @objc.python_method
+    def _build_sidebar(self, sidebar, w, h):
+        """Constructs the left category navigation sidebar matching Linux styling & hierarchy."""
+        header_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(14, h - 34, w - 28, 16))
+        header_lbl.setStringValue_(t("settings_categories_header"))
+        header_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(10.0))
+        header_lbl.setTextColor_(Theme.OVERLAY0)
+        header_lbl.setBezeled_(False)
+        header_lbl.setDrawsBackground_(False)
+        header_lbl.setEditable_(False)
+        header_lbl.setSelectable_(False)
+        sidebar.addSubview_(header_lbl)
+
+        categories = [
+            ("⏱️", t("settings_cat_reminders"), t("settings_cat_reminders_sub"), 0),
+            ("📍", t("settings_cat_presence"), t("settings_cat_presence_sub"), 1),
+            ("📅", t("settings_cat_calendars"), t("settings_cat_calendars_sub"), 2),
+            ("🚗", t("settings_cat_commute"), t("settings_cat_commute_sub"), 3),
+            ("⚙️", t("settings_cat_preferences"), t("settings_cat_preferences_sub"), 4),
+        ]
+
+        btn_w = w - 16.0
+        btn_h = 54.0
+        btn_gap = 6.0
+        start_y = h - 42.0 - btn_h
+
+        self.category_buttons = []
+        for icon, title, subtitle, idx in categories:
+            btn_y = start_y - idx * (btn_h + btn_gap)
+            btn = ModernButton.alloc().initWithFrame_(AppKit.NSMakeRect(8, btn_y, btn_w, btn_h))
+            btn.setTitle_("")
+            btn.setTag_(idx)
+            btn.setTarget_(self)
+            btn.setAction_(objc.selector(self.onSelectCategory_, signature=b"v@:@"))
+
+            # Active left accent bar (4px)
+            accent_bar = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 8, 4, 38))
+            accent_bar.setWantsLayer_(True)
+            accent_bar.layer().setBackgroundColor_(Theme.BLUE.CGColor())
+            accent_bar.layer().setCornerRadius_(2.0)
+            accent_bar.setHidden_(True)
+            btn.addSubview_(accent_bar)
+            btn._accent_bar = accent_bar
+
+            # Large Icon label
+            icon_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(10, 14, 28, 26))
+            icon_lbl.setStringValue_(icon)
+            icon_lbl.setFont_(AppKit.NSFont.systemFontOfSize_(18.0))
+            icon_lbl.setBezeled_(False)
+            icon_lbl.setDrawsBackground_(False)
+            icon_lbl.setEditable_(False)
+            icon_lbl.setSelectable_(False)
+            btn.addSubview_(icon_lbl)
+
+            # Title label
+            t_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(42, 27, btn_w - 66, 17))
+            t_lbl.setStringValue_(title)
+            t_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.0))
+            t_lbl.setTextColor_(Theme.TEXT)
+            t_lbl.setBezeled_(False)
+            t_lbl.setDrawsBackground_(False)
+            t_lbl.setEditable_(False)
+            t_lbl.setSelectable_(False)
+            btn.addSubview_(t_lbl)
+            btn._title_lbl = t_lbl
+
+            # Subtitle label
+            st_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(42, 10, btn_w - 66, 15))
+            st_lbl.setStringValue_(subtitle)
+            st_lbl.setFont_(AppKit.NSFont.systemFontOfSize_(10.0))
+            st_lbl.setTextColor_(Theme.SUBTEXT0)
+            st_lbl.setBezeled_(False)
+            st_lbl.setDrawsBackground_(False)
+            st_lbl.setEditable_(False)
+            st_lbl.setSelectable_(False)
+            btn.addSubview_(st_lbl)
+            btn._subtitle_lbl = st_lbl
+
+            # Chevron indicator
+            arr_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(btn_w - 20, 16, 14, 20))
+            arr_lbl.setStringValue_("›")
+            arr_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(16.0))
+            arr_lbl.setTextColor_(Theme.BLUE)
+            arr_lbl.setBezeled_(False)
+            arr_lbl.setDrawsBackground_(False)
+            arr_lbl.setEditable_(False)
+            arr_lbl.setSelectable_(False)
+            btn.addSubview_(arr_lbl)
+            btn._arrow_lbl = arr_lbl
+
+            sidebar.addSubview_(btn)
+            self.category_buttons.append(btn)
+
+    @objc.python_method
+    def _update_sidebar_buttons(self):
+        for btn in self.category_buttons:
+            is_sel = (btn.tag() == self.selected_category)
+            if is_sel:
+                btn.layer().setBackgroundColor_(Theme.SURFACE0.CGColor())
+                btn.layer().setBorderWidth_(1.0)
+                btn.layer().setBorderColor_(Theme.SURFACE1.CGColor())
+                btn.layer().setCornerRadius_(8.0)
+                if hasattr(btn, "_accent_bar"):
+                    btn._accent_bar.setHidden_(False)
+                if hasattr(btn, "_title_lbl"):
+                    btn._title_lbl.setTextColor_(Theme.TEXT)
+                if hasattr(btn, "_arrow_lbl"):
+                    btn._arrow_lbl.setTextColor_(Theme.BLUE)
+            else:
+                btn.layer().setBackgroundColor_(AppKit.NSColor.clearColor().CGColor())
+                btn.layer().setBorderWidth_(0.0)
+                btn.layer().setCornerRadius_(8.0)
+                if hasattr(btn, "_accent_bar"):
+                    btn._accent_bar.setHidden_(True)
+                if hasattr(btn, "_title_lbl"):
+                    btn._title_lbl.setTextColor_(Theme.SUBTEXT1)
+                if hasattr(btn, "_arrow_lbl"):
+                    btn._arrow_lbl.setTextColor_(Theme.SURFACE2)
+
+    @objc.python_method
+    def select_category(self, idx):
+        self.selected_category = idx
+        self.close_suggestions()
+        self._update_sidebar_buttons()
+
+        if not self.right_container:
+            return
+
+        for sub in list(self.right_container.subviews()):
+            sub.removeFromSuperview()
+
+        cw = self.right_container.frame().size.width
+        ch = self.right_container.frame().size.height
+
+        if idx not in self._category_pages:
+            self._category_pages[idx] = self._build_category_page(idx, cw, ch)
+
+        page = self._category_pages[idx]
+        self.right_container.addSubview_(page)
+
+    @objc.python_method
+    def _build_category_page(self, idx, content_w, h):
+        scroll_view = AppKit.NSScrollView.alloc().initWithFrame_(
+            AppKit.NSMakeRect(0, 0, content_w, h)
         )
         scroll_view.setHasVerticalScroller_(True)
         scroll_view.setDrawsBackground_(False)
         scroll_view.setAutohidesScrollers_(True)
 
         card_w = content_w - 12.0
-        c1_h = 362.0   # Notification Lead Times & Staged Reminders
-        c2_h = 394.0   # Home / Departure Address, Campus & Route ETA
-        c_arr_h = 380.0  # Smart Presence & Arrival Detection
 
         cals = self.cached_calendars if self.cached_calendars else calendar_service.get_available_calendars()
         if not self.cached_calendars and cals:
@@ -119,111 +278,43 @@ class SettingsTabController(AppKit.NSObject):
             else:
                 curr_row_w += (pill_w + 8.0)
 
-        c3_h = 74.0 + actual_rows * 36.0  # Included System Calendars
-        is_dbg = is_debug_mode()
-        c4_h = 336.0 if is_dbg else 272.0  # System, Language & (Diagnostics if Debug)
+        card_heights = {
+            0: 362.0,
+            1: 380.0,
+            2: 74.0 + actual_rows * 36.0,
+            3: 394.0,
+            4: 336.0 if is_debug_mode() else 272.0,
+        }
+        card_h = card_heights.get(idx, 360.0)
+        doc_h = max(h, card_h + 14.0)
 
-        # Build content based on selected category
-        if self.selected_category == 0:
-            # Notification Timing & Presets
-            content_h = max(h, c1_h + gap * 2)
-            doc_view = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 0, content_w, content_h))
-            card1 = self._create_card_container(0, content_h - gap - c1_h, card_w, c1_h)
-            self.timing_card.build_card(card1, card_w, c1_h)
-            doc_view.addSubview_(card1)
+        doc_view = FlippedView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 0, content_w, doc_h))
+        card = self._create_card_container(0, 0, card_w, card_h)
 
-        elif self.selected_category == 1:
-            # Smart Presence & Arrival Detection
-            content_h = max(h, c_arr_h + gap * 2)
-            doc_view = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 0, content_w, content_h))
-            card_arr = self._create_card_container(0, content_h - gap - c_arr_h, card_w, c_arr_h)
-            self.arrival_card.build_card(card_arr, card_w, c_arr_h)
-            doc_view.addSubview_(card_arr)
-
-        elif self.selected_category == 2:
-            # Calendar Sources
-            content_h = max(h, c3_h + gap * 2)
-            doc_view = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 0, content_w, content_h))
-            card3 = self._create_card_container(0, content_h - gap - c3_h, card_w, c3_h)
-            self.calendars_card.build_card(card3, card_w, c3_h, cals)
-            doc_view.addSubview_(card3)
-
-        elif self.selected_category == 3:
-            # Commute & Transit ETA
-            content_h = max(h, c2_h + gap * 2)
-            doc_view = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 0, content_w, content_h))
-            card2 = self._create_card_container(0, content_h - gap - c2_h, card_w, c2_h)
-            self.eta_card.build_card(card2, card_w, c2_h)
-            doc_view.addSubview_(card2)
-
+        if idx == 0:
+            self.timing_card.build_card(card, card_w, card_h)
+        elif idx == 1:
+            self.arrival_card.build_card(card, card_w, card_h)
+        elif idx == 2:
+            self.calendars_card.build_card(card, card_w, card_h, cals)
+        elif idx == 3:
+            self.eta_card.build_card(card, card_w, card_h)
         else:
-            # App Preferences & System
-            content_h = max(h, c4_h + gap * 2)
-            doc_view = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 0, content_w, content_h))
-            card4 = self._create_card_container(0, content_h - gap - c4_h, card_w, c4_h)
-            self.system_card.build_card(card4, card_w, c4_h)
-            doc_view.addSubview_(card4)
+            self.system_card.build_card(card, card_w, card_h)
 
+        doc_view.addSubview_(card)
         scroll_view.setDocumentView_(doc_view)
         if scroll_view.contentView():
-            target_y = max(0.0, content_h - h)
-            scroll_view.contentView().scrollToPoint_(AppKit.NSMakePoint(0, target_y))
+            scroll_view.contentView().scrollToPoint_(AppKit.NSMakePoint(0, 0))
             scroll_view.reflectScrolledClipView_(scroll_view.contentView())
 
-        main_view.addSubview_(scroll_view)
-        return main_view
-
-    @objc.python_method
-    def _build_sidebar(self, sidebar, w, h):
-        """Constructs the left category navigation sidebar with active styling."""
-        header_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(14, h - 34, w - 28, 16))
-        header_lbl.setStringValue_(t("settings_categories_header"))
-        header_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(10.0))
-        header_lbl.setTextColor_(Theme.OVERLAY0)
-        header_lbl.setBezeled_(False)
-        header_lbl.setDrawsBackground_(False)
-        header_lbl.setEditable_(False)
-        sidebar.addSubview_(header_lbl)
-
-        categories = [
-            (0, "⏱️ " + t("settings_cat_reminders")),
-            (1, "📍 " + t("settings_cat_presence")),
-            (2, "📅 " + t("settings_cat_calendars")),
-            (3, "🚗 " + t("settings_cat_commute")),
-            (4, "⚙️ " + t("settings_cat_preferences")),
-        ]
-
-        btn_h = 44.0
-        btn_gap = 8.0
-        start_y = h - 46.0 - btn_h
-
-        for idx, title in categories:
-            btn_y = start_y - idx * (btn_h + btn_gap)
-            is_sel = (self.selected_category == idx)
-            bg = Theme.SURFACE0 if is_sel else Theme.MANTLE
-            border = Theme.BLUE if is_sel else None
-            fg = Theme.TEXT if is_sel else Theme.SUBTEXT0
-            btn = create_button(
-                AppKit.NSMakeRect(10, btn_y, w - 20, btn_h),
-                title=title,
-                bg_color=bg,
-                text_color=fg,
-                border_color=border,
-                corner_radius=8.0,
-                font_size=12.0,
-                bold=is_sel,
-            )
-            btn.setTag_(idx)
-            btn.setTarget_(self)
-            btn.setAction_(objc.selector(self.onSelectCategory_, signature=b"v@:@"))
-            sidebar.addSubview_(btn)
+        return scroll_view
 
     @objc.IBAction
     def onSelectCategory_(self, sender):
         tag = sender.tag()
         if tag != self.selected_category:
-            self.selected_category = tag
-            self.refresh_data(force=True)
+            self.select_category(tag)
 
     @objc.python_method
     def _create_card_container(self, x, y, w, h):
@@ -235,6 +326,7 @@ class SettingsTabController(AppKit.NSObject):
             border_width=1.0,
             border_color=Theme.SURFACE0,
         )
+
 
     # ── Backward-compatible Action Delegators ─────────────────────────────
     @objc.IBAction

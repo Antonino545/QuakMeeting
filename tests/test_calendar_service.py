@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch, MagicMock
 from datetime import datetime, timedelta
 from core.domain.models import Meeting
 from core.services.calendar_service import CalendarService
@@ -156,6 +157,36 @@ class TestCalendarServiceTravelTime(unittest.TestCase):
             self.assertEqual(m_exam.travel_time_minutes, 28)
             self.assertIn("28m", m_exam.eta_text)
             self.assertIsNotNone(m_exam.departure_time)
+
+    def test_enrich_with_eta_auto_walking(self):
+        self.service.config.set("home_address", "Corso Duca degli Abruzzi 24")
+        self.service.config.set("transport_mode", "transit")
+        now = datetime.now()
+        m = Meeting(
+            title="Lunch with Advisor",
+            start_time=now + timedelta(hours=2),
+            location="Bar Politecnico",
+            is_travel=True
+        )
+
+        with patch("core.services.calendar_service.eta_service.calculate_eta") as mock_eta:
+            mock_eta.return_value = {
+                "duration_minutes": 6,
+                "distance_km": 0.5,
+                "transport_mode": "walking",
+                "auto_walking": True,
+                "mode_icon": "🚶",
+                "mode_label": "A Piedi",
+                "maps_url": "https://maps.apple.com/walk"
+            }
+            self.service._enrich_with_eta([m])
+
+            self.assertEqual(m.transport_mode, "walking")
+            self.assertEqual(m.travel_time_minutes, 6)
+            self.assertIn("🚶", m.eta_text)
+            self.assertIn("Walk", m.eta_text)
+            self.assertIn("WALKING ROUTE", m.action_btn_text)
+            self.assertEqual(m.action_url, "https://maps.apple.com/walk")
 
     def test_deduplicate_duplicate_exam_and_lecture(self):
         now = datetime.now()

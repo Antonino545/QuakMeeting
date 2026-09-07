@@ -252,5 +252,102 @@ class TestETAService(unittest.TestCase):
         self.assertIn("origin=Via%20Pietro%20Cossa%2011", url)
         self.assertIn("destination=Via%20Roma%2010", url)
 
+    @patch("core.services.address_service.address_service.verify_address")
+    def test_geocode_delegates_to_address_service(self, mock_verify):
+        from core.services.address_service import AddressCandidate
+        mock_cand = AddressCandidate(
+            display_name="Corso Duca degli Abruzzi 24, Torino",
+            short_address="Corso Duca 24",
+            city="Torino",
+            lat=45.0625,
+            lon=7.6622
+        )
+        mock_verify.return_value = (True, mock_cand, None)
+
+        coords = self.eta_service._geocode_address("Corso Duca 24", default_city="Torino", proximity_coords=(45.07, 7.68))
+        self.assertEqual(coords, (45.0625, 7.6622))
+        mock_verify.assert_called_once_with("Corso Duca 24", city_context="Torino", proximity_coords=(45.07, 7.68))
+
+    @patch.object(ETAService, "_geocode_address")
+    @patch.object(ETAService, "_calculate_apple_maps_eta", return_value=None)
+    @patch.object(ETAService, "_query_opensource_route")
+    def test_smart_auto_transport_mode_short_distance(self, mock_osrm, mock_apple, mock_geo):
+        # Short distance: ~350m (< 1.2km)
+        mock_geo.side_effect = [
+            (45.0625, 7.6622),  # origin
+            (45.0650, 7.6650)   # dest (~350m away)
+        ]
+        mock_osrm.return_value = (5, 0.4) # 5 min walk, 0.4 km
+
+        res = self.eta_service.calculate_eta("Near Office", "Campus Coffee", mode="transit")
+
+        self.assertIsNotNone(res)
+        self.assertEqual(res["transport_mode"], "walking")
+        self.assertTrue(res["auto_walking"])
+        self.assertEqual(res["mode_icon"], "🚶")
+        self.assertEqual(res["duration_minutes"], 5)
+        # Verify OSRM was queried for walking route
+        mock_osrm.assert_called_with((45.0625, 7.6622), (45.0650, 7.6650), "walking")
+
+    @patch.object(ETAService, "_geocode_address")
+    @patch.object(ETAService, "_calculate_apple_maps_eta", return_value=None)
+    @patch.object(ETAService, "_query_opensource_route")
+    def test_smart_auto_transport_mode_long_distance(self, mock_osrm, mock_apple, mock_geo):
+        # Long distance: ~5km (> 1.2km)
+        mock_geo.side_effect = [
+            (45.0625, 7.6622),
+            (45.1000, 7.7000)
+        ]
+        mock_osrm.return_value = (22, 5.2)
+
+        res = self.eta_service.calculate_eta("Home", "Airport", mode="transit")
+
+        self.assertIsNotNone(res)
+        self.assertEqual(res["transport_mode"], "transit")
+        self.assertFalse(res["auto_walking"])
+        self.assertEqual(res["mode_icon"], "🚆")
+        mock_osrm.assert_called_with((45.0625, 7.6622), (45.1000, 7.7000), "transit")
+
+    @patch.object(ETAService, "_geocode_address")
+    @patch.object(ETAService, "_calculate_apple_maps_eta", return_value=None)
+    @patch.object(ETAService, "_query_opensource_route")
+    def test_smart_auto_transport_mode_disabled_via_argument(self, mock_osrm, mock_apple, mock_geo):
+        # Short distance, but allow_auto_mode is False
+        mock_geo.side_effect = [
+            (45.0625, 7.6622),
+            (45.0650, 7.6650)
+        ]
+        mock_osrm.return_value = (15, 0.4)
+
+        res = self.eta_service.calculate_eta("Near Office", "Campus Coffee", mode="transit", allow_auto_mode=False)
+
+        self.assertIsNotNone(res)
+        self.assertEqual(res["transport_mode"], "transit")
+        self.assertFalse(res["auto_walking"])
+        mock_osrm.assert_called_with((45.0625, 7.6622), (45.0650, 7.6650), "transit")
+
+    @patch.object(ETAService, "_geocode_address")
+    @patch.object(ETAService, "_calculate_apple_maps_eta", return_value=None)
+    @patch.object(ETAService, "_query_opensource_route")
+    def test_smart_auto_transport_mode_disabled_via_config(self, mock_osrm, mock_apple, mock_geo):
+        # Short distance, but auto_walking_threshold_km is set to 0.0
+        self.mock_config.get.side_effect = lambda key, default=None: {
+            "transport_mode": "automobile",
+            "auto_walking_threshold_km": 0.0
+        }.get(key, default)
+
+        mock_geo.side_effect = [
+            (45.0625, 7.6622),
+            (45.0650, 7.6650)
+        ]
+        mock_osrm.return_value = (3, 0.4)
+
+        res = self.eta_service.calculate_eta("Near Office", "Campus Coffee", mode="automobile")
+
+        self.assertIsNotNone(res)
+        self.assertEqual(res["transport_mode"], "automobile")
+        self.assertFalse(res["auto_walking"])
+        mock_osrm.assert_called_with((45.0625, 7.6622), (45.0650, 7.6650), "automobile")
+
 if __name__ == "__main__":
     unittest.main()

@@ -6,6 +6,32 @@ from ui.macos.theme import Theme
 class ModernButton(AppKit.NSButton):
     """Modern macOS Button with pointing hand cursor, hover feedback, and tactile click animation."""
 
+    def initWithFrame_(self, frame):
+        self = objc.super(ModernButton, self).initWithFrame_(frame)
+        if self is not None:
+            self.setTitle_("")
+            self.setWantsLayer_(True)
+            self.setBordered_(False)
+            self.setFocusRingType_(AppKit.NSFocusRingTypeNone)
+            self.setButtonType_(AppKit.NSButtonTypeMomentaryPushIn)
+        return self
+
+    def init(self):
+        self = objc.super(ModernButton, self).init()
+        if self is not None:
+            self.setTitle_("")
+            self.setWantsLayer_(True)
+            self.setBordered_(False)
+            self.setFocusRingType_(AppKit.NSFocusRingTypeNone)
+            self.setButtonType_(AppKit.NSButtonTypeMomentaryPushIn)
+        return self
+
+    def acceptsFirstMouse_(self, event):
+        return True
+
+    def mouseDownCanMoveWindow(self):
+        return False
+
     def resetCursorRects(self):
         objc.super(ModernButton, self).resetCursorRects()
         cursor = (
@@ -62,17 +88,20 @@ class ModernButton(AppKit.NSButton):
             AppKit.NSAnimationContext.endGrouping()
 
     def mouseDown_(self, event):
-        if self.isEnabled():
+        if not self.isEnabled():
+            return
+        if self.layer():
             AppKit.NSAnimationContext.beginGrouping()
             AppKit.NSAnimationContext.currentContext().setDuration_(0.06)
             self.animator().setAlphaValue_(0.55)
             AppKit.NSAnimationContext.endGrouping()
         objc.super(ModernButton, self).mouseDown_(event)
-        if self.isEnabled():
+        if self.layer() and self.window():
             AppKit.NSAnimationContext.beginGrouping()
             AppKit.NSAnimationContext.currentContext().setDuration_(0.15)
             self.animator().setAlphaValue_(1.0)
             AppKit.NSAnimationContext.endGrouping()
+
 
 
 def style_button(
