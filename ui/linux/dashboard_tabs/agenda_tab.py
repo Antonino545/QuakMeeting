@@ -16,7 +16,6 @@ from PyQt6.QtCore import Qt, QUrl, QTimer
 from PyQt6.QtGui import QDesktopServices
 
 from core.services.calendar_service import calendar_service
-from core.services.arrival_service import arrival_service
 from core.services.language_service import t
 from core.domain.models import format_duration
 from core.domain.classifier import EventClassifier
@@ -44,7 +43,16 @@ class QtAgendaTab(QWidget):
         self.scroll_layout.setSpacing(12)
 
         layout.addWidget(self.scroll)
-        self.refresh_agenda()
+        self._show_status("Loading today's agenda...", "#a6adc8")
+        QTimer.singleShot(0, self.refresh_agenda)
+
+    def _show_status(self, message, color):
+        """Render a safe placeholder while calendar data is unavailable."""
+        status = QLabel(message)
+        status.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        status.setStyleSheet(f"font-size: 15px; color: {color}; border: none;")
+        self.scroll_layout.addWidget(status)
+        self.scroll_layout.addStretch()
 
     def refresh_agenda(self, meetings=None):
         """Refreshes the timeline list with today's scheduled meetings."""
@@ -55,7 +63,16 @@ class QtAgendaTab(QWidget):
 
         now = datetime.now().astimezone()
         if meetings is None:
-            meetings = calendar_service.get_upcoming_meetings()
+            try:
+                meetings = calendar_service.get_upcoming_meetings()
+            except Exception:
+                logger.exception("Unable to load the cached agenda.")
+                self._show_status(
+                    "Unable to load the agenda. Calendar data will retry shortly.",
+                    "#f38ba8",
+                )
+                QTimer.singleShot(5000, self.refresh_agenda)
+                return
 
         today_meets = [m for m in meetings if m.start_time and m.start_time.astimezone().date() == now.date()]
         logger.debug("Refreshing agenda with %d meetings, %d scheduled today.", len(meetings), len(today_meets))
@@ -126,9 +143,11 @@ class QtAgendaTab(QWidget):
                 if m.classroom:
                     sub_txt += f"  •  <span style='color:#cba6f7;'>🏫 {m.classroom}</span>"
 
-                # Check if arrived (manually or via presence)
-                if arrival_service.is_meeting_arrived(m):
-                    reason = m.arrival_reason or arrival_service.get_arrival_reason(m.id) or "manual"
+                # Presence detection can invoke nmcli/iwgetid/pgrep. The
+                # reminder worker owns that check; the agenda only renders
+                # state already attached to the cached meeting.
+                if getattr(m, "is_arrived", False):
+                    reason = m.arrival_reason or "manual"
                     if "call" in reason:
                         sub_txt += f"  •  <span style='color:#a6e3a1; font-weight:bold;'>🟢 {t('agenda_in_call_badge', default='In Call')}</span>"
                     elif "wifi" in reason:

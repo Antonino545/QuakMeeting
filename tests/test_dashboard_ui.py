@@ -340,6 +340,35 @@ class TestDashboardUI(unittest.TestCase):
         card._on_reset_ssids()
         self.assertIn("eduroam", config.get("arrival_wifi_ssids"))
 
+    def test_qt_dashboard_sync_event_updates_ui_and_stops_spinning(self):
+        try:
+            from PyQt6.QtWidgets import QApplication
+            from ui.linux.qt_dashboard import QtFlightDeckWindow
+            from core.services.event_bus import event_bus
+            from core.domain.models import Meeting
+        except (ImportError, ModuleNotFoundError):
+            self.skipTest("PyQt6 not available for Qt dashboard testing")
+
+        app = QApplication.instance() or QApplication(sys.argv)
+        window = QtFlightDeckWindow(tab_index=0)
+        window.sync_btn.start_spinning("Syncing...")
+        self.assertTrue(window.sync_btn.is_spinning)
+
+        m = Meeting(
+            title="Synced Standup",
+            start_time=datetime.now().astimezone(),
+            provider="EDS",
+        )
+
+        event_bus.publish("CALENDAR_SYNCED", meetings=[m], success=True)
+        app.processEvents()
+
+        # Agenda tab should now contain the synced meeting
+        self.assertFalse(window.sync_btn.is_spinning)
+        self.assertEqual(window.sync_btn.text(), "✅ Synced!")
+
+        window.close()
+
 
 if __name__ == '__main__':
     unittest.main()

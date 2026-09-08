@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import sys
+import os
 import math
+from datetime import datetime
 from typing import Dict, Any
 
 try:
@@ -40,6 +42,11 @@ class QtUpdateBannerWindow(QWidget):
 
         # Formatted time string
         st = event_data.get("start_time")
+        if isinstance(st, str):
+            try:
+                st = datetime.fromisoformat(st)
+            except Exception:
+                st = None
         self.time_str = st.strftime("At %H:%M") if hasattr(st, "strftime") else ""
 
         # ── Screen ──
@@ -48,6 +55,13 @@ class QtUpdateBannerWindow(QWidget):
         self.screen_w = geo.width()
         self.screen_x = geo.x()
         self.screen_y = geo.y()
+        self._wayland_mode = (
+            sys.platform.startswith("linux")
+            and os.environ.get("XDG_SESSION_TYPE", "").lower() == "wayland"
+            and os.environ.get("QT_QPA_PLATFORM", "").lower() not in ("xcb", "wayland-xcomposite-egl")
+        )
+        self._render_offset_x = 0.0
+        self._render_offset_y = 0.0
 
         self.tick = 0
         self.is_paused = False
@@ -69,7 +83,7 @@ class QtUpdateBannerWindow(QWidget):
         # ── Window setup ──
         self.win_w = CARD_W + 12
         self.win_h = CARD_H + 12
-        self.setFixedSize(self.win_w, self.win_h)
+        self.setFixedSize(max(self.win_w, self.screen_w) if self._wayland_mode else self.win_w, self.win_h)
         self.final_x = float(self.screen_x + self.screen_w - self.win_w - 24)
         self.final_y = float(self.screen_y + 24)
         self.win_x = self.final_x
@@ -83,14 +97,14 @@ class QtUpdateBannerWindow(QWidget):
             Qt.WindowType.WindowStaysOnTopHint |
             Qt.WindowType.Tool
         )
-        if sys.platform.startswith("linux"):
+        if sys.platform.startswith("linux") and not self._wayland_mode:
             flags |= Qt.WindowType.X11BypassWindowManagerHint
         self.setWindowFlags(flags)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setMouseTracking(True)
-        self.move(int(self.win_x), int(self.win_y))
+        self.move(int(self.screen_x if self._wayland_mode else self.win_x), int(self.win_y))
 
         play_chime()
 
@@ -121,7 +135,11 @@ class QtUpdateBannerWindow(QWidget):
         if getattr(self, "is_closing", False):
             # Slide back UP out of the screen
             self.win_y -= self.speed * 1.8
-            self.move(int(self.win_x), int(self.win_y))
+            if self._wayland_mode:
+                self._render_offset_x = self.win_x - self.screen_x
+                self._render_offset_y = self.win_y - self.screen_y
+            else:
+                self.move(int(self.win_x), int(self.win_y))
             if self.win_y < self.screen_y - self.win_h - 20:
                 self._finish_dismiss()
             else:
@@ -131,9 +149,17 @@ class QtUpdateBannerWindow(QWidget):
         # Clean slide-down HUD animation
         if self.win_y < self.final_y:
             self.win_y = min(self.final_y, self.win_y + self.speed)
-            self.move(int(self.win_x), int(self.win_y))
+            if self._wayland_mode:
+                self._render_offset_x = self.win_x - self.screen_x
+                self._render_offset_y = self.win_y - self.screen_y
+            else:
+                self.move(int(self.win_x), int(self.win_y))
         else:
-            self.move(int(self.win_x), int(self.final_y))
+            if self._wayland_mode:
+                self._render_offset_x = self.win_x - self.screen_x
+                self._render_offset_y = self.final_y - self.screen_y
+            else:
+                self.move(int(self.win_x), int(self.final_y))
             if not self.is_paused:
                 self.stay_ticks += 1
                 if self.stay_ticks > self.max_stay_ticks:
@@ -240,6 +266,8 @@ class QtUpdateBannerWindow(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         p.setRenderHint(QPainter.RenderHint.TextAntialiasing)
+        if self._wayland_mode:
+            p.translate(self._render_offset_x, self._render_offset_y)
         self._draw_card(p)
         p.end()
 

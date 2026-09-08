@@ -406,8 +406,11 @@ class QtAddressAutocompleteWidget(QWidget):
         self.save_btn.setText(f"✓ {t('saved')}")
 
         def _transition_confirmed():
-            self.save_btn.setText(f"💾 {t('save')}")
-            self.set_editing(False)
+            try:
+                self.save_btn.setText(f"💾 {t('save')}")
+                self.set_editing(False)
+            except RuntimeError:
+                pass
 
         QTimer.singleShot(500, _transition_confirmed)
 

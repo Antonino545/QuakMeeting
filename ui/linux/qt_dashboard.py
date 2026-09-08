@@ -21,7 +21,7 @@ from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QLabel, QPushButton, QHBoxLayout,
     QVBoxLayout, QFrame, QStackedWidget, QSizePolicy
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QObject
 from PyQt6.QtGui import QPixmap
 
 from ui.linux.animated_widgets import (
@@ -32,8 +32,13 @@ from ui.linux.dashboard_tabs import (
 )
 from ui.linux.theme import get_asset_path
 from core.services.calendar_service import calendar_service
+from core.services.event_bus import event_bus
 
 logger = logging.getLogger("QuakMeeting.QtDashboard")
+
+
+class DashboardSignalBridge(QObject):
+    calendar_synced = pyqtSignal(list, bool)
 
 
 QT_DASHBOARD_QSS = """
@@ -242,8 +247,10 @@ QComboBox QAbstractItemView::item:selected {
 class QtFlightDeckWindow(QMainWindow):
     """PyQt6 Flight Deck Dashboard Window."""
 
-    def __init__(self, tab_index: int = 0):
+    def __init__(self, tab_index: int = 0, defer_heavy_tabs: bool = False):
         super().__init__()
+        self._defer_heavy_tabs = defer_heavy_tabs
+        self._deferred_tabs_initialized = False
         self.setWindowTitle("QuakMeeting — Flight Deck Control Center")
         self.resize(920, 640)
         self.setMinimumSize(880, 580)
@@ -302,7 +309,7 @@ class QtFlightDeckWindow(QMainWindow):
         def _trigger_sync():
             logger.debug("Dashboard sync button clicked.")
             self.sync_btn.start_spinning("Syncing...")
-            threading.Thread(target=calendar_service.sync_now, daemon=True).start()
+            calendar_service.request_background_sync("dashboard_button")
         sync_btn.clicked.connect(lambda chk=False: _trigger_sync())
         header_layout.addWidget(sync_btn)
 
@@ -336,8 +343,14 @@ class QtFlightDeckWindow(QMainWindow):
         self.stacked_widget = QStackedWidget(central_widget)
 
         self.agenda_tab = QtAgendaTab(self)
-        self.hangar_tab = QtHangarTab(self)
-        self.settings_tab = QtSettingsTab(self)
+        if defer_heavy_tabs:
+            self.hangar_tab = QWidget(self)
+            self.settings_tab = QWidget(self)
+            QTimer.singleShot(0, self._initialize_deferred_tabs)
+        else:
+            self.hangar_tab = QtHangarTab(self)
+            self.settings_tab = QtSettingsTab(self)
+            self._deferred_tabs_initialized = True
 
         self.stacked_widget.addWidget(self.agenda_tab)
         self.stacked_widget.addWidget(self.hangar_tab)
@@ -357,6 +370,38 @@ class QtFlightDeckWindow(QMainWindow):
         self.tabs = _TabsFacade(self)
         self.set_active_tab(tab_index)
 
+        self._bridge = DashboardSignalBridge()
+        self._bridge.calendar_synced.connect(self._on_calendar_synced_qt)
+        self._on_bus_synced = lambda meetings=None, success=True, **kwargs: self._bridge.calendar_synced.emit(meetings or [], bool(success))
+        event_bus.subscribe("CALENDAR_SYNCED", self._on_bus_synced)
+
+    def _on_calendar_synced_qt(self, meetings: list, success: bool):
+        """Update dashboard agenda and spinner state on Qt main thread."""
+        logger.debug("Dashboard received CALENDAR_SYNCED event: %d meetings, success=%s", len(meetings), success)
+        self._refresh_agenda(meetings)
+        if hasattr(self, "sync_btn") and getattr(self.sync_btn, "is_spinning", False):
+            if success:
+                self.sync_btn.stop_spinning("✅ Synced!", is_success=True, reset_delay_ms=2000)
+            else:
+                self.sync_btn.stop_spinning("❌ Sync Error", is_success=False, reset_delay_ms=2500)
+
+    def _initialize_deferred_tabs(self):
+        if self._deferred_tabs_initialized:
+            return
+
+        old_hangar = self.hangar_tab
+        old_settings = self.settings_tab
+        self.hangar_tab = QtHangarTab(self)
+        self.settings_tab = QtSettingsTab(self)
+        self.stacked_widget.removeWidget(old_hangar)
+        self.stacked_widget.removeWidget(old_settings)
+        old_hangar.deleteLater()
+        old_settings.deleteLater()
+        self.stacked_widget.insertWidget(1, self.hangar_tab)
+        self.stacked_widget.insertWidget(2, self.settings_tab)
+        self._deferred_tabs_initialized = True
+        logger.debug("Deferred Hangar and Settings tabs initialized after first dashboard paint.")
+
     @property
     def h_mini_widgets(self):
         return self.hangar_tab.h_mini_widgets
@@ -367,14 +412,20 @@ class QtFlightDeckWindow(QMainWindow):
 
     def set_active_tab(self, index: int):
         """Switches the active tab and updates navbar segment button states."""
+        if self._defer_heavy_tabs and not self._deferred_tabs_initialized and index in (1, 2):
+            self._initialize_deferred_tabs()
         logger.debug("Switching dashboard tab to index %d.", index)
         self.current_tab_index = index
         if hasattr(self, 'stacked_widget'):
             self.stacked_widget.setCurrentIndex(index)
         if index == 1:
-            self.hangar_tab.start_animation_timer()
+            start_timer = getattr(self.hangar_tab, "start_animation_timer", None)
+            if start_timer:
+                start_timer()
         else:
-            self.hangar_tab.stop_animation_timer()
+            stop_timer = getattr(self.hangar_tab, "stop_animation_timer", None)
+            if stop_timer:
+                stop_timer()
         for i, btn in enumerate(getattr(self, 'nav_buttons', [])):
             is_active = (i == index)
             btn.setProperty("active", "true" if is_active else "false")
@@ -382,10 +433,16 @@ class QtFlightDeckWindow(QMainWindow):
             btn.style().polish(btn)
 
     def closeEvent(self, event):
-        """Cleans up animation timers when window is closed."""
+        """Cleans up animation timers and event subscriptions when window is closed."""
         logger.debug("Closing Flight Deck dashboard window.")
-        if hasattr(self, 'hangar_tab'):
-            self.hangar_tab.stop_animation_timer()
+        if hasattr(self, "_on_bus_synced"):
+            try:
+                event_bus.unsubscribe("CALENDAR_SYNCED", self._on_bus_synced)
+            except Exception:
+                pass
+        stop_timer = getattr(getattr(self, "hangar_tab", None), "stop_animation_timer", None)
+        if stop_timer:
+            stop_timer()
         super().closeEvent(event)
 
     def _refresh_agenda(self, meetings=None):
@@ -426,6 +483,7 @@ class QtFlightDeckWindow(QMainWindow):
 
 
 _dashboard_instance = None
+_dashboard_error_window = None
 
 def show_qt_dashboard(tab_index: int = 0):
     """Launches the PyQt6 Flight Deck Control Center."""
@@ -442,7 +500,7 @@ def show_qt_dashboard(tab_index: int = 0):
 
     if _dashboard_instance is None or not _dashboard_instance.isVisible():
         logger.info("🟢 Creating a new QtFlightDeckWindow instance and binding it to global singleton.")
-        _dashboard_instance = QtFlightDeckWindow(tab_index)
+        _dashboard_instance = QtFlightDeckWindow(tab_index, defer_heavy_tabs=True)
         _dashboard_instance.show()
         _dashboard_instance.raise_()
         _dashboard_instance.activateWindow()
@@ -459,6 +517,49 @@ def show_qt_dashboard(tab_index: int = 0):
 
     if is_standalone:
         app.exec()
+
+
+def show_qt_dashboard_error(error: Exception):
+    """Keep startup failures visible and offer a retry without killing the tray."""
+    global _dashboard_error_window
+    app = QApplication.instance()
+    if app is None:
+        app = QApplication(sys.argv)
+
+    if _dashboard_error_window is not None and _dashboard_error_window.isVisible():
+        _dashboard_error_window.raise_()
+        _dashboard_error_window.activateWindow()
+        return
+
+    window = QMainWindow()
+    window.setWindowTitle("QuakMeeting — Flight Deck unavailable")
+    window.setMinimumSize(520, 220)
+    content = QWidget(window)
+    layout = QVBoxLayout(content)
+    layout.setContentsMargins(28, 28, 28, 28)
+    layout.setSpacing(14)
+
+    title = QLabel("The Flight Deck could not be opened")
+    title.setObjectName("HeaderTitle")
+    detail = QLabel(
+        "QuakMeeting is still running in the tray. You can retry now or inspect "
+        "the application log for details.\n\n"
+        f"{type(error).__name__}: {error}"
+    )
+    detail.setWordWrap(True)
+    detail.setObjectName("CardSub")
+    retry = QPushButton("Retry Flight Deck")
+    retry.setObjectName("PrimaryBtn")
+    retry.clicked.connect(lambda: (window.close(), show_qt_dashboard(0)))
+    layout.addWidget(title)
+    layout.addWidget(detail)
+    layout.addWidget(retry, alignment=Qt.AlignmentFlag.AlignLeft)
+    window.setCentralWidget(content)
+    window.setStyleSheet(QT_DASHBOARD_QSS)
+    _dashboard_error_window = window
+    window.show()
+    window.raise_()
+    window.activateWindow()
 
 def close_qt_dashboard():
     """Safely closes the Flight Deck window if active."""

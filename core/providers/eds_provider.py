@@ -20,6 +20,7 @@ class EDSCalendarProvider(BaseCalendarProvider):
         self.config = config or config_service
         self._registry = None
         self._is_available = None
+        self._clients: Dict[str, Any] = {}
 
     def _get_registry(self):
         if self._registry is None:
@@ -63,21 +64,45 @@ class EDSCalendarProvider(BaseCalendarProvider):
         sources = registry.list_sources(EDataServer.SOURCE_EXTENSION_CALENDAR)
         logger.debug("EDS returned %d calendar sources.", len(sources))
 
+        active_sources = []
+        for source in sources:
+            name = source.get_display_name()
+            if name not in ignored and source.get_enabled():
+                active_sources.append(source)
+
+        # Connect to uncached sources concurrently to eliminate sequential timeout stalls
+        sources_to_connect = [s for s in active_sources if s.get_uid() not in self._clients]
+        if sources_to_connect:
+            from concurrent.futures import ThreadPoolExecutor
+
+            def _connect_worker(src):
+                try:
+                    # 1.5s timeout prevents blocking on dormant or unreachable webcal/CalDAV endpoints
+                    c = ECal.Client.connect_sync(src, ECal.ClientSourceType.EVENTS, 1.5, None)
+                    return src.get_uid(), c
+                except Exception as exc:
+                    logger.debug("Failed to connect to EDS source '%s': %s", src.get_display_name(), exc)
+                    return src.get_uid(), None
+
+            max_workers = min(16, len(sources_to_connect))
+            with ThreadPoolExecutor(max_workers=max_workers) as pool:
+                for uid, client in pool.map(_connect_worker, sources_to_connect):
+                    if client:
+                        self._clients[uid] = client
+
         meetings: List[Meeting] = []
 
         from core.providers.caldav_provider import CalDAVCalendarProvider
         caldav_parser = CalDAVCalendarProvider(self.config)
 
-        for source in sources:
+        for source in active_sources:
             name = source.get_display_name()
-            if name in ignored or not source.get_enabled():
+            uid = source.get_uid()
+            client = self._clients.get(uid)
+            if not client:
                 continue
 
             try:
-                client = ECal.Client.connect_sync(source, ECal.ClientSourceType.EVENTS, 3, None)
-                if not client:
-                    continue
-
                 # Query time range
                 query = f'(occur-in-time-range? (make-time "{start_iso}") (make-time "{end_iso}"))'
 
@@ -132,6 +157,7 @@ class EDSCalendarProvider(BaseCalendarProvider):
 
             except Exception as e:
                 logger.debug(f"Failed to fetch events from EDS source '{name}': {e}")
+                self._clients.pop(uid, None)
 
         meetings.sort(key=lambda m: m.start_time if m.start_time else datetime.min)
         logger.debug("Parsed %d meetings from EDS.", len(meetings))

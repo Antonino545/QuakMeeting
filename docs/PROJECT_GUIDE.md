@@ -118,6 +118,14 @@ QuakMeeting/
 - **Rule**: Startup must render the persisted calendar cache before waiting for EDS, EventKit, or CalDAV.
 - **Rule**: Calendar provider fetches, parsing, and calendar metadata discovery run outside the Qt/AppKit main thread. UI updates return through `EventBus` or platform-native signals.
 - **Rule**: A failed refresh preserves the last valid cache and does not launch overlapping retry workers.
+- **Rule**: On Linux, `EDSCalendarProvider` must cache connected `ECal.Client` instances and connect to uncached sources concurrently to prevent sequential timeout stalls.
+
+### 2b. Responsive Linux Startup
+- **Rule**: Do not force `QT_QPA_PLATFORM=xcb` for Wayland sessions. Set it only when `QUAKMEETING_QT_XCB` is explicitly enabled.
+- **Rule**: Notification banners are rendered by a dedicated XCB/XWayland helper process when the main Qt application is native Wayland, because native Wayland does not permit animated top-level window positioning.
+- **Rule**: The Flight Deck must show a loading, empty, or recovery state before optional tabs, provider discovery, updater checks, or presence detection complete.
+- **Rule**: Dashboard construction failures must remain visible through a retryable error window; logging alone is not an acceptable startup failure experience.
+- **Rule**: The updater runs once after the first Qt event-loop turn, and `AppController` starts at most one polling loop.
 
 ### 3. Transit / Travel Events vs Video Calls
 - **Travel / Transit Events (`is_travel=True`, `departure_time` set)**:

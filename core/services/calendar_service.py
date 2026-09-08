@@ -373,7 +373,7 @@ class CalendarService:
                 self._has_synced_this_process = True
 
                 logger.info(f"Synchronized {len(filtered)} events scheduled for today.")
-                self.bus.publish("CALENDAR_SYNCED", meetings=filtered)
+                self.bus.publish("CALENDAR_SYNCED", meetings=filtered, success=True)
                 return filtered
             except Exception as e:
                 self.last_sync_time = datetime.now()
@@ -389,12 +389,14 @@ class CalendarService:
                     exc_info=True
                 )
                 if cached_meetings:
-                    self.bus.publish("CALENDAR_SYNCED", meetings=cached_meetings, from_cache=True)
+                    self.bus.publish("CALENDAR_SYNCED", meetings=cached_meetings, success=False, error=str(e), from_cache=True)
+                else:
+                    self.bus.publish("CALENDAR_SYNCED", meetings=[], success=False, error=str(e), from_cache=False)
                 return cached_meetings
             finally:
                 self._is_fetching = False
 
-    def _schedule_background_sync(self, reason: str, delay_seconds: float = 0.0) -> None:
+    def _schedule_background_sync(self, reason: str) -> None:
         """Reserve and start one background sync without allowing duplicate workers."""
         with self._fetch_lock:
             if self._is_fetching:
@@ -402,13 +404,8 @@ class CalendarService:
                 return
             self._is_fetching = True
 
-        logger.debug("Scheduling background calendar sync (%s, delay=%.1fs).", reason, delay_seconds)
-        if delay_seconds > 0:
-            sync_timer = threading.Timer(delay_seconds, self.sync_now)
-            sync_timer.daemon = True
-            sync_timer.start()
-        else:
-            threading.Thread(target=self.sync_now, daemon=True).start()
+        logger.debug("Scheduling background calendar sync (%s).", reason)
+        threading.Thread(target=self.sync_now, daemon=True).start()
 
     def request_background_sync(self, reason: str = "requested") -> None:
         """Request a guarded background sync for UI/configuration changes."""
@@ -422,7 +419,7 @@ class CalendarService:
         if force_refresh:
             self._schedule_background_sync("force_refresh")
         elif not self._has_synced_this_process:
-            self._schedule_background_sync("initial_sync", delay_seconds=1.0)
+            self._schedule_background_sync("initial_sync")
         elif time.time() - self._last_fetch_time > CACHE_TTL_SECONDS:
             self._schedule_background_sync(f"cache_age>{CACHE_TTL_SECONDS:.1f}s")
 

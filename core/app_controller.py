@@ -15,15 +15,18 @@ class AppController:
         self._thread = None
         self._loop_count = 0
         self._stop_event = threading.Event()
+        self._start_lock = threading.Lock()
 
     def start_background_loop(self):
-        if self.is_running:
-            logger.debug("Background loop start requested while already running.")
-            return
-        self.is_running = True
-        logger.debug("Starting background loop thread.")
-        self._thread = threading.Thread(target=self._loop, daemon=True)
-        self._thread.start()
+        with self._start_lock:
+            if self.is_running:
+                logger.debug("Background loop start requested while already running.")
+                return
+            self._stop_event.clear()
+            self.is_running = True
+            logger.debug("Starting background loop thread.")
+            self._thread = threading.Thread(target=self._loop, daemon=True)
+            self._thread.start()
 
     def stop_background_loop(self):
         logger.debug("Stopping background loop.")
@@ -32,9 +35,6 @@ class AppController:
 
     def _loop(self):
         logger.info("Started background AppController loop.")
-        # Check updates on startup in background
-        updater_service.check_for_updates(background=True)
-
         while self.is_running:
             try:
                 # 1. Fetch upcoming meetings

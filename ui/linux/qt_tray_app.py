@@ -21,7 +21,7 @@ logger = logging.getLogger("QuakMeeting.QtTrayApp")
 
 from ui.common.tray_viewmodel import TrayViewModel
 
-from PyQt6.QtCore import pyqtSignal, QObject, Qt
+from PyQt6.QtCore import pyqtSignal, QObject, Qt, QTimer
 
 class SignalBridge(QObject):
     banner = pyqtSignal(dict)
@@ -60,14 +60,11 @@ class QuakMeetingTrayApp:
         event_bus.subscribe("REMINDER_TRIGGERED", lambda **kwargs: self._bridge.banner.emit(kwargs.get("event_dict") or kwargs))
         event_bus.subscribe("AGENDA_UPDATED", lambda **kwargs: self._bridge.agenda.emit())
         event_bus.subscribe("CALENDAR_SYNCED", lambda **kwargs: self._bridge.agenda.emit())
-        event_bus.subscribe("CALENDAR_SYNCED", lambda **kwargs: self._bridge.menu.emit())
         event_bus.subscribe("CALENDAR_SYNCED", self._check_startup_catch_up)
         event_bus.subscribe("UPDATE_AVAILABLE", lambda **kwargs: self._bridge.menu.emit())
         event_bus.subscribe("UPDATE_CHECK_COMPLETE", lambda **kwargs: self._bridge.menu.emit())
         event_bus.subscribe("UPDATE_INSTALLED", lambda **kwargs: self._bridge.menu.emit())
-        event_bus.subscribe("AGENDA_UPDATED", lambda **kwargs: self._bridge.menu.emit())
         event_bus.subscribe("CONFIG_CHANGED", lambda **kwargs: calendar_service.request_background_sync("config_changed"))
-        updater_service.check_for_updates(background=True)
         self._check_startup_catch_up(meetings=calendar_service.get_upcoming_meetings())
 
     def _check_startup_catch_up(self, meetings=None, **kwargs):
@@ -268,6 +265,11 @@ class QuakMeetingTrayApp:
             show_qt_dashboard(tab_index)
         except Exception as e:
             logger.warning(f"Flight Deck window error: {e}")
+            try:
+                from ui.linux.qt_dashboard import show_qt_dashboard_error
+                show_qt_dashboard_error(e)
+            except Exception:
+                logger.exception("Unable to show the Flight Deck startup error window.")
 
     def on_banner_trigger(self, event_dict=None, meeting=None, stage=None, **kwargs):
         try:
@@ -336,6 +338,9 @@ def run_qt_tray_app():
 
     if "--silent" not in sys.argv:
         tray.show_flight_deck(0)
+
+    # Let the first dashboard paint before optional network/version work starts.
+    QTimer.singleShot(0, lambda: updater_service.check_for_updates(background=True))
 
     # Tray handlers are registered before the reminder loop begins, so an
     # event cannot be recorded as notified before its banner is deliverable.

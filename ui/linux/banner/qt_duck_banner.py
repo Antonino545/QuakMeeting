@@ -75,7 +75,13 @@ class QtDuckBannerWindow(QWidget):
         def _norm_dt(dt):
             if isinstance(dt, datetime):
                 return dt.astimezone() if dt.tzinfo else dt.astimezone()
-            return dt
+            if isinstance(dt, str):
+                try:
+                    parsed = datetime.fromisoformat(dt)
+                    return parsed.astimezone() if parsed.tzinfo else parsed.astimezone()
+                except Exception:
+                    pass
+            return None
 
         self.start_time = _norm_dt(event_data.get("start_time"))
         self.end_time = _norm_dt(event_data.get("end_time"))
@@ -169,10 +175,17 @@ class QtDuckBannerWindow(QWidget):
         self.screen_w = geo.width()
         self.screen_x = geo.x()
         self.screen_y = geo.y()
+        self._wayland_mode = (
+            sys.platform.startswith("linux")
+            and os.environ.get("XDG_SESSION_TYPE", "").lower() == "wayland"
+            and os.environ.get("QT_QPA_PLATFORM", "").lower() not in ("xcb", "wayland-xcomposite-egl")
+        )
+        self._render_offset_x = 0.0
+        self._render_offset_y = 0.0
 
         self.win_w = needed_w
         self.win_h = self.WIN_H
-        self.setFixedSize(self.win_w, self.win_h)
+        self.setFixedSize(max(self.win_w, self.screen_w) if self._wayland_mode else self.win_w, self.win_h)
 
         self.win_x = float(self.screen_x - self.win_w - 20)
         self.base_y = float(self.screen_y + 24)
@@ -183,14 +196,14 @@ class QtDuckBannerWindow(QWidget):
             Qt.WindowType.WindowStaysOnTopHint |
             Qt.WindowType.Tool
         )
-        if sys.platform.startswith("linux"):
+        if sys.platform.startswith("linux") and not self._wayland_mode:
             flags |= Qt.WindowType.X11BypassWindowManagerHint
         self.setWindowFlags(flags)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setMouseTracking(True)
-        self.move(int(self.win_x), int(self.base_y))
+        self.move(int(self.screen_x if self._wayland_mode else self.win_x), int(self.base_y))
 
         # Escape key shortcut to instantly dismiss banner
         self._esc_shortcut = QShortcut(QKeySequence(Qt.Key.Key_Escape), self)
@@ -455,7 +468,11 @@ class QtDuckBannerWindow(QWidget):
 
         # Smooth vertical sine wave flight bobbing
         y_wave = self.base_y + math.sin(self.tick * 0.038) * 8.0
-        self.move(int(self.win_x), int(y_wave))
+        if self._wayland_mode:
+            self._render_offset_x = self.win_x - self.screen_x
+            self._render_offset_y = y_wave - self.base_y
+        else:
+            self.move(int(self.win_x), int(y_wave))
 
         # Check hover even if mouse is stationary
         try:
@@ -479,6 +496,8 @@ class QtDuckBannerWindow(QWidget):
     # ── Mouse & Keyboard Interaction ───────────────────────────────────────────
 
     def _update_hover_state(self, pos):
+        if self._wayland_mode:
+            pos = QPointF(pos.x() - self._render_offset_x, pos.y() - self._render_offset_y)
         rects = self._get_button_rects(self.CARD_X, self.CARD_Y)
         dyn_px, dyn_py, _ = self._get_airplane_dynamics()
         plane_rect = QRectF(dyn_px - 65.0, dyn_py - 30.0, 115.0, 60.0)
@@ -548,6 +567,8 @@ class QtDuckBannerWindow(QWidget):
         if ev.button() != Qt.MouseButton.LeftButton:
             return
         pos = ev.position()
+        if self._wayland_mode:
+            pos = QPointF(pos.x() - self._render_offset_x, pos.y() - self._render_offset_y)
         rects = self._get_button_rects(self.CARD_X, self.CARD_Y)
         dyn_px, dyn_py, _ = self._get_airplane_dynamics()
         plane_rect = QRectF(dyn_px - 65.0, dyn_py - 30.0, 115.0, 60.0)
@@ -669,6 +690,8 @@ class QtDuckBannerWindow(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         p.setRenderHint(QPainter.RenderHint.TextAntialiasing)
+        if self._wayland_mode:
+            p.translate(self._render_offset_x, self._render_offset_y)
 
         palette = self._palette
         accent = palette["accent"]
