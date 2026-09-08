@@ -55,11 +55,23 @@ class QtAddressAutocompleteWidget(QWidget):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(4)
 
-        # Top row: LineEdit + Map Button + Save Button
-        input_row = QHBoxLayout()
-        input_row.setSpacing(8)
+        from PyQt6.QtWidgets import QFrame
 
-        self.line_edit = QLineEdit(self)
+        self.is_editing = not bool(self.initial_value_str)
+
+        # =====================================================================
+        # 1. EDITING CONTAINER (Text field + Map icon + Save button)
+        # =====================================================================
+        self.edit_container = QWidget(self)
+        edit_layout = QVBoxLayout(self.edit_container)
+        edit_layout.setContentsMargins(0, 0, 0, 0)
+        edit_layout.setSpacing(3)
+
+        input_row = QHBoxLayout()
+        input_row.setContentsMargins(0, 0, 0, 0)
+        input_row.setSpacing(6)
+
+        self.line_edit = QLineEdit(self.edit_container)
         self.line_edit.setText(self.initial_value_str)
         self.line_edit.setPlaceholderText(self.placeholder_str)
         self.line_edit.setStyleSheet("""
@@ -77,15 +89,15 @@ class QtAddressAutocompleteWidget(QWidget):
         """)
         input_row.addWidget(self.line_edit, stretch=1)
 
-        self.map_btn = QPushButton(t("settings_address_view_map"), self)
+        self.map_btn = QPushButton("🗺️", self.edit_container)
+        self.map_btn.setFixedSize(32, 28)
         self.map_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.map_btn.setStyleSheet("""
             QPushButton {
                 background: #313244;
                 color: #cdd6f4;
-                font-size: 11.5px;
-                border-radius: 8px;
-                padding: 6px 12px;
+                font-size: 12px;
+                border-radius: 6px;
                 border: 1px solid #45475a;
             }
             QPushButton:hover {
@@ -98,7 +110,8 @@ class QtAddressAutocompleteWidget(QWidget):
         grad_hover = "stop:0 #16a34a, stop:1 #22c55e" if self.btn_gradient == "green" else "stop:0 #7c3aed, stop:1 #8b5cf6"
         border_col = "#4ade80" if self.btn_gradient == "green" else "#a78bfa"
 
-        self.save_btn = QPushButton(f"💾 {t('save')}", self)
+        self.save_btn = QPushButton(f"💾 {t('save')}", self.edit_container)
+        self.save_btn.setFixedHeight(28)
         self.save_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.save_btn.setStyleSheet(f"""
             QPushButton {{
@@ -106,8 +119,8 @@ class QtAddressAutocompleteWidget(QWidget):
                 color: #ffffff;
                 font-weight: bold;
                 font-size: 11.5px;
-                border-radius: 8px;
-                padding: 6px 16px;
+                border-radius: 6px;
+                padding: 4px 14px;
                 border: 1px solid {border_col};
             }}
             QPushButton:hover {{
@@ -115,40 +128,70 @@ class QtAddressAutocompleteWidget(QWidget):
             }}
         """)
         input_row.addWidget(self.save_btn)
+        edit_layout.addLayout(input_row)
 
-        main_layout.addLayout(input_row)
+        self.status_label = QLabel("", self.edit_container)
+        self.status_label.setStyleSheet("color: #a6adc8; font-size: 11px;")
+        self.status_label.setVisible(False)
+        edit_layout.addWidget(self.status_label)
 
-        from PyQt6.QtWidgets import QFrame
+        main_layout.addWidget(self.edit_container)
 
-        # Status label — hint / searching / error states
-        self.status_label = QLabel(t("settings_address_suggest_hint"), self)
-        self.status_label.setStyleSheet("color: #cdd6f4; font-size: 11px;")
-        main_layout.addWidget(self.status_label)
-
-        # 2-line verified pill (hidden by default)
-        self.pill_widget = QFrame(self)
-        self.pill_widget.setStyleSheet("""
+        # =====================================================================
+        # 2. CONFIRMED CONTAINER (Compact single-row result card)
+        # =====================================================================
+        self.confirmed_container = QFrame(self)
+        self.confirmed_container.setStyleSheet("""
             QFrame {
-                background-color: #101f12;
-                border: 1px solid #a6e3a1;
-                border-radius: 6px;
-                padding: 2px 0px;
+                background-color: #181825;
+                border: 1px solid #313244;
+                border-radius: 8px;
             }
         """)
-        pill_layout = QVBoxLayout(self.pill_widget)
-        pill_layout.setContentsMargins(8, 3, 8, 3)
-        pill_layout.setSpacing(1)
+        confirmed_layout = QHBoxLayout(self.confirmed_container)
+        confirmed_layout.setContentsMargins(10, 4, 6, 4)
+        confirmed_layout.setSpacing(8)
 
-        self.pill_line1 = QLabel("", self.pill_widget)
-        self.pill_line1.setStyleSheet("color: #a6e3a1; font-weight: bold; font-size: 11px; border: none; background: transparent;")
-        pill_layout.addWidget(self.pill_line1)
+        self.confirmed_label = QLabel("", self.confirmed_container)
+        self.confirmed_label.setStyleSheet("border: none; background: transparent;")
+        confirmed_layout.addWidget(self.confirmed_label, stretch=1)
 
-        self.pill_line2 = QLabel("", self.pill_widget)
-        self.pill_line2.setStyleSheet("color: #a6adc8; font-size: 10px; border: none; background: transparent;")
-        pill_layout.addWidget(self.pill_line2)
+        self.confirmed_map_btn = QPushButton("🗺️", self.confirmed_container)
+        self.confirmed_map_btn.setFixedSize(28, 22)
+        self.confirmed_map_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.confirmed_map_btn.setStyleSheet("""
+            QPushButton {
+                background: #242438;
+                color: #cdd6f4;
+                font-size: 11px;
+                border-radius: 5px;
+                border: 1px solid #313244;
+            }
+            QPushButton:hover {
+                background: #313244;
+            }
+        """)
+        confirmed_layout.addWidget(self.confirmed_map_btn)
 
-        self.pill_widget.setVisible(False)
-        main_layout.addWidget(self.pill_widget)
+        self.edit_btn = QPushButton(f"✏️ {t('settings_address_edit')}", self.confirmed_container)
+        self.edit_btn.setFixedHeight(22)
+        self.edit_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.edit_btn.setStyleSheet("""
+            QPushButton {
+                background: #313244;
+                color: #cdd6f4;
+                font-size: 11px;
+                border-radius: 5px;
+                padding: 2px 10px;
+                border: 1px solid #45475a;
+            }
+            QPushButton:hover {
+                background: #45475a;
+            }
+        """)
+        confirmed_layout.addWidget(self.edit_btn)
+
+        main_layout.addWidget(self.confirmed_container)
 
         # Popup Suggestions List (NoFocus so typing is never interrupted!)
         self.popup_list = QListWidget()
@@ -180,11 +223,19 @@ class QtAddressAutocompleteWidget(QWidget):
         self.debounce_timer.setInterval(350)
         self.debounce_timer.timeout.connect(self._on_debounced_search)
 
+        if self.initial_value_str:
+            self._update_confirmed_row(None, self.initial_value_str)
+            self.set_editing(False)
+        else:
+            self.set_editing(True)
+
     def _setup_signals(self):
         self.line_edit.textChanged.connect(self._on_text_changed)
         self.line_edit.returnPressed.connect(self._on_save_clicked)
         self.save_btn.clicked.connect(self._on_save_clicked)
         self.map_btn.clicked.connect(self._on_open_map)
+        self.confirmed_map_btn.clicked.connect(self._on_open_map)
+        self.edit_btn.clicked.connect(self._on_edit_clicked)
 
         self.suggestions_ready.connect(self._handle_suggestions_ready)
         self.verification_finished.connect(self._handle_verification_finished)
@@ -196,12 +247,17 @@ class QtAddressAutocompleteWidget(QWidget):
         query = self.line_edit.text().strip()
         if len(query) < 3:
             self.popup_list.hide()
-            self.status_label.setText(t("settings_address_suggest_hint"))
-            self.status_label.setStyleSheet("color: #a6adc8; font-size: 11px;")
             return
 
-        self.status_label.setText(t("settings_address_searching"))
-        self.status_label.setStyleSheet("color: #89b4fa; font-size: 11px;")
+        self.popup_list.clear()
+        item = QListWidgetItem(t("settings_address_searching"))
+        item.setFlags(Qt.ItemFlag.NoItemFlags)
+        self.popup_list.addItem(item)
+        global_pos = self.line_edit.mapToGlobal(QPoint(0, self.line_edit.height() + 2))
+        self.popup_list.setFixedWidth(max(360, self.line_edit.width()))
+        self.popup_list.setFixedHeight(36)
+        self.popup_list.move(global_pos)
+        self.popup_list.show()
 
         def _worker():
             candidates = address_service.search_suggestions(query, limit=4)
@@ -216,9 +272,11 @@ class QtAddressAutocompleteWidget(QWidget):
         self.popup_list.clear()
 
         if not candidates:
-            self.popup_list.hide()
-            self.status_label.setText(t("settings_address_not_found"))
-            self.status_label.setStyleSheet("color: #fab387; font-size: 11px;")
+            item = QListWidgetItem(t("settings_address_not_found"))
+            item.setFlags(Qt.ItemFlag.NoItemFlags)
+            self.popup_list.addItem(item)
+            self.popup_list.setFixedHeight(36)
+            self.popup_list.show()
             return
 
         for cand in candidates:
@@ -250,6 +308,40 @@ class QtAddressAutocompleteWidget(QWidget):
             cand = self._candidates[idx]
             self.select_candidate(cand)
 
+    def set_editing(self, is_editing: bool):
+        self.is_editing = is_editing
+        self.edit_container.setVisible(is_editing)
+        self.confirmed_container.setVisible(not is_editing)
+        if not is_editing:
+            if hasattr(self, "popup_list") and self.popup_list:
+                self.popup_list.hide()
+            self.status_label.setVisible(False)
+
+    def _on_edit_clicked(self):
+        self.set_editing(True)
+        self.line_edit.setFocus()
+        self.line_edit.selectAll()
+
+    def _update_confirmed_row(self, candidate: Optional[AddressCandidate], raw_text: str = ""):
+        short_addr = ""
+        secondary = ""
+        if candidate:
+            short_addr = candidate.short_address or candidate.display_name or raw_text
+            parts = []
+            if candidate.city:
+                parts.append(candidate.city)
+            if candidate.postcode:
+                parts.append(candidate.postcode)
+            secondary = ", ".join(parts)
+        elif raw_text:
+            short_addr = raw_text.split(",")[0].strip()
+            parts = [p.strip() for p in raw_text.split(",")[1:] if p.strip()]
+            secondary = ", ".join(parts[:2])
+
+        sec_html = f"&nbsp;&nbsp;<span style='color: #a6adc8; font-size: 11px;'>· {secondary}</span>" if secondary else ""
+        html = f"<span style='color: #a6e3a1; font-weight: bold; font-size: 12px;'>✓</span> &nbsp;<span style='color: #cdd6f4; font-weight: bold; font-size: 12px;'>{short_addr}</span>{sec_html}"
+        self.confirmed_label.setText(html)
+
     def select_candidate(self, candidate: AddressCandidate):
         self.popup_list.hide()
         self.current_candidate = candidate
@@ -259,51 +351,14 @@ class QtAddressAutocompleteWidget(QWidget):
         self.line_edit.setText(chosen_text)
         self.line_edit.blockSignals(False)
 
-        border_col = "#a6e3a1" if self.btn_gradient == "green" else "#c4b5fd"
-        self.line_edit.setStyleSheet(f"""
-            QLineEdit {{
-                background-color: #11111b;
-                color: #cdd6f4;
-                border: 1px solid {border_col};
-                border-radius: 8px;
-                padding: 6px 10px;
-                font-size: 12px;
-            }}
-        """)
-
-        # Populate and show the 2-line verified pill
-        line1 = candidate.short_address or candidate.display_name
-        parts2 = []
-        if candidate.city:
-            parts2.append(candidate.city)
-        if candidate.postcode:
-            parts2.append(candidate.postcode)
-        line2 = "  ·  ".join(parts2) if parts2 else ""
-
-        self.pill_line1.setText(line1)
-        self.pill_line2.setText(line2)
-
-        if self.btn_gradient == "green":
-            self.pill_widget.setStyleSheet("""
-                QFrame { background-color: #101f12; border: 1px solid #a6e3a1; border-radius: 6px; }
-            """)
-            self.pill_line1.setStyleSheet("color: #a6e3a1; font-weight: bold; font-size: 11px; border: none; background: transparent;")
-        else:
-            self.pill_widget.setStyleSheet("""
-                QFrame { background-color: #150f21; border: 1px solid #c4b5fd; border-radius: 6px; }
-            """)
-            self.pill_line1.setStyleSheet("color: #c4b5fd; font-weight: bold; font-size: 11px; border: none; background: transparent;")
-
-        self.status_label.setVisible(False)
-        self.pill_widget.setVisible(True)
-
+        self._update_confirmed_row(candidate, chosen_text)
         self.save_btn.setText(f"✓ {t('saved')}")
-        def _restore_save():
-            try:
-                self.save_btn.setText(f"💾 {t('save')}")
-            except (RuntimeError, AttributeError):
-                pass
-        QTimer.singleShot(1500, _restore_save)
+
+        def _transition_confirmed():
+            self.save_btn.setText(f"💾 {t('save')}")
+            self.set_editing(False)
+
+        QTimer.singleShot(500, _transition_confirmed)
 
         if self.on_save_cb:
             self.on_save_cb(chosen_text, candidate)
@@ -314,10 +369,9 @@ class QtAddressAutocompleteWidget(QWidget):
 
         if not query:
             self.current_candidate = None
-            self.pill_widget.setVisible(False)
-            self.status_label.setVisible(True)
-            self.status_label.setText(t("settings_address_suggest_hint"))
-            self.status_label.setStyleSheet("color: #cdd6f4; font-size: 11px;")
+            self.status_label.setVisible(False)
+            self._update_confirmed_row(None, "")
+            self.set_editing(True)
             self.line_edit.setStyleSheet("""
                 QLineEdit {
                     background-color: #11111b;
@@ -330,16 +384,8 @@ class QtAddressAutocompleteWidget(QWidget):
             """)
             if self.on_save_cb:
                 self.on_save_cb("", None)
-            self.save_btn.setText(f"✓ {t('saved')}")
-            def _restore_save():
-                try:
-                    self.save_btn.setText(f"💾 {t('save')}")
-                except (RuntimeError, AttributeError):
-                    pass
-            QTimer.singleShot(1500, _restore_save)
             return
 
-        self.pill_widget.setVisible(False)
         self.status_label.setVisible(True)
         self.status_label.setText(t("settings_address_searching"))
         self.status_label.setStyleSheet("color: #89b4fa; font-size: 11px;")
@@ -356,14 +402,8 @@ class QtAddressAutocompleteWidget(QWidget):
         query = self.line_edit.text().strip()
         if is_valid and cand:
             self.select_candidate(cand)
-        elif is_valid and not query:
-            self.pill_widget.setVisible(False)
-            self.status_label.setVisible(True)
-            self.status_label.setText(t("settings_address_suggest_hint"))
-            self.status_label.setStyleSheet("color: #cdd6f4; font-size: 11px;")
         else:
             self.current_candidate = None
-            self.pill_widget.setVisible(False)
             self.status_label.setVisible(True)
             self.status_label.setText(f"❌ {t('settings_address_not_found')}")
             self.status_label.setStyleSheet("color: #f38ba8; font-weight: bold; font-size: 11px;")
@@ -377,6 +417,7 @@ class QtAddressAutocompleteWidget(QWidget):
                     font-size: 12px;
                 }
             """)
+            self.set_editing(True)
             if self.on_save_cb:
                 self.on_save_cb(query, None)
 
@@ -390,6 +431,8 @@ class QtAddressAutocompleteWidget(QWidget):
 
     def _on_open_map(self):
         query = self.line_edit.text().strip()
+        if not query and self.current_candidate:
+            query = self.current_candidate.display_name or self.current_candidate.short_address
         if not query:
             return
 
@@ -406,10 +449,11 @@ class QtAddressAutocompleteWidget(QWidget):
         if trigger_save and addr:
             self._on_save_clicked()
         elif addr:
+            self._update_confirmed_row(None, addr)
+            self.set_editing(False)
             self._verify_initial(addr)
         else:
             self.current_candidate = None
-            self.pill_widget.setVisible(False)
-            self.status_label.setVisible(True)
-            self.status_label.setText(t("settings_address_suggest_hint"))
-            self.status_label.setStyleSheet("color: #cdd6f4; font-size: 11px;")
+            self._update_confirmed_row(None, "")
+            self.set_editing(True)
+            self.status_label.setVisible(False)
