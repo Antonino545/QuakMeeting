@@ -34,6 +34,7 @@ except ImportError:
 
 class TestBannerModules(unittest.TestCase):
 
+    @unittest.skipUnless(HAS_QT, "PyQt6 not available")
     def test_xcb_helper_restores_banner_datetimes(self):
         from ui.linux.banner.qt_banner import _restore_banner_datetimes
 

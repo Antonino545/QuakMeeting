@@ -1,6 +1,7 @@
 """
 Unit tests for Evolution Data Server (EDS) Calendar Provider (Linux / GNOME).
 """
+import sys
 import unittest
 from unittest.mock import MagicMock, patch
 from datetime import datetime, timedelta
@@ -14,6 +15,7 @@ DTSTART:{DTSTART}
 DTEND:{DTEND}
 END:VEVENT"""
 
+@unittest.skipUnless(sys.platform.startswith("linux"), "EDS is only available on Linux")
 class TestEDSProvider(unittest.TestCase):
     def setUp(self):
         self.provider = EDSCalendarProvider()

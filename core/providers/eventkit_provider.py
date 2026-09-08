@@ -41,7 +41,7 @@ class EventKitCalendarProvider(BaseCalendarProvider):
                     else:
                         self._store.requestAccessToEntityType_completion_(EventKit.EKEntityTypeEvent, completion)
 
-                    sem.acquire()
+                    sem.acquire(timeout=2.0)
                     status = EventKit.EKEventStore.authorizationStatusForEntityType_(EventKit.EKEntityTypeEvent)
 
                 if status not in (3, 4):  # Not Authorized
@@ -74,7 +74,7 @@ class EventKitCalendarProvider(BaseCalendarProvider):
         end_date = Foundation.NSDate.dateWithTimeIntervalSince1970_(end_of_tomorrow.timestamp())
 
         ignored = set(self.config.get("ignored_calendars", []))
-        all_cals = store.calendarsForEntityType_(EventKit.EKEntityTypeEvent)
+        all_cals = store.calendarsForEntityType_(EventKit.EKEntityTypeEvent) or []
         active_cals = [c for c in all_cals if str(c.title()) not in ignored]
 
         predicate = store.predicateForEventsWithStartDate_endDate_calendars_(start_date, end_date, active_cals)
