@@ -106,14 +106,6 @@ class HangarTabController(AppKit.NSObject):
             self.expanded_categories = set()
         if not hasattr(self, "active_study_subcat") or not self.active_study_subcat:
             self.active_study_subcat = "study"
-        self.mini_canvases = {}
-        self.subtitle_labels = {}
-        self.popups = {}
-        self.kw_toggle_buttons = {}
-        self.kw_doc_views = {}
-        self.kw_scrolls = {}
-        self.kw_inputs = {}
-
         customs = config.get("mascot_customization", {})
         sig = (
             round(w),
@@ -127,6 +119,14 @@ class HangarTabController(AppKit.NSObject):
         if self._cached_view is not None and self._cached_sig == sig:
             self.start_animation_timer()
             return self._cached_view
+
+        self.mini_canvases = {}
+        self.subtitle_labels = {}
+        self.popups = {}
+        self.kw_toggle_buttons = {}
+        self.kw_doc_views = {}
+        self.kw_scrolls = {}
+        self.kw_inputs = {}
 
         scroll_view = AppKit.NSScrollView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 0, w, h))
         scroll_view.setHasVerticalScroller_(True)
@@ -958,6 +958,7 @@ class HangarTabController(AppKit.NSObject):
             lbl.setStringValue_(f"{desc}\n✨ Active Pilot: {get_combo_title(sel_animal, outfit)}")
 
         self.invalidate_cache()
+        self.start_animation_timer()
 
     @objc.IBAction
     def onSurpriseMe_(self, sender):

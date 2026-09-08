@@ -153,7 +153,7 @@ The UI follows strict multiplatform parity where both macOS AppKit and Linux PyQ
 | ![macOS Pilot Hangar](../assets/screenshots/macos_hangar.png) | ![Linux Qt Pilot Hangar](../assets/screenshots/qt_hangar.png) |
 
 #### 3. ⚙️ Preferences & Timing Tab
-*Modern pill chips for reminder lead times, transport mode switcher, sound selection, and calendar toggles.*
+*Modern pill chips for reminder lead times, transport mode switcher, sound selection, and calendar toggles. Features the unified **Route & Navigation** card with transit-line connector graphics (Sapphire origin dot, Mauve destination dot, vertical rule), dual-state editing/confirmed address components with zero-overlap floating search overlays, connected zero-gap segmented transport controls, and dynamic contextual departure buffer hints.*
 
 | macOS (AppKit) | Linux (PyQt6) |
 | :---: | :---: |
