@@ -2,10 +2,12 @@
 Card 3: Included System Calendars for Linux Flight Deck.
 """
 
+import threading
+
 from PyQt6.QtWidgets import (
     QFrame, QLabel, QPushButton, QHBoxLayout, QVBoxLayout, QWidget,
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal
 
 from core.services.config_service import config
 from core.services.calendar_service import calendar_service
@@ -13,6 +15,8 @@ from core.services.calendar_service import calendar_service
 
 class CalendarsCardWidget(QFrame):
     """Monitored system calendar sources filter."""
+
+    calendars_loaded = pyqtSignal(list)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -29,13 +33,35 @@ class CalendarsCardWidget(QFrame):
         cc_layout.addWidget(cc_title)
         cc_layout.addWidget(cc_sub)
 
-        avail_cals = calendar_service.get_available_calendars()
+        self.content_host = QWidget(self)
+        self.content_layout = QVBoxLayout(self.content_host)
+        self.content_layout.setContentsMargins(0, 0, 0, 0)
+        loading_lbl = QLabel("Loading calendars...", self.content_host)
+        loading_lbl.setStyleSheet("color: #a6adc8; font-size: 12px;")
+        self.content_layout.addWidget(loading_lbl)
+        cc_layout.addWidget(self.content_host)
+
+        self.calendars_loaded.connect(self._render_calendars)
+        threading.Thread(target=self._load_calendars, daemon=True).start()
+
+    def _load_calendars(self):
+        try:
+            self.calendars_loaded.emit(calendar_service.get_available_calendars())
+        except Exception:
+            self.calendars_loaded.emit([])
+
+    def _render_calendars(self, avail_cals):
+        while self.content_layout.count():
+            item = self.content_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
         if not avail_cals:
-            empty_lbl = QLabel("All calendar sources are currently monitored.", self)
+            empty_lbl = QLabel("All calendar sources are currently monitored.", self.content_host)
             empty_lbl.setStyleSheet("color: #a6adc8; font-size: 12px;")
-            cc_layout.addWidget(empty_lbl)
+            self.content_layout.addWidget(empty_lbl)
         else:
-            grid_widget = QWidget(self)
+            grid_widget = QWidget(self.content_host)
             grid_layout = QVBoxLayout(grid_widget)
             grid_layout.setContentsMargins(0, 0, 0, 0)
             grid_layout.setSpacing(8)
@@ -96,4 +122,4 @@ class CalendarsCardWidget(QFrame):
                 row_layout.addStretch()
                 grid_layout.addLayout(row_layout)
 
-            cc_layout.addWidget(grid_widget)
+            self.content_layout.addWidget(grid_widget)

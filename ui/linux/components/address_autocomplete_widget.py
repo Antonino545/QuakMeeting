@@ -3,6 +3,7 @@ Reusable Address Autocomplete Widget for Linux PyQt6 (Google Maps style).
 Provides continuous, non-interrupting search-as-you-type suggestions with a popup list,
 instant geocoding verification status, and one-click browser map preview.
 """
+import logging
 import threading
 from typing import Optional, Callable, List
 
@@ -13,7 +14,10 @@ from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QUrl, QPoint
 from PyQt6.QtGui import QDesktopServices
 
 from core.services.address_service import address_service, AddressCandidate, AddressService
+from core.services.config_service import is_debug_mode
 from core.services.language_service import t
+
+logger = logging.getLogger("QuakMeeting.AddressAutocomplete")
 
 
 class QtAddressAutocompleteWidget(QWidget):
@@ -43,6 +47,7 @@ class QtAddressAutocompleteWidget(QWidget):
 
         self.current_candidate: Optional[AddressCandidate] = None
         self._candidates: List[AddressCandidate] = []
+        self._last_search_query: str = ""
 
         self._init_ui()
         self._setup_signals()
@@ -193,10 +198,17 @@ class QtAddressAutocompleteWidget(QWidget):
 
         main_layout.addWidget(self.confirmed_container)
 
-        # Popup Suggestions List (NoFocus so typing is never interrupted!)
+        # Popup Suggestions List — uses ToolTip window type instead of Popup
+        # because Qt.WindowType.Popup grabs keyboard+mouse on Linux/X11,
+        # stealing focus from the QLineEdit and blocking further typing.
         self.popup_list = QListWidget()
-        self.popup_list.setWindowFlags(Qt.WindowType.Popup | Qt.WindowType.FramelessWindowHint)
+        self.popup_list.setWindowFlags(
+            Qt.WindowType.ToolTip
+            | Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.WindowStaysOnTopHint
+        )
         self.popup_list.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.popup_list.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, True)
         self.popup_list.setStyleSheet("""
             QListWidget {
                 background-color: #181825;
@@ -240,6 +252,26 @@ class QtAddressAutocompleteWidget(QWidget):
         self.suggestions_ready.connect(self._handle_suggestions_ready)
         self.verification_finished.connect(self._handle_verification_finished)
 
+        # Event filter to dismiss popup when focus leaves the line edit or Escape is pressed
+        # (ToolTip windows don't auto-dismiss like Popup windows).
+        self.line_edit.installEventFilter(self)
+
+    def eventFilter(self, obj, event):
+        from PyQt6.QtCore import QEvent
+        if obj is self.line_edit:
+            if event.type() == QEvent.Type.FocusOut:
+                # Small delay so item-click signals fire before the popup hides.
+                QTimer.singleShot(150, self.popup_list.hide)
+                if is_debug_mode():
+                    logger.debug("📋 Popup hidden (line edit lost focus)")
+            elif event.type() == QEvent.Type.KeyPress:
+                from PyQt6.QtCore import Qt as QtConst
+                if event.key() == QtConst.Key.Key_Escape:
+                    self.popup_list.hide()
+                    if is_debug_mode():
+                        logger.debug("📋 Popup hidden (Escape pressed)")
+        return super().eventFilter(obj, event)
+
     def _on_text_changed(self, text: str):
         self.debounce_timer.start()
 
@@ -248,6 +280,9 @@ class QtAddressAutocompleteWidget(QWidget):
         if len(query) < 3:
             self.popup_list.hide()
             return
+
+        if is_debug_mode():
+            logger.debug("🔍 Autocomplete search triggered for query=%r", query)
 
         self.popup_list.clear()
         item = QListWidgetItem(t("settings_address_searching"))
@@ -259,15 +294,29 @@ class QtAddressAutocompleteWidget(QWidget):
         self.popup_list.move(global_pos)
         self.popup_list.show()
 
+        # Capture the current query text on the main thread so the background
+        # worker never accesses Qt widgets (which would deadlock the app).
+        snapshot_query = query
+        self._last_search_query = snapshot_query
+
         def _worker():
-            candidates = address_service.search_suggestions(query, limit=4)
-            # Only emit if query is still matching current input
-            if self.line_edit.text().strip() == query:
-                self.suggestions_ready.emit(candidates)
+            if is_debug_mode():
+                logger.debug("🌐 Background search worker started for query=%r", snapshot_query)
+            candidates = address_service.search_suggestions(snapshot_query, limit=4)
+            if is_debug_mode():
+                logger.debug("🌐 Background search worker finished: %d candidates for query=%r", len(candidates), snapshot_query)
+            # Emit only if the query hasn't changed; the signal is thread-safe.
+            self.suggestions_ready.emit(candidates)
 
         threading.Thread(target=_worker, daemon=True).start()
 
     def _handle_suggestions_ready(self, candidates: List[AddressCandidate]):
+        # Discard results from a stale search (user kept typing).
+        current_text = self.line_edit.text().strip()
+        if current_text != self._last_search_query:
+            if is_debug_mode():
+                logger.debug("📋 Discarding stale results (current=%r, search=%r)", current_text, self._last_search_query)
+            return
         self._candidates = candidates
         self.popup_list.clear()
 
@@ -345,6 +394,8 @@ class QtAddressAutocompleteWidget(QWidget):
     def select_candidate(self, candidate: AddressCandidate):
         self.popup_list.hide()
         self.current_candidate = candidate
+        if is_debug_mode():
+            logger.debug("✅ Candidate selected: %s (lat=%.4f, lon=%.4f)", candidate.short_address, candidate.lat, candidate.lon)
 
         chosen_text = candidate.short_address or candidate.display_name
         self.line_edit.blockSignals(True)
@@ -366,6 +417,8 @@ class QtAddressAutocompleteWidget(QWidget):
     def _on_save_clicked(self):
         query = self.line_edit.text().strip()
         self.popup_list.hide()
+        if is_debug_mode():
+            logger.debug("💾 Save clicked, verifying address=%r", query)
 
         if not query:
             self.current_candidate = None
@@ -400,6 +453,8 @@ class QtAddressAutocompleteWidget(QWidget):
     def _handle_verification_finished(self, is_valid: bool, cand: Optional[AddressCandidate], err: str):
         self.save_btn.setText(f"💾 {t('save')}")
         query = self.line_edit.text().strip()
+        if is_debug_mode():
+            logger.debug("📍 Verification result: valid=%s, candidate=%s, error=%r", is_valid, cand.short_address if cand else None, err)
         if is_valid and cand:
             self.select_candidate(cand)
         else:

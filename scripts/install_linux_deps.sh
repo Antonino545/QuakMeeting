@@ -15,6 +15,7 @@ echo "📦 Step 1: Installing system PyQt6 & Evolution Data Server libraries..."
 sudo apt update
 sudo apt install -y python3-pyqt6 python3-gi \
                     gir1.2-edataserver-1.2 gir1.2-ecal-2.0 \
+                    gir1.2-ayatanaappindicator3-0.1 \
                     libgirepository1.0-dev pkg-config python3-dev
 
 echo ""

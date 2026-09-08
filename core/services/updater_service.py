@@ -122,7 +122,10 @@ class UpdaterService:
     def check_for_updates(self, background: bool = True) -> Optional[Dict[str, Any]]:
         """Queries GitHub Releases API for the latest release."""
         if self.is_checking:
+            logger.debug("Update check skipped because another check is already running.")
             return self.latest_release_info
+
+        logger.debug("Starting update check: background=%s current_version=%s.", background, self.current_version)
 
         def _worker():
             self.is_checking = True
@@ -148,6 +151,7 @@ class UpdaterService:
                         "published_at": data.get("published_at", "")
                     }
                     self.latest_release_info = release_info
+                    logger.debug("Update check completed: latest=%s has_update=%s.", tag_name, has_update)
                     if has_update:
                         logger.info(f"🚀 New QuakMeeting update found: {tag_name} (Current: {self.current_version})")
                         event_bus.publish("UPDATE_AVAILABLE", **release_info)
@@ -173,6 +177,7 @@ class UpdaterService:
 
         if background:
             threading.Thread(target=_worker, daemon=True).start()
+            logger.debug("Update check worker started in background.")
             return self.latest_release_info
         else:
             return _worker()
@@ -199,6 +204,7 @@ class UpdaterService:
     def download_and_install_update(self, background: bool = True, on_progress=None) -> bool:
         """Downloads the matching asset and initiates installer / replacement."""
         if self.is_downloading:
+            logger.debug("Update download skipped because another download is already running.")
             return False
 
         def _worker():
@@ -217,6 +223,7 @@ class UpdaterService:
             file_name = asset["name"]
             temp_dir = tempfile.mkdtemp(prefix="quakmeeting_update_")
             target_path = os.path.join(temp_dir, file_name)
+            logger.debug("Selected update asset %s for download.", file_name)
 
             self.is_downloading = True
             event_bus.publish("UPDATE_STEP", step_id="download", step_name="Downloading update...")

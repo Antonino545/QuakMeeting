@@ -6,9 +6,11 @@ import webbrowser
 from datetime import datetime
 
 import gi
-gi.require_version('AppIndicator3', '0.1')
+gi.require_version('AyatanaAppIndicator3', '0.1')
 gi.require_version('Gtk', '3.0')
-from gi.repository import AppIndicator3, Gtk, GLib
+from gi.repository import AyatanaAppIndicator3, Gtk, GLib
+
+AppIndicator3 = AyatanaAppIndicator3
 
 from core.services.config_service import config, is_debug_mode
 from core.services.calendar_service import calendar_service
@@ -55,7 +57,7 @@ class AppIndicatorTrayApp:
         event_bus.subscribe("UPDATE_CHECK_COMPLETE", lambda **kwargs: self._bridge.menu.emit())
         event_bus.subscribe("UPDATE_INSTALLED", lambda **kwargs: self._bridge.menu.emit())
         event_bus.subscribe("AGENDA_UPDATED", lambda **kwargs: self._bridge.menu.emit())
-        event_bus.subscribe("CONFIG_CHANGED", lambda **kwargs: threading.Thread(target=calendar_service.sync_now, daemon=True).start())
+        event_bus.subscribe("CONFIG_CHANGED", lambda **kwargs: calendar_service.request_background_sync("config_changed"))
         updater_service.check_for_updates(background=True)
         self._check_startup_catch_up(meetings=calendar_service.get_upcoming_meetings())
 
@@ -179,9 +181,9 @@ class AppIndicatorTrayApp:
         max_lookahead_min = int(config.get("max_countdown_lookahead_hours", 3)) * 60
         title = TrayViewModel.get_status_bar_title(primary_m, now, curr_mode, max_lookahead_min)
         if curr_mode == "icon_only" or not primary_m:
-            self.indicator.set_label("", " " * 60)
+            self.indicator.set_label("", "")
         else:
-            self.indicator.set_label(" " + title, " " * 60)
+            self.indicator.set_label(title, title)
 
 
     def set_status_mode(self, mode):
@@ -201,9 +203,9 @@ class AppIndicatorTrayApp:
             title = TrayViewModel.get_status_bar_title(primary_m, now, status_mode, max_lookahead_min)
 
             if status_mode == "icon_only" or not primary_m:
-                self.indicator.set_label("", " " * 60)
+                self.indicator.set_label("", "")
             else:
-                self.indicator.set_label(" " + title, " " * 60)
+                self.indicator.set_label(title, title)
                 
             self.build_menu()
         except Exception as e:

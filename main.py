@@ -1,8 +1,12 @@
 import sys
 import os
+import logging
+
+if "--debug" in sys.argv or "-d" in sys.argv:
+    os.environ["QUAKMEETING_DEBUG"] = "1"
 
 if sys.platform.startswith("linux"):
-    if "WAYLAND_DISPLAY" in os.environ or os.environ.get("XDG_SESSION_TYPE") == "wayland":
+    if os.environ.get("QUAKMEETING_QT_XCB", "").strip().lower() in ("1", "true", "yes", "on"):
         os.environ.setdefault("QT_QPA_PLATFORM", "xcb")
 
 # Ensure current project directory is in import path
@@ -60,9 +64,12 @@ def main():
         sys.exit(0 if diag.get("status") != "ERROR" else 1)
 
     _ensure_gui_python_environment()
-    if "--debug" in sys.argv or "-d" in sys.argv:
-        os.environ["QUAKMEETING_DEBUG"] = "1"
-        logger.info("🔧 Debug mode activated via CLI flag (--debug)")
+    from core.services.config_service import is_debug_mode
+    debug_mode = is_debug_mode()
+    setup_logging(level=logging.DEBUG if debug_mode else logging.INFO)
+    if debug_mode:
+        logger.info("🔧 Debug mode activated; verbose diagnostics enabled")
+    logger.debug("Startup arguments: %s", sys.argv)
 
     print("=" * 60)
     print(" 🦆 QuakMeeting - Smart Meeting Reminders & Flight Deck")

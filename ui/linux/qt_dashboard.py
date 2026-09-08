@@ -11,7 +11,7 @@ import os
 import sys
 
 if sys.platform.startswith("linux"):
-    if "WAYLAND_DISPLAY" in os.environ or os.environ.get("XDG_SESSION_TYPE") == "wayland":
+    if os.environ.get("QUAKMEETING_QT_XCB", "").strip().lower() in ("1", "true", "yes", "on"):
         os.environ.setdefault("QT_QPA_PLATFORM", "xcb")
 
 import threading
@@ -300,6 +300,7 @@ class QtFlightDeckWindow(QMainWindow):
         sync_btn.setObjectName("OutlineBtn")
         sync_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         def _trigger_sync():
+            logger.debug("Dashboard sync button clicked.")
             self.sync_btn.start_spinning("Syncing...")
             threading.Thread(target=calendar_service.sync_now, daemon=True).start()
         sync_btn.clicked.connect(lambda chk=False: _trigger_sync())
@@ -366,6 +367,7 @@ class QtFlightDeckWindow(QMainWindow):
 
     def set_active_tab(self, index: int):
         """Switches the active tab and updates navbar segment button states."""
+        logger.debug("Switching dashboard tab to index %d.", index)
         self.current_tab_index = index
         if hasattr(self, 'stacked_widget'):
             self.stacked_widget.setCurrentIndex(index)
@@ -381,6 +383,7 @@ class QtFlightDeckWindow(QMainWindow):
 
     def closeEvent(self, event):
         """Cleans up animation timers when window is closed."""
+        logger.debug("Closing Flight Deck dashboard window.")
         if hasattr(self, 'hangar_tab'):
             self.hangar_tab.stop_animation_timer()
         super().closeEvent(event)

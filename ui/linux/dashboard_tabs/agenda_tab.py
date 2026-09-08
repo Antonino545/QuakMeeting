@@ -5,6 +5,7 @@ and 1-click joins for online meetings (Zoom/Meet/Teams/Serenis) and navigation r
 """
 
 import urllib.parse
+import logging
 from datetime import datetime
 
 from PyQt6.QtWidgets import (
@@ -19,6 +20,8 @@ from core.services.arrival_service import arrival_service
 from core.services.language_service import t
 from core.domain.models import format_duration
 from core.domain.classifier import EventClassifier
+
+logger = logging.getLogger("QuakMeeting.QtAgendaTab")
 
 
 class QtAgendaTab(QWidget):
@@ -55,6 +58,7 @@ class QtAgendaTab(QWidget):
             meetings = calendar_service.get_upcoming_meetings()
 
         today_meets = [m for m in meetings if m.start_time and m.start_time.astimezone().date() == now.date()]
+        logger.debug("Refreshing agenda with %d meetings, %d scheduled today.", len(meetings), len(today_meets))
 
         if not today_meets:
             empty_box = QVBoxLayout()

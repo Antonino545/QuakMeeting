@@ -155,9 +155,11 @@ class ConfigService:
                         merged[k] = {**merged[k], **v}
                     else:
                         merged[k] = v
+                logger.debug("Loaded configuration from %s (%d user keys).", CONFIG_PATH, len(user_cfg))
                 return merged
             else:
                 self._save_raw(DEFAULT_CONFIG)
+                logger.debug("Created default configuration at %s.", CONFIG_PATH)
                 return dict(DEFAULT_CONFIG)
         except Exception as e:
             logger.warning(f"Error loading config.json, using default: {e}")
@@ -178,9 +180,11 @@ class ConfigService:
     def set(self, key: str, value: Any) -> None:
         self.config[key] = value
         self._save_raw(self.config)
+        logger.debug("Configuration updated: %s=%r.", key, value)
 
     def reload(self) -> Dict[str, Any]:
         self.config = self._load_or_create()
+        logger.debug("Configuration reloaded (%d keys).", len(self.config))
         return self.config
 
     def open_config_in_editor(self) -> None:

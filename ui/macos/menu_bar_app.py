@@ -8,6 +8,7 @@ import webbrowser
 import threading
 import time
 import os
+import sys
 import logging
 from datetime import datetime
 from typing import List, Dict, Any, Optional
@@ -27,7 +28,7 @@ from ui.common.tray_viewmodel import TrayViewModel
 class QuakMeetingAppDelegate(AppKit.NSObject):
     def applicationDidFinishLaunching_(self, notification):
         logger.info("QuakMeeting running in macOS menu bar & system status bar!")
-        import sys
+        logger.debug("macOS application finished launching; argv=%s", sys.argv)
         if "--silent" not in sys.argv and "--autostart" not in sys.argv:
             show_dashboard()
 
@@ -89,6 +90,7 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         self._last_menu_signature = None
         self.meetings: List[Dict[str, Any]] = []
         self._startup_catch_up_checked = False
+        logger.debug("Initialized macOS menu bar controller.")
 
         # Subscribe to EventBus
         event_bus.subscribe("REMINDER_TRIGGERED", self._on_reminder_triggered)
@@ -266,7 +268,7 @@ class QuakMeetingMenuBar(AppKit.NSObject):
         if key in ("transport_mode", "home_address", "eta_buffer_minutes", "enable_eta_service", "custom_keywords", "ignored_calendars", None):
             if key == "transport_mode":
                 calendar_service.update_transport_mode()
-            threading.Thread(target=calendar_service.sync_now, daemon=True).start()
+            calendar_service.request_background_sync("config_changed")
         self.performSelectorOnMainThread_withObject_waitUntilDone_(
             "refreshMenuOnMainThread:",
             None,

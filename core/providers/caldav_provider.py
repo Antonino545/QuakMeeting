@@ -41,7 +41,10 @@ class CalDAVCalendarProvider(BaseCalendarProvider):
                     pass
 
         if not calendar_sources:
+            logger.debug("No CalDAV or local ICS calendar sources configured.")
             return []
+
+        logger.debug("Fetching calendar events from %d CalDAV/ICS sources.", len(calendar_sources))
 
         meetings: List[Meeting] = []
         ignored = set(self.config.get("ignored_calendars", []))
@@ -100,6 +103,7 @@ class CalDAVCalendarProvider(BaseCalendarProvider):
                 meetings.append(meeting)
 
         meetings.sort(key=lambda m: m.start_time)
+        logger.debug("Parsed %d meetings from CalDAV/ICS sources.", len(meetings))
         return meetings
 
     def get_available_calendars(self) -> List[Dict[str, Any]]:
@@ -123,12 +127,14 @@ class CalDAVCalendarProvider(BaseCalendarProvider):
                 source = "https://" + source[len("webcal://"):]
 
             if source.startswith("http://") or source.startswith("https://"):
+                logger.debug("Loading remote calendar source: %s", source)
                 req = urllib.request.Request(source, headers={"User-Agent": "QuakMeeting/1.0"})
                 with urllib.request.urlopen(req, timeout=10) as resp:
                     content = resp.read().decode("utf-8", errors="ignore")
                     self._feed_cache[source] = content
                     return content
             elif os.path.exists(source):
+                logger.debug("Loading local calendar source: %s", source)
                 with open(source, "r", encoding="utf-8", errors="ignore") as f:
                     content = f.read()
                     self._feed_cache[source] = content

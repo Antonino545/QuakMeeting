@@ -90,6 +90,7 @@ class CalendarService:
     def set_provider(self, provider: BaseCalendarProvider) -> None:
         self._provider = provider
         self.provider_name = provider.__class__.__name__
+        logger.debug("Calendar provider changed to %s.", self.provider_name)
 
     @staticmethod
     def _normalize_event_subject(title: str) -> str:
@@ -348,7 +349,9 @@ class CalendarService:
             self._apply_current_transport_mode(filtered)
             self._in_memory_cache = filtered
             self._last_fetch_time = self.repository.get_last_modified_time()
+            logger.debug("Loaded %d meetings from calendar cache.", len(filtered))
             return filtered
+        logger.debug("Calendar cache is empty.")
         return []
 
     def sync_now(self) -> List[Meeting]:
@@ -356,6 +359,7 @@ class CalendarService:
         with self._fetch_lock:
             self._is_fetching = True
             try:
+                logger.debug("Starting calendar synchronization with provider=%s.", self.provider_name)
                 raw_meetings = self._provider.fetch_events()
                 filtered = self._filter_within_window(raw_meetings)
                 self._enrich_with_eta(filtered)
@@ -373,23 +377,54 @@ class CalendarService:
                 return filtered
             except Exception as e:
                 self.last_sync_time = datetime.now()
-                self.last_sync_status = "Error"
+                cached_meetings = self._in_memory_cache or self._load_cache_from_disk()
+                self.last_sync_status = "Cache" if cached_meetings else "Error"
                 self.last_error = str(e)
-                logger.error(f"Error during calendar synchronization: {e}", exc_info=True)
-                return self._in_memory_cache
+                self._has_synced_this_process = True
+                self._last_fetch_time = time.time()
+                logger.error(
+                    "Calendar synchronization failed; retaining %d cached meetings: %s",
+                    len(cached_meetings),
+                    e,
+                    exc_info=True
+                )
+                if cached_meetings:
+                    self.bus.publish("CALENDAR_SYNCED", meetings=cached_meetings, from_cache=True)
+                return cached_meetings
             finally:
                 self._is_fetching = False
+
+    def _schedule_background_sync(self, reason: str, delay_seconds: float = 0.0) -> None:
+        """Reserve and start one background sync without allowing duplicate workers."""
+        with self._fetch_lock:
+            if self._is_fetching:
+                logger.debug("Background calendar sync already running; skipping request (%s).", reason)
+                return
+            self._is_fetching = True
+
+        logger.debug("Scheduling background calendar sync (%s, delay=%.1fs).", reason, delay_seconds)
+        if delay_seconds > 0:
+            sync_timer = threading.Timer(delay_seconds, self.sync_now)
+            sync_timer.daemon = True
+            sync_timer.start()
+        else:
+            threading.Thread(target=self.sync_now, daemon=True).start()
+
+    def request_background_sync(self, reason: str = "requested") -> None:
+        """Request a guarded background sync for UI/configuration changes."""
+        self._schedule_background_sync(reason)
 
     def get_upcoming_meetings(self, force_refresh: bool = False) -> List[Meeting]:
         """Return cached meetings immediately (< 0.001s), dispatching background sync if needed."""
         if not self._in_memory_cache:
             self._load_cache_from_disk()
 
-        if force_refresh or (not self._has_synced_this_process and not self._is_fetching):
-            if not self._is_fetching:
-                threading.Thread(target=self.sync_now, daemon=True).start()
-        elif time.time() - self._last_fetch_time > CACHE_TTL_SECONDS and not self._is_fetching:
-            threading.Thread(target=self.sync_now, daemon=True).start()
+        if force_refresh:
+            self._schedule_background_sync("force_refresh")
+        elif not self._has_synced_this_process:
+            self._schedule_background_sync("initial_sync", delay_seconds=1.0)
+        elif time.time() - self._last_fetch_time > CACHE_TTL_SECONDS:
+            self._schedule_background_sync(f"cache_age>{CACHE_TTL_SECONDS:.1f}s")
 
         return list(self._in_memory_cache)
 
@@ -406,12 +441,14 @@ class CalendarService:
     def get_available_calendars(self, force_refresh: bool = False) -> List[Dict[str, Any]]:
         """Return list of macOS calendars with 5-minute cache to prevent main-thread UI blocking."""
         if not force_refresh and self._cached_calendars and (time.time() - self._last_calendars_fetch_time < 300.0):
+            logger.debug("Returning %d cached calendars.", len(self._cached_calendars))
             return list(self._cached_calendars)
 
         try:
             cals = self._provider.get_available_calendars()
             self._cached_calendars = cals
             self._last_calendars_fetch_time = time.time()
+            logger.debug("Loaded %d available calendars.", len(cals))
             return list(cals)
         except Exception as e:
             logger.error(f"Error fetching calendars list: {e}")

@@ -37,6 +37,7 @@ class EDSCalendarProvider(BaseCalendarProvider):
     def is_available(self) -> bool:
         if self._is_available is None:
             self._is_available = (self._get_registry() is not None)
+            logger.debug("EDS availability check: %s.", self._is_available)
         return self._is_available
 
     def fetch_events(self, start_offset_hours: int = 2, end_offset_hours: int = 24) -> List[Meeting]:
@@ -60,6 +61,7 @@ class EDSCalendarProvider(BaseCalendarProvider):
         custom_kw = self.config.get("custom_keywords", {})
 
         sources = registry.list_sources(EDataServer.SOURCE_EXTENSION_CALENDAR)
+        logger.debug("EDS returned %d calendar sources.", len(sources))
 
         meetings: List[Meeting] = []
 
@@ -132,6 +134,7 @@ class EDSCalendarProvider(BaseCalendarProvider):
                 logger.debug(f"Failed to fetch events from EDS source '{name}': {e}")
 
         meetings.sort(key=lambda m: m.start_time if m.start_time else datetime.min)
+        logger.debug("Parsed %d meetings from EDS.", len(meetings))
         return meetings
 
     def get_available_calendars(self) -> List[Dict[str, Any]]:

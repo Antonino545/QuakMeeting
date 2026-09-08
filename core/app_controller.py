@@ -18,12 +18,15 @@ class AppController:
 
     def start_background_loop(self):
         if self.is_running:
+            logger.debug("Background loop start requested while already running.")
             return
         self.is_running = True
+        logger.debug("Starting background loop thread.")
         self._thread = threading.Thread(target=self._loop, daemon=True)
         self._thread.start()
 
     def stop_background_loop(self):
+        logger.debug("Stopping background loop.")
         self.is_running = False
         self._stop_event.set()
 
@@ -36,6 +39,7 @@ class AppController:
             try:
                 # 1. Fetch upcoming meetings
                 meeting_objects = calendar_service.get_upcoming_meetings()
+                logger.debug("Fetched %d upcoming meetings.", len(meeting_objects))
 
                 # 2. Evaluate reminders cleanly in domain service
                 reminder_engine.evaluate_meetings(meeting_objects)
@@ -45,6 +49,7 @@ class AppController:
 
                 # 4. Periodic auto-update check every 4 hours (960 iterations of 15s)
                 self._loop_count += 1
+                logger.debug("Completed background loop iteration %d.", self._loop_count)
                 if self._loop_count % 960 == 0:
                     updater_service.check_for_updates(background=True)
 

@@ -196,8 +196,13 @@ QuakMeeting provides clear visual and functional distinction between advance hea
 ### 1. Zero-Latency Caching (Stale-While-Revalidate)
 Querying calendars (especially via EventKit) can be slow. 
 - On launch or UI interaction, `calendar_service.py` immediately reads `~/.quakmeeting/calendar_cache.json` to instantly populate the UI.
+- The initial provider refresh is delayed until after the first UI paint and runs in a guarded daemon worker. Concurrent callers cannot start duplicate refreshes.
 - `app_controller.py` polls `CalendarService.sync_now()` in the background every 30-60 seconds.
 - When fresh data is retrieved, the disk cache is atomically replaced, and a `CALENDAR_UPDATED` event is fired over the `event_bus`, causing the UI to gracefully refresh.
+- If a provider refresh fails, the service keeps or reloads the last valid cache, publishes it to the UI, and waits for the normal cache interval before retrying.
+- Linux settings calendar metadata is loaded off the Qt main thread and delivered through a Qt signal; provider and parsing work must never block dashboard construction.
+
+On Linux Wayland sessions, Qt uses the native Wayland platform by default. Set `QUAKMEETING_QT_XCB=1` only when an XCB/XWayland compatibility fallback is required.
 
 ### 2. In-Place Automatic Update Lifecycle
 - `updater_service.py` checks GitHub Releases in the background.

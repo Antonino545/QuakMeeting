@@ -57,11 +57,12 @@ class SystemCardWidget(QFrame):
         self.lang_btns = {}
 
         def _apply_lang(l_key):
-            config.set("language", l_key)
-            try:
-                event_bus.publish("CONFIG_CHANGED", key="language", value=l_key)
-            except Exception:
-                pass
+            if config.get("language", "system") != l_key:
+                config.set("language", l_key)
+                try:
+                    event_bus.publish("CONFIG_CHANGED", key="language", value=l_key)
+                except Exception:
+                    pass
             if hasattr(self, "uc_title"):
                 self.uc_title.setText(t("settings_system_lang_diag") if is_debug_mode() else t("settings_system_lang"))
             for k, b in self.lang_btns.items():

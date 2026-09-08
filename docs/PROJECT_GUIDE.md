@@ -114,6 +114,11 @@ QuakMeeting/
 - **Rule**: `CalendarService` only fetches and evaluates events scheduled for **Today** (`00:00:00` to `23:59:59`).
 - **Why**: Events for tomorrow must **never** appear in Today's Agenda, must not be picked as "Next Event" 24 hours in advance, and must not trigger premature notifications.
 
+### 2a. Cache-First UI and Background Providers
+- **Rule**: Startup must render the persisted calendar cache before waiting for EDS, EventKit, or CalDAV.
+- **Rule**: Calendar provider fetches, parsing, and calendar metadata discovery run outside the Qt/AppKit main thread. UI updates return through `EventBus` or platform-native signals.
+- **Rule**: A failed refresh preserves the last valid cache and does not launch overlapping retry workers.
+
 ### 3. Transit / Travel Events vs Video Calls
 - **Travel / Transit Events (`is_travel=True`, `departure_time` set)**:
   - Notification stages (e.g. 45m, 30m, 15m, 5m, 0m) evaluate relative to the **Leave / Departure Time** (`departure_time`), not the event start time.
