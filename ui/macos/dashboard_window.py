@@ -66,6 +66,7 @@ class DashboardWindowController(AppKit.NSObject):
         self.cached_calendars = []
         self.is_loading = False
         self._last_rendered_signature = None
+        logger.debug("Initializing macOS dashboard window controller.")
 
         self.agenda_tab = AgendaTabController.alloc().init()
         self.hangar_tab = HangarTabController.alloc().init()
@@ -75,6 +76,7 @@ class DashboardWindowController(AppKit.NSObject):
 
         threading.Thread(target=self._prewarm_calendars, daemon=True).start()
         self._create_window()
+        logger.debug("macOS dashboard window created and calendar prewarm started.")
         return self
 
     def _prewarm_calendars(self):

@@ -138,14 +138,17 @@ class TestDashboardUI(unittest.TestCase):
 
     @unittest.skipUnless(HAS_APPKIT, "macOS AppKit required")
     def test_show_dashboard_accepts_tab_index(self):
+        from unittest.mock import patch
         from ui.macos.dashboard_window import show_dashboard
         # Ensure show_dashboard accepts positional tab_index parameters (0, 1, 2, None)
-        try:
-            show_dashboard()
-            show_dashboard(0)
-            show_dashboard(2)
-        except TypeError as e:
-            self.fail(f"show_dashboard raised TypeError with positional tab_index: {e}")
+        with patch("ui.macos.dashboard_window.DashboardWindowController.refresh_data"), \
+             patch("ui.macos.dashboard_window.DashboardWindowController._prewarm_calendars"):
+            try:
+                show_dashboard()
+                show_dashboard(0)
+                show_dashboard(2)
+            except TypeError as e:
+                self.fail(f"show_dashboard raised TypeError with positional tab_index: {e}")
 
     def test_app_launcher_respects_qt_flag(self):
         from unittest.mock import patch, MagicMock
@@ -339,6 +342,35 @@ class TestDashboardUI(unittest.TestCase):
         # Test SSIDs reset
         card._on_reset_ssids()
         self.assertIn("eduroam", config.get("arrival_wifi_ssids"))
+
+    def test_qt_dashboard_sync_event_updates_ui_and_stops_spinning(self):
+        try:
+            from PyQt6.QtWidgets import QApplication
+            from ui.linux.qt_dashboard import QtFlightDeckWindow
+            from core.services.event_bus import event_bus
+            from core.domain.models import Meeting
+        except (ImportError, ModuleNotFoundError):
+            self.skipTest("PyQt6 not available for Qt dashboard testing")
+
+        app = QApplication.instance() or QApplication(sys.argv)
+        window = QtFlightDeckWindow(tab_index=0)
+        window.sync_btn.start_spinning("Syncing...")
+        self.assertTrue(window.sync_btn.is_spinning)
+
+        m = Meeting(
+            title="Synced Standup",
+            start_time=datetime.now().astimezone(),
+            provider="EDS",
+        )
+
+        event_bus.publish("CALENDAR_SYNCED", meetings=[m], success=True)
+        app.processEvents()
+
+        # Agenda tab should now contain the synced meeting
+        self.assertFalse(window.sync_btn.is_spinning)
+        self.assertEqual(window.sync_btn.text(), "✅ Synced!")
+
+        window.close()
 
 
 if __name__ == '__main__':

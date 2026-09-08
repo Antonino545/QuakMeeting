@@ -34,6 +34,20 @@ except ImportError:
 
 class TestBannerModules(unittest.TestCase):
 
+    @unittest.skipUnless(HAS_QT, "PyQt6 not available")
+    def test_xcb_helper_restores_banner_datetimes(self):
+        from ui.linux.banner.qt_banner import _restore_banner_datetimes
+
+        payload = _restore_banner_datetimes({
+            "start_time": "2026-09-08T15:43:01+00:00",
+            "end_time": "2026-09-08T16:43:01+00:00",
+            "departure_time": "2026-09-08T15:13:01+00:00",
+        })
+
+        self.assertEqual(payload["start_time"].strftime("%H:%M"), "15:43")
+        self.assertEqual(payload["end_time"].strftime("%H:%M"), "16:43")
+        self.assertEqual(payload["departure_time"].strftime("%H:%M"), "15:13")
+
     def test_banner_speech_vocalizations(self):
         # 1. Normal mode speech (English)
         duck_speech = build_pilot_speech_text({}, animal="duck", outfit="aviator", is_late=False, lang="en")
@@ -643,6 +657,46 @@ class TestBannerModules(unittest.TestCase):
         # Step animation tick to test hover check, physics, and particle simulation without error
         banner._step()
         banner._timer.stop()
+        banner.close()
+
+    def test_qt_duck_banner_handles_iso_string_datetimes(self):
+        try:
+            from PyQt6.QtWidgets import QApplication
+            from ui.linux.banner.qt_duck_banner import QtDuckBannerWindow
+        except ImportError:
+            self.skipTest("PyQt6 not available")
+        app = QApplication.instance() or QApplication(sys.argv)
+        now_iso = datetime.now().astimezone().isoformat()
+        later_iso = (datetime.now().astimezone() + timedelta(minutes=45)).isoformat()
+        banner = QtDuckBannerWindow({
+            "title": "String Timestamp Meeting",
+            "provider": "Google Meet",
+            "start_time": now_iso,
+            "end_time": later_iso,
+            "departure_time": now_iso,
+            "is_test_banner": True,
+        })
+        self.assertIsInstance(banner.start_time, datetime)
+        self.assertIsInstance(banner.end_time, datetime)
+        self.assertIn("🕒", banner._cached_detail_text if hasattr(banner, "_cached_detail_text") else "")
+        banner._timer.stop()
+        banner.close()
+
+    def test_qt_update_banner_handles_iso_string_datetimes(self):
+        try:
+            from PyQt6.QtWidgets import QApplication
+            from ui.linux.banner.qt_update_banner import QtUpdateBannerWindow
+        except ImportError:
+            self.skipTest("PyQt6 not available")
+        app = QApplication.instance() or QApplication(sys.argv)
+        now_iso = datetime.now().astimezone().isoformat()
+        banner = QtUpdateBannerWindow({
+            "title": "New Version Ready",
+            "provider": "Software Update",
+            "start_time": now_iso,
+            "is_update_banner": True,
+        })
+        self.assertTrue(banner.time_str.startswith("At "))
         banner.close()
 
 if __name__ == "__main__":

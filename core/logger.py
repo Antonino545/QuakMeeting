@@ -81,8 +81,11 @@ def _threading_exception_handler(args):
         f"{args.exc_type.__name__}: {args.exc_value}\n{tb_text}"
     )
 
-def setup_logging(level=logging.INFO) -> logging.Logger:
+def setup_logging(level=None) -> logging.Logger:
     """Configures root logger with formatted console, rotating file handlers, and crash hooks."""
+    if level is None:
+        level = logging.DEBUG if os.environ.get("QUAKMEETING_DEBUG", "").strip().lower() in ("1", "true", "yes", "on") else logging.INFO
+
     try:
         os.makedirs(LOG_DIR, exist_ok=True)
     except Exception:
@@ -90,6 +93,9 @@ def setup_logging(level=logging.INFO) -> logging.Logger:
 
     root_logger = logging.getLogger("QuakMeeting")
     root_logger.setLevel(level)
+
+    for handler in root_logger.handlers:
+        handler.setLevel(level)
 
     # Avoid duplicate handlers on reload
     if not root_logger.handlers:

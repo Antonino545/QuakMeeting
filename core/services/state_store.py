@@ -23,6 +23,7 @@ class NotifiedStateStore:
                 self._state = {}
 
         self.prune()
+        logger.debug("Loaded %d notified reminder keys from %s.", len(self._state), self.path)
         return set(self._state.keys())
 
     def add(self, key: str) -> None:
@@ -34,11 +35,13 @@ class NotifiedStateStore:
         if now_ts - self._last_write >= 1.0:
             self._save()
             self._last_write = now_ts
+        logger.debug("Recorded notified reminder key: %s.", key)
 
     def remove(self, key: str) -> None:
         if key in self._state:
             del self._state[key]
             self._save()
+            logger.debug("Removed notified reminder key: %s.", key)
 
     def _save(self) -> None:
         try:
@@ -66,6 +69,7 @@ class NotifiedStateStore:
 
         if keys_to_remove:
             self._save()
+            logger.debug("Pruned %d expired reminder keys.", len(keys_to_remove))
 
     def force_save(self) -> None:
         self._save()
@@ -111,6 +115,7 @@ class BannerHistoryStore:
         if len(self._history) > 500:
             self._history = self._history[-500:]
         self._save()
+        logger.debug("Recorded banner history: event=%s stage=%s status=%s.", record["event_id"], stage, status)
         return record
 
     def record_action(self, event_id: str, action: str) -> None:
@@ -120,6 +125,7 @@ class BannerHistoryStore:
                 rec["acknowledged_at"] = now_iso
                 rec["status"] = action
                 self._save()
+                logger.debug("Recorded banner action: event=%s action=%s.", event_id, action)
                 break
 
     def get_history(self, limit: int = 50):

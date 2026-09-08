@@ -125,7 +125,7 @@ Cross-platform presentation layer structured by operating system:
     - `hangar_tab.py`: Hangar pilot selection and test flight controls.
     - `settings_tab.py`: High-level coordinator featuring a modern Two-Pane Sidebar Navigation layout (Left: Category navigation sidebar; Right: Dedicated card scroll pane).
     - `settings/`: Decomposed sub-card widgets (`timing_card.py`, `eta_card.py`, `arrival_card.py`, `calendars_card.py`, `system_card.py`).
-  - **`banner/`**: PyQt6 Wayland/X11 animated overlay banner (`qt_duck_banner.py`) with dynamic pitch rotation and software update banners (`qt_update_banner.py`).
+  - **`banner/`**: PyQt6 Wayland/X11 animated overlay banner (`qt_duck_banner.py`) with dynamic pitch rotation and software update banners (`qt_update_banner.py`), managed via `qt_banner.py` and a dedicated XCB helper process (`qt_banner_helper.py`) for Wayland environments.
   - **`banner/renderers/`**: Pixel-identical PyQt6 vector renderers with multiplatform parity to macOS Quartz 2D.
 - **`ui/app_launcher.py`**: Platform-aware UI dispatcher and entrypoint.
 
@@ -194,10 +194,16 @@ QuakMeeting provides clear visual and functional distinction between advance hea
 ## ⚙️ Lifecycle & Threading Model
 
 ### 1. Zero-Latency Caching (Stale-While-Revalidate)
-Querying calendars (especially via EventKit) can be slow. 
+Querying calendars (especially via EventKit on macOS or EDS on Linux) can be slow. 
 - On launch or UI interaction, `calendar_service.py` immediately reads `~/.quakmeeting/calendar_cache.json` to instantly populate the UI.
-- `app_controller.py` polls `CalendarService.sync_now()` in the background every 30-60 seconds.
-- When fresh data is retrieved, the disk cache is atomically replaced, and a `CALENDAR_UPDATED` event is fired over the `event_bus`, causing the UI to gracefully refresh.
+- On Linux, `EDSCalendarProvider` connects to uncached calendar sources concurrently using a worker pool and caches connected `ECal.Client` handles, cutting sync time from over 12 seconds to sub-second (< 0.05s on repeat).
+- Initial and periodic calendar syncs run in guarded daemon workers (`_schedule_background_sync`), eliminating concurrent worker collisions and startup delays.
+- `app_controller.py` polls `CalendarService.get_upcoming_meetings()` in the background every 15-30 seconds.
+- When fresh data is retrieved, the disk cache is atomically replaced, and a `CALENDAR_SYNCED` event is published over the `event_bus` to automatically refresh the tray menu, menubar icon, and active Flight Deck windows (updating the agenda and stopping the sync spinner).
+- If a provider refresh fails, the service keeps or reloads the last valid cache, publishes it to the UI, and waits for the normal cache interval before retrying.
+- Linux settings calendar metadata is loaded off the Qt main thread and delivered through a Qt signal; provider and parsing work must never block dashboard construction.
+
+On Linux Wayland sessions, Qt uses the native Wayland platform by default. Set `QUAKMEETING_QT_XCB=1` only when an XCB/XWayland compatibility fallback is required.
 
 ### 2. In-Place Automatic Update Lifecycle
 - `updater_service.py` checks GitHub Releases in the background.
@@ -213,4 +219,19 @@ Querying calendars (especially via EventKit) can be slow.
 - Starts the `AppController` background loop.
 - Initializes the specific UI loop (`NSApplication.sharedApplication().run()` for macOS or `QApplication.exec()` for Linux).
 - Note: On macOS, the application requires the `build_macos_app.py` Mach-O launcher to properly associate the process as an `.app` bundle, enabling the top menu bar to render correctly.
+
+### 4. Linux Startup Lifecycle
+The Linux launcher keeps the first Qt paint independent from calendar and network availability:
+
+1. `main.py` preserves the native Qt platform selected by the session. `QUAKMEETING_QT_XCB=1` is the explicit XCB compatibility override.
+2. `run_qt_tray_app()` creates the Qt application and tray shell. Tray data is cache-first.
+3. The Flight Deck creates its header, navigation, and agenda placeholder immediately. Hangar and Settings are initialized after the first event-loop turn.
+4. Agenda refresh reads the local cache and displays meetings, an empty state, or a retryable error state. Arrival/presence checks are not part of the first paint.
+5. UI subscriptions are installed before `AppController.start_background_loop()` so reminder events cannot be recorded before their UI handlers exist.
+6. The first updater check is queued after the first Qt event-loop turn. Calendar provider discovery and synchronization run through the guarded calendar worker; Linux EDS probing is never performed during service import.
+7. A dashboard construction failure is logged and shown in a retryable Flight Deck error window while the tray remains usable.
+
+Notification banners are the exception to the native Wayland UI: when the main Qt application reports a Wayland platform, `show_qt_banner()` starts a short-lived helper process with `QT_QPA_PLATFORM=xcb`. This preserves the banner's animated top-level movement without changing the dashboard's platform.
+
+The controller owns one idempotent polling loop. Startup work must be cache-first, guarded against overlapping calendar workers, and delivered back to Qt through the existing event bus/signals.
 

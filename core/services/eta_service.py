@@ -334,6 +334,7 @@ class ETAService:
         Returns dict with minutes, km, mode, and ready-to-use Maps URL.
         """
         if not origin or not destination or origin.strip() == "" or destination.strip() == "":
+            logger.debug("ETA skipped because origin or destination is empty.")
             return None
 
         selected_mode = mode or self.config.get("transport_mode", "transit")
@@ -344,7 +345,10 @@ class ETAService:
             cache_key = f"route_{origin.lower().strip()}_{destination.lower().strip()}_{selected_mode}"
 
         if cache_key in self._memory_cache:
+            logger.debug("ETA memory cache hit: mode=%s origin=%r destination=%r.", selected_mode, origin, destination)
             return self._memory_cache[cache_key]
+
+        logger.debug("Calculating ETA: mode=%s origin=%r destination=%r.", selected_mode, origin, destination)
 
         coords_orig = self._geocode_address(origin, default_city=home_city)
         coords_dest = self._geocode_address(destination, default_city=home_city, proximity_coords=coords_orig)
@@ -373,6 +377,7 @@ class ETAService:
             ):
                 selected_mode = "walking"
                 auto_walking = True
+                logger.debug("Automatically switching ETA mode to walking for %.2f km route.", est_distance_km)
 
             # 1. On macOS: Native Apple Maps live ETA via MapKit
             apple_eta = self._calculate_apple_maps_eta(coords_orig, coords_dest, selected_mode)
@@ -414,12 +419,14 @@ class ETAService:
 
         self._memory_cache[cache_key] = result
         self._save_cache()
+        logger.debug("ETA calculated: %d minutes, %.1f km, mode=%s.", duration_minutes, distance_km, selected_mode)
         return result
 
     def get_departure_time(self, start_time: datetime, travel_minutes: int, buffer_minutes: Optional[int] = None) -> datetime:
         """Calculates recommended departure time from home given start time and travel duration."""
         buf = buffer_minutes if buffer_minutes is not None else int(self.config.get("eta_buffer_minutes", 10))
         total_lead = travel_minutes + buf
+        logger.debug("Departure time calculated: travel=%d buffer=%d total=%d minutes.", travel_minutes, buf, total_lead)
         return start_time - timedelta(minutes=total_lead)
 
 # Global singleton instance

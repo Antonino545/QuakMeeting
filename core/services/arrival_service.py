@@ -124,6 +124,7 @@ class ArrivalService:
 
         self._cached_wifi_ssid = ssid
         self._last_wifi_check = now
+        logger.debug("Wi-Fi presence check on %s returned SSID=%r.", sys.platform, ssid)
         return ssid
 
     def _is_process_running_windows(self, process_name: str) -> bool:
@@ -265,6 +266,7 @@ class ArrivalService:
             is_venue_wifi = any(m in cw_lower for m in venue_ssids)
 
         detected_app = self._detect_any_active_call_app()
+        logger.debug("Presence diagnostics: wifi=%r venue_wifi=%s active_call=%r.", current_wifi, is_venue_wifi, detected_app)
         return {
             "enabled": bool(self.config.get("enable_arrival_detection", True)),
             "detect_calls": bool(self.config.get("arrival_detect_active_calls", True)),
@@ -286,10 +288,12 @@ class ArrivalService:
             meeting.is_arrived = True
             if not meeting.arrival_reason:
                 meeting.arrival_reason = self._arrival_reasons.get(meeting.id, "manual")
+            logger.debug("Meeting %s is already marked arrived (%s).", meeting.id, meeting.arrival_reason)
             return True
 
         # Check master toggle
         if not self.config.get("enable_arrival_detection", True):
+            logger.debug("Arrival detection disabled; skipping meeting %s.", meeting.id)
             return False
 
         # 2. Check active video meeting
@@ -312,6 +316,7 @@ class ArrivalService:
             logger.info(f"Auto-detected campus/venue Wi-Fi ({ssid}) for '{meeting.title}'. Suppressing further notifications.")
             return True
 
+        logger.debug("No arrival signal detected for meeting %s.", meeting.id)
         return False
 
 # Global singleton

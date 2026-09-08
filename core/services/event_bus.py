@@ -27,17 +27,21 @@ class EventBus:
         with self._sub_lock:
             if handler not in self._subscribers[event_name]:
                 self._subscribers[event_name].append(handler)
+                logger.debug("Subscribed %s to '%s' (%d handlers).", getattr(handler, "__qualname__", repr(handler)), event_name, len(self._subscribers[event_name]))
 
     def unsubscribe(self, event_name: str, handler: Callable[..., Any]) -> None:
         """Unregister a callback for an event name."""
         with self._sub_lock:
             if handler in self._subscribers[event_name]:
                 self._subscribers[event_name].remove(handler)
+                logger.debug("Unsubscribed %s from '%s'.", getattr(handler, "__qualname__", repr(handler)), event_name)
 
     def publish(self, event_name: str, **kwargs) -> None:
         """Dispatch event to all registered subscribers."""
         with self._sub_lock:
             handlers = list(self._subscribers.get(event_name, []))
+
+        logger.debug("Publishing '%s' to %d handlers with payload keys=%s.", event_name, len(handlers), sorted(kwargs))
 
         for handler in handlers:
             try:
@@ -49,6 +53,7 @@ class EventBus:
         """Clear all subscriptions (primarily used for unit tests)."""
         with self._sub_lock:
             self._subscribers.clear()
+        logger.debug("Cleared all EventBus subscriptions.")
 
 # Global shared instance
 event_bus = EventBus()

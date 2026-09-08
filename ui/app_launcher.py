@@ -10,6 +10,7 @@ logger = logging.getLogger("QuakMeeting.AppLauncher")
 def launch_application():
     """Starts QuakMeeting menu bar status item and event listeners."""
     force_qt = "--qt" in sys.argv
+    logger.debug("Selecting application UI: platform=%s, force_qt=%s", sys.platform, force_qt)
     if sys.platform == "darwin" and not force_qt:
         try:
             from ui.macos.menu_bar_app import run_menu_bar_app

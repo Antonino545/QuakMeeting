@@ -33,8 +33,13 @@ class RouteConnectorWidget(QWidget):
         p = self.parent()
         if p and hasattr(p, "home_addr_auto") and hasattr(p, "exam_addr_auto"):
             if p.home_addr_auto and p.exam_addr_auto:
-                p_home = p.home_addr_auto.geometry().center().y()
-                p_exam = p.exam_addr_auto.geometry().center().y()
+                # Map the center of each address widget from the parent's
+                # coordinate space into the connector's own coordinate space
+                # so the dots align precisely with the sibling widgets.
+                home_center_in_parent = p.home_addr_auto.geometry().center()
+                exam_center_in_parent = p.exam_addr_auto.geometry().center()
+                p_home = self.mapFromParent(home_center_in_parent).y()
+                p_exam = self.mapFromParent(exam_center_in_parent).y()
                 if p_home > 0 and p_exam > p_home:
                     y1 = p_home
                     y2 = p_exam
@@ -190,11 +195,12 @@ class ETACardWidget(QFrame):
             return hints.get(m, t("settings_buffer_hint_transit"))
 
         def _set_mode(selected_mode):
-            config.set("transport_mode", selected_mode)
-            try:
-                event_bus.publish("CONFIG_CHANGED", key="transport_mode", value=selected_mode)
-            except Exception:
-                pass
+            if config.get("transport_mode", "transit") != selected_mode:
+                config.set("transport_mode", selected_mode)
+                try:
+                    event_bus.publish("CONFIG_CHANGED", key="transport_mode", value=selected_mode)
+                except Exception:
+                    pass
             for m_key, b in self.mode_btns.items():
                 is_active = (m_key == selected_mode)
                 b.setChecked(is_active)

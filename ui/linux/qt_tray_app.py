@@ -21,7 +21,7 @@ logger = logging.getLogger("QuakMeeting.QtTrayApp")
 
 from ui.common.tray_viewmodel import TrayViewModel
 
-from PyQt6.QtCore import pyqtSignal, QObject, Qt
+from PyQt6.QtCore import pyqtSignal, QObject, Qt, QTimer
 
 class SignalBridge(QObject):
     banner = pyqtSignal(dict)
@@ -32,6 +32,7 @@ class QuakMeetingTrayApp:
     def __init__(self, app: QApplication):
         self.app = app
         self._startup_catch_up_checked = False
+        logger.debug("Initializing Qt tray application.")
 
         icon_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
@@ -59,14 +60,11 @@ class QuakMeetingTrayApp:
         event_bus.subscribe("REMINDER_TRIGGERED", lambda **kwargs: self._bridge.banner.emit(kwargs.get("event_dict") or kwargs))
         event_bus.subscribe("AGENDA_UPDATED", lambda **kwargs: self._bridge.agenda.emit())
         event_bus.subscribe("CALENDAR_SYNCED", lambda **kwargs: self._bridge.agenda.emit())
-        event_bus.subscribe("CALENDAR_SYNCED", lambda **kwargs: self._bridge.menu.emit())
         event_bus.subscribe("CALENDAR_SYNCED", self._check_startup_catch_up)
         event_bus.subscribe("UPDATE_AVAILABLE", lambda **kwargs: self._bridge.menu.emit())
         event_bus.subscribe("UPDATE_CHECK_COMPLETE", lambda **kwargs: self._bridge.menu.emit())
         event_bus.subscribe("UPDATE_INSTALLED", lambda **kwargs: self._bridge.menu.emit())
-        event_bus.subscribe("AGENDA_UPDATED", lambda **kwargs: self._bridge.menu.emit())
-        event_bus.subscribe("CONFIG_CHANGED", lambda **kwargs: threading.Thread(target=calendar_service.sync_now, daemon=True).start())
-        updater_service.check_for_updates(background=True)
+        event_bus.subscribe("CONFIG_CHANGED", lambda **kwargs: calendar_service.request_background_sync("config_changed"))
         self._check_startup_catch_up(meetings=calendar_service.get_upcoming_meetings())
 
     def _check_startup_catch_up(self, meetings=None, **kwargs):
@@ -93,6 +91,7 @@ class QuakMeetingTrayApp:
         now = datetime.now().astimezone()
         meetings = calendar_service.get_upcoming_meetings()
         today_up = [m for m in meetings if m.start_time and m.start_time.astimezone().date() == now.date() and ((m.end_time and m.end_time.astimezone() > now) or m.start_time.astimezone() > now)]
+        logger.debug("Building Qt tray menu: %d meetings loaded, %d remaining today.", len(meetings), len(today_up))
 
         icon_map = {"chef": "🍕", "captain": "✈️", "owl": "🎓", "driver": "🚗", "zen_duck": "🛋️", "duck": "🦆"}
 
@@ -180,6 +179,7 @@ class QuakMeetingTrayApp:
         menu.addAction(quit_act)
 
     def set_status_mode(self, mode):
+        logger.debug("Changing tray status mode to %s.", mode)
         config.set("menubar_status_mode", mode)
         self.build_menu()
         from core.services.calendar_service import calendar_service
@@ -245,6 +245,7 @@ class QuakMeetingTrayApp:
             max_lookahead_min = int(config.get("max_countdown_lookahead_hours", 3)) * 60
             status_mode = config.get("menubar_status_mode", "countdown")
             title = TrayViewModel.get_status_bar_title(primary_m, now, status_mode, max_lookahead_min)
+            logger.debug("Updating tray status: mode=%s title=%r.", status_mode, title)
 
             self.tray.setToolTip(title)
             
@@ -264,6 +265,11 @@ class QuakMeetingTrayApp:
             show_qt_dashboard(tab_index)
         except Exception as e:
             logger.warning(f"Flight Deck window error: {e}")
+            try:
+                from ui.linux.qt_dashboard import show_qt_dashboard_error
+                show_qt_dashboard_error(e)
+            except Exception:
+                logger.exception("Unable to show the Flight Deck startup error window.")
 
     def on_banner_trigger(self, event_dict=None, meeting=None, stage=None, **kwargs):
         try:
@@ -274,6 +280,7 @@ class QuakMeetingTrayApp:
                 event_dict = event_dict.get("event_dict")
 
             data = event_dict or (meeting.to_dict() if hasattr(meeting, "to_dict") else meeting) or {}
+            logger.debug("Displaying Qt banner: event=%r stage=%r.", data.get("title"), stage)
             if stage is not None and "reminder_stage" not in data:
                 data["reminder_stage"] = stage
             from ui.linux.banner.qt_banner import show_qt_banner
@@ -319,18 +326,21 @@ def run_qt_tray_app():
     if sys.platform.startswith("linux"):
         try:
             import gi
-            gi.require_version('AppIndicator3', '0.1')
+            gi.require_version('AyatanaAppIndicator3', '0.1')
             from ui.linux.app_indicator_tray import AppIndicatorTrayApp
             tray = AppIndicatorTrayApp(app)
-            logger.info("Successfully initialized AppIndicator3 for native GNOME text support.")
+            logger.info("Successfully initialized AyatanaAppIndicator3 for native GNOME text support.")
         except Exception as e:
-            logger.info(f"AppIndicator3 not available, falling back to QSystemTrayIcon: {e}")
+            logger.info(f"AyatanaAppIndicator3 not available, falling back to QSystemTrayIcon: {e}")
             tray = QuakMeetingTrayApp(app)
     else:
         tray = QuakMeetingTrayApp(app)
 
     if "--silent" not in sys.argv:
         tray.show_flight_deck(0)
+
+    # Let the first dashboard paint before optional network/version work starts.
+    QTimer.singleShot(0, lambda: updater_service.check_for_updates(background=True))
 
     # Tray handlers are registered before the reminder loop begins, so an
     # event cannot be recorded as notified before its banner is deliverable.

@@ -133,6 +133,10 @@ class AnimatedSpinButton(QPushButton):
         self._reset_timer.setSingleShot(True)
         self._reset_timer.timeout.connect(self._on_reset_timeout)
 
+    @property
+    def is_spinning(self) -> bool:
+        return self._is_spinning
+
     def start_spinning(self, loading_text: str = "Syncing..."):
         self._is_spinning = True
         self._prefix = loading_text
