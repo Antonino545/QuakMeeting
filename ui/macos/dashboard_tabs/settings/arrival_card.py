@@ -44,7 +44,7 @@ class ArrivalCardController(AppKit.NSObject):
         addr_w = w - 36.0
 
         # 1. Master Toggle Row
-        t1 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 64, addr_w - 60, 18))
+        t1 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 86, addr_w - 60, 18))
         t1.setStringValue_(t("settings_arrival_enable"))
         t1.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.5))
         t1.setTextColor_(Theme.TEXT)
@@ -53,7 +53,7 @@ class ArrivalCardController(AppKit.NSObject):
         t1.setEditable_(False)
         card.addSubview_(t1)
 
-        t1_sub = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 80, addr_w - 60, 14))
+        t1_sub = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 102, addr_w - 60, 14))
         t1_sub.setStringValue_(t("settings_arrival_enable_sub"))
         t1_sub.setFont_(AppKit.NSFont.systemFontOfSize_(10.5))
         t1_sub.setTextColor_(Theme.SUBTEXT0)
@@ -62,13 +62,13 @@ class ArrivalCardController(AppKit.NSObject):
         t1_sub.setEditable_(False)
         card.addSubview_(t1_sub)
 
-        self.master_sw = ModernToggleSwitch.alloc().initWithFrame_(AppKit.NSMakeRect(w - 62, h - 74, 44, 24))
+        self.master_sw = ModernToggleSwitch.alloc().initWithFrame_(AppKit.NSMakeRect(w - 62, h - 97, 44, 24))
         self.master_sw.setChecked_(bool(self.config.get("enable_arrival_detection", True)))
         self.master_sw.setCallback_(self.onToggleMasterSwitch)
         card.addSubview_(self.master_sw)
 
         # 2. Calls Detection Toggle Row
-        t2 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(36, h - 106, addr_w - 78, 16))
+        t2 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(36, h - 130, addr_w - 78, 16))
         t2.setStringValue_(t("settings_arrival_calls"))
         t2.setFont_(AppKit.NSFont.boldSystemFontOfSize_(11.5))
         t2.setTextColor_(Theme.TEXT)
@@ -77,7 +77,7 @@ class ArrivalCardController(AppKit.NSObject):
         t2.setEditable_(False)
         card.addSubview_(t2)
 
-        t2_sub = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(36, h - 122, addr_w - 78, 14))
+        t2_sub = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(36, h - 146, addr_w - 78, 14))
         t2_sub.setStringValue_(t("settings_arrival_calls_sub"))
         t2_sub.setFont_(AppKit.NSFont.systemFontOfSize_(10.0))
         t2_sub.setTextColor_(Theme.SUBTEXT0)
@@ -86,13 +86,13 @@ class ArrivalCardController(AppKit.NSObject):
         t2_sub.setEditable_(False)
         card.addSubview_(t2_sub)
 
-        self.calls_sw = ModernToggleSwitch.alloc().initWithFrame_(AppKit.NSMakeRect(w - 62, h - 116, 44, 24))
+        self.calls_sw = ModernToggleSwitch.alloc().initWithFrame_(AppKit.NSMakeRect(w - 62, h - 142, 44, 24))
         self.calls_sw.setChecked_(bool(self.config.get("arrival_detect_active_calls", True)))
         self.calls_sw.setCallback_(self.onToggleCallsSwitch)
         card.addSubview_(self.calls_sw)
 
         # 3. Wi-Fi Detection Toggle Row
-        t3 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(36, h - 146, addr_w - 78, 16))
+        t3 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(36, h - 172, addr_w - 78, 16))
         t3.setStringValue_(t("settings_arrival_wifi"))
         t3.setFont_(AppKit.NSFont.boldSystemFontOfSize_(11.5))
         t3.setTextColor_(Theme.TEXT)
@@ -101,7 +101,7 @@ class ArrivalCardController(AppKit.NSObject):
         t3.setEditable_(False)
         card.addSubview_(t3)
 
-        t3_sub = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(36, h - 162, addr_w - 78, 14))
+        t3_sub = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(36, h - 188, addr_w - 78, 14))
         t3_sub.setStringValue_(t("settings_arrival_wifi_sub"))
         t3_sub.setFont_(AppKit.NSFont.systemFontOfSize_(10.0))
         t3_sub.setTextColor_(Theme.SUBTEXT0)
@@ -110,13 +110,13 @@ class ArrivalCardController(AppKit.NSObject):
         t3_sub.setEditable_(False)
         card.addSubview_(t3_sub)
 
-        self.wifi_sw = ModernToggleSwitch.alloc().initWithFrame_(AppKit.NSMakeRect(w - 62, h - 156, 44, 24))
+        self.wifi_sw = ModernToggleSwitch.alloc().initWithFrame_(AppKit.NSMakeRect(w - 62, h - 184, 44, 24))
         self.wifi_sw.setChecked_(bool(self.config.get("arrival_detect_venue_wifi", True)))
         self.wifi_sw.setCallback_(self.onToggleWifiSwitch)
         card.addSubview_(self.wifi_sw)
 
         # 4. Live Diagnostics Box
-        diag_bg = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 264, addr_w, 90))
+        diag_bg = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 292, addr_w, 90))
         diag_bg.setWantsLayer_(True)
         diag_bg.layer().setBackgroundColor_(Theme.CRUST.CGColor())
         diag_bg.layer().setCornerRadius_(8.0)
@@ -185,7 +185,7 @@ class ArrivalCardController(AppKit.NSObject):
         diag_bg.addSubview_(self.diag_summary_lbl)
 
         # 5. Monitored SSIDs Editor
-        t_ssid = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 286, addr_w, 18))
+        t_ssid = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 322, addr_w, 18))
         t_ssid.setStringValue_(t("settings_arrival_ssids_label"))
         t_ssid.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.0))
         t_ssid.setTextColor_(Theme.TEXT)
@@ -194,7 +194,7 @@ class ArrivalCardController(AppKit.NSObject):
         t_ssid.setEditable_(False)
         card.addSubview_(t_ssid)
 
-        t_hint = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 302, addr_w, 15))
+        t_hint = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 340, addr_w, 15))
         t_hint.setStringValue_(t("settings_arrival_ssids_hint"))
         t_hint.setFont_(AppKit.NSFont.systemFontOfSize_(10.5))
         t_hint.setTextColor_(Theme.SUBTEXT1)
@@ -204,7 +204,7 @@ class ArrivalCardController(AppKit.NSObject):
         card.addSubview_(t_hint)
 
         curr_ssids = self.config.get("arrival_wifi_ssids", ["eduroam", "polito", "campus", "universit", "studenti", "unito", "polimi"])
-        self.ssid_field = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 330, addr_w, 24))
+        self.ssid_field = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 372, addr_w, 26))
         self.ssid_field.setWantsLayer_(True)
         self.ssid_field.setStringValue_(", ".join(curr_ssids))
         self.ssid_field.setFont_(AppKit.NSFont.systemFontOfSize_(12.0))
@@ -218,7 +218,7 @@ class ArrivalCardController(AppKit.NSObject):
 
         # Buttons Row
         self.save_btn = Theme.create_button(
-            AppKit.NSMakeRect(18, h - 368, 110, 28),
+            AppKit.NSMakeRect(18, h - 410, 110, 28),
             title=t("settings_arrival_save_btn"),
             bg_color=Theme.SAPPHIRE,
             text_color=Theme.CRUST,
@@ -231,7 +231,7 @@ class ArrivalCardController(AppKit.NSObject):
         card.addSubview_(self.save_btn)
 
         reset_btn = Theme.create_button(
-            AppKit.NSMakeRect(136, h - 368, 140, 28),
+            AppKit.NSMakeRect(136, h - 410, 140, 28),
             title=t("settings_arrival_reset_btn"),
             bg_color=Theme.SURFACE0,
             text_color=Theme.TEXT,

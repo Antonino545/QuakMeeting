@@ -71,6 +71,26 @@ class TestDashboardUI(unittest.TestCase):
             self.assertIn("calculus", study_kws)
             self.assertIn("algebra", study_kws)
 
+            # Test mini_canvases persistence and animation ticks across cached render
+            self.assertGreater(len(hangar.mini_canvases), 0)
+            canvases_count_before = len(hangar.mini_canvases)
+            # Second render with same signature (cache hit) must NOT wipe mini_canvases
+            hangar_cached = hangar.render(mock_container, 800, 600)
+            self.assertEqual(len(hangar.mini_canvases), canvases_count_before)
+            
+            # Simulate an animation tick with a visible test window
+            test_win = AppKit.NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(
+                AppKit.NSMakeRect(0, 0, 800, 600), 15, AppKit.NSBackingStoreBuffered, False
+            )
+            test_win.contentView().addSubview_(hangar_cached)
+            test_win.orderFrontRegardless()
+
+            canvas = next(iter(hangar.mini_canvases.values()))
+            initial_tick = canvas.tick
+            hangar.onAnimTick_(None)
+            self.assertEqual(canvas.tick, initial_tick + 1)
+            test_win.orderOut_(None)
+
             # Test Settings render
             cached_calendars = [{"name": "Work", "enabled": True}, {"name": "Personal", "enabled": False}]
             settings_view = settings.render(mock_container, 800, 600, mock_config, cached_calendars)

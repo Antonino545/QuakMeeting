@@ -122,7 +122,7 @@ class AddressAutocompleteView(AppKit.NSView):
         field_w = w - btn_save_w - btn_map_w - (gap * 2)
 
         # 1. Main Search Field (Google Maps style)
-        field_y = max(20.0, h - 28.0)
+        field_y = max(34.0, h - 28.0)
         self.text_field = AppKit.NSTextField.alloc().initWithFrame_(
             AppKit.NSMakeRect(0, field_y, field_w, 28.0)
         )
@@ -188,7 +188,7 @@ class AddressAutocompleteView(AppKit.NSView):
         self.addSubview_(self.save_btn)
         self._set_save_btn_title(f"💾 {t('save')}")
 
-        # 4. Status & Canonical Address Preview with High Contrast
+        # 4. Status label — shown for hint / searching / error states
         status_y = 0.0
         status_h = max(16.0, field_y - 2.0)
         self.status_label = AppKit.NSTextField.alloc().initWithFrame_(
@@ -203,6 +203,44 @@ class AddressAutocompleteView(AppKit.NSView):
         self.status_label.setSelectable_(True)
         self.status_label.setLineBreakMode_(AppKit.NSLineBreakByTruncatingTail)
         self.addSubview_(self.status_label)
+
+        # 5. Verified pill — shown only when an address is confirmed (hidden by default)
+        pill_h = 30.0
+        self.pill_bg = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 1, w - 4, pill_h))
+        self.pill_bg.setWantsLayer_(True)
+        pill_bg_color = AppKit.NSColor.colorWithSRGBRed_green_blue_alpha_(0.063, 0.149, 0.075, 1.0)
+        self.pill_bg.layer().setBackgroundColor_(pill_bg_color.CGColor())
+        self.pill_bg.layer().setCornerRadius_(6.0)
+        self.pill_bg.layer().setBorderWidth_(1.0)
+        self.pill_bg.layer().setBorderColor_(Theme.GREEN.CGColor())
+        self.pill_bg.setHidden_(True)
+        self.addSubview_(self.pill_bg)
+
+        # Pill line 1 — bold venue/street name
+        self.pill_line1 = AppKit.NSTextField.alloc().initWithFrame_(
+            AppKit.NSMakeRect(8, 15, w - 20, 14)
+        )
+        self.pill_line1.setStringValue_("")
+        self.pill_line1.setFont_(AppKit.NSFont.boldSystemFontOfSize_(11.5))
+        self.pill_line1.setTextColor_(Theme.GREEN)
+        self.pill_line1.setBezeled_(False)
+        self.pill_line1.setDrawsBackground_(False)
+        self.pill_line1.setEditable_(False)
+        self.pill_line1.setLineBreakMode_(AppKit.NSLineBreakByTruncatingTail)
+        self.pill_bg.addSubview_(self.pill_line1)
+
+        # Pill line 2 — muted city · postcode
+        self.pill_line2 = AppKit.NSTextField.alloc().initWithFrame_(
+            AppKit.NSMakeRect(8, 3, w - 20, 11)
+        )
+        self.pill_line2.setStringValue_("")
+        self.pill_line2.setFont_(AppKit.NSFont.systemFontOfSize_(10.0))
+        self.pill_line2.setTextColor_(Theme.SUBTEXT1)
+        self.pill_line2.setBezeled_(False)
+        self.pill_line2.setDrawsBackground_(False)
+        self.pill_line2.setEditable_(False)
+        self.pill_line2.setLineBreakMode_(AppKit.NSLineBreakByTruncatingTail)
+        self.pill_bg.addSubview_(self.pill_line2)
 
     # Continuous keystroke delegate: user can keep typing without interruption!
     def controlTextDidChange_(self, notification):
@@ -349,31 +387,61 @@ class AddressAutocompleteView(AppKit.NSView):
             pass
 
     def _set_status(self, text: str, status_type: str = "hint"):
-        self.status_label.setStringValue_(text)
-        if status_type == "verified":
-            self.status_label.setTextColor_(Theme.GREEN)
-            self.status_label.setFont_(AppKit.NSFont.boldSystemFontOfSize_(11.5))
-        elif status_type == "searching":
-            self.status_label.setTextColor_(Theme.SKY)
-            self.status_label.setFont_(AppKit.NSFont.systemFontOfSize_(11.5))
-        elif status_type == "error":
-            self.status_label.setTextColor_(Theme.RED)
-            self.status_label.setFont_(AppKit.NSFont.boldSystemFontOfSize_(11.5))
-        else:  # "hint"
-            self.status_label.setTextColor_(Theme.TEXT)
-            self.status_label.setFont_(AppKit.NSFont.systemFontOfSize_(11.5))
+        # For all non-verified states: hide pill, show flat label
+        if status_type != "verified":
+            self.pill_bg.setHidden_(True)
+            self.status_label.setHidden_(False)
+            self.status_label.setStringValue_(text)
+            if status_type == "searching":
+                self.status_label.setTextColor_(Theme.SKY)
+                self.status_label.setFont_(AppKit.NSFont.systemFontOfSize_(11.5))
+            elif status_type == "error":
+                self.status_label.setTextColor_(Theme.RED)
+                self.status_label.setFont_(AppKit.NSFont.boldSystemFontOfSize_(11.5))
+            else:  # "hint"
+                self.status_label.setTextColor_(Theme.TEXT)
+                self.status_label.setFont_(AppKit.NSFont.systemFontOfSize_(11.5))
+        # Verified state is driven by _show_verified_pill — not handled here
+
+    def _show_verified_pill(self, candidate):
+        """Populate and reveal the 2-line pill badge for a verified candidate."""
+        line1 = candidate.short_address or candidate.display_name
+        parts2 = []
+        if candidate.city:
+            parts2.append(candidate.city)
+        if candidate.postcode:
+            parts2.append(candidate.postcode)
+        line2 = "  ·  ".join(parts2) if parts2 else ""
+
+        self.pill_line1.setStringValue_(line1)
+        self.pill_line2.setStringValue_(line2)
+
+        # Adjust pill border color to match save button theme
+        if self.btn_start_color == Theme.MAUVE:
+            pill_border = AppKit.NSColor.colorWithSRGBRed_green_blue_alpha_(0.655, 0.545, 0.980, 1.0)
+            pill_bg_col = AppKit.NSColor.colorWithSRGBRed_green_blue_alpha_(0.082, 0.063, 0.149, 1.0)
+            self.pill_line1.setTextColor_(AppKit.NSColor.colorWithSRGBRed_green_blue_alpha_(0.796, 0.651, 0.969, 1.0))
+        else:
+            pill_border = Theme.GREEN
+            pill_bg_col = AppKit.NSColor.colorWithSRGBRed_green_blue_alpha_(0.063, 0.149, 0.075, 1.0)
+            self.pill_line1.setTextColor_(Theme.GREEN)
+
+        self.pill_bg.layer().setBorderColor_(pill_border.CGColor())
+        self.pill_bg.layer().setBackgroundColor_(pill_bg_col.CGColor())
+
+        self.status_label.setHidden_(True)
+        self.pill_bg.setHidden_(False)
 
     def select_candidate(self, candidate: AddressCandidate):
         self._close_overlay()
         self.current_candidate = candidate
 
         # Use clean formatted address
-        chosen_text = candidate.display_name or candidate.short_address
+        chosen_text = candidate.short_address or candidate.display_name
         self.text_field.setStringValue_(chosen_text)
         self.text_field.layer().setBorderColor_(Theme.GREEN.CGColor())
 
-        status_text = f"🟢 {t('settings_address_verified')}: {candidate.display_name}"
-        self._set_status(status_text, "verified")
+        self._show_verified_pill(candidate)
 
         self._set_save_btn_title(f"✓ {t('saved')}", is_saved=True)
 
@@ -440,8 +508,7 @@ class AddressAutocompleteView(AppKit.NSView):
             def _update():
                 if is_valid and cand:
                     self.current_candidate = cand
-                    status_text = f"🟢 {t('settings_address_verified')}: {cand.display_name}"
-                    self._set_status(status_text, "verified")
+                    self._show_verified_pill(cand)
                     self.text_field.layer().setBorderColor_(Theme.GREEN.CGColor())
 
             AppKit.NSOperationQueue.mainQueue().addOperationWithBlock_(_update)

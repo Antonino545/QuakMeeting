@@ -118,10 +118,37 @@ class QtAddressAutocompleteWidget(QWidget):
 
         main_layout.addLayout(input_row)
 
-        # Bottom row: Status & Canonical Preview with high contrast
+        from PyQt6.QtWidgets import QFrame
+
+        # Status label — hint / searching / error states
         self.status_label = QLabel(t("settings_address_suggest_hint"), self)
-        self.status_label.setStyleSheet("color: #cdd6f4; font-size: 11.5px;")
+        self.status_label.setStyleSheet("color: #cdd6f4; font-size: 11px;")
         main_layout.addWidget(self.status_label)
+
+        # 2-line verified pill (hidden by default)
+        self.pill_widget = QFrame(self)
+        self.pill_widget.setStyleSheet("""
+            QFrame {
+                background-color: #101f12;
+                border: 1px solid #a6e3a1;
+                border-radius: 6px;
+                padding: 2px 0px;
+            }
+        """)
+        pill_layout = QVBoxLayout(self.pill_widget)
+        pill_layout.setContentsMargins(8, 3, 8, 3)
+        pill_layout.setSpacing(1)
+
+        self.pill_line1 = QLabel("", self.pill_widget)
+        self.pill_line1.setStyleSheet("color: #a6e3a1; font-weight: bold; font-size: 11px; border: none; background: transparent;")
+        pill_layout.addWidget(self.pill_line1)
+
+        self.pill_line2 = QLabel("", self.pill_widget)
+        self.pill_line2.setStyleSheet("color: #a6adc8; font-size: 10px; border: none; background: transparent;")
+        pill_layout.addWidget(self.pill_line2)
+
+        self.pill_widget.setVisible(False)
+        main_layout.addWidget(self.pill_widget)
 
         # Popup Suggestions List (NoFocus so typing is never interrupted!)
         self.popup_list = QListWidget()
@@ -227,25 +254,48 @@ class QtAddressAutocompleteWidget(QWidget):
         self.popup_list.hide()
         self.current_candidate = candidate
 
-        chosen_text = candidate.display_name or candidate.short_address
+        chosen_text = candidate.short_address or candidate.display_name
         self.line_edit.blockSignals(True)
         self.line_edit.setText(chosen_text)
         self.line_edit.blockSignals(False)
 
-        self.line_edit.setStyleSheet("""
-            QLineEdit {
+        border_col = "#a6e3a1" if self.btn_gradient == "green" else "#c4b5fd"
+        self.line_edit.setStyleSheet(f"""
+            QLineEdit {{
                 background-color: #11111b;
                 color: #cdd6f4;
-                border: 1px solid #a6e3a1;
+                border: 1px solid {border_col};
                 border-radius: 8px;
                 padding: 6px 10px;
                 font-size: 12px;
-            }
+            }}
         """)
 
-        status_text = f"🟢 {t('settings_address_verified')}: {candidate.display_name}"
-        self.status_label.setText(status_text)
-        self.status_label.setStyleSheet("color: #a6e3a1; font-weight: bold; font-size: 11.5px;")
+        # Populate and show the 2-line verified pill
+        line1 = candidate.short_address or candidate.display_name
+        parts2 = []
+        if candidate.city:
+            parts2.append(candidate.city)
+        if candidate.postcode:
+            parts2.append(candidate.postcode)
+        line2 = "  ·  ".join(parts2) if parts2 else ""
+
+        self.pill_line1.setText(line1)
+        self.pill_line2.setText(line2)
+
+        if self.btn_gradient == "green":
+            self.pill_widget.setStyleSheet("""
+                QFrame { background-color: #101f12; border: 1px solid #a6e3a1; border-radius: 6px; }
+            """)
+            self.pill_line1.setStyleSheet("color: #a6e3a1; font-weight: bold; font-size: 11px; border: none; background: transparent;")
+        else:
+            self.pill_widget.setStyleSheet("""
+                QFrame { background-color: #150f21; border: 1px solid #c4b5fd; border-radius: 6px; }
+            """)
+            self.pill_line1.setStyleSheet("color: #c4b5fd; font-weight: bold; font-size: 11px; border: none; background: transparent;")
+
+        self.status_label.setVisible(False)
+        self.pill_widget.setVisible(True)
 
         self.save_btn.setText(f"✓ {t('saved')}")
         def _restore_save():
@@ -264,8 +314,10 @@ class QtAddressAutocompleteWidget(QWidget):
 
         if not query:
             self.current_candidate = None
+            self.pill_widget.setVisible(False)
+            self.status_label.setVisible(True)
             self.status_label.setText(t("settings_address_suggest_hint"))
-            self.status_label.setStyleSheet("color: #cdd6f4; font-size: 11.5px;")
+            self.status_label.setStyleSheet("color: #cdd6f4; font-size: 11px;")
             self.line_edit.setStyleSheet("""
                 QLineEdit {
                     background-color: #11111b;
@@ -287,8 +339,10 @@ class QtAddressAutocompleteWidget(QWidget):
             QTimer.singleShot(1500, _restore_save)
             return
 
+        self.pill_widget.setVisible(False)
+        self.status_label.setVisible(True)
         self.status_label.setText(t("settings_address_searching"))
-        self.status_label.setStyleSheet("color: #89b4fa; font-size: 11.5px;")
+        self.status_label.setStyleSheet("color: #89b4fa; font-size: 11px;")
         self.save_btn.setText("⏳ ...")
 
         def _worker():
@@ -303,12 +357,16 @@ class QtAddressAutocompleteWidget(QWidget):
         if is_valid and cand:
             self.select_candidate(cand)
         elif is_valid and not query:
+            self.pill_widget.setVisible(False)
+            self.status_label.setVisible(True)
             self.status_label.setText(t("settings_address_suggest_hint"))
-            self.status_label.setStyleSheet("color: #cdd6f4; font-size: 11.5px;")
+            self.status_label.setStyleSheet("color: #cdd6f4; font-size: 11px;")
         else:
             self.current_candidate = None
+            self.pill_widget.setVisible(False)
+            self.status_label.setVisible(True)
             self.status_label.setText(f"❌ {t('settings_address_not_found')}")
-            self.status_label.setStyleSheet("color: #f38ba8; font-weight: bold; font-size: 11.5px;")
+            self.status_label.setStyleSheet("color: #f38ba8; font-weight: bold; font-size: 11px;")
             self.line_edit.setStyleSheet("""
                 QLineEdit {
                     background-color: #11111b;
@@ -351,5 +409,7 @@ class QtAddressAutocompleteWidget(QWidget):
             self._verify_initial(addr)
         else:
             self.current_candidate = None
+            self.pill_widget.setVisible(False)
+            self.status_label.setVisible(True)
             self.status_label.setText(t("settings_address_suggest_hint"))
-            self.status_label.setStyleSheet("color: #cdd6f4; font-size: 11.5px;")
+            self.status_label.setStyleSheet("color: #cdd6f4; font-size: 11px;")

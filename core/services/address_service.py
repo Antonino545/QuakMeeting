@@ -213,18 +213,17 @@ class AddressService:
                     else:
                         short_addr = item.get("display_name", "").split(",")[0]
 
-                    # Build clean canonical display string
+                    # Build clean canonical display string (venue/street + city + postcode only;
+                    # state and country are kept on the object but excluded from the visible label)
                     display_parts = []
                     if short_addr:
                         display_parts.append(short_addr)
                     if place_city and place_city not in short_addr:
                         display_parts.append(place_city)
-                    if state and state not in display_parts and state != place_city:
-                        display_parts.append(state)
-                    if country and country not in display_parts:
-                        display_parts.append(country)
+                    if postcode and postcode not in display_parts:
+                        display_parts.append(postcode)
 
-                    display_name = ", ".join(display_parts) if display_parts else item.get("display_name", "")
+                    display_name = ", ".join(display_parts) if display_parts else item.get("display_name", "").split(",")[0]
 
                     candidate = AddressCandidate(
                         display_name=display_name,
@@ -298,10 +297,8 @@ class AddressService:
                         display_parts.append(short_addr)
                     if place_city and place_city not in short_addr:
                         display_parts.append(place_city)
-                    if state and state not in display_parts and state != place_city:
-                        display_parts.append(state)
-                    if country and country not in display_parts:
-                        display_parts.append(country)
+                    if postcode and postcode not in display_parts:
+                        display_parts.append(postcode)
 
                     display_name = ", ".join(display_parts) if display_parts else short_addr
 

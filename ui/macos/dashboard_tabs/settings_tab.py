@@ -280,9 +280,9 @@ class SettingsTabController(AppKit.NSObject):
 
         card_heights = {
             0: 362.0,
-            1: 380.0,
+            1: 424.0,
             2: 74.0 + actual_rows * 36.0,
-            3: 394.0,
+            3: 418.0,
             4: 336.0 if is_debug_mode() else 272.0,
         }
         card_h = card_heights.get(idx, 360.0)

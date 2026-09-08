@@ -62,7 +62,7 @@ class ETACardController(AppKit.NSObject):
                 pass
 
         self.home_addr_auto = AddressAutocompleteView.alloc().initWithFrame_placeholder_initialValue_onSave_btnColor_(
-            AppKit.NSMakeRect(18, h - 128, addr_w, 50.0),
+            AppKit.NSMakeRect(18, h - 140, addr_w, 62.0),
             t("settings_address_placeholder"),
             curr_addr,
             _on_home_saved,
@@ -72,13 +72,13 @@ class ETACardController(AppKit.NSObject):
         card.addSubview_(self.home_addr_auto)
 
         # Subtle divider between Home and Exam
-        sep1 = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 140, addr_w, 1.0))
+        sep1 = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 152, addr_w, 1.0))
         sep1.setWantsLayer_(True)
         sep1.layer().setBackgroundColor_(Theme.SURFACE0.CGColor())
         card.addSubview_(sep1)
 
         # 2. General University & Exam Campus
-        t_exam = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 164, addr_w, 18))
+        t_exam = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 176, addr_w, 18))
         t_exam.setStringValue_(t("settings_exam_location"))
         t_exam.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.0))
         t_exam.setTextColor_(Theme.TEXT)
@@ -87,7 +87,7 @@ class ETACardController(AppKit.NSObject):
         t_exam.setEditable_(False)
         card.addSubview_(t_exam)
 
-        t_exam_hint = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 182, addr_w, 15))
+        t_exam_hint = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 194, addr_w, 15))
         t_exam_hint.setStringValue_(t("settings_exam_location_hint"))
         t_exam_hint.setFont_(AppKit.NSFont.systemFontOfSize_(11.0))
         t_exam_hint.setTextColor_(Theme.SUBTEXT1)
@@ -109,7 +109,7 @@ class ETACardController(AppKit.NSObject):
 
 
         self.exam_addr_auto = AddressAutocompleteView.alloc().initWithFrame_placeholder_initialValue_onSave_btnColor_(
-            AppKit.NSMakeRect(18, h - 238, addr_w, 50.0),
+            AppKit.NSMakeRect(18, h - 262, addr_w, 62.0),
             t("settings_exam_location_placeholder"),
             curr_exam_addr,
             _on_exam_saved,
@@ -119,13 +119,13 @@ class ETACardController(AppKit.NSObject):
         card.addSubview_(self.exam_addr_auto)
 
         # Subtle divider between Exam and Transport
-        sep2 = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 250, addr_w, 1.0))
+        sep2 = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 274, addr_w, 1.0))
         sep2.setWantsLayer_(True)
         sep2.layer().setBackgroundColor_(Theme.SURFACE0.CGColor())
         card.addSubview_(sep2)
 
         # 3. Transport Mode for Route Calculation
-        t2 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 274, w - 36, 18))
+        t2 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 298, w - 36, 18))
         t2.setStringValue_(t("settings_transport_calc"))
         t2.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.0))
         t2.setTextColor_(Theme.TEXT)
@@ -146,7 +146,7 @@ class ETACardController(AppKit.NSObject):
         btn_m_w = (w - 36.0 - 24.0) / 4.0
 
         for m_key, m_label in modes:
-            m_btn = ModernButton.alloc().initWithFrame_(AppKit.NSMakeRect(x_m, h - 312, btn_m_w, 30))
+            m_btn = ModernButton.alloc().initWithFrame_(AppKit.NSMakeRect(x_m, h - 336, btn_m_w, 30))
             m_btn.setTitle_(m_label)
             m_btn.setWantsLayer_(True)
             m_btn.setBordered_(False)
@@ -163,7 +163,7 @@ class ETACardController(AppKit.NSObject):
         self._update_transport_mode_buttons_ui(curr_mode)
 
         # 4. Departure Buffer Margin
-        t3 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 360, w - 240, 18))
+        t3 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(18, h - 384, w - 240, 18))
         t3.setStringValue_(t("settings_departure_buffer"))
         t3.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.0))
         t3.setTextColor_(Theme.TEXT)
@@ -173,9 +173,8 @@ class ETACardController(AppKit.NSObject):
         card.addSubview_(t3)
 
         buf_val = self.config.get("eta_buffer_minutes", 10)
-        
-        # FIX: Changed 'h - 392' to 'h - 364' so it aligns horizontally with the label
-        self.buf_popup = AppKit.NSPopUpButton.alloc().initWithFrame_pullsDown_(AppKit.NSMakeRect(w - 240, h - 364, 222, 26), False)
+
+        self.buf_popup = AppKit.NSPopUpButton.alloc().initWithFrame_pullsDown_(AppKit.NSMakeRect(w - 240, h - 388, 222, 26), False)
         self.buf_popup.setFont_(AppKit.NSFont.systemFontOfSize_(12.0))
         self.buf_popup.setTarget_(self)
         self.buf_popup.setAction_("onSelectETABuffer:")
