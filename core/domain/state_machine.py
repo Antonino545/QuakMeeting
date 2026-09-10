@@ -21,13 +21,33 @@ class EventState(str, Enum):
     CANCELLED = "cancelled"            # Cancelled event
 
 
+def _get_val(obj: Any, key: str, default: Any = None) -> Any:
+    if isinstance(obj, dict):
+        return obj.get(key, default)
+    return getattr(obj, key, default)
+
+
+def _parse_dt(val: Any) -> Optional[datetime]:
+    if val is None:
+        return None
+    if isinstance(val, datetime):
+        return val
+    if isinstance(val, str):
+        try:
+            val_clean = val.replace("Z", "+00:00")
+            return datetime.fromisoformat(val_clean)
+        except Exception:
+            return None
+    return None
+
+
 def resolve_event_state(
     event: Any,
     clock: Optional[Clock] = None
 ) -> EventState:
     """
     Computes the current lifecycle EventState for an event against the provided clock.
-    Works with CalendarEvent or legacy Meeting instances.
+    Works with CalendarEvent, legacy Meeting instances, or raw dictionary payloads.
     """
     current_clock = clock or system_clock
     now = current_clock.now()
@@ -37,16 +57,16 @@ def resolve_event_state(
         now = now.astimezone(timezone.utc)
 
     # 1. Check cancelled
-    if getattr(event, "is_cancelled", False):
+    if bool(_get_val(event, "is_cancelled", False)):
         return EventState.CANCELLED
 
     # Extract temporal timestamps
-    start_dt = getattr(event, "start_time", None)
-    end_dt = getattr(event, "end_time", None)
-    dep_dt = getattr(event, "departure_time", None)
-    is_travel = bool(getattr(event, "is_travel", False))
-    is_arrived = bool(getattr(event, "is_arrived", False))
-    arrival_reason = getattr(event, "arrival_reason", None) or ""
+    start_dt = _parse_dt(_get_val(event, "start_time", None))
+    end_dt = _parse_dt(_get_val(event, "end_time", None))
+    dep_dt = _parse_dt(_get_val(event, "departure_time", None))
+    is_travel = bool(_get_val(event, "is_travel", False))
+    is_arrived = bool(_get_val(event, "is_arrived", False))
+    arrival_reason = str(_get_val(event, "arrival_reason", "") or "")
 
     if start_dt and start_dt.tzinfo is None:
         start_dt = start_dt.replace(tzinfo=timezone.utc)

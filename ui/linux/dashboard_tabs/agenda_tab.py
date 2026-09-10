@@ -55,9 +55,9 @@ class QtAgendaTab(QWidget):
         self.scroll_layout.addWidget(status)
         self.scroll_layout.addStretch()
 
-    def _create_section_label(self, title: str) -> QLabel:
+    def _create_section_label(self, title: str, color: str = "#89b4fa") -> QLabel:
         lbl = QLabel(title)
-        lbl.setStyleSheet("font-size: 12px; font-weight: bold; color: #89b4fa; padding-top: 6px; padding-bottom: 2px; border: none; background: transparent;")
+        lbl.setStyleSheet(f"font-size: 12px; font-weight: bold; color: {color}; padding-top: 6px; padding-bottom: 2px; border: none; background: transparent;")
         return lbl
 
     def _create_hero_card(self, vm: AgendaEventVM, guidance: any) -> QFrame:
@@ -179,19 +179,23 @@ class QtAgendaTab(QWidget):
         card_layout.addWidget(why_frame)
         return card
 
-    def _create_meeting_card(self, vm: AgendaEventVM) -> QFrame:
+    def _create_meeting_card(self, vm: AgendaEventVM, is_completed: bool = False) -> QFrame:
         card = QFrame(self.scroll_content)
         card.setObjectName("Card")
-        card.setStyleSheet("""
-            QFrame#Card {
-                background-color: #1e1e2e;
-                border: 1px solid #313244;
+        bg_color = "#11111b" if is_completed else "#1e1e2e"
+        hover_bg = "#181825" if is_completed else "#181825"
+        border_color = "#313244"
+        hover_border = "#45475a" if is_completed else "#cba6f7"
+        card.setStyleSheet(f"""
+            QFrame#Card {{
+                background-color: {bg_color};
+                border: 1px solid {border_color};
                 border-radius: 12px;
-            }
-            QFrame#Card:hover {
-                background-color: #181825;
-                border: 1px solid #cba6f7;
-            }
+            }}
+            QFrame#Card:hover {{
+                background-color: {hover_bg};
+                border: 1px solid {hover_border};
+            }}
         """)
         c_layout = QHBoxLayout(card)
         c_layout.setContentsMargins(18, 14, 18, 14)
@@ -206,13 +210,14 @@ class QtAgendaTab(QWidget):
         info_box = QVBoxLayout(info_widget)
         info_box.setSpacing(2)
 
+        title_color = "#a6adc8" if is_completed else "#cdd6f4"
         t_l = QLabel(f"{vm.time_display}  •  {vm.title}", card)
         t_l.setObjectName("CardTitle")
-        t_l.setStyleSheet("font-size: 14px; font-weight: 700; color: #cdd6f4; border: none; background: transparent;")
+        t_l.setStyleSheet(f"font-size: 14px; font-weight: 700; color: {title_color}; border: none; background: transparent;")
 
         sub_txt = vm.subtitle
         if vm.badge_text:
-            color = vm.badge_color or "#a6e3a1"
+            color = vm.badge_color or ("#6c7086" if is_completed else "#a6e3a1")
             badge_span = f"<span style='color:{color}; font-weight:bold;'>{vm.badge_text}</span>"
             sub_txt = f"{sub_txt}  •  {badge_span}" if sub_txt else badge_span
 
@@ -226,23 +231,26 @@ class QtAgendaTab(QWidget):
 
         if vm.has_action:
             btn_text = vm.action_btn_text or "🚀 Join"
+            btn_bg = "#313244" if is_completed else "#89b4fa"
+            btn_fg = "#a6adc8" if is_completed else "#11111b"
+            btn_border = "#45475a" if is_completed else "#89b4fa"
             btn = QPushButton(btn_text, card)
             btn.setObjectName("PrimaryBtn")
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #89b4fa;
-                    color: #11111b;
+            btn.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {btn_bg};
+                    color: {btn_fg};
                     font-size: 12px;
                     font-weight: bold;
-                    border: 1px solid #89b4fa;
+                    border: 1px solid {btn_border};
                     border-radius: 8px;
                     padding: 6px 14px;
-                }
-                QPushButton:hover {
-                    background-color: #b4befe;
-                    border-color: #b4befe;
-                }
+                }}
+                QPushButton:hover {{
+                    background-color: #45475a;
+                    border-color: #585b70;
+                }}
             """)
             btn.clicked.connect(lambda chk, u=vm.action_url: QDesktopServices.openUrl(QUrl(u)))
             c_layout.addWidget(btn)
@@ -328,6 +336,14 @@ class QtAgendaTab(QWidget):
                 self.scroll_layout.addWidget(self._create_section_label("🕒 LATER TODAY"))
                 for ev in cc.later_events:
                     card = self._create_meeting_card(ev)
+                    self.scroll_layout.addWidget(card)
+
+            # 4. EARLIER TODAY SECTION (Completed sessions from earlier today)
+            if cc.earlier_events:
+                earlier_hdr = t("agenda_earlier_today", default="🏁 EARLIER TODAY")
+                self.scroll_layout.addWidget(self._create_section_label(earlier_hdr, color="#6c7086"))
+                for ev in cc.earlier_events:
+                    card = self._create_meeting_card(ev, is_completed=True)
                     self.scroll_layout.addWidget(card)
 
         self.scroll_layout.addStretch()

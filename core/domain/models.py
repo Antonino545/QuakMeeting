@@ -115,6 +115,16 @@ class Location:
     teacher: Optional[str] = None
     origin_address: Optional[str] = None
 
+    def __post_init__(self):
+        if self.name:
+            self.name = " ".join(str(self.name).split())
+        if self.classroom:
+            self.classroom = " ".join(str(self.classroom).split())
+        if self.teacher:
+            self.teacher = " ".join(str(self.teacher).split())
+        if self.origin_address:
+            self.origin_address = " ".join(str(self.origin_address).split())
+
     @property
     def has_location(self) -> bool:
         return bool(self.name or self.classroom)

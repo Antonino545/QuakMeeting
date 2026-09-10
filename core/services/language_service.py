@@ -55,6 +55,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "agenda_no_flights": "No flights scheduled for today.",
         "agenda_join_button": "🚀 Join Flight",
         "agenda_maps_button": "🗺️ Directions",
+        "agenda_earlier_today": "🏁 EARLIER TODAY",
 
         # Hangar Tab
         "hangar_title": "Pilot Hangar",
@@ -286,6 +287,10 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "agenda_arrived_badge": "Arrived",
         "agenda_in_call_badge": "In Call",
         "agenda_on_site_badge": "On Site",
+        "agenda_ended_badge": "Ended",
+        "agenda_concluded": "Completed",
+        "agenda_cancelled_badge": "Cancelled",
+        "agenda_cancelled": "Cancelled",
 
         # Settings Card 3: Calendars
         "settings_calendars_title": "📅 Included System Calendars",
@@ -397,6 +402,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "agenda_no_flights": "Nessun volo in programma per oggi.",
         "agenda_join_button": "🚀 Entra nel Volo",
         "agenda_maps_button": "🗺️ Indicazioni Mappe",
+        "agenda_earlier_today": "🏁 VOLI PRECEDENTI",
 
         # Hangar Tab
         "hangar_title": "Hangar Piloti",
@@ -628,6 +634,10 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "agenda_arrived_badge": "Presente",
         "agenda_in_call_badge": "In Chiamata",
         "agenda_on_site_badge": "In Sede",
+        "agenda_ended_badge": "Concluso",
+        "agenda_concluded": "Completato",
+        "agenda_cancelled_badge": "Annullato",
+        "agenda_cancelled": "Annullato",
 
         # Settings Card 3: Calendars
         "settings_calendars_title": "📅 Calendari di Sistema Inclusi",

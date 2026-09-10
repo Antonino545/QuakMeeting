@@ -66,6 +66,36 @@ class TestClockAndStateMachine(unittest.TestCase):
         clock.set_time(datetime(2026, 9, 10, 11, 35, 0, tzinfo=timezone.utc))
         self.assertEqual(resolve_event_state(event, clock=clock), EventState.COMPLETED)
 
+    def test_dict_event_state_resolution(self):
+        clock = FakeClock(datetime(2026, 9, 10, 14, 0, 0, tzinfo=timezone.utc))
+
+        # 1. Event from this morning (09:00 - 10:00) passed as raw dict with ISO strings
+        morning_dict = {
+            "uid": "m-morning",
+            "title": "Morning Lecture",
+            "start_time": "2026-09-10T09:00:00+00:00",
+            "end_time": "2026-09-10T10:00:00+00:00"
+        }
+        self.assertEqual(resolve_event_state(morning_dict, clock=clock), EventState.COMPLETED)
+
+        # 2. Ongoing event right now (13:30 - 14:30)
+        current_dict = {
+            "uid": "m-current",
+            "title": "Afternoon Sync",
+            "start_time": "2026-09-10T13:30:00+00:00",
+            "end_time": "2026-09-10T14:30:00+00:00"
+        }
+        self.assertEqual(resolve_event_state(current_dict, clock=clock), EventState.ACTIVE)
+
+        # 3. Later event today (17:00 - 18:00)
+        later_dict = {
+            "uid": "m-later",
+            "title": "Evening Gym",
+            "start_time": "2026-09-10T17:00:00+00:00",
+            "end_time": "2026-09-10T18:00:00+00:00"
+        }
+        self.assertEqual(resolve_event_state(later_dict, clock=clock), EventState.UPCOMING)
+
 
 if __name__ == "__main__":
     unittest.main()

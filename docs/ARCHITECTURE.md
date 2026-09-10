@@ -121,7 +121,7 @@ Cross-platform presentation layer structured by operating system:
   - **`menu_bar_app.py`**: AppKit `NSStatusItem` menu bar controller.
   - **`dashboard_window.py`**: Native `NSWindow` Flight Deck HUD with custom segmented capsule pill switcher.
   - **`dashboard_tabs/`**: Dedicated native tab views:
-    - `agenda_tab.py`: Today's Command Center (NOW Hero Card with "Why?" transparency box, NEXT primary upcoming event with 1-click launch, and LATER timeline agenda).
+    - `agenda_tab.py`: Today's Command Center (NOW Hero Card with "Why?" transparency box, NEXT primary upcoming event with 1-click launch, LATER timeline agenda, and EARLIER TODAY concluded events section).
     - `hangar_tab.py`: Hangar pilot selection, personality traits, and test flights.
     - `settings_tab.py`: High-level coordinator featuring a modern Two-Pane Sidebar Navigation layout (Left: Category navigation sidebar; Right: Dedicated card scroll pane).
     - `settings/`: Decomposed sub-card controllers (`timing_card.py`, `eta_card.py`, `arrival_card.py`, `calendars_card.py`, `system_card.py`, `helpers.py`).
@@ -136,7 +136,7 @@ Cross-platform presentation layer structured by operating system:
   - **`qt_tray_app.py`**: PyQt6 `QSystemTrayIcon` with custom Catppuccin context menu.
   - **`qt_dashboard.py`**: PyQt6 Flight Deck window coordinator with capsule pill switcher and window lifecycle management.
   - **`dashboard_tabs/`**: Dedicated modular tab views matching macOS:
-    - `agenda_tab.py`: Today's Command Center (NOW Hero Card with "Why?" transparency box, NEXT primary upcoming event, and LATER timeline agenda with arrival badges `[✅ Arrived]`, `[🟢 In Call]`, `[📍 On Site]`).
+    - `agenda_tab.py`: Today's Command Center (NOW Hero Card with "Why?" transparency box, NEXT primary upcoming event, LATER timeline agenda, and EARLIER TODAY concluded events section with arrival badges `[✅ Arrived]`, `[🟢 In Call]`, `[📍 On Site]`).
     - `hangar_tab.py`: Hangar pilot selection and test flight controls.
     - `settings_tab.py`: High-level coordinator featuring a modern Two-Pane Sidebar Navigation layout (Left: Category navigation sidebar; Right: Dedicated card scroll pane).
     - `settings/`: Decomposed sub-card widgets (`timing_card.py`, `eta_card.py`, `arrival_card.py`, `calendars_card.py`, `system_card.py`).

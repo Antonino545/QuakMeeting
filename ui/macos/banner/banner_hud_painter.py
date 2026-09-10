@@ -218,20 +218,37 @@ class BannerHUDPainter:
             close_attrs
         )
 
-    def draw_event_details(self, bx: float, by: float, bh: float, title_text: str, detail_text: str):
+    def draw_event_details(self, bx: float, by: float, bh: float, title_text: str, detail_text: str, bw: float = 535.0):
+        para_style = AppKit.NSMutableParagraphStyle.alloc().init()
+        para_style.setLineBreakMode_(AppKit.NSLineBreakByTruncatingTail)
+
+        max_text_w = max(100.0, bw - 60.0)
+
         title_attrs = {
             AppKit.NSFontAttributeName: self.font_title,
-            AppKit.NSForegroundColorAttributeName: self.color_white
+            AppKit.NSForegroundColorAttributeName: self.color_white,
+            AppKit.NSParagraphStyleAttributeName: para_style
         }
-        title_pt = AppKit.NSMakePoint(bx + 18.0, by + bh - 56.0)
-        AppKit.NSString.stringWithString_(title_text).drawAtPoint_withAttributes_(title_pt, title_attrs)
+        clean_title = " ".join(str(title_text or "").split())
+        title_rect = AppKit.NSMakeRect(bx + 18.0, by + bh - 58.0, max_text_w, 20.0)
+        AppKit.NSString.stringWithString_(clean_title).drawWithRect_options_attributes_(
+            title_rect,
+            AppKit.NSStringDrawingUsesLineFragmentOrigin | AppKit.NSStringDrawingTruncatesLastVisibleLine,
+            title_attrs
+        )
 
         sub_attrs = {
             AppKit.NSFontAttributeName: self.font_sub,
-            AppKit.NSForegroundColorAttributeName: self.color_sub
+            AppKit.NSForegroundColorAttributeName: self.color_sub,
+            AppKit.NSParagraphStyleAttributeName: para_style
         }
-        sub_pt = AppKit.NSMakePoint(bx + 18.0, by + bh - 76.0)
-        AppKit.NSString.stringWithString_(detail_text).drawAtPoint_withAttributes_(sub_pt, sub_attrs)
+        clean_detail = " ".join(str(detail_text or "").split())
+        sub_rect = AppKit.NSMakeRect(bx + 18.0, by + bh - 78.0, max_text_w, 18.0)
+        AppKit.NSString.stringWithString_(clean_detail).drawWithRect_options_attributes_(
+            sub_rect,
+            AppKit.NSStringDrawingUsesLineFragmentOrigin | AppKit.NSStringDrawingTruncatesLastVisibleLine,
+            sub_attrs
+        )
 
     def draw_buttons_bar(
         self,

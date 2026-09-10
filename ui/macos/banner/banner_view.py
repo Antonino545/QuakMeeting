@@ -163,9 +163,10 @@ class QuakPitBannerView(AppKit.NSView):
         return False
 
     def _init_cached_resources(self):
-        # Truncate title cleanly
+        # Truncate title cleanly (sanitizing newlines/tabs)
+        clean_title = " ".join(str(self.title or "").split())
         max_chars = 34
-        self._cached_short_title = self.title if len(self.title) <= max_chars else self.title[:max_chars - 3] + "..."
+        self._cached_short_title = clean_title if len(clean_title) <= max_chars else clean_title[:max_chars - 3] + "..."
 
         # Precompute static details string
         detail_text = ""
@@ -178,9 +179,11 @@ class QuakPitBannerView(AppKit.NSView):
                 detail_text = f"🕒 At {s_time}"
 
         if self.classroom:
-            detail_text += f"  •  🏫 {self.classroom}"
+            clean_cls = " ".join(str(self.classroom).split())
+            detail_text += f"  •  🏫 {clean_cls}"
         elif self.location:
-            loc_short = self.location if len(self.location) <= 20 else self.location[:17] + "..."
+            clean_loc = " ".join(str(self.location).split())
+            loc_short = clean_loc if len(clean_loc) <= 24 else clean_loc[:21] + "..."
             detail_text += f"  •  📍 {loc_short}"
             if self.travel_time_minutes:
                 mode_icon = MODE_ICONS.get(self.transport_mode, "🚆")
@@ -190,7 +193,8 @@ class QuakPitBannerView(AppKit.NSView):
             detail_text += "  •  🌐 Online Meeting"
 
         if self.teacher:
-            detail_text += f" ({self.teacher})"
+            clean_tch = " ".join(str(self.teacher).split())
+            detail_text += f" ({clean_tch})"
 
         self._cached_detail_text = detail_text
         self._cached_speech_text = build_pilot_speech_text(
@@ -576,7 +580,7 @@ class QuakPitBannerView(AppKit.NSView):
         self.hud_painter.draw_close_button(banner_x, banner_y, banner_w, banner_h, self.pressed_button, self.hovered_button)
 
         # 8. Event Details
-        self.hud_painter.draw_event_details(banner_x, banner_y, banner_h, self._cached_short_title, self._cached_detail_text)
+        self.hud_painter.draw_event_details(banner_x, banner_y, banner_h, self._cached_short_title, self._cached_detail_text, bw=banner_w)
 
         # 9. Action Buttons Bar
         rects = self._get_button_rects(banner_x, banner_y)

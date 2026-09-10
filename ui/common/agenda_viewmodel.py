@@ -62,16 +62,17 @@ class AgendaEventVM:
 
 @dataclass
 class CommandCenterVM:
-    """Structured ViewModel partitioning today's agenda into NOW, NEXT, and LATER buckets."""
+    """Structured ViewModel partitioning today's agenda into NOW, NEXT, LATER, and EARLIER buckets."""
     now_event: Optional[AgendaEventVM] = None
     next_event: Optional[AgendaEventVM] = None
     later_events: List[AgendaEventVM] = field(default_factory=list)
+    earlier_events: List[AgendaEventVM] = field(default_factory=list)
     all_events: List[AgendaEventVM] = field(default_factory=list)
     guidance: Optional[Any] = None  # TransitionGuidance from ContextEngine
 
     @property
     def has_events(self) -> bool:
-        return bool(self.now_event or self.next_event or self.later_events or self.all_events)
+        return bool(self.now_event or self.next_event or self.later_events or self.earlier_events or self.all_events)
 
 
 class AgendaViewModel:
@@ -99,19 +100,28 @@ class AgendaViewModel:
         # Extract timestamps
         start_dt = get_val("start_time")
         if isinstance(start_dt, str):
-            start_dt = datetime.fromisoformat(start_dt)
+            try:
+                start_dt = datetime.fromisoformat(start_dt.replace("Z", "+00:00"))
+            except Exception:
+                start_dt = None
         if isinstance(start_dt, datetime) and start_dt.tzinfo is None:
             start_dt = start_dt.astimezone(timezone.utc)
 
         end_dt = get_val("end_time")
         if isinstance(end_dt, str):
-            end_dt = datetime.fromisoformat(end_dt)
+            try:
+                end_dt = datetime.fromisoformat(end_dt.replace("Z", "+00:00"))
+            except Exception:
+                end_dt = None
         if isinstance(end_dt, datetime) and end_dt.tzinfo is None:
             end_dt = end_dt.astimezone(timezone.utc)
 
         dep_dt = get_val("departure_time")
         if isinstance(dep_dt, str):
-            dep_dt = datetime.fromisoformat(dep_dt)
+            try:
+                dep_dt = datetime.fromisoformat(dep_dt.replace("Z", "+00:00"))
+            except Exception:
+                dep_dt = None
         if isinstance(dep_dt, datetime) and dep_dt.tzinfo is None:
             dep_dt = dep_dt.astimezone(timezone.utc)
 
@@ -124,10 +134,10 @@ class AgendaViewModel:
         p_type = get_val("pilot_type", "duck")
         icon = PILOT_ICONS.get(p_type, "🦆")
 
-        # Location & Subtitle components
-        loc = str(get_val("location") or "")
-        classroom = get_val("classroom")
-        teacher = get_val("teacher")
+        # Location & Subtitle components (clean up excessive whitespace/newlines)
+        loc = " ".join(str(get_val("location") or "").split())
+        classroom = " ".join(str(get_val("classroom")).split()) if get_val("classroom") else None
+        teacher = " ".join(str(get_val("teacher")).split()) if get_val("teacher") else None
         travel_min = get_val("travel_time_minutes")
         transport_mode = get_val("transport_mode", "transit")
         trans_icon = TRANSPORT_ICONS.get(transport_mode, "🚗")
@@ -242,6 +252,16 @@ class AgendaViewModel:
             else:
                 badge_text = f"✅ {t('agenda_arrived_badge', default='Arrived')}"
                 badge_color = "#a6e3a1"
+        elif state == EventState.COMPLETED:
+            badge_text = f"✓ {t('agenda_ended_badge', default='Ended')}"
+            badge_color = "#6c7086"
+            countdown_text = t("agenda_concluded", default="Completed")
+            is_urgent = False
+        elif state == EventState.CANCELLED:
+            badge_text = f"🚫 {t('agenda_cancelled_badge', default='Cancelled')}"
+            badge_color = "#f38ba8"
+            countdown_text = t("agenda_cancelled", default="Cancelled")
+            is_urgent = False
         elif state == EventState.ACTIVE:
             badge_text = "🔴 Active"
             badge_color = "#f38ba8"
@@ -255,7 +275,10 @@ class AgendaViewModel:
             badge_color = "#f9e2af"
 
         # Countdown calculation
-        if start_dt:
+        if state in (EventState.COMPLETED, EventState.CANCELLED):
+            if not countdown_text:
+                countdown_text = t("agenda_concluded", default="Completed")
+        elif start_dt:
             diff_start = (start_dt - now).total_seconds() / 60.0
             if dep_dt and bool(get_val("is_travel", False)):
                 diff_dep = (dep_dt - now).total_seconds() / 60.0
@@ -316,12 +339,18 @@ class AgendaViewModel:
         for e in events:
             start_dt = e.get("start_time") if isinstance(e, dict) else getattr(e, "start_time", None)
             if isinstance(start_dt, str):
-                start_dt = datetime.fromisoformat(start_dt)
+                try:
+                    start_dt = datetime.fromisoformat(start_dt.replace("Z", "+00:00"))
+                except Exception:
+                    start_dt = None
             if isinstance(start_dt, datetime):
                 if start_dt.astimezone().date() == now.astimezone().date():
-                    today_events.append(e)
+                    today_events.append((e, start_dt))
 
-        vms = [AgendaViewModel.build_event_vm(e, clock=current_clock, lang=lang) for e in today_events]
+        # Sort chronologically by start_time
+        today_events.sort(key=lambda item: item[1])
+
+        vms = [AgendaViewModel.build_event_vm(item[0], clock=current_clock, lang=lang) for item in today_events]
         return vms
 
     @staticmethod
@@ -330,7 +359,7 @@ class AgendaViewModel:
         clock: Optional[Clock] = None,
         lang: Optional[str] = None
     ) -> CommandCenterVM:
-        """Partitions today's events into NOW, NEXT, and LATER buckets with ContextEngine guidance."""
+        """Partitions today's events into NOW, NEXT, LATER, and EARLIER buckets with ContextEngine guidance."""
         current_clock = clock or system_clock
         now = current_clock.now()
 
@@ -341,13 +370,23 @@ class AgendaViewModel:
         from core.domain.context_engine import ContextEngine
         guidance = ContextEngine.evaluate(events, current_time=now, clock=current_clock)
 
+        # 1. Partition into completed/past vs active/upcoming candidates
+        earlier_vms = [
+            v for v in all_vms
+            if v.state in (EventState.COMPLETED, EventState.CANCELLED, EventState.DISMISSED)
+        ]
+        active_candidates = [
+            v for v in all_vms
+            if v.state not in (EventState.COMPLETED, EventState.CANCELLED, EventState.DISMISSED)
+        ]
+
         now_vm: Optional[AgendaEventVM] = None
         target_uid = None
         if guidance and guidance.target_event:
             target_uid = str(getattr(guidance.target_event, "uid", None) or getattr(guidance.target_event, "id", None) or "")
 
-        # Look for explicitly active/arriving/time-to-leave events
-        for vm in all_vms:
+        # Look for explicitly active/arriving/time-to-leave events in active_candidates
+        for vm in active_candidates:
             if vm.state in (EventState.ACTIVE, EventState.TIME_TO_LEAVE, EventState.ARRIVING):
                 now_vm = vm
                 break
@@ -355,7 +394,7 @@ class AgendaViewModel:
                 now_vm = vm
                 break
 
-        remaining_vms = [v for v in all_vms if now_vm is None or v.uid != now_vm.uid]
+        remaining_vms = [v for v in active_candidates if now_vm is None or v.uid != now_vm.uid]
 
         # Determine NEXT event: first event chronologically that is UPCOMING or PREPARE
         next_vm: Optional[AgendaEventVM] = None
@@ -365,10 +404,7 @@ class AgendaViewModel:
                 break
 
         if not now_vm and not next_vm and remaining_vms:
-            for vm in remaining_vms:
-                if vm.state != EventState.COMPLETED:
-                    next_vm = vm
-                    break
+            next_vm = remaining_vms[0]
 
         later_vms = [v for v in remaining_vms if next_vm is None or v.uid != next_vm.uid]
 
@@ -376,6 +412,7 @@ class AgendaViewModel:
             now_event=now_vm,
             next_event=next_vm,
             later_events=later_vms,
+            earlier_events=earlier_vms,
             all_events=all_vms,
             guidance=guidance
         )

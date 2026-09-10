@@ -150,6 +150,65 @@ class TestAgendaViewModel(unittest.TestCase):
         self.assertIsNotNone(cc.guidance)
         self.assertTrue(len(cc.guidance.rationale) > 0)
 
+    def test_earlier_today_events_in_command_center(self):
+        # Current time is 14:30 (afternoon)
+        clock = FakeClock(datetime(2026, 9, 10, 14, 30, 0, tzinfo=timezone.utc))
+
+        # 1. Event from this morning (08:30 - 10:00) as dict
+        morning_dict_event = {
+            "uid": "evt-morning-1",
+            "title": "Maths Lecture",
+            "start_time": "2026-09-10T08:30:00+00:00",
+            "end_time": "2026-09-10T10:00:00+00:00",
+            "location": "Room 101"
+        }
+        # 2. Another event from late morning (11:00 - 12:00) as CalendarEvent
+        late_morning_event = CalendarEvent(
+            uid="evt-morning-2",
+            title="Physics Lab",
+            start_time=datetime(2026, 9, 10, 11, 0, 0, tzinfo=timezone.utc),
+            end_time=datetime(2026, 9, 10, 12, 0, 0, tzinfo=timezone.utc),
+            location="Lab 3"
+        )
+        # 3. Next upcoming event (15:00 - 16:00)
+        upcoming_event = CalendarEvent(
+            uid="evt-upcoming",
+            title="Design Review",
+            start_time=datetime(2026, 9, 10, 15, 0, 0, tzinfo=timezone.utc),
+            end_time=datetime(2026, 9, 10, 16, 0, 0, tzinfo=timezone.utc)
+        )
+        # 4. Later event (18:00 - 19:00)
+        later_event = CalendarEvent(
+            uid="evt-evening",
+            title="Evening Workout",
+            start_time=datetime(2026, 9, 10, 18, 0, 0, tzinfo=timezone.utc),
+            end_time=datetime(2026, 9, 10, 19, 0, 0, tzinfo=timezone.utc)
+        )
+
+        all_meetings = [morning_dict_event, late_morning_event, upcoming_event, later_event]
+        cc = AgendaViewModel.build_command_center(all_meetings, clock=clock)
+
+        self.assertTrue(cc.has_events)
+        # Now event: None (no active event right now at 14:30)
+        self.assertIsNone(cc.now_event)
+        # Next event: MUST be the upcoming 15:00 event, NOT morning events!
+        self.assertIsNotNone(cc.next_event)
+        self.assertEqual(cc.next_event.uid, "evt-upcoming")
+        # Later events: MUST only be the 18:00 event
+        self.assertEqual(len(cc.later_events), 1)
+        self.assertEqual(cc.later_events[0].uid, "evt-evening")
+        # Earlier events: MUST contain both morning events!
+        self.assertEqual(len(cc.earlier_events), 2)
+        earlier_uids = [e.uid for e in cc.earlier_events]
+        self.assertIn("evt-morning-1", earlier_uids)
+        self.assertIn("evt-morning-2", earlier_uids)
+
+        for ev in cc.earlier_events:
+            self.assertEqual(ev.state, EventState.COMPLETED)
+            self.assertEqual(ev.badge_text, "✓ Ended")
+            self.assertEqual(ev.countdown_text, "Completed")
+            self.assertFalse(ev.is_urgent)
+
 
 if __name__ == "__main__":
     unittest.main()

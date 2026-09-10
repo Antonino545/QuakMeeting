@@ -34,11 +34,11 @@ class AgendaTabController(AppKit.NSObject):
         self._cached_sig = None
 
     @objc.python_method
-    def render(self, container, w, h, meetings, is_loading, config):
+    def render(self, container, w, h, meetings, is_loading, config, clock=None):
         self.dashboard_controller = container
         self.meetings = meetings or []
         self.config = config
-        self.command_center = AgendaViewModel.build_command_center(self.meetings, lang=get_active_language())
+        self.command_center = AgendaViewModel.build_command_center(self.meetings, clock=clock, lang=get_active_language())
         self.vms = self.command_center.all_events
         self._rendered_vms = []
 
@@ -82,6 +82,8 @@ class AgendaTabController(AppKit.NSObject):
             content_h += header_h + std_card_h + gap
         if self.command_center.later_events:
             content_h += header_h + len(self.command_center.later_events) * (std_card_h + gap)
+        if self.command_center.earlier_events:
+            content_h += header_h + len(self.command_center.earlier_events) * (std_card_h + gap)
 
         content_h = max(h, content_h)
         doc_view = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 0, w, content_h))
@@ -149,6 +151,25 @@ class AgendaTabController(AppKit.NSObject):
                     )
                     cur_y -= gap
 
+            # 4. EARLIER TODAY SECTION (Completed / Past events)
+            if self.command_center.earlier_events:
+                cur_y -= header_h
+                earlier_hdr = t("agenda_earlier_today", default="🏁 EARLIER TODAY")
+                doc_view.addSubview_(self._create_section_header(earlier_hdr, 0, cur_y, w - 16, color=Theme.SUBTEXT0))
+                for ev in self.command_center.earlier_events:
+                    cur_y -= std_card_h
+                    earlier_idx = len(self._rendered_vms)
+                    self._rendered_vms.append(ev)
+                    doc_view.addSubview_(
+                        self._create_meeting_card(
+                            ev,
+                            earlier_idx,
+                            0, cur_y, w - 16, std_card_h,
+                            is_completed=True
+                        )
+                    )
+                    cur_y -= gap
+
         scroll_view.setDocumentView_(doc_view)
         if scroll_view.contentView():
             if hasattr(self, "_saved_dist_from_top") and self._saved_dist_from_top is not None:
@@ -160,11 +181,11 @@ class AgendaTabController(AppKit.NSObject):
         return scroll_view
 
     @objc.python_method
-    def _create_section_header(self, title, x, y, w, h=22):
+    def _create_section_header(self, title, x, y, w, h=22, color=None):
         header_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(x + 4, y, w, h))
         header_lbl.setStringValue_(title)
         header_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(11.5))
-        header_lbl.setTextColor_(Theme.BLUE)
+        header_lbl.setTextColor_(color or Theme.BLUE)
         header_lbl.setBezeled_(False)
         header_lbl.setDrawsBackground_(False)
         header_lbl.setEditable_(False)
@@ -268,10 +289,11 @@ class AgendaTabController(AppKit.NSObject):
         return card
 
     @objc.python_method
-    def _create_meeting_card(self, vm, idx, x, y, w, h):
+    def _create_meeting_card(self, vm, idx, x, y, w, h, is_completed=False):
         card = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(x, y, w, h))
         card.setWantsLayer_(True)
-        card.layer().setBackgroundColor_(Theme.BASE.CGColor())
+        bg_color = Theme.MANTLE if is_completed else Theme.BASE
+        card.layer().setBackgroundColor_(bg_color.CGColor())
         card.layer().setCornerRadius_(12.0)
         card.layer().setMasksToBounds_(True)
         card.layer().setBorderWidth_(1.0)
@@ -283,12 +305,14 @@ class AgendaTabController(AppKit.NSObject):
         icon_lbl.setBezeled_(False)
         icon_lbl.setDrawsBackground_(False)
         icon_lbl.setEditable_(False)
+        if is_completed:
+            icon_lbl.setAlphaValue_(0.7)
         card.addSubview_(icon_lbl)
 
         title_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(62, 38, w - 275, 24))
         title_lbl.setStringValue_(f"{vm.time_display}  •  {vm.title}")
         title_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(14))
-        title_lbl.setTextColor_(Theme.TEXT)
+        title_lbl.setTextColor_(Theme.SUBTEXT0 if is_completed else Theme.TEXT)
         title_lbl.setBezeled_(False)
         title_lbl.setDrawsBackground_(False)
         title_lbl.setEditable_(False)
@@ -301,22 +325,24 @@ class AgendaTabController(AppKit.NSObject):
         sub_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(62, 16, w - 275, 20))
         sub_lbl.setStringValue_(sub_str)
         sub_lbl.setFont_(AppKit.NSFont.systemFontOfSize_(11.5))
-        sub_lbl.setTextColor_(Theme.SUBTEXT0)
+        sub_lbl.setTextColor_(Theme.OVERLAY0 if is_completed else Theme.SUBTEXT0)
         sub_lbl.setBezeled_(False)
         sub_lbl.setDrawsBackground_(False)
         sub_lbl.setEditable_(False)
         card.addSubview_(sub_lbl)
 
         if vm.has_action:
+            btn_bg = Theme.SURFACE0 if is_completed else Theme.BLUE
+            btn_text_color = Theme.TEXT if is_completed else Theme.CRUST
             action_btn = Theme.create_button(
                 AppKit.NSMakeRect(w - 142, 20, 126, 34),
                 title=vm.action_btn_text or t("agenda_join_button", default="🚀 Join"),
-                bg_color=Theme.BLUE,
-                text_color=Theme.CRUST,
-                border_color=None,
+                bg_color=btn_bg,
+                text_color=btn_text_color,
+                border_color=Theme.SURFACE1 if is_completed else None,
                 corner_radius=8.0,
                 font_size=12.0,
-                bold=True
+                bold=not is_completed
             )
             action_btn.setTarget_(self)
             action_btn.setAction_("onOpenMeetingUrl:")

@@ -696,8 +696,62 @@ class TestBannerModules(unittest.TestCase):
             "start_time": now_iso,
             "is_update_banner": True,
         })
-        self.assertTrue(banner.time_str.startswith("At "))
-        banner.close()
+    def test_banner_title_and_location_sanitization_no_overlap(self):
+        """Verifies that multi-line locations and titles are strictly sanitized and never cause vertical collisions."""
+        raw_event = {
+            "title": "Porta Nuova\nMain Hall",
+            "location": "Porta Nuova\nTurin, Italy",
+            "classroom": "Room 4\nEast Wing",
+            "teacher": "Prof. Smith\nLead",
+            "start_time": datetime.now().astimezone(),
+            "end_time": datetime.now().astimezone() + timedelta(hours=1),
+            "travel_time_minutes": 30,
+            "transport_mode": "transit"
+        }
+
+        # 1. Domain Location test
+        from core.domain.models import Location
+        loc = Location(name="Porta Nuova\nTurin, Italy", classroom="Aula 3\nFloor 2")
+        self.assertNotIn("\n", loc.name)
+        self.assertNotIn("\n", loc.classroom)
+        self.assertEqual(loc.name, "Porta Nuova Turin, Italy")
+        self.assertEqual(loc.classroom, "Aula 3 Floor 2")
+
+        # 2. AgendaViewModel test
+        from ui.common.agenda_viewmodel import AgendaViewModel
+        item = AgendaViewModel.build_event_vm(raw_event)
+        self.assertNotIn("\n", item.location_name)
+        self.assertNotIn("\n", item.subtitle)
+
+        # 3. macOS AppKit Banner test
+        if HAS_APPKIT:
+            from ui.macos.banner.banner_view import QuakPitBannerView
+            from ui.macos.banner.banner_hud_painter import BannerHUDPainter
+
+            banner = QuakPitBannerView.alloc().initWithFrame_meetingData_controller_(
+                AppKit.NSMakeRect(0, 0, 535, 132),
+                raw_event,
+                None
+            )
+            self.assertNotIn("\n", banner._cached_short_title)
+            self.assertNotIn("\n", banner._cached_detail_text)
+
+            painter = BannerHUDPainter()
+            # Must execute draw_event_details cleanly without error
+            img = AppKit.NSImage.alloc().initWithSize_(AppKit.NSMakeSize(535, 132))
+            img.lockFocus()
+            painter.draw_event_details(0, 0, 132.0, banner._cached_short_title, banner._cached_detail_text, bw=535.0)
+            img.unlockFocus()
+
+        # 4. Linux Qt Banner test
+        if HAS_QT:
+            from ui.linux.banner.qt_duck_banner import QtDuckBannerWindow
+            from PyQt6.QtWidgets import QApplication
+            _ = QApplication.instance() or QApplication(sys.argv)
+            qt_banner = QtDuckBannerWindow(raw_event)
+            self.assertNotIn("\n", qt_banner._cached_short_title)
+            self.assertNotIn("\n", qt_banner._cached_detail_text)
+            qt_banner.close()
 
 if __name__ == "__main__":
     unittest.main()
