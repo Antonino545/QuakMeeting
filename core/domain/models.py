@@ -226,7 +226,7 @@ class CalendarEvent:
         self.description = str(description or "")
         self.provider = str(provider or "Reminder ⏰")
         self.reminder_stage = reminder_stage
-        self.uid = uid
+        self.uid = uid or extra_kwargs.get("id")
 
         # Category and Event Type normalization
         cat = category or event_type or "general"
@@ -245,11 +245,18 @@ class CalendarEvent:
             teacher=teacher,
             origin_address=origin_address
         )
-        self.online_meeting = meeting_link or MeetingLink(
-            url=meeting_url,
-            action_url=action_url,
-            provider_name=provider
-        )
+        if isinstance(meeting_link, str):
+            self.online_meeting = MeetingLink(
+                url=meeting_link,
+                action_url=action_url,
+                provider_name=provider
+            )
+        else:
+            self.online_meeting = meeting_link or MeetingLink(
+                url=meeting_url,
+                action_url=action_url,
+                provider_name=provider
+            )
         self.travel = travel_plan or TravelPlan(
             is_travel=bool(is_travel),
             departure_time=departure_time,
@@ -394,6 +401,22 @@ class CalendarEvent:
             self.online_meeting = MeetingLink(url=val)
         else:
             self.online_meeting.url = val
+
+    @property
+    def meeting_link(self) -> Optional[str]:
+        return self.meeting_url
+
+    @meeting_link.setter
+    def meeting_link(self, val: Optional[str]) -> None:
+        self.meeting_url = val
+
+    @property
+    def video_link(self) -> Optional[str]:
+        return self.meeting_url
+
+    @video_link.setter
+    def video_link(self, val: Optional[str]) -> None:
+        self.meeting_url = val
 
     @property
     def action_url(self) -> Optional[str]:

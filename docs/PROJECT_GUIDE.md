@@ -65,14 +65,18 @@ QuakMeeting/
 │   │   ├── state_machine.py       # EventState lifecycle machine & state resolver
 │   │   ├── reminder_policy.py     # Strategy-based ReminderPolicy & ReminderPolicyRegistry
 │   │   ├── capabilities.py        # EventCapabilities presentation flags
+│   │   ├── context_engine.py      # Context Engine & "Why?" Transparency Engine (TransitionGuidance, ActionType)
 │   │   └── classifier.py          # Smart keyword matching, category classification & video URL extraction
 │   ├── providers/
 │   │   ├── base.py                # BaseCalendarProvider abstract class
 │   │   ├── eventkit_provider.py   # Native Apple EventKit bridge (macOS)
 │   │   └── caldav_provider.py     # CalDAV/ICS provider with RRULE expansion, TZID & fallback cache
 │   ├── services/
-│   │   ├── calendar_service.py    # Synchronizes & caches Today-only events (00:00 to 23:59:59)
+│   │   ├── database_service.py    # Centralized ACID SQLite store (~/.quakmeeting/quakmeeting.db)
+│   │   ├── notification_service.py # Unified NotificationProvider protocol (Mascot, System, Sound, Composite)
+│   │   ├── calendar_service.py    # Synchronizes & caches Today-only events via MeetingRepository
 │   │   ├── reminder_engine.py     # Multi-stage notification triggers (evaluates leave vs start time)
+│   │   ├── state_store.py         # NotifiedStateStore & BannerHistoryStore backed by SQLite
 │   │   ├── eta_service.py         # Apple Maps route URLs & departure time calculator
 │   │   ├── arrival_service.py     # Multiplatform presence detection (call apps, venue Wi-Fi, diagnostics)
 │   │   ├── config_service.py      # Configuration manager (~/.quakmeeting/config.json)
@@ -83,7 +87,7 @@ QuakMeeting/
 │   ├── common/                    # Cross-platform UI helpers
 │   │   ├── theme.py               # Central Catppuccin Mocha palette & pilot mappings (Single source of truth)
 │   │   ├── tray_viewmodel.py      # Status formatting & stage logic
-│   │   ├── agenda_viewmodel.py    # Cross-platform AgendaEventVM presentation builder
+│   │   ├── agenda_viewmodel.py    # Cross-platform AgendaEventVM & CommandCenterVM (NOW / NEXT / LATER)
 │   │   ├── banner_queue.py        # Cross-platform banner sequencing queue
 │   │   └── banner_presets.py      # Cross-platform test & update mock banner presets
 │   ├── macos/                     # macOS Native UI (PyObjC, AppKit, Quartz 2D)

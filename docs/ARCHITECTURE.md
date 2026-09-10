@@ -70,6 +70,7 @@ Contains pure Python data classes, value objects, and domain policies decoupled 
 - **`clock.py`**: Injectable `Clock` protocol with `SystemClock` for production and controllable `FakeClock` for deterministic simulation and time-warp testing.
 - **`state_machine.py`**: Deterministic event lifecycle state machine (`EventState` enum: `UPCOMING → PREPARE → TIME_TO_LEAVE → ARRIVING → ARRIVED → ACTIVE → COMPLETED`, plus `CANCELLED`, `DISMISSED`) with automatic state transition resolution.
 - **`reminder_policy.py`**: Category-specific reminder policies (`ExamReminderPolicy`, `LectureReminderPolicy`, `VideoMeetingReminderPolicy`, `TransitReminderPolicy`, `GeneralReminderPolicy`) managed via `ReminderPolicyRegistry` with adaptive presence suppression.
+- **`context_engine.py`**: The Context Engine & "Why?" Transparency authority. Evaluates real-time schedules, transit ETA buffers, user presence signals (Wi-Fi, active call processes), and time horizons to generate immediate transition guidance (`ActionType`: `LEAVE_NOW`, `PREPARE_DEPARTURE`, `JOIN_CALL`, `HEAD_TO_CLASS`, `ACTIVE_SESSION`, `RELAX`, `UserContextState`) with human-readable rationale (e.g., "Leave now: 18m transit + 10m buffer for 09:00 Lecture").
 - **`capabilities.py`**: Boolean capability model (`EventCapabilities`: `can_join`, `can_navigate`, `has_location`, `needs_travel`, `can_snooze`, `show_arrival_badge`, `show_in_call_badge`).
 - **`classifier.py`**: Heuristic keyword, regex, and temporal anchor engine to automatically assign pilots (Duck, Captain, Chef, Owl, etc.) and categories (`exam`, `class`, `study`, `food`, `travel`, `sport`, `in_person`, `health`, etc.) based on event titles, metadata, closed-vocabulary prefixes, idiom overrides, and iterative temporal anchor masking. Extracts video meeting and telemedicine URLs across Google Meet, Zoom, Microsoft Teams, Cisco Webex, Jitsi Meet, Whereby, GoToMeeting, Skype, Discord, Slack Huddle, and Serenis.
 
@@ -81,8 +82,11 @@ Data ingestion layer fetching events from various platforms.
 
 ### 3. Services (`core/services/`)
 Orchestrates business use cases.
-- **`calendar_service.py`**: Filters events strictly for **Today**, performs smart multi-calendar deduplication for exams and lectures, manages the on-disk JSON cache, and enriches travel events with transit/driving ETA from home or default exam locations. Automatically selects EventKit on macOS, EDS on GNOME/Linux, and CalDAV on Windows.
-- **`reminder_engine.py`**: Evaluates when to fire notifications. It differentiates between standard events (fires relative to `start_time`) and travel events (fires relative to `departure_time`).
+- **`database_service.py`**: Centralized SQLite state storage (`~/.quakmeeting/quakmeeting.db`). Replaces legacy separate JSON files with ACID transactions, WAL mode, foreign keys, and transparent migration. Manages tables for `events`, `notified_stages`, `banner_history`, `eta_cache`, and `address_cache`, with automatic `:memory:` fallback when running in sandboxed test suites.
+- **`notification_service.py`**: Unified `NotificationProvider` architecture. Standardizes notification delivery across `MascotBannerProvider` (animated floating mascot banners), `SystemNotificationProvider` (native OS desktop notification fallback via AppleScript/osascript on macOS, notify-send on Linux, and PowerShell toast on Windows), `SoundNotificationProvider` (audio chime playback), and `CompositeNotificationProvider` with automatic fallback.
+- **`calendar_service.py`**: Filters events strictly for **Today**, performs smart multi-calendar deduplication for exams and lectures, manages the state database via `MeetingRepository`, and enriches travel events with transit/driving ETA from home or default exam locations. Automatically selects EventKit on macOS, EDS on GNOME/Linux, and CalDAV on Windows.
+- **`reminder_engine.py`**: Evaluates when to fire notifications. Integrates with `ReminderPolicyRegistry` and `NotificationService`, dispatching multi-stage notifications relative to `start_time` for standard events or `departure_time` for travel events.
+- **`state_store.py`**: Backward-compatible persistence facades (`NotifiedStateStore`, `BannerHistoryStore`) delegating directly to `DatabaseService`.
 - **`arrival_service.py`**: Automatic presence detection and arrival suppression engine across macOS (`airport`), Linux (`nmcli`/`iwgetid`), and Windows (`netsh`). Detects active video call processes (Zoom, Microsoft Teams, Webex, Skype, Slack) and matches current Wi-Fi against customizable venue SSIDs (Eduroam, university campus, office), providing live presence diagnostics to the UI.
 - **`address_service.py`**: Centralized address search, live autocomplete, and geocoding validation authority querying OpenStreetMap Nominatim with Photon fallback, proximity-biased coordinate bounding boxes, shared disk/memory caching (`address_cache.json`), and platform map deep links.
 - **`eta_service.py`**: Calculates multi-modal travel times and builds Apple Maps / Google Maps deep links. Delegates address geocoding to `address_service` with unified disk caching. Features Smart Auto-Transport Mode (automatically calculates and suggests walking route ETA when destination is within `< 1.2 km` or configured threshold). On macOS, queries Apple's native `MKDirections` (MapKit) for live transit timetables and traffic-aware driving durations; on Linux and Windows, queries open-source OpenStreetMap / OSRM routing networks (`routed-car`, `routed-bike`, `routed-foot`, and calibrated transit models) with offline Haversine fallback.
@@ -117,7 +121,7 @@ Cross-platform presentation layer structured by operating system:
   - **`menu_bar_app.py`**: AppKit `NSStatusItem` menu bar controller.
   - **`dashboard_window.py`**: Native `NSWindow` Flight Deck HUD with custom segmented capsule pill switcher.
   - **`dashboard_tabs/`**: Dedicated native tab views:
-    - `agenda_tab.py`: Today's flight agenda, arrival status badges (`[✅ Arrived]`, `[🟢 In Call]`, `[📍 On Site]`), and meeting launch cards.
+    - `agenda_tab.py`: Today's Command Center (NOW Hero Card with "Why?" transparency box, NEXT primary upcoming event with 1-click launch, and LATER timeline agenda).
     - `hangar_tab.py`: Hangar pilot selection, personality traits, and test flights.
     - `settings_tab.py`: High-level coordinator featuring a modern Two-Pane Sidebar Navigation layout (Left: Category navigation sidebar; Right: Dedicated card scroll pane).
     - `settings/`: Decomposed sub-card controllers (`timing_card.py`, `eta_card.py`, `arrival_card.py`, `calendars_card.py`, `system_card.py`, `helpers.py`).
@@ -132,7 +136,7 @@ Cross-platform presentation layer structured by operating system:
   - **`qt_tray_app.py`**: PyQt6 `QSystemTrayIcon` with custom Catppuccin context menu.
   - **`qt_dashboard.py`**: PyQt6 Flight Deck window coordinator with capsule pill switcher and window lifecycle management.
   - **`dashboard_tabs/`**: Dedicated modular tab views matching macOS:
-    - `agenda_tab.py`: Today's flight agenda, arrival status badges (`[✅ Arrived]`, `[🟢 In Call]`, `[📍 On Site]`), and meeting launch cards.
+    - `agenda_tab.py`: Today's Command Center (NOW Hero Card with "Why?" transparency box, NEXT primary upcoming event, and LATER timeline agenda with arrival badges `[✅ Arrived]`, `[🟢 In Call]`, `[📍 On Site]`).
     - `hangar_tab.py`: Hangar pilot selection and test flight controls.
     - `settings_tab.py`: High-level coordinator featuring a modern Two-Pane Sidebar Navigation layout (Left: Category navigation sidebar; Right: Dedicated card scroll pane).
     - `settings/`: Decomposed sub-card widgets (`timing_card.py`, `eta_card.py`, `arrival_card.py`, `calendars_card.py`, `system_card.py`).

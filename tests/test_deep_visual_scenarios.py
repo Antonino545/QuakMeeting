@@ -182,7 +182,8 @@ class TestDeepVisualScenarios(unittest.TestCase):
 
         # Verify all 5 meeting cards were rendered inside doc_view
         subviews = doc_view.subviews()
-        self.assertEqual(len(subviews), 5, f"Expected 5 meeting cards in AppKit view, got {len(subviews)}")
+        self.assertEqual(len(tab_ctrl._rendered_vms), 5, f"Expected 5 meeting cards rendered, got {len(tab_ctrl._rendered_vms)}")
+        self.assertGreaterEqual(len(subviews), 5, f"Expected at least 5 subviews in AppKit view, got {len(subviews)}")
 
         # Capture document view offscreen to PNG
         doc_view.layoutSubtreeIfNeeded()
@@ -220,7 +221,7 @@ class TestDeepVisualScenarios(unittest.TestCase):
         tab_widget.refresh_agenda(self.fake_events)
 
         # Validate that 5 card frames exist
-        cards = [c for c in tab_widget.scroll_content.findChildren(QFrame) if c.objectName() == "Card"]
+        cards = [c for c in tab_widget.scroll_content.findChildren(QFrame) if c.objectName() in ("Card", "HeroCard")]
         self.assertEqual(len(cards), 5, f"Expected 5 meeting cards in Qt scroll content, got {len(cards)}")
 
         # Validate presence of action buttons

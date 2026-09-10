@@ -8,7 +8,7 @@ from core.domain.models import format_duration
 from core.services.eta_service import MODE_ICONS
 from core.services.arrival_service import arrival_service
 from core.services.language_service import t, get_active_language
-from ui.common.agenda_viewmodel import AgendaViewModel, AgendaEventVM
+from ui.common.agenda_viewmodel import AgendaViewModel, AgendaEventVM, CommandCenterVM
 from ui.macos.theme import Theme
 
 class AgendaTabController(AppKit.NSObject):
@@ -17,6 +17,7 @@ class AgendaTabController(AppKit.NSObject):
         self.dashboard_controller = None
         self.config = None
         self.vms = []
+        self._rendered_vms = []
         self._cached_view = None
         self._cached_sig = None
         self._saved_dist_from_top = None
@@ -37,7 +38,9 @@ class AgendaTabController(AppKit.NSObject):
         self.dashboard_controller = container
         self.meetings = meetings or []
         self.config = config
-        self.vms = AgendaViewModel.build(self.meetings, lang=get_active_language())
+        self.command_center = AgendaViewModel.build_command_center(self.meetings, lang=get_active_language())
+        self.vms = self.command_center.all_events
+        self._rendered_vms = []
 
         if is_loading and not self.meetings:
             loading_view = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 0, w, h))
@@ -65,15 +68,25 @@ class AgendaTabController(AppKit.NSObject):
         scroll_view.setDrawsBackground_(False)
         scroll_view.setAutohidesScrollers_(True)
 
-        card_h = 76.0
+        header_h = 24.0
+        hero_card_h = 106.0
+        std_card_h = 76.0
         gap = 12.0
+        top_pad = 16.0
 
-        total_items = max(1, len(self.vms))
-        content_h = max(h, total_items * (card_h + gap) + 20.0)
+        # Calculate required height for Command Center sections
+        content_h = top_pad + 20.0
+        if self.command_center.now_event:
+            content_h += header_h + hero_card_h + gap
+        if self.command_center.next_event:
+            content_h += header_h + std_card_h + gap
+        if self.command_center.later_events:
+            content_h += header_h + len(self.command_center.later_events) * (std_card_h + gap)
 
+        content_h = max(h, content_h)
         doc_view = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 0, w, content_h))
 
-        if not self.vms:
+        if not self.command_center.has_events:
             empty_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(20, content_h - 100, w - 40, 50))
             empty_lbl.setStringValue_(f"🧘‍♂️ {t('agenda_no_flights')}\n{t('all_caught_up')}")
             empty_lbl.setFont_(AppKit.NSFont.systemFontOfSize_(14))
@@ -84,10 +97,57 @@ class AgendaTabController(AppKit.NSObject):
             empty_lbl.setEditable_(False)
             doc_view.addSubview_(empty_lbl)
         else:
-            for idx, vm in enumerate(self.vms):
-                y_item = content_h - (idx + 1) * (card_h + gap)
-                card = self._create_meeting_card(vm, idx, 0, y_item, w - 16, card_h)
-                doc_view.addSubview_(card)
+            cur_y = content_h - top_pad
+
+            # 1. NOW SECTION (Hero Card + Why? Explanation)
+            if self.command_center.now_event:
+                cur_y -= header_h
+                doc_view.addSubview_(self._create_section_header("⚡️ NOW", 0, cur_y, w - 16))
+                cur_y -= hero_card_h
+                hero_idx = len(self._rendered_vms)
+                self._rendered_vms.append(self.command_center.now_event)
+                doc_view.addSubview_(
+                    self._create_hero_card(
+                        self.command_center.now_event,
+                        self.command_center.guidance,
+                        hero_idx,
+                        0, cur_y, w - 16, hero_card_h
+                    )
+                )
+                cur_y -= gap
+
+            # 2. NEXT SECTION
+            if self.command_center.next_event:
+                cur_y -= header_h
+                doc_view.addSubview_(self._create_section_header("🗓️ NEXT", 0, cur_y, w - 16))
+                cur_y -= std_card_h
+                next_idx = len(self._rendered_vms)
+                self._rendered_vms.append(self.command_center.next_event)
+                doc_view.addSubview_(
+                    self._create_meeting_card(
+                        self.command_center.next_event,
+                        next_idx,
+                        0, cur_y, w - 16, std_card_h
+                    )
+                )
+                cur_y -= gap
+
+            # 3. LATER SECTION
+            if self.command_center.later_events:
+                cur_y -= header_h
+                doc_view.addSubview_(self._create_section_header("🕒 LATER TODAY", 0, cur_y, w - 16))
+                for ev in self.command_center.later_events:
+                    cur_y -= std_card_h
+                    later_idx = len(self._rendered_vms)
+                    self._rendered_vms.append(ev)
+                    doc_view.addSubview_(
+                        self._create_meeting_card(
+                            ev,
+                            later_idx,
+                            0, cur_y, w - 16, std_card_h
+                        )
+                    )
+                    cur_y -= gap
 
         scroll_view.setDocumentView_(doc_view)
         if scroll_view.contentView():
@@ -98,6 +158,114 @@ class AgendaTabController(AppKit.NSObject):
             scroll_view.contentView().scrollToPoint_(AppKit.NSMakePoint(0, target_y))
             scroll_view.reflectScrolledClipView_(scroll_view.contentView())
         return scroll_view
+
+    @objc.python_method
+    def _create_section_header(self, title, x, y, w, h=22):
+        header_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(x + 4, y, w, h))
+        header_lbl.setStringValue_(title)
+        header_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(11.5))
+        header_lbl.setTextColor_(Theme.BLUE)
+        header_lbl.setBezeled_(False)
+        header_lbl.setDrawsBackground_(False)
+        header_lbl.setEditable_(False)
+        return header_lbl
+
+    @objc.python_method
+    def _create_hero_card(self, vm, guidance, idx, x, y, w, h):
+        """Prominent Hero Card with Why? explanation box for active or imminent events."""
+        card = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(x, y, w, h))
+        card.setWantsLayer_(True)
+        card.layer().setBackgroundColor_(Theme.MANTLE.CGColor())
+        card.layer().setCornerRadius_(14.0)
+        card.layer().setMasksToBounds_(True)
+        card.layer().setBorderWidth_(1.5)
+
+        # Highlight border according to urgency
+        border_color = Theme.PEACH if vm.is_urgent else Theme.BLUE
+        card.layer().setBorderColor_(border_color.CGColor())
+
+        icon_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(14, h - 52, 40, 40))
+        icon_lbl.setStringValue_(vm.icon)
+        icon_lbl.setFont_(AppKit.NSFont.systemFontOfSize_(30))
+        icon_lbl.setBezeled_(False)
+        icon_lbl.setDrawsBackground_(False)
+        icon_lbl.setEditable_(False)
+        card.addSubview_(icon_lbl)
+
+        title_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(62, h - 34, w - 275, 24))
+        title_lbl.setStringValue_(f"{vm.time_display}  •  {vm.title}")
+        title_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(14.5))
+        title_lbl.setTextColor_(Theme.TEXT)
+        title_lbl.setBezeled_(False)
+        title_lbl.setDrawsBackground_(False)
+        title_lbl.setEditable_(False)
+        card.addSubview_(title_lbl)
+
+        # Subtitle
+        sub_str = vm.subtitle
+        if vm.badge_text:
+            sub_str = f"{sub_str}  •  {vm.badge_text}" if sub_str else vm.badge_text
+
+        sub_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(62, h - 54, w - 275, 18))
+        sub_lbl.setStringValue_(sub_str)
+        sub_lbl.setFont_(AppKit.NSFont.systemFontOfSize_(11.5))
+        sub_lbl.setTextColor_(Theme.SUBTEXT0)
+        sub_lbl.setBezeled_(False)
+        sub_lbl.setDrawsBackground_(False)
+        sub_lbl.setEditable_(False)
+        card.addSubview_(sub_lbl)
+
+        # "Why?" Transparency Box
+        why_box = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(14, 10, w - 28, 38))
+        why_box.setWantsLayer_(True)
+        why_box.layer().setBackgroundColor_(Theme.SURFACE0.CGColor())
+        why_box.layer().setCornerRadius_(8.0)
+        why_box.layer().setMasksToBounds_(True)
+
+        why_text = f"💡 {guidance.rationale}" if (guidance and guidance.rationale) else f"💡 {vm.countdown_text or 'Active event'}"
+        why_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(10, 8, w - 48, 22))
+        why_lbl.setStringValue_(why_text)
+        why_lbl.setFont_(AppKit.NSFont.systemFontOfSize_(11.5))
+        why_lbl.setTextColor_(Theme.YELLOW)
+        why_lbl.setBezeled_(False)
+        why_lbl.setDrawsBackground_(False)
+        why_lbl.setEditable_(False)
+        why_box.addSubview_(why_lbl)
+        card.addSubview_(why_box)
+
+        # Action Buttons
+        if vm.has_action:
+            action_btn = Theme.create_button(
+                AppKit.NSMakeRect(w - 142, h - 46, 126, 34),
+                title=vm.action_btn_text or t("agenda_join_button", default="🚀 Join"),
+                bg_color=Theme.BLUE,
+                text_color=Theme.CRUST,
+                border_color=None,
+                corner_radius=8.0,
+                font_size=12.0,
+                bold=True
+            )
+            action_btn.setTarget_(self)
+            action_btn.setAction_("onOpenMeetingUrl:")
+            action_btn.setTag_(idx)
+            card.addSubview_(action_btn)
+
+            copy_btn = Theme.create_button(
+                AppKit.NSMakeRect(w - 238, h - 46, 90, 34),
+                title="📋 " + t("copy"),
+                bg_color=Theme.SURFACE0,
+                text_color=Theme.TEXT,
+                border_color=Theme.SURFACE1,
+                corner_radius=8.0,
+                font_size=11.5,
+                bold=False
+            )
+            copy_btn.setTarget_(self)
+            copy_btn.setAction_("onCopyMeetingUrl:")
+            copy_btn.setTag_(idx)
+            card.addSubview_(copy_btn)
+
+        return card
 
     @objc.python_method
     def _create_meeting_card(self, vm, idx, x, y, w, h):
@@ -175,15 +343,17 @@ class AgendaTabController(AppKit.NSObject):
 
     def onOpenMeetingUrl_(self, sender):
         idx = sender.tag()
-        if hasattr(self, "vms") and 0 <= idx < len(self.vms):
-            url = self.vms[idx].action_url
+        target_list = self._rendered_vms if hasattr(self, "_rendered_vms") and self._rendered_vms else self.vms
+        if 0 <= idx < len(target_list):
+            url = target_list[idx].action_url
             if url:
                 webbrowser.open(url)
 
     def onCopyMeetingUrl_(self, sender):
         idx = sender.tag()
-        if hasattr(self, "vms") and 0 <= idx < len(self.vms):
-            url = self.vms[idx].action_url
+        target_list = self._rendered_vms if hasattr(self, "_rendered_vms") and self._rendered_vms else self.vms
+        if 0 <= idx < len(target_list):
+            url = target_list[idx].action_url
             if url:
                 pasteboard = AppKit.NSPasteboard.generalPasteboard()
                 pasteboard.clearContents()

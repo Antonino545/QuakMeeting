@@ -111,6 +111,45 @@ class TestAgendaViewModel(unittest.TestCase):
         self.assertTrue(vm.capabilities.can_join)
         self.assertTrue(vm.has_action)
 
+    def test_build_command_center(self):
+        clock = FakeClock(datetime(2026, 9, 10, 10, 15, 0, tzinfo=timezone.utc))
+
+        # 1. Ongoing active event (10:00 - 11:00)
+        active_event = CalendarEvent(
+            uid="evt-active",
+            title="Active Lecture",
+            start_time=datetime(2026, 9, 10, 10, 0, 0, tzinfo=timezone.utc),
+            end_time=datetime(2026, 9, 10, 11, 0, 0, tzinfo=timezone.utc),
+            location="Aula 1"
+        )
+        # 2. Next event (11:30 - 12:30)
+        next_event = CalendarEvent(
+            uid="evt-next",
+            title="Team Sync",
+            start_time=datetime(2026, 9, 10, 11, 30, 0, tzinfo=timezone.utc),
+            end_time=datetime(2026, 9, 10, 12, 30, 0, tzinfo=timezone.utc),
+            meeting_url="https://meet.google.com/xyz"
+        )
+        # 3. Later event (15:00 - 16:00)
+        later_event = CalendarEvent(
+            uid="evt-later",
+            title="Evening Study",
+            start_time=datetime(2026, 9, 10, 15, 0, 0, tzinfo=timezone.utc),
+            end_time=datetime(2026, 9, 10, 16, 0, 0, tzinfo=timezone.utc),
+        )
+
+        cc = AgendaViewModel.build_command_center([active_event, next_event, later_event], clock=clock)
+
+        self.assertTrue(cc.has_events)
+        self.assertIsNotNone(cc.now_event)
+        self.assertEqual(cc.now_event.uid, "evt-active")
+        self.assertIsNotNone(cc.next_event)
+        self.assertEqual(cc.next_event.uid, "evt-next")
+        self.assertEqual(len(cc.later_events), 1)
+        self.assertEqual(cc.later_events[0].uid, "evt-later")
+        self.assertIsNotNone(cc.guidance)
+        self.assertTrue(len(cc.guidance.rationale) > 0)
+
 
 if __name__ == "__main__":
     unittest.main()

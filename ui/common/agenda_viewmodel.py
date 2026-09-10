@@ -3,7 +3,7 @@ Agenda View Model for QuakMeeting.
 Builds cross-platform AgendaEventVM presentation models from domain CalendarEvent/Meeting objects.
 Decouples macOS AppKit and Linux PyQt6 presentation tabs from raw data structures.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import List, Optional, Any, Dict
 
@@ -58,6 +58,20 @@ class AgendaEventVM:
     def has_action(self) -> bool:
         """Indicates if this event has an actionable URL for launching or copying."""
         return bool(self.action_url and self.action_url.strip() and self.action_url != "https://calendar.apple.com")
+
+
+@dataclass
+class CommandCenterVM:
+    """Structured ViewModel partitioning today's agenda into NOW, NEXT, and LATER buckets."""
+    now_event: Optional[AgendaEventVM] = None
+    next_event: Optional[AgendaEventVM] = None
+    later_events: List[AgendaEventVM] = field(default_factory=list)
+    all_events: List[AgendaEventVM] = field(default_factory=list)
+    guidance: Optional[Any] = None  # TransitionGuidance from ContextEngine
+
+    @property
+    def has_events(self) -> bool:
+        return bool(self.now_event or self.next_event or self.later_events or self.all_events)
 
 
 class AgendaViewModel:
@@ -309,3 +323,59 @@ class AgendaViewModel:
 
         vms = [AgendaViewModel.build_event_vm(e, clock=current_clock, lang=lang) for e in today_events]
         return vms
+
+    @staticmethod
+    def build_command_center(
+        events: List[Any],
+        clock: Optional[Clock] = None,
+        lang: Optional[str] = None
+    ) -> CommandCenterVM:
+        """Partitions today's events into NOW, NEXT, and LATER buckets with ContextEngine guidance."""
+        current_clock = clock or system_clock
+        now = current_clock.now()
+
+        all_vms = AgendaViewModel.build(events, clock=current_clock, lang=lang)
+        if not all_vms:
+            return CommandCenterVM()
+
+        from core.domain.context_engine import ContextEngine
+        guidance = ContextEngine.evaluate(events, current_time=now, clock=current_clock)
+
+        now_vm: Optional[AgendaEventVM] = None
+        target_uid = None
+        if guidance and guidance.target_event:
+            target_uid = str(getattr(guidance.target_event, "uid", None) or getattr(guidance.target_event, "id", None) or "")
+
+        # Look for explicitly active/arriving/time-to-leave events
+        for vm in all_vms:
+            if vm.state in (EventState.ACTIVE, EventState.TIME_TO_LEAVE, EventState.ARRIVING):
+                now_vm = vm
+                break
+            if target_uid and vm.uid == target_uid and guidance and guidance.is_urgent:
+                now_vm = vm
+                break
+
+        remaining_vms = [v for v in all_vms if now_vm is None or v.uid != now_vm.uid]
+
+        # Determine NEXT event: first event chronologically that is UPCOMING or PREPARE
+        next_vm: Optional[AgendaEventVM] = None
+        for vm in remaining_vms:
+            if vm.state in (EventState.UPCOMING, EventState.PREPARE):
+                next_vm = vm
+                break
+
+        if not now_vm and not next_vm and remaining_vms:
+            for vm in remaining_vms:
+                if vm.state != EventState.COMPLETED:
+                    next_vm = vm
+                    break
+
+        later_vms = [v for v in remaining_vms if next_vm is None or v.uid != next_vm.uid]
+
+        return CommandCenterVM(
+            now_event=now_vm,
+            next_event=next_vm,
+            later_events=later_vms,
+            all_events=all_vms,
+            guidance=guidance
+        )
