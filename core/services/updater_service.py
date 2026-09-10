@@ -119,13 +119,13 @@ class UpdaterService:
         """Returns True if latest_v is strictly greater than current_v."""
         return self.parse_semver(latest_v) > self.parse_semver(current_v)
 
-    def check_for_updates(self, background: bool = True) -> Optional[Dict[str, Any]]:
+    def check_for_updates(self, background: bool = True, manual: bool = False) -> Optional[Dict[str, Any]]:
         """Queries GitHub Releases API for the latest release."""
         if self.is_checking:
             logger.debug("Update check skipped because another check is already running.")
             return self.latest_release_info
 
-        logger.debug("Starting update check: background=%s current_version=%s.", background, self.current_version)
+        logger.debug("Starting update check: background=%s manual=%s current_version=%s.", background, manual, self.current_version)
 
         def _worker():
             self.is_checking = True
@@ -156,21 +156,29 @@ class UpdaterService:
                         logger.info(f"🚀 New QuakMeeting update found: {tag_name} (Current: {self.current_version})")
                         event_bus.publish("UPDATE_AVAILABLE", **release_info)
                         try:
-                            if sys.platform == "darwin":
-                                from ui.macos.banner import get_update_preset
-                            else:
-                                from ui.linux.banner import get_update_preset
-                            if get_update_preset:
-                                event_bus.publish("TRIGGER_BANNER", event_dict=get_update_preset(tag_name, release_info.get("html_url", "")))
+                            from ui.common.banner_presets import get_update_preset
+                            event_bus.publish("TRIGGER_BANNER", event_dict=get_update_preset(tag_name, release_info.get("html_url", "")))
                         except Exception as b_err:
                             logger.debug(f"Banner trigger on update: {b_err}")
                     else:
                         logger.info(f"✨ QuakMeeting is up to date (Current: {self.current_version})")
                         event_bus.publish("UPDATE_CHECK_COMPLETE", has_update=False, current_version=self.current_version)
+                        if manual:
+                            try:
+                                from ui.common.banner_presets import get_up_to_date_preset
+                                event_bus.publish("TRIGGER_BANNER", event_dict=get_up_to_date_preset(self.current_version))
+                            except Exception as b_err:
+                                logger.debug(f"Banner trigger on up-to-date: {b_err}")
                     return release_info
             except Exception as e:
                 logger.warning(f"Update check failed: {e}")
                 event_bus.publish("UPDATE_CHECK_COMPLETE", has_update=False, error=str(e), current_version=self.current_version)
+                if manual:
+                    try:
+                        from ui.common.banner_presets import get_update_error_preset
+                        event_bus.publish("TRIGGER_BANNER", event_dict=get_update_error_preset(str(e)))
+                    except Exception as b_err:
+                        logger.debug(f"Banner trigger on update error: {b_err}")
                 return None
             finally:
                 self.is_checking = False

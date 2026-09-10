@@ -58,6 +58,53 @@ class TestUpdaterService(unittest.TestCase):
             self.assertIsNotNone(info)
             self.assertTrue(info["has_update"])
             self.assertEqual(info["tag_name"], "v9.9.9")
+
+    def test_mocked_check_for_updates_up_to_date_manual(self):
+        from unittest.mock import patch, MagicMock
+        from core.services.event_bus import event_bus
+        import json
+
+        # Version older than or equal to current_version (1.0.0 vs current 1.0.49)
+        mock_payload = json.dumps({
+            "tag_name": "v1.0.0",
+            "name": "QuakMeeting 1.0.0",
+            "body": "Older release",
+            "html_url": "https://github.com/Antonino545/QuakMeeting/releases/tag/v1.0.0",
+            "assets": [],
+            "published_at": "2026-01-01T12:00:00Z"
+        }).encode("utf-8")
+
+        mock_resp = MagicMock()
+        mock_resp.read.return_value = mock_payload
+        mock_resp.__enter__.return_value = mock_resp
+
+        banners_triggered = []
+        event_bus.subscribe("TRIGGER_BANNER", lambda **k: banners_triggered.append(k))
+
+        with patch("urllib.request.urlopen", return_value=mock_resp):
+            info = self.updater.check_for_updates(background=False, manual=True)
+            self.assertIsNotNone(info)
+            self.assertFalse(info["has_update"])
+            self.assertTrue(len(banners_triggered) > 0)
+            banner_dict = banners_triggered[-1].get("event_dict") or banners_triggered[-1]
+            self.assertTrue(banner_dict.get("is_update_banner"))
+            self.assertTrue(banner_dict.get("is_up_to_date"))
+
+    def test_mocked_check_for_updates_error_manual(self):
+        from unittest.mock import patch
+        from core.services.event_bus import event_bus
+
+        banners_triggered = []
+        event_bus.subscribe("TRIGGER_BANNER", lambda **k: banners_triggered.append(k))
+
+        with patch("urllib.request.urlopen", side_effect=Exception("Connection timed out")):
+            info = self.updater.check_for_updates(background=False, manual=True)
+            self.assertIsNone(info)
+            self.assertTrue(len(banners_triggered) > 0)
+            banner_dict = banners_triggered[-1].get("event_dict") or banners_triggered[-1]
+            self.assertTrue(banner_dict.get("is_update_banner"))
+            self.assertTrue(banner_dict.get("is_update_error"))
+
     def test_mocked_install_linux_update(self):
         from unittest.mock import patch, MagicMock
         from core.services.event_bus import event_bus

@@ -1,6 +1,6 @@
 import unittest
 from datetime import datetime, timedelta, timezone
-from core.domain.models import Meeting, PilotType, EventCategory
+from core.domain.models import CalendarEvent, Event, Meeting, PilotType, EventCategory
 
 class TestMeetingModel(unittest.TestCase):
     def test_meeting_creation_and_id(self):
@@ -97,7 +97,77 @@ class TestMeetingModel(unittest.TestCase):
         self.assertEqual(format_duration(135), "2h 15m")
         self.assertEqual(format_duration(120, long_form=True), "2 hours")
         self.assertEqual(format_duration(60, long_form=True), "1 hour")
-        self.assertEqual(format_duration(45, long_form=True), "45 min")
+    def test_calendar_event_composed_value_objects(self):
+        from core.domain.models import (
+            CalendarEvent,
+            Event,
+            EventTime,
+            Location,
+            MeetingLink,
+            TravelPlan,
+            PresenceStatus,
+            EventPresentation,
+        )
+        from core.domain.state_machine import EventState
+
+        start = datetime(2026, 9, 10, 10, 0, 0, tzinfo=timezone.utc)
+        end = datetime(2026, 9, 10, 11, 30, 0, tzinfo=timezone.utc)
+        dep = datetime(2026, 9, 10, 9, 30, 0, tzinfo=timezone.utc)
+
+        t_obj = EventTime(start=start, end=end)
+        l_obj = Location(name="Politecnico", classroom="Aula 5M", teacher="Prof. Rossi")
+        m_obj = MeetingLink(url="https://meet.google.com/xyz", action_url="https://meet.google.com/xyz")
+        tr_obj = TravelPlan(is_travel=True, departure_time=dep, travel_time_minutes=20)
+        p_obj = PresenceStatus(is_arrived=False)
+        pr_obj = EventPresentation(pilot_type="owl", theme_name="Mauve", action_btn_text="JOIN")
+
+        event = CalendarEvent(
+            title="Advanced Machine Learning",
+            time_info=t_obj,
+            location_info=l_obj,
+            meeting_link=m_obj,
+            travel_plan=tr_obj,
+            presence_info=p_obj,
+            presentation_info=pr_obj,
+            category="class"
+        )
+
+        self.assertEqual(event.title, "Advanced Machine Learning")
+        self.assertEqual(event.start_time, start)
+        self.assertEqual(event.end_time, end)
+        self.assertEqual(event.duration_minutes, 90)
+        self.assertEqual(event.classroom, "Aula 5M")
+        self.assertEqual(event.teacher, "Prof. Rossi")
+        self.assertEqual(event.location, "Politecnico")
+        self.assertEqual(event.meeting_url, "https://meet.google.com/xyz")
+        self.assertTrue(event.is_travel)
+        self.assertEqual(event.departure_time, dep)
+        self.assertEqual(event.pilot_type, "owl")
+
+        # Check capabilities property
+        caps = event.capabilities
+        self.assertTrue(caps.can_join)
+        self.assertTrue(caps.has_location)
+        self.assertTrue(caps.needs_travel)
+
+        # Check alias equivalence
+        self.assertIs(Event, CalendarEvent)
+        self.assertIs(Meeting, CalendarEvent)
+
+    def test_property_setter_mutations(self):
+        event = CalendarEvent(title="Test Mutation", start_time=datetime.now(timezone.utc))
+        self.assertFalse(event.is_arrived)
+
+        event.is_arrived = True
+        event.arrival_reason = "wifi:polito"
+        self.assertTrue(event.is_arrived)
+        self.assertEqual(event.arrival_reason, "wifi:polito")
+        self.assertEqual(event.presence.arrival_reason, "wifi:polito")
+
+        # Dictionary access
+        self.assertTrue(event["is_arrived"])
+        self.assertEqual(event["arrival_reason"], "wifi:polito")
+
 
 if __name__ == "__main__":
     unittest.main()

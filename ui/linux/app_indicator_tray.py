@@ -160,7 +160,7 @@ class AppIndicatorTrayApp:
             menu.append(item_up)
         else:
             item_chk = Gtk.MenuItem(label="🔍 Check for Updates...")
-            item_chk.connect("activate", lambda _: updater_service.check_for_updates(background=True))
+            item_chk.connect("activate", lambda _: updater_service.check_for_updates(background=True, manual=True))
             menu.append(item_chk)
 
         menu.append(Gtk.SeparatorMenuItem())

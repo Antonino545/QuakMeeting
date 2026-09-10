@@ -59,8 +59,18 @@ flowchart TD
 ## 🔄 Core Architectural Layers
 
 ### 1. Domain (`core/domain/`)
-Contains pure Python data classes and enums. 
-- **`models.py`**: The central `Meeting` dataclass holding event info, travel metadata, and UI theme attributes. Includes logic for duration formatting and event categories (`exam`, `class`, `study`, `food`, `travel`, `sport`, etc.).
+Contains pure Python data classes, value objects, and domain policies decoupled from PyObjC, PyQt, and external frameworks.
+- **`models.py`**: The central **`CalendarEvent`** entity (with full backward-compatible **`Meeting`** and **`Event`** aliases). Composes dedicated domain value objects:
+  - **`EventTime`**: UTC-normalized start/end timestamps, all-day flag, duration, and temporal checks (`duration_minutes`, `is_upcoming`, `is_past`).
+  - **`Location`**: Venue address, classroom, teacher, origin address, and location predicates (`has_location`).
+  - **`MeetingLink`**: Video conferencing or telemedicine URLs and action URLs (`is_online`).
+  - **`TravelPlan`**: Transit metadata, departure time, travel ETA minutes, distance in km, transport mode, and formatted ETA text.
+  - **`PresenceStatus`**: Active presence tracking, venue Wi-Fi connection, and call detection (`is_arrived`, `arrival_reason`, `is_quiet_reminder`).
+  - **`EventPresentation`**: Mascot pilot styling tokens, Catppuccin theme names, action button labels, and mascot outfit customization.
+- **`clock.py`**: Injectable `Clock` protocol with `SystemClock` for production and controllable `FakeClock` for deterministic simulation and time-warp testing.
+- **`state_machine.py`**: Deterministic event lifecycle state machine (`EventState` enum: `UPCOMING → PREPARE → TIME_TO_LEAVE → ARRIVING → ARRIVED → ACTIVE → COMPLETED`, plus `CANCELLED`, `DISMISSED`) with automatic state transition resolution.
+- **`reminder_policy.py`**: Category-specific reminder policies (`ExamReminderPolicy`, `LectureReminderPolicy`, `VideoMeetingReminderPolicy`, `TransitReminderPolicy`, `GeneralReminderPolicy`) managed via `ReminderPolicyRegistry` with adaptive presence suppression.
+- **`capabilities.py`**: Boolean capability model (`EventCapabilities`: `can_join`, `can_navigate`, `has_location`, `needs_travel`, `can_snooze`, `show_arrival_badge`, `show_in_call_badge`).
 - **`classifier.py`**: Heuristic keyword, regex, and temporal anchor engine to automatically assign pilots (Duck, Captain, Chef, Owl, etc.) and categories (`exam`, `class`, `study`, `food`, `travel`, `sport`, `in_person`, `health`, etc.) based on event titles, metadata, closed-vocabulary prefixes, idiom overrides, and iterative temporal anchor masking. Extracts video meeting and telemedicine URLs across Google Meet, Zoom, Microsoft Teams, Cisco Webex, Jitsi Meet, Whereby, GoToMeeting, Skype, Discord, Slack Huddle, and Serenis.
 
 ### 2. Providers (`core/providers/`)
@@ -96,6 +106,7 @@ Cross-platform presentation layer structured by operating system:
 - **`ui/common/`**: Platform-independent design tokens and view logic:
   - **`theme.py`**: Central single-source-of-truth **Catppuccin Mocha** color palette (`Crust`, `Mantle`, `Base`, `Surface0/1/2`, `Text`, `Subtext0/1`, `Mauve`, `Blue`, `Sapphire`, `Green`, `Peach`, `Red`, `Yellow`, `Teal`) and pilot theme token maps.
   - **`tray_viewmodel.py`**: Shared tray status logic and countdown string formatting.
+  - **`agenda_viewmodel.py`**: Shared presentation models (`AgendaEventVM`) and ViewModel builder decoupling desktop views from domain models.
   - **`banner_queue.py`**: Cross-platform banner sequencing and queue management.
   - **`banner_speech.py`**: Animal-specific vocalization generator (`duck`, `owl`, `bunny`, `squirrel`, `platypus`) and context-aware dialogue builder.
   - **`banner_particles.py`**: Physics simulation engine for turbo afterburner flames, exhaust smoke puffs, magical sparkles, dynamic flight pitch & thrust calculation (`compute_airplane_flight_dynamics`), and rotated towing cable hook anchors (`compute_towing_cable_hooks`).
@@ -206,9 +217,12 @@ Querying calendars (especially via EventKit on macOS or EDS on Linux) can be slo
 On Linux Wayland sessions, Qt uses the native Wayland platform by default. Set `QUAKMEETING_QT_XCB=1` only when an XCB/XWayland compatibility fallback is required.
 
 ### 2. In-Place Automatic Update Lifecycle
-- `updater_service.py` checks GitHub Releases in the background.
-- When a new version is released, it publishes `TRIGGER_BANNER` with `is_update_banner: True`.
-- On both macOS and Linux, the update banner slides onto the screen with a rotating Blue-to-Mauve gradient border.
+- `updater_service.py` checks GitHub Releases in the background (startup/periodic) or on demand (`manual=True`).
+- When a new version is released, it publishes `TRIGGER_BANNER` with `is_update_banner: True` and `is_up_to_date: False`.
+- On manual check when already up to date, it publishes `TRIGGER_BANNER` with `is_update_banner: True` and `is_up_to_date: True`.
+- On both macOS and Linux, the modular update banner slides onto the screen:
+  - If an update is available: rotating Blue-to-Mauve gradient sweep border, "⚡ UPDATE NOW" button, and "✕ Later" postpone button.
+  - If already up to date: Catppuccin Green-to-Teal accent border, "You're Up to Date! ✨", and a single "✓ Great" confirmation button with auto-dismiss.
 - Clicking **`⚡ UPDATE NOW`** switches into active installation mode:
   1. Downloads release asset while publishing `UPDATE_PROGRESS` events.
   2. Replaces `/Applications/QuakMeeting.app` (macOS) or installs via `dpkg` (Linux).

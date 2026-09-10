@@ -60,7 +60,11 @@ QuakMeeting/
 ├── assets/                        # App icons (PNG & ICNS), audio files
 ├── core/
 │   ├── domain/
-│   │   ├── models.py              # Meeting dataclass, PilotType, TransportMode, format_duration()
+│   │   ├── models.py              # CalendarEvent / Meeting, EventTime, Location, MeetingLink, TravelPlan, PresenceStatus, EventPresentation
+│   │   ├── clock.py               # Clock protocol, SystemClock, FakeClock
+│   │   ├── state_machine.py       # EventState lifecycle machine & state resolver
+│   │   ├── reminder_policy.py     # Strategy-based ReminderPolicy & ReminderPolicyRegistry
+│   │   ├── capabilities.py        # EventCapabilities presentation flags
 │   │   └── classifier.py          # Smart keyword matching, category classification & video URL extraction
 │   ├── providers/
 │   │   ├── base.py                # BaseCalendarProvider abstract class
@@ -76,8 +80,10 @@ QuakMeeting/
 │   └── logger.py                  # Dual console & file logger (~/.quakmeeting/quakmeeting.log)
 ├── ui/
 │   ├── app_launcher.py            # Platform-aware UI dispatcher
+│   ├── common/                    # Cross-platform UI helpers
 │   │   ├── theme.py               # Central Catppuccin Mocha palette & pilot mappings (Single source of truth)
 │   │   ├── tray_viewmodel.py      # Status formatting & stage logic
+│   │   ├── agenda_viewmodel.py    # Cross-platform AgendaEventVM presentation builder
 │   │   ├── banner_queue.py        # Cross-platform banner sequencing queue
 │   │   └── banner_presets.py      # Cross-platform test & update mock banner presets
 │   ├── macos/                     # macOS Native UI (PyObjC, AppKit, Quartz 2D)

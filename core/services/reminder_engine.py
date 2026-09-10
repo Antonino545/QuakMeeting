@@ -14,14 +14,19 @@ from core.services.arrival_service import arrival_service, ArrivalService
 from core.services.state_store import NotifiedStateStore, banner_history_store
 from core.logger import setup_logging
 
+from core.domain.clock import Clock, system_clock
+from core.domain.state_machine import EventState, resolve_event_state
+from core.domain.reminder_policy import ReminderPolicyRegistry
+
 logger = logging.getLogger("QuakMeeting.ReminderEngine")
 
 class ReminderEngine:
     """Calculates reminder triggers for meetings based on configurable stage intervals, arrival status, and travel ETA."""
 
-    def __init__(self, config: Optional[ConfigService] = None, bus: Optional[EventBus] = None):
+    def __init__(self, config: Optional[ConfigService] = None, bus: Optional[EventBus] = None, clock: Optional[Clock] = None):
         self.config = config or config_service
         self.bus = bus or event_bus
+        self.clock = clock or system_clock
         self._state_store = NotifiedStateStore()
         self.notified_stage_keys: Set[str] = self._state_store.load()
         self.bus.subscribe("MARK_ARRIVED", lambda **kwargs: self.mark_arrived(kwargs.get("meeting_id")) if kwargs.get("meeting_id") else None)
@@ -76,18 +81,8 @@ class ReminderEngine:
 
     def get_stages_for_meeting(self, meeting: Meeting) -> List[int]:
         """Retrieve configured stage intervals (minutes before start) for a given meeting type."""
-        if meeting.is_travel:
-            stages = list(self.config.get("travel_reminder_stages", [45, 30, 15, 5, 2, 0]))
-        elif meeting.event_type == "video_meeting":
-            stages = list(self.config.get("meeting_reminder_stages", [20, 10, 5, 2, 0]))
-        else:
-            stages = list(self.config.get("general_reminder_stages", [20, 10, 5, 2, 0]))
-
-        # Ensure 0 (start time) is always checked unless empty
-        if 0 not in stages:
-            stages.append(0)
-
-        return sorted([int(s) for s in stages], reverse=True)
+        policy = ReminderPolicyRegistry.get_policy(meeting)
+        return policy.get_stages(meeting, self.config)
 
     def is_within_stage_window(self, diff_minutes: float, stage: int) -> bool:
         """
@@ -162,10 +157,12 @@ class ReminderEngine:
         Returns a list of (meeting, triggered_stage) tuples and publishes REMINDER_TRIGGERED events.
         """
         from datetime import timezone
+        from core.domain.clock import FakeClock
         if current_time:
-            now = current_time.astimezone(timezone.utc) if current_time.tzinfo is None else current_time.astimezone(timezone.utc)
+            eval_clock = FakeClock(current_time)
         else:
-            now = datetime.now(timezone.utc)
+            eval_clock = self.clock
+        now = eval_clock.now()
         triggered_events = []
 
         if not meetings:
@@ -194,6 +191,10 @@ class ReminderEngine:
                 logger.info(f"  ✓ \"{m.title}\" ({m.provider}) | Arrived / Active. Suppressed.")
                 continue
 
+            # Check policy suppression via state machine
+            event_state = resolve_event_state(m, clock=eval_clock)
+            policy = ReminderPolicyRegistry.get_policy(m)
+
             # Determine reference target time and label:
             # - For travel/transit events with ETA: stages are relative to DEPARTURE (leave) time
             # - For video meetings & regular events: stages are relative to START time
@@ -213,6 +214,10 @@ class ReminderEngine:
                     logger.info(f"Pruned obsolete reminder state for rescheduled event: {k}")
 
             diff_min = (target_time - now).total_seconds() / 60.0
+
+            if policy.should_suppress(m, event_state, diff_min):
+                logger.info(f"  ✓ \"{m.title}\" ({m.provider}) | State {event_state.value}. Suppressed by policy.")
+                continue
 
             # If event is on a future date and more than 3 hours away, do not trigger reminders today
             if m.start_time.astimezone().date() > now.astimezone().date() and diff_min > 180:

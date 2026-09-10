@@ -19,6 +19,7 @@ from core.services.calendar_service import calendar_service
 from core.services.language_service import t
 from core.domain.models import format_duration
 from core.domain.classifier import EventClassifier
+from ui.common.agenda_viewmodel import AgendaViewModel, AgendaEventVM
 
 logger = logging.getLogger("QuakMeeting.QtAgendaTab")
 
@@ -61,7 +62,6 @@ class QtAgendaTab(QWidget):
             if child.widget():
                 child.widget().deleteLater()
 
-        now = datetime.now().astimezone()
         if meetings is None:
             try:
                 meetings = calendar_service.get_upcoming_meetings()
@@ -74,10 +74,10 @@ class QtAgendaTab(QWidget):
                 QTimer.singleShot(5000, self.refresh_agenda)
                 return
 
-        today_meets = [m for m in meetings if m.start_time and m.start_time.astimezone().date() == now.date()]
-        logger.debug("Refreshing agenda with %d meetings, %d scheduled today.", len(meetings), len(today_meets))
+        vms = AgendaViewModel.build(meetings)
+        logger.debug("Refreshing agenda with %d meetings, %d scheduled today.", len(meetings or []), len(vms))
 
-        if not today_meets:
+        if not vms:
             empty_box = QVBoxLayout()
             empty_box.setAlignment(Qt.AlignmentFlag.AlignCenter)
             e_icon = QLabel("🧘‍♂️")
@@ -92,7 +92,7 @@ class QtAgendaTab(QWidget):
             empty_box.addWidget(e_msg)
             self.scroll_layout.addLayout(empty_box)
         else:
-            for idx, m in enumerate(today_meets):
+            for idx, vm in enumerate(vms):
                 card = QFrame(self.scroll_content)
                 card.setObjectName("Card")
                 card.setStyleSheet("""
@@ -110,15 +110,7 @@ class QtAgendaTab(QWidget):
                 c_layout.setContentsMargins(18, 14, 18, 14)
                 c_layout.setSpacing(14)
 
-                pilot_icon = "🦆"
-                if m.pilot_type == "chef": pilot_icon = "🍕"
-                elif m.pilot_type == "captain": pilot_icon = "✈️"
-                elif m.pilot_type == "owl": pilot_icon = "🎓"
-                elif m.pilot_type == "gym": pilot_icon = "🏋️‍♂️"
-                elif m.pilot_type == "driver": pilot_icon = "🚗"
-                elif m.pilot_type == "zen_duck": pilot_icon = "🛋️"
-
-                icon_l = QLabel(pilot_icon, card)
+                icon_l = QLabel(vm.icon, card)
                 icon_l.setStyleSheet("font-size: 26px; border: none; background: transparent;")
                 c_layout.addWidget(icon_l)
 
@@ -127,33 +119,15 @@ class QtAgendaTab(QWidget):
                 info_box = QVBoxLayout(info_widget)
                 info_box.setSpacing(2)
 
-                st = m.start_time.astimezone().strftime("%H:%M") if m.start_time else "--:--"
-                et = m.end_time.astimezone().strftime("%H:%M") if m.end_time else ""
-                dur_str = f" ({format_duration(m.duration_minutes)})" if m.duration_minutes else ""
-
-                t_l = QLabel(f"{st} - {et}  •  {m.title}{dur_str}", card)
+                t_l = QLabel(f"{vm.time_display}  •  {vm.title}", card)
                 t_l.setObjectName("CardTitle")
                 t_l.setStyleSheet("font-size: 14px; font-weight: 700; color: #cdd6f4; border: none; background: transparent;")
 
-                sub_txt = m.provider
-                if m.location and m.location != "missing value":
-                    sub_txt += f"  •  📍 {m.location[:35]}"
-                if m.is_travel and m.departure_time:
-                    sub_txt += f"  •  <span style='color:#f9e2af;'>🚗 Leave at {m.departure_time.astimezone().strftime('%H:%M')}</span>"
-                if m.classroom:
-                    sub_txt += f"  •  <span style='color:#cba6f7;'>🏫 {m.classroom}</span>"
-
-                # Presence detection can invoke nmcli/iwgetid/pgrep. The
-                # reminder worker owns that check; the agenda only renders
-                # state already attached to the cached meeting.
-                if getattr(m, "is_arrived", False):
-                    reason = m.arrival_reason or "manual"
-                    if "call" in reason:
-                        sub_txt += f"  •  <span style='color:#a6e3a1; font-weight:bold;'>🟢 {t('agenda_in_call_badge', default='In Call')}</span>"
-                    elif "wifi" in reason:
-                        sub_txt += f"  •  <span style='color:#a6e3a1; font-weight:bold;'>📍 {t('agenda_on_site_badge', default='On Site')}</span>"
-                    else:
-                        sub_txt += f"  •  <span style='color:#a6e3a1; font-weight:bold;'>✅ {t('agenda_arrived_badge', default='Arrived')}</span>"
+                sub_txt = vm.subtitle
+                if vm.badge_text:
+                    color = vm.badge_color or "#a6e3a1"
+                    badge_span = f"<span style='color:{color}; font-weight:bold;'>{vm.badge_text}</span>"
+                    sub_txt = f"{sub_txt}  •  {badge_span}" if sub_txt else badge_span
 
                 s_l = QLabel(sub_txt, card)
                 s_l.setObjectName("CardSub")
@@ -163,20 +137,8 @@ class QtAgendaTab(QWidget):
                 info_box.addWidget(s_l)
                 c_layout.addWidget(info_widget, stretch=1)
 
-                extracted_meeting_url = EventClassifier.extract_meeting_url(
-                    f"{m.location} {m.description}"
-                )
-                action_url = m.action_url or m.meeting_url
-                if extracted_meeting_url and (
-                    not action_url or action_url == "https://calendar.apple.com"
-                ):
-                    action_url = extracted_meeting_url
-                if not action_url and m.location and m.location != "missing value":
-                    action_url = f"https://www.google.com/maps/search/?api=1&query={urllib.parse.quote(m.location)}"
-
-                has_real_url = bool(action_url and action_url.strip() and action_url != "https://calendar.apple.com")
-                if has_real_url:
-                    btn_text = m.action_btn_text or ("🚀 Join" if not m.is_travel else "🗺️ Maps")
+                if vm.has_action:
+                    btn_text = vm.action_btn_text or "🚀 Join"
                     btn = QPushButton(btn_text, card)
                     btn.setObjectName("PrimaryBtn")
                     btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -195,7 +157,7 @@ class QtAgendaTab(QWidget):
                             border-color: #b4befe;
                         }
                     """)
-                    btn.clicked.connect(lambda chk, u=action_url: QDesktopServices.openUrl(QUrl(u)))
+                    btn.clicked.connect(lambda chk, u=vm.action_url: QDesktopServices.openUrl(QUrl(u)))
                     c_layout.addWidget(btn)
 
                     copy_btn = QPushButton("📋 Copy", card)
@@ -216,11 +178,11 @@ class QtAgendaTab(QWidget):
                             border-color: #89b4fa;
                         }
                     """)
-                    def _copy_url(url=action_url, b=copy_btn):
+                    def _copy_url(url=vm.action_url, b=copy_btn):
                         QApplication.clipboard().setText(url)
                         b.setText("✓ Copied!")
                         QTimer.singleShot(1500, lambda: b.setText("📋 Copy"))
-                    copy_btn.clicked.connect(lambda chk, u=action_url, b=copy_btn: _copy_url(u, b))
+                    copy_btn.clicked.connect(lambda chk, u=vm.action_url, b=copy_btn: _copy_url(u, b))
                     c_layout.addWidget(copy_btn)
 
                 self.scroll_layout.addWidget(card)

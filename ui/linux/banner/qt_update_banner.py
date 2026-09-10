@@ -35,9 +35,12 @@ class QtUpdateBannerWindow(QWidget):
         self.event_data = event_data
         self.pilot_type = event_data.get("pilot_type", "duck")
         self.action_url = event_data.get("action_url") or event_data.get("meeting_url")
+        self.is_up_to_date = bool(event_data.get("is_up_to_date", False))
+        self.is_update_error = bool(event_data.get("is_update_error", False))
         self.title = str(event_data.get("title", "Software Update"))
         self.provider = str(event_data.get("provider", "Software Update ✨"))
-        self.btn_text = event_data.get("action_btn_text", "⚡ UPDATE NOW")
+        self.subtitle = str(event_data.get("subtitle") or ("⚡ Ready to download & install update" if not self.is_up_to_date else "QuakMeeting is up to date"))
+        self.btn_text = event_data.get("action_btn_text", "⚡ UPDATE NOW" if not self.is_up_to_date else "✓ Great")
         self.quote_text = event_data.get("quote_text", "🚀 QuakMeeting Update Ready!")
 
         # Formatted time string
@@ -90,7 +93,7 @@ class QtUpdateBannerWindow(QWidget):
         self.win_y = float(self.screen_y - self.win_h - 10)
         self.speed = 10.0
         self.stay_ticks = 0
-        self.max_stay_ticks = 600  # 10s auto-dismiss
+        self.max_stay_ticks = 420 if self.is_up_to_date else 600  # 7s for up-to-date, 10s for update available
 
         flags = (
             Qt.WindowType.FramelessWindowHint |
@@ -148,22 +151,21 @@ class QtUpdateBannerWindow(QWidget):
 
         # Clean slide-down HUD animation
         if self.win_y < self.final_y:
-            self.win_y = min(self.final_y, self.win_y + self.speed)
+            dist = self.final_y - self.win_y
+            step = max(3.0, dist * 0.22)
+            self.win_y = min(self.final_y, self.win_y + step)
             if self._wayland_mode:
                 self._render_offset_x = self.win_x - self.screen_x
                 self._render_offset_y = self.win_y - self.screen_y
             else:
                 self.move(int(self.win_x), int(self.win_y))
-        else:
-            if self._wayland_mode:
-                self._render_offset_x = self.win_x - self.screen_x
-                self._render_offset_y = self.final_y - self.screen_y
-            else:
-                self.move(int(self.win_x), int(self.final_y))
-            if not self.is_paused:
-                self.stay_ticks += 1
-                if self.stay_ticks > self.max_stay_ticks:
-                    self._dismiss()
+
+        # Auto dismiss
+        if not self.is_paused and not self.install_mode:
+            self.stay_ticks += 1
+            if self.stay_ticks >= self.max_stay_ticks:
+                self._dismiss()
+
         self.update()
 
     # ── Hit rects (window-local coords) ──────────────────────────────────────
@@ -175,10 +177,11 @@ class QtUpdateBannerWindow(QWidget):
         card_x = 6
         btn_y = card_y + CARD_H - BTN_H - 12
         btn_x0 = card_x + 16
-        return QRectF(btn_x0, btn_y, BTN_JOIN_W, BTN_H)
+        w = 140.0 if (self.is_up_to_date or self.is_update_error) else BTN_JOIN_W
+        return QRectF(btn_x0, btn_y, w, BTN_H)
 
     def _snooze_rect(self) -> QRectF:
-        if getattr(self, "install_mode", False):
+        if getattr(self, "install_mode", False) or self.is_up_to_date or self.is_update_error:
             return QRectF(0, 0, 0, 0)
         card_y = 6
         card_x = 6
@@ -246,7 +249,9 @@ class QtUpdateBannerWindow(QWidget):
         if self._close_rect().contains(p):
             self._dismiss()
         elif self._join_rect().contains(p):
-            if not self.install_mode:
+            if self.is_up_to_date or self.is_update_error:
+                self._dismiss()
+            elif not self.install_mode:
                 self.install_mode = True
                 self.max_stay_ticks = 9999999  # prevent auto-dismiss during install
                 from core.services.updater_service import updater_service
@@ -281,14 +286,25 @@ class QtUpdateBannerWindow(QWidget):
         # ── Background ──
         p.setBrush(Theme.get_color('BASE', 245))
         # 🚀 Update Banner: Animated sweep border
-        speed_mult = 5.0 if getattr(self, "install_mode", False) else 1.0
-        phase = (math.sin(self.tick * 0.04 * speed_mult) + 1.0) / 2.0  # 0.0 to 1.0
         border_grad = QLinearGradient(cx, cy, cx + CARD_W, cy + CARD_H)
-        c1 = Theme.BLUE
-        c2 = Theme.get_color('MAUVE', 120)
-        border_grad.setColorAt(0.0, c1 if phase < 0.5 else c2)
-        border_grad.setColorAt(phase, Theme.TEXT)
-        border_grad.setColorAt(1.0, c2 if phase < 0.5 else c1)
+        if self.is_up_to_date:
+            phase = (math.sin(self.tick * 0.04) + 1.0) / 2.0
+            c1 = Theme.GREEN
+            c2 = Theme.get_color('TEAL', 180)
+            border_grad.setColorAt(0.0, c1 if phase < 0.5 else c2)
+            border_grad.setColorAt(phase, Theme.TEXT)
+            border_grad.setColorAt(1.0, c2 if phase < 0.5 else c1)
+        elif self.is_update_error:
+            border_grad.setColorAt(0.0, Theme.RED)
+            border_grad.setColorAt(1.0, Theme.PEACH)
+        else:
+            speed_mult = 5.0 if getattr(self, "install_mode", False) else 1.0
+            phase = (math.sin(self.tick * 0.04 * speed_mult) + 1.0) / 2.0  # 0.0 to 1.0
+            c1 = Theme.BLUE
+            c2 = Theme.get_color('MAUVE', 120)
+            border_grad.setColorAt(0.0, c1 if phase < 0.5 else c2)
+            border_grad.setColorAt(phase, Theme.TEXT)
+            border_grad.setColorAt(1.0, c2 if phase < 0.5 else c1)
         p.setPen(QPen(border_grad, 2.5))
         
         p.drawRoundedRect(card, CARD_R, CARD_R)
@@ -308,7 +324,12 @@ class QtUpdateBannerWindow(QWidget):
         p.setBrush(Theme.SURFACE0)
         p.drawRoundedRect(QRectF(pill_x, py, pill_text_w, pill_h), 11, 11)
         # dot
-        p.setBrush(Theme.BLUE)
+        if self.is_up_to_date:
+            p.setBrush(Theme.GREEN)
+        elif self.is_update_error:
+            p.setBrush(Theme.RED)
+        else:
+            p.setBrush(Theme.BLUE)
         p.drawEllipse(QRectF(pill_x + 8, py + 7, 8, 8))
         # text
         p.setPen(Theme.TEXT)
@@ -337,7 +358,7 @@ class QtUpdateBannerWindow(QWidget):
         p.drawText(title_rect, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft, elided)
 
         # ── Row 3: Subtitle ──
-        sub_text = "⚡ Ready to download & install update"
+        sub_text = self.subtitle
         p.setPen(Theme.SUBTEXT0)
         sf = QFont("Inter, Arial", 10)
         p.setFont(sf)
@@ -373,14 +394,28 @@ class QtUpdateBannerWindow(QWidget):
         jr = self._join_rect()
         hover_join = self._hover == "join"
 
-        # Software update styling (vibrant cyan to electric blue gradient)
         g = QLinearGradient(jr.topLeft(), jr.topRight())
-        if hover_join:
-            g.setColorAt(0, Theme.BLUE)
-            g.setColorAt(1, Theme.MAUVE)
+        if self.is_up_to_date:
+            if hover_join:
+                g.setColorAt(0, Theme.GREEN)
+                g.setColorAt(1, Theme.TEAL)
+            else:
+                g.setColorAt(0, Theme.TEAL)
+                g.setColorAt(1, Theme.GREEN)
+        elif self.is_update_error:
+            if hover_join:
+                g.setColorAt(0, Theme.RED)
+                g.setColorAt(1, Theme.PEACH)
+            else:
+                g.setColorAt(0, Theme.PEACH)
+                g.setColorAt(1, Theme.RED)
         else:
-            g.setColorAt(0, Theme.SAPPHIRE)
-            g.setColorAt(1, Theme.BLUE)
+            if hover_join:
+                g.setColorAt(0, Theme.BLUE)
+                g.setColorAt(1, Theme.MAUVE)
+            else:
+                g.setColorAt(0, Theme.SAPPHIRE)
+                g.setColorAt(1, Theme.BLUE)
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(g)
         p.drawRoundedRect(jr, 10, 10)
@@ -392,17 +427,18 @@ class QtUpdateBannerWindow(QWidget):
         p.setFont(bf)
         p.drawText(jr, Qt.AlignmentFlag.AlignCenter, display_text)
 
-        mf = QFont("Inter, Arial", 10)
-        mf.setWeight(QFont.Weight.Bold)
+        if not self.is_up_to_date and not self.is_update_error:
+            mf = QFont("Inter, Arial", 10)
+            mf.setWeight(QFont.Weight.Bold)
 
-        sr = self._snooze_rect()
-        hover_snz = self._hover == "snooze"
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(Theme.get_color('SURFACE1', 150) if hover_snz else Theme.SURFACE0)
-        p.drawRoundedRect(sr, 10, 10)
-        p.setPen(Theme.CRUST if hover_snz else Theme.SUBTEXT0)
-        p.setFont(mf)
-        p.drawText(sr, Qt.AlignmentFlag.AlignCenter, "✕ Later")
+            sr = self._snooze_rect()
+            hover_snz = self._hover == "snooze"
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(Theme.get_color('SURFACE1', 150) if hover_snz else Theme.SURFACE0)
+            p.drawRoundedRect(sr, 10, 10)
+            p.setPen(Theme.CRUST if hover_snz else Theme.SUBTEXT0)
+            p.setFont(mf)
+            p.drawText(sr, Qt.AlignmentFlag.AlignCenter, "✕ Later")
 
     # ── Dismiss ───────────────────────────────────────────────────────────────
 
