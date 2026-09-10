@@ -177,6 +177,7 @@ class EventPresentation:
     action_btn_text: str = "📋 OPEN EVENT"
     animal: Optional[str] = None
     outfit: Optional[str] = None
+    accessories: list = field(default_factory=list)
 
 
 # ==============================================================================
@@ -223,6 +224,7 @@ class CalendarEvent:
         is_quiet_reminder: bool = False,
         animal: Optional[str] = None,
         outfit: Optional[str] = None,
+        accessories: Optional[list] = None,
         # Composed value object parameters
         time_info: Optional[EventTime] = None,
         location_info: Optional[Location] = None,
@@ -286,7 +288,8 @@ class CalendarEvent:
             theme_name=theme_name or "Sunset Orange",
             action_btn_text=action_btn_text or "📋 OPEN EVENT",
             animal=animal,
-            outfit=outfit
+            outfit=outfit,
+            accessories=list(accessories or extra_kwargs.get("accessories", []))
         )
 
         # Generate deterministic UUID if none provided
@@ -595,6 +598,17 @@ class CalendarEvent:
         else:
             self.presentation.outfit = val
 
+    @property
+    def accessories(self) -> list:
+        return list(self.presentation.accessories or []) if self.presentation else []
+
+    @accessories.setter
+    def accessories(self, val: Optional[list]) -> None:
+        if self.presentation is None:
+            self.presentation = EventPresentation(accessories=list(val or []))
+        else:
+            self.presentation.accessories = list(val or [])
+
     # --------------------------------------------------------------------------
     # State Machine & Capabilities Integration
     # --------------------------------------------------------------------------
@@ -675,7 +689,8 @@ class CalendarEvent:
             "arrival_reason": self.arrival_reason,
             "is_quiet_reminder": self.is_quiet_reminder,
             "animal": self.animal,
-            "outfit": self.outfit
+            "outfit": self.outfit,
+            "accessories": self.accessories
         }
 
     def to_serializable_dict(self) -> Dict[str, Any]:
@@ -737,7 +752,8 @@ class CalendarEvent:
             arrival_reason=d.get("arrival_reason"),
             is_quiet_reminder=bool(d.get("is_quiet_reminder", False)),
             animal=d.get("animal"),
-            outfit=d.get("outfit")
+            outfit=d.get("outfit"),
+            accessories=d.get("accessories", [])
         )
 
     def __repr__(self) -> str:

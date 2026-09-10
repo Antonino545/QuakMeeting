@@ -6,11 +6,14 @@ with any costume/headwear (Student 🎓, Chef 👨‍🍳, Captain 🧑‍✈️
 import math
 import AppKit
 from .base_renderer import BasePilotRenderer
+from ui.common.mascot_catalog import normalize_accessories
 
 class ModularPilotRenderer(BasePilotRenderer):
-    def __init__(self, animal: str = "duck", outfit: str = "aviator"):
+    # TODO: Refine new mascot of the new animal silhouettes and facial proportions after visual review.
+    def __init__(self, animal: str = "duck", outfit: str = "aviator", accessories=None):
         self.animal = animal.lower()
         self.outfit = outfit.lower()
+        self.accessories = normalize_accessories(outfit, accessories, self.animal)
 
     def draw_pilot(self, px: float, py: float, tick: int) -> None:
         ctx = AppKit.NSGraphicsContext.currentContext()
@@ -28,6 +31,12 @@ class ModularPilotRenderer(BasePilotRenderer):
             self._draw_platypus(px, py, tick)
         elif self.animal == "squirrel":
             self._draw_squirrel(px, py, tick)
+        elif self.animal == "fox":
+            self._draw_fox(px, py, tick)
+        elif self.animal == "penguin":
+            self._draw_penguin(px, py, tick)
+        elif self.animal == "panda":
+            self._draw_panda(px, py, tick)
         else:
             self._draw_duck(px, py, tick)
 
@@ -456,6 +465,78 @@ class ModularPilotRenderer(BasePilotRenderer):
             AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 2, py + 10 + hb_y, 4.5, 5.0)).fill()
             AppKit.NSColor.whiteColor().set()
             AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 3.5, py + 12 + hb_y, 1.8, 1.8)).fill()
+
+    def _draw_fox(self, px: float, py: float, tick: int) -> None:
+        bob = math.sin(tick * 0.12) * 1.4
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.95, 0.45, 0.20, 1.0).set()
+        face = AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 11, py + 2 + bob, 23, 21))
+        face.fill()
+        ear = AppKit.NSBezierPath.bezierPath()
+        ear.moveToPoint_(AppKit.NSMakePoint(px - 10, py + 16 + bob))
+        ear.lineToPoint_(AppKit.NSMakePoint(px - 8, py + 28 + bob))
+        ear.lineToPoint_(AppKit.NSMakePoint(px - 1, py + 18 + bob))
+        ear.closePath_()
+        ear.fill()
+        ear = AppKit.NSBezierPath.bezierPath()
+        ear.moveToPoint_(AppKit.NSMakePoint(px + 2, py + 18 + bob))
+        ear.lineToPoint_(AppKit.NSMakePoint(px + 10, py + 28 + bob))
+        ear.lineToPoint_(AppKit.NSMakePoint(px + 11, py + 15 + bob))
+        ear.closePath_()
+        ear.fill()
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.82, 0.70, 1.0).set()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 6, py + 5 + bob, 13, 12)).fill()
+        AppKit.NSColor.blackColor().set()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 2, py + 10 + bob, 3, 3)).fill()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 5, py + 10 + bob, 3, 3)).fill()
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.52, 0.30, 0.12, 1.0).set()
+        for x in (px - 3, px + 5):
+            goggle = AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(x, py + 9 + bob, 7, 5))
+            goggle.setLineWidth_(1.1)
+            goggle.stroke()
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.40, 0.18, 0.12, 1.0).set()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 1, py + 15 + bob, 3, 2)).fill()
+
+    def _draw_penguin(self, px: float, py: float, tick: int) -> None:
+        hb_y = math.sin(tick * 0.10) * 0.8
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.12, 0.14, 0.20, 1.0).set()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 11, py + 1 + hb_y, 24, 23)).fill()
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.98, 0.96, 0.88, 1.0).set()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 4, py + 3 + hb_y, 14, 17)).fill()
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.96, 0.72, 0.18, 1.0).set()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 2, py + 10 + hb_y, 7, 4)).fill()
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.85, 0.20, 0.25, 1.0).set()
+        AppKit.NSBezierPath.bezierPathWithRect_(AppKit.NSMakeRect(px + 1, py + 5 + hb_y, 7, 3)).fill()
+        AppKit.NSColor.whiteColor().set()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 5, py + 10 + hb_y, 4, 4)).fill()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 4, py + 10 + hb_y, 4, 4)).fill()
+        AppKit.NSColor.blackColor().set()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 4, py + 11 + hb_y, 2, 2)).fill()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 5, py + 11 + hb_y, 2, 2)).fill()
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.16, 0.20, 0.28, 1.0).set()
+        wing = AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 15, py + 7 + hb_y, 8, 13))
+        wing.fill()
+
+    def _draw_panda(self, px: float, py: float, tick: int) -> None:
+        hb_y = math.sin(tick * 0.06) * 0.7
+        AppKit.NSColor.blackColor().set()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 12, py + 17 + hb_y, 8, 8)).fill()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 7, py + 17 + hb_y, 8, 8)).fill()
+        AppKit.NSColor.whiteColor().set()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 10, py + 2 + hb_y, 23, 21)).fill()
+        AppKit.NSColor.blackColor().set()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 3, py + 11 + hb_y, 5, 7)).fill()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 5, py + 11 + hb_y, 5, 7)).fill()
+        AppKit.NSColor.whiteColor().set()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 2, py + 13 + hb_y, 2, 2)).fill()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 6, py + 13 + hb_y, 2, 2)).fill()
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.20, 0.12, 0.12, 1.0).set()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 1, py + 17 + hb_y, 3, 2)).fill()
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.25, 0.65, 0.28, 1.0).set()
+        bamboo = AppKit.NSBezierPath.bezierPath()
+        bamboo.moveToPoint_(AppKit.NSMakePoint(px - 3, py + 7 + hb_y))
+        bamboo.lineToPoint_(AppKit.NSMakePoint(px + 12, py + 2 + math.sin(tick * 0.12)))
+        bamboo.setLineWidth_(2.0)
+        bamboo.stroke()
 
     def _draw_outfit(self, px: float, py: float, tick: int) -> None:
         if self.outfit == "student":

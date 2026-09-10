@@ -62,10 +62,16 @@ class QuakPitBannerView(AppKit.NSView):
         # Modular mascot customization & renderer
         self.animal = meeting_data.get("animal")
         self.outfit = meeting_data.get("outfit")
-        self.renderer = get_pilot_renderer(self.pilot_type, animal=self.animal, outfit=self.outfit)
+        self.renderer = get_pilot_renderer(
+            self.pilot_type,
+            animal=self.animal,
+            outfit=self.outfit,
+            accessories=meeting_data.get("accessories"),
+        )
 
         # Stage metadata
         self.reminder_stage = meeting_data.get("reminder_stage")
+        self.renderer.status = "urgent" if self.is_late else "upcoming" if self.reminder_stage and self.reminder_stage > 0 else "normal"
 
         # Flight dynamics & geometry (Boost speed by 40% when late)
         base_speed = float(config.get("flight_speed", 3.2))

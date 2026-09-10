@@ -831,6 +831,7 @@ class EventClassifier:
                 if isinstance(custom_val, dict):
                     meeting.animal = custom_val.get("animal", "duck")
                     meeting.outfit = custom_val.get("outfit", def_outfit)
+                    meeting.accessories = custom_val.get("accessories", [])
                     meeting.pilot_type = LEGACY_PILOT_MAP.get(
                         (meeting.animal, meeting.outfit),
                         f"{meeting.animal}_{meeting.outfit}"

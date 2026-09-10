@@ -24,6 +24,10 @@ class MascotMiniCanvasView(AppKit.NSView):
         self.animal = animal
         self.setNeedsDisplay_(True)
 
+    def updateOutfit_(self, outfit):
+        self.outfit = outfit
+        self.setNeedsDisplay_(True)
+
     def drawRect_(self, rect):
         bounds = self.bounds()
         w = bounds.size.width

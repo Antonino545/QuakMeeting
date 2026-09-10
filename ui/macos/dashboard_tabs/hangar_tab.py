@@ -17,13 +17,7 @@ from core.services.event_bus import event_bus
 from core.services.language_service import t, get_active_language
 
 def get_animals():
-    return [
-        ("duck", t("animal_duck")),
-        ("owl", t("animal_owl")),
-        ("bunny", t("animal_bunny")),
-        ("platypus", t("animal_platypus")),
-        ("squirrel", t("animal_squirrel"))
-    ]
+    return list(ANIMALS)
 
 CATEGORIES_DEF = [
     ("study", "cat_study_title", "cat_study_desc", "student", "owl", Theme.MAUVE),
@@ -42,6 +36,7 @@ def get_categories():
     ]
 
 from ui.common.theme import get_combo_title
+from ui.common.mascot_catalog import ANIMALS, normalize_accessories
 
 
 
@@ -81,10 +76,7 @@ class HangarTabController(AppKit.NSObject):
     def onAnimTick_(self, sender):
         if not self._cached_view:
             return
-        w = self._cached_view.window()
-        if not w or not w.isVisible():
-            return
-        for canvas in list(self.mini_canvases.values()):
+        for canvas in self.mini_canvases.values():
             canvas.tick += 1
             canvas.setNeedsDisplay_(True)
 
@@ -301,8 +293,9 @@ class HangarTabController(AppKit.NSObject):
         upper_view.addSubview_(pill)
 
         # 🌟 Embedded Live Mini Mascot Viewport
+        preview_outfit = "agent" if cur_animal == "platypus" else fixed_outfit
         mini_canvas = MascotMiniCanvasView.alloc().initWithFrame_animal_outfit_(
-            AppKit.NSMakeRect(22, 16, 74, 68), cur_animal, fixed_outfit
+            AppKit.NSMakeRect(22, 16, 74, 68), cur_animal, preview_outfit
         )
         self.mini_canvases[cat_key] = mini_canvas
         upper_view.addSubview_(mini_canvas)
@@ -318,7 +311,7 @@ class HangarTabController(AppKit.NSObject):
         title_lbl.setEditable_(False)
         upper_view.addSubview_(title_lbl)
 
-        combo_name = get_combo_title(cur_animal, fixed_outfit)
+        combo_name = get_combo_title(cur_animal, preview_outfit)
         sub_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(106, 12, text_w, 50))
         sub_lbl.setStringValue_(f"{cat_desc}\n✨ {t('hangar_active_pilot_label')}: {combo_name}")
         sub_lbl.setFont_(AppKit.NSFont.systemFontOfSize_(10.5))
@@ -328,7 +321,7 @@ class HangarTabController(AppKit.NSObject):
         sub_lbl.setEditable_(False)
         sub_lbl.cell().setWraps_(True)
         sub_lbl.setUsesSingleLineMode_(False)
-        self.subtitle_labels[cat_key] = (sub_lbl, cat_desc, fixed_outfit)
+        self.subtitle_labels[cat_key] = (sub_lbl, cat_desc, preview_outfit)
         upper_view.addSubview_(sub_lbl)
 
         # Controls on Right
@@ -937,10 +930,13 @@ class HangarTabController(AppKit.NSObject):
         if not isinstance(customs, dict):
             customs = {}
         if cat_key not in customs or not isinstance(customs[cat_key], dict):
-            customs[cat_key] = {"animal": sel_animal, "outfit": fixed_outfit}
+            selected_outfit = "agent" if sel_animal == "platypus" else fixed_outfit
+            customs[cat_key] = {"animal": sel_animal, "outfit": selected_outfit, "accessories": list(normalize_accessories(selected_outfit, animal=sel_animal))}
         else:
             customs[cat_key]["animal"] = sel_animal
-            customs[cat_key]["outfit"] = fixed_outfit
+            selected_outfit = "agent" if sel_animal == "platypus" else fixed_outfit
+            customs[cat_key]["outfit"] = selected_outfit
+            customs[cat_key]["accessories"] = list(normalize_accessories(selected_outfit, animal=sel_animal))
 
         if cat_key == "study":
             for sub in ("class", "exam"):
@@ -951,11 +947,13 @@ class HangarTabController(AppKit.NSObject):
         event_bus.publish("CONFIG_CHANGED", key="mascot_customization", value=customs)
 
         # Instant Live Preview Update for this card
+        active_outfit = "agent" if sel_animal == "platypus" else fixed_outfit
         if cat_key in self.mini_canvases:
             self.mini_canvases[cat_key].updateAnimal_(sel_animal)
+            self.mini_canvases[cat_key].updateOutfit_(active_outfit)
         if cat_key in self.subtitle_labels:
             lbl, desc, outfit = self.subtitle_labels[cat_key]
-            lbl.setStringValue_(f"{desc}\n✨ Active Pilot: {get_combo_title(sel_animal, outfit)}")
+            lbl.setStringValue_(f"{desc}\n✨ Active Pilot: {get_combo_title(sel_animal, active_outfit)}")
 
         self.invalidate_cache()
         self.start_animation_timer()
@@ -1035,7 +1033,7 @@ class HangarTabController(AppKit.NSObject):
         fixed_outfit = next((fo for k, _, _, fo, _, _ in CATEGORIES_DEF if k == cat_key), "aviator")
 
         animal = setting.get("animal", def_animal) if isinstance(setting, dict) else (setting or def_animal)
-        outfit = fixed_outfit
+        outfit = "agent" if animal == "platypus" else fixed_outfit
 
         titles = {
             "study": "Neural Networks & AI University Lecture",

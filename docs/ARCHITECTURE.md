@@ -66,13 +66,15 @@ Contains pure Python data classes, value objects, and domain policies decoupled 
   - **`MeetingLink`**: Video conferencing or telemedicine URLs and action URLs (`is_online`).
   - **`TravelPlan`**: Transit metadata, departure time, travel ETA minutes, distance in km, transport mode, and formatted ETA text.
   - **`PresenceStatus`**: Active presence tracking, venue Wi-Fi connection, and call detection (`is_arrived`, `arrival_reason`, `is_quiet_reminder`).
-  - **`EventPresentation`**: Mascot pilot styling tokens, Catppuccin theme names, action button labels, and mascot outfit customization.
+  - **`EventPresentation`**: Mascot pilot styling tokens, Catppuccin theme names, action button labels, mascot outfit customization, and an optional persisted accessory list with legacy outfit compatibility.
 - **`clock.py`**: Injectable `Clock` protocol with `SystemClock` for production and controllable `FakeClock` for deterministic simulation and time-warp testing.
 - **`state_machine.py`**: Deterministic event lifecycle state machine (`EventState` enum: `UPCOMING → PREPARE → TIME_TO_LEAVE → ARRIVING → ARRIVED → ACTIVE → COMPLETED`, plus `CANCELLED`, `DISMISSED`) with automatic state transition resolution.
 - **`reminder_policy.py`**: Category-specific reminder policies (`ExamReminderPolicy`, `LectureReminderPolicy`, `VideoMeetingReminderPolicy`, `TransitReminderPolicy`, `GeneralReminderPolicy`) managed via `ReminderPolicyRegistry` with adaptive presence suppression.
 - **`context_engine.py`**: The Context Engine & "Why?" Transparency authority. Evaluates real-time schedules, transit ETA buffers, user presence signals (Wi-Fi, active call processes), and time horizons to generate immediate transition guidance (`ActionType`: `LEAVE_NOW`, `PREPARE_DEPARTURE`, `JOIN_CALL`, `HEAD_TO_CLASS`, `ACTIVE_SESSION`, `RELAX`, `UserContextState`) with human-readable rationale (e.g., "Leave now: 18m transit + 10m buffer for 09:00 Lecture").
 - **`capabilities.py`**: Boolean capability model (`EventCapabilities`: `can_join`, `can_navigate`, `has_location`, `needs_travel`, `can_snooze`, `show_arrival_badge`, `show_in_call_badge`).
 - **`classifier.py`**: Heuristic keyword, regex, and temporal anchor engine to automatically assign pilots (Duck, Captain, Chef, Owl, etc.) and categories (`exam`, `class`, `study`, `food`, `travel`, `sport`, `in_person`, `health`, etc.) based on event titles, metadata, closed-vocabulary prefixes, idiom overrides, and iterative temporal anchor masking. Extracts video meeting and telemedicine URLs across Google Meet, Zoom, Microsoft Teams, Cisco Webex, Jitsi Meet, Whereby, GoToMeeting, Skype, Discord, Slack Huddle, and Serenis.
+
+The shared `ui/common/mascot_catalog.py` defines the cross-platform Hangar animal IDs and reusable accessory IDs. Legacy `outfit` values remain valid and are normalized into accessory layers, while new selections may persist an `accessories` list. Renderers compose these layers as `Animal → Outfit → Accessories → Effects` on both macOS Quartz and Linux/Windows Qt paths.
 
 ### 2. Providers (`core/providers/`)
 Data ingestion layer fetching events from various platforms.
@@ -116,6 +118,7 @@ Cross-platform presentation layer structured by operating system:
   - **`banner_particles.py`**: Physics simulation engine for turbo afterburner flames, exhaust smoke puffs, magical sparkles, dynamic flight pitch & thrust calculation (`compute_airplane_flight_dynamics`), and rotated towing cable hook anchors (`compute_towing_cable_hooks`).
   - **`banner_formatting.py`**: Time differentials, countdown text, urgency flags, and travel duration formatting.
   - **`banner_presets.py`**: Platform-independent mock meeting payloads for mascot test flights and software update banners.
+  - **`mascot_catalog.py`**: Shared Hangar catalog for mascot labels, accessory IDs, and backward-compatible accessory normalization.
 - **`ui/macos/`**: Native macOS UI using PyObjC:
   - **`theme.py`**: Native `NSColor` and `CGColor` bridges derived directly from `ui.common.theme.CatppuccinMocha`.
   - **`menu_bar_app.py`**: AppKit `NSStatusItem` menu bar controller.

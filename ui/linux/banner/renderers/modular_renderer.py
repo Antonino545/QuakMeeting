@@ -20,11 +20,14 @@ except (ImportError, ModuleNotFoundError):
     QPainterPath = object
 
 from .base_renderer import BaseQtPilotRenderer
+from ui.common.mascot_catalog import normalize_accessories
 
 class QtModularRenderer(BaseQtPilotRenderer):
-    def __init__(self, animal: str = "duck", outfit: str = "aviator"):
+    # TODO: Refine new mascot of the new animal silhouettes and facial proportions after visual review.
+    def __init__(self, animal: str = "duck", outfit: str = "aviator", accessories=None):
         self.animal = animal.lower()
         self.outfit = outfit.lower()
+        self.accessories = normalize_accessories(outfit, accessories, self.animal)
 
     def draw_pilot(self, p: QPainter, px: float, py: float, tick: int) -> None:
         p.save()
@@ -42,11 +45,18 @@ class QtModularRenderer(BaseQtPilotRenderer):
             self._draw_platypus(p, px, py, tick)
         elif self.animal == "squirrel":
             self._draw_squirrel(p, px, py, tick)
+        elif self.animal == "fox":
+            self._draw_fox(p, px, py, tick)
+        elif self.animal == "penguin":
+            self._draw_penguin(p, px, py, tick)
+        elif self.animal == "panda":
+            self._draw_panda(p, px, py, tick)
         else:
             self._draw_duck(p, px, py, tick)
 
         # 3. Costume / Headwear Overlay
         self._draw_outfit(p, px, py, tick)
+        self._draw_accessories(p, px, py, tick)
 
         # 4. Propeller
         self.draw_propeller(p, px + 34, py + 1, tick)
@@ -406,6 +416,83 @@ class QtModularRenderer(BaseQtPilotRenderer):
             p.setBrush(QColor(255, 255, 255))
             p.drawEllipse(QRectF(px + 3.5, py + 12 + hb_y, 1.8, 1.8))
 
+    def _draw_fox(self, p: QPainter, px: float, py: float, tick: int) -> None:
+        hb_y = math.sin(tick * 0.14) * 1.2
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(242, 115, 51))
+        head = QPainterPath()
+        head.moveTo(px - 10, py + 4 + hb_y)
+        head.lineTo(px - 8, py + 23 + hb_y)
+        head.lineTo(px, py + 17 + hb_y)
+        head.lineTo(px + 10, py + 23 + hb_y)
+        head.lineTo(px + 12, py + 4 + hb_y)
+        head.closeSubpath()
+        p.drawPath(head)
+        p.setBrush(QColor(255, 210, 184))
+        left_ear = QPainterPath()
+        left_ear.moveTo(px - 8, py + 7 + hb_y)
+        left_ear.lineTo(px - 7, py + 19 + hb_y)
+        left_ear.lineTo(px - 2, py + 9 + hb_y)
+        left_ear.closeSubpath()
+        p.drawPath(left_ear)
+        right_ear = QPainterPath()
+        right_ear.moveTo(px + 5, py + 9 + hb_y)
+        right_ear.lineTo(px + 10, py + 19 + hb_y)
+        right_ear.lineTo(px + 11, py + 7 + hb_y)
+        right_ear.closeSubpath()
+        p.drawPath(right_ear)
+        p.setBrush(QColor(255, 255, 255))
+        p.drawEllipse(QRectF(px - 2, py + 5 + hb_y, 13, 9))
+        p.setBrush(QColor(17, 17, 27))
+        p.drawEllipse(QRectF(px + 1, py + 9 + hb_y, 3, 3))
+        p.drawEllipse(QRectF(px + 7, py + 9 + hb_y, 3, 3))
+        p.setPen(QPen(QColor(140, 84, 31), 1.2))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawEllipse(QRectF(px - 3, py + 11 + hb_y, 7, 4))
+        p.drawEllipse(QRectF(px + 6, py + 11 + hb_y, 7, 4))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(140, 70, 40))
+        p.drawEllipse(QRectF(px + 4, py + 5 + hb_y, 3, 2))
+
+    def _draw_penguin(self, p: QPainter, px: float, py: float, tick: int) -> None:
+        hb_y = math.sin(tick * 0.10) * 0.8
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(31, 32, 45))
+        p.drawEllipse(QRectF(px - 11, py + 1 + hb_y, 24, 23))
+        p.setBrush(QColor(250, 247, 235))
+        p.drawEllipse(QRectF(px - 4, py + 3 + hb_y, 14, 17))
+        p.setBrush(QColor(245, 184, 46))
+        p.drawEllipse(QRectF(px - 2, py + 10 + hb_y, 7, 4))
+        p.setBrush(QColor(217, 70, 76))
+        p.drawRect(QRectF(px + 1, py + 5 + hb_y, 7, 3))
+        p.setBrush(QColor(250, 250, 245))
+        p.drawEllipse(QRectF(px - 5, py + 10 + hb_y, 4, 4))
+        p.drawEllipse(QRectF(px + 4, py + 10 + hb_y, 4, 4))
+        p.setBrush(QColor(17, 17, 27))
+        p.drawEllipse(QRectF(px - 4, py + 11 + hb_y, 2, 2))
+        p.drawEllipse(QRectF(px + 5, py + 11 + hb_y, 2, 2))
+        p.setBrush(QColor(31, 38, 52))
+        p.drawEllipse(QRectF(px - 15, py + 7 + hb_y, 8, 13))
+
+    def _draw_panda(self, p: QPainter, px: float, py: float, tick: int) -> None:
+        hb_y = math.sin(tick * 0.06) * 0.7
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(17, 17, 27))
+        p.drawEllipse(QRectF(px - 12, py + 17 + hb_y, 8, 8))
+        p.drawEllipse(QRectF(px + 7, py + 17 + hb_y, 8, 8))
+        p.setBrush(QColor(250, 247, 235))
+        p.drawEllipse(QRectF(px - 10, py + 2 + hb_y, 23, 21))
+        p.setBrush(QColor(17, 17, 27))
+        p.drawEllipse(QRectF(px - 3, py + 11 + hb_y, 5, 7))
+        p.drawEllipse(QRectF(px + 5, py + 11 + hb_y, 5, 7))
+        p.setBrush(QColor(255, 255, 255))
+        p.drawEllipse(QRectF(px - 2, py + 13 + hb_y, 2, 2))
+        p.drawEllipse(QRectF(px + 6, py + 13 + hb_y, 2, 2))
+        p.setBrush(QColor(51, 31, 31))
+        p.drawEllipse(QRectF(px + 1, py + 17 + hb_y, 3, 2))
+        p.setPen(QPen(QColor(89, 184, 88), 2.0))
+        p.drawLine(QPointF(px - 3, py + 7 + hb_y), QPointF(px + 12, py + 2 + math.sin(tick * 0.12)))
+
     def _draw_outfit(self, p: QPainter, px: float, py: float, tick: int) -> None:
         p.setPen(Qt.PenStyle.NoPen)
         if self.outfit == "student":
@@ -452,17 +539,22 @@ class QtModularRenderer(BaseQtPilotRenderer):
 
         elif self.outfit == "agent":
             # 🕵️ Fedora
-            p.setBrush(QColor(122, 71, 38))
+            p.setPen(QPen(QColor(64, 33, 17), 1.0))
+            p.setBrush(QColor(140, 82, 43))
             p.drawEllipse(QRectF(px - 14, py + 16, 28, 6))
             crown_path = QPainterPath()
             crown_path.moveTo(px - 7, py + 18)
-            crown_path.lineTo(px - 5, py + 28)
-            crown_path.lineTo(px + 5, py + 29)
+            crown_path.lineTo(px - 6, py + 28)
+            crown_path.lineTo(px - 1, py + 30)
+            crown_path.lineTo(px + 5, py + 28)
             crown_path.lineTo(px + 7, py + 18)
             crown_path.closeSubpath()
+            p.setBrush(QColor(153, 92, 49))
             p.drawPath(crown_path)
             p.setBrush(QColor(38, 38, 46))
             p.drawRect(QRectF(px - 6.5, py + 18, 13, 3))
+            p.setPen(QPen(QColor(194, 128, 71, 204), 0.8))
+            p.drawLine(QPointF(px - 1, py + 28.5), QPointF(px + 1, py + 28.5))
 
         elif self.outfit == "gym":
             p.setBrush(QColor(235, 64, 64))
@@ -490,3 +582,24 @@ class QtModularRenderer(BaseQtPilotRenderer):
             p.setPen(QPen(QColor(230, 191, 89), 1.6))
             p.setBrush(QColor(140, 224, 250, 191))
             p.drawEllipse(QRectF(px, py + 9, 10, 10))
+
+    def _draw_accessories(self, p: QPainter, px: float, py: float, tick: int) -> None:
+        """Draws optional reusable layers without changing animal geometry."""
+        p.setPen(Qt.PenStyle.NoPen)
+        if "sunglasses" in self.accessories:
+            p.setBrush(QColor(20, 24, 34, 235))
+            p.drawEllipse(QRectF(px + 1, py + 9, 8, 5))
+            p.drawEllipse(QRectF(px + 10, py + 9, 8, 5))
+        if "bow_tie" in self.accessories:
+            p.setBrush(QColor(217, 70, 76))
+            p.drawEllipse(QRectF(px - 1, py + 1, 6, 5))
+            p.drawEllipse(QRectF(px + 5, py + 1, 6, 5))
+        if "briefcase" in self.accessories:
+            p.setBrush(QColor(140, 82, 43))
+            p.drawRect(QRectF(px - 28, py - 9, 12, 8))
+        if "badge" in self.accessories:
+            p.setBrush(QColor(245, 204, 64))
+            p.drawEllipse(QRectF(px - 2, py + 5, 4, 4))
+        if "earpiece" in self.accessories:
+            p.setBrush(QColor(38, 38, 46))
+            p.drawEllipse(QRectF(px - 12, py + 10, 3, 3))

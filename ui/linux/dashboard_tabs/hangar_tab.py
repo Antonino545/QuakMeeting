@@ -17,17 +17,12 @@ from core.services.config_service import config
 from core.services.event_bus import event_bus
 from core.services.language_service import t, get_active_language
 from ui.common.theme import get_combo_title
+from ui.common.mascot_catalog import ANIMALS, normalize_accessories
 from ui.linux.theme import get_combo_box_qss
 
 
 def get_animals():
-    return [
-        ("duck", t("animal_duck")),
-        ("owl", t("animal_owl")),
-        ("bunny", t("animal_bunny")),
-        ("platypus", t("animal_platypus")),
-        ("squirrel", t("animal_squirrel"))
-    ]
+    return list(ANIMALS)
 
 
 CATEGORIES_DEF = [
@@ -261,7 +256,8 @@ class QtHangarTab(QWidget):
             top_row.setSpacing(14)
 
             # Mini Canvas Preview on Left
-            mini_preview = QtMascotMiniWidget(animal=current_animal, outfit=fixed_outfit, parent=card)
+            preview_outfit = "agent" if current_animal == "platypus" else fixed_outfit
+            mini_preview = QtMascotMiniWidget(animal=current_animal, outfit=preview_outfit, parent=card)
             self.h_mini_widgets.append(mini_preview)
             top_row.addWidget(mini_preview)
 
@@ -269,7 +265,7 @@ class QtHangarTab(QWidget):
             p_box.setSpacing(3)
             n_l = QLabel(cat_title, card)
             n_l.setStyleSheet("color: #cdd6f4; font-weight: bold; font-size: 13px;")
-            active_pilot_name = get_combo_title(current_animal, fixed_outfit)
+            active_pilot_name = get_combo_title(current_animal, preview_outfit)
             d_l = QLabel(
                 f"{cat_desc}<br><span style='color:{cat_color}; font-weight:bold;'>✨ {t('hangar_active_pilot_label')}: {active_pilot_name}</span>",
                 card,
@@ -306,7 +302,8 @@ class QtHangarTab(QWidget):
                     c_dict = config.get("mascot_customization", {})
                     if not isinstance(c_dict, dict):
                         c_dict = {}
-                    c_dict[ck] = {"animal": sel_a, "outfit": fo}
+                    selected_outfit = "agent" if sel_a == "platypus" else fo
+                    c_dict[ck] = {"animal": sel_a, "outfit": selected_outfit, "accessories": list(normalize_accessories(selected_outfit, animal=sel_a))}
                     if ck == "study":
                         for sub in ("class", "exam"):
                             if sub not in c_dict or not isinstance(c_dict[sub], dict):
@@ -325,7 +322,7 @@ class QtHangarTab(QWidget):
                     c_dict = config.get("mascot_customization", {})
                     val = c_dict.get(ck, {})
                     an = val.get("animal", "duck") if isinstance(val, dict) else (val or "duck")
-                    out = fo
+                    out = "agent" if an == "platypus" else fo
                     titles = {
                         "study": "Neural Networks & AI University Lecture",
                         "food": "Dinner with Friends at Pizzeria",
