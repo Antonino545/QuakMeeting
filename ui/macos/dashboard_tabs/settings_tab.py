@@ -3,7 +3,7 @@ import objc
 from core.services.calendar_service import calendar_service
 from core.services.config_service import is_debug_mode
 from core.services.language_service import t
-from ui.macos.components import CardView, ModernButton
+from ui.macos.components import CardView, ModernButton, FlippedView
 from ui.macos.dashboard_tabs.settings import (
     CalendarsCardController,
     ETACardController,
@@ -13,12 +13,6 @@ from ui.macos.dashboard_tabs.settings import (
 )
 from ui.macos.theme import Theme
 
-
-class FlippedView(AppKit.NSView):
-    """Container view with Cocoa top-left coordinate origin for natural vertical layout."""
-
-    def isFlipped(self):
-        return True
 
 
 class SettingsTabController(AppKit.NSObject):
@@ -266,27 +260,17 @@ class SettingsTabController(AppKit.NSObject):
         if not self.cached_calendars and cals:
             self.cached_calendars = cals
 
-        available_w = card_w - 36.0
-        curr_row_w = 0.0
-        actual_rows = 1 if cals else 1
-        for cal in (cals or []):
-            cal_name = cal.get("name", "Calendar")
-            pill_w = max(110.0, min(240.0, len(cal_name) * 8.5 + 42.0))
-            if curr_row_w > 0.0 and curr_row_w + pill_w > available_w:
-                actual_rows += 1
-                curr_row_w = pill_w + 8.0
-            else:
-                curr_row_w += (pill_w + 8.0)
+        n_cals = len(cals) if cals else 1
 
         card_heights = {
             0: 362.0,
             1: 424.0,
-            2: 74.0 + actual_rows * 36.0,
+            2: 80.0 + n_cals * 40.0 + 16.0,
             3: 418.0,
             4: 336.0 if is_debug_mode() else 272.0,
         }
         card_h = card_heights.get(idx, 360.0)
-        doc_h = max(h, card_h + 14.0)
+        doc_h = max(h, card_h + 36.0)
 
         doc_view = FlippedView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 0, content_w, doc_h))
         card = self._create_card_container(0, 0, card_w, card_h)

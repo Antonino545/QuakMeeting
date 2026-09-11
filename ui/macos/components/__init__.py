@@ -12,6 +12,7 @@ from ui.macos.components.toggle_switch import ModernToggleSwitch
 from ui.macos.components.card_view import CardView
 from ui.macos.components.section_header import HairlineDivider, SectionHeaderView
 from ui.macos.components.keyword_chip_view import KeywordChipView
+from ui.macos.components.flipped_view import FlippedView
 from ui.macos.components.mascot_mini_canvas_view import MascotMiniCanvasView
 from ui.macos.components.layout import BaseStack, VBox, HBox
 
@@ -26,8 +27,10 @@ __all__ = [
     "HairlineDivider",
     "SectionHeaderView",
     "KeywordChipView",
+    "FlippedView",
     "MascotMiniCanvasView",
     "BaseStack",
     "VBox",
     "HBox",
 ]
+
