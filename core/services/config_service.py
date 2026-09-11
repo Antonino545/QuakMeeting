@@ -172,6 +172,24 @@ class ConfigService:
                         merged[k] = {**merged[k], **v}
                     else:
                         merged[k] = v
+
+                # Migration: Clean up legacy pre-academic-split study keywords if unmodified
+                kw_dict = merged.get("custom_keywords")
+                if isinstance(kw_dict, dict) and "study" in kw_dict:
+                    legacy_study_defaults = {
+                        "study", "studying", "homework", "assignment", "revision", "self-study",
+                        "exam", "test", "thesis", "library", "research", "lecture", "class",
+                        "course", "classroom", "studio", "studiare", "compiti", "ripasso",
+                        "esame", "esami", "tesi", "laurea", "lezione", "lezioni", "corso",
+                        "aula", "universit", "politecnico", "biblioteca"
+                    }
+                    study_set = {str(item).strip().lower() for item in kw_dict["study"]}
+                    # If study list only contained old defaults and/or test leftovers, migrate to clean study defaults
+                    if study_set and study_set.issubset(legacy_study_defaults | {"quantum", "calculus", "algebra"}):
+                        kw_dict["study"] = list(DEFAULT_CONFIG["custom_keywords"]["study"])
+                        self._save_raw(merged)
+                        logger.info("Migrated legacy study keywords to modern split defaults.")
+
                 logger.debug("Loaded configuration from %s (%d user keys).", CONFIG_PATH, len(user_cfg))
                 return merged
             else:

@@ -68,32 +68,53 @@ class KeywordChipView(AppKit.NSView):
         width: float,
         height: float,
         text: str,
+        is_custom: bool = False,
         target=None,
         action=None,
         tooltip: str = "",
     ):
         chip = cls.alloc().initWithFrame_(AppKit.NSMakeRect(x, y, width, height))
         chip.setWantsLayer_(True)
-        chip.layer().setBackgroundColor_(Theme.SURFACE1.CGColor())
-        chip.layer().setCornerRadius_(5.0)
-        chip.layer().setBorderWidth_(1.0)
-        chip.layer().setBorderColor_(Theme.SURFACE2.CGColor())
+        if is_custom:
+            chip.layer().setBackgroundColor_(Theme.MAUVE.colorWithAlphaComponent_(0.14).CGColor())
+            chip.layer().setCornerRadius_(6.0)
+            chip.layer().setBorderWidth_(1.5)
+            chip.layer().setBorderColor_(Theme.MAUVE.CGColor())
+        else:
+            chip.layer().setBackgroundColor_(Theme.SURFACE0.CGColor())
+            chip.layer().setCornerRadius_(6.0)
+            chip.layer().setBorderWidth_(1.0)
+            chip.layer().setBorderColor_(Theme.SURFACE1.CGColor())
 
+        display_text = f"✨ {text}" if is_custom else text
+        font = (
+            AppKit.NSFont.boldSystemFontOfSize_(10.5)
+            if is_custom
+            else AppKit.NSFont.systemFontOfSize_weight_(10.5, AppKit.NSFontWeightMedium)
+        )
+
+        lbl_w = max(10.0, width - 26.0)
+        lbl_y = (height - 18.0) * 0.5
         lbl = AppKit.NSTextField.alloc().initWithFrame_(
-            AppKit.NSMakeRect(6, 2, width - 24, height - 4)
+            AppKit.NSMakeRect(6.0, lbl_y, lbl_w, 18.0)
         )
-        lbl.setStringValue_(text)
-        lbl.setFont_(
-            AppKit.NSFont.systemFontOfSize_weight_(10.5, AppKit.NSFontWeightMedium)
-        )
-        lbl.setTextColor_(Theme.TEXT)
+        lbl.setStringValue_(display_text)
+        lbl.setFont_(font)
+        lbl.setTextColor_(Theme.MAUVE if is_custom else Theme.TEXT)
         lbl.setBezeled_(False)
         lbl.setDrawsBackground_(False)
         lbl.setEditable_(False)
+        lbl.cell().setWraps_(False)
+        lbl.cell().setScrollable_(False)
+        lbl.cell().setLineBreakMode_(AppKit.NSLineBreakByTruncatingTail)
+        lbl.setUsesSingleLineMode_(True)
         chip.addSubview_(lbl)
 
+        del_btn_w = 14.0
+        del_btn_h = 14.0
+        del_btn_y = (height - del_btn_h) * 0.5
         del_btn = ChipDeleteButton.alloc().initWithFrame_(
-            AppKit.NSMakeRect(width - 20, 1, 18, height - 2)
+            AppKit.NSMakeRect(width - del_btn_w - 5.0, del_btn_y, del_btn_w, del_btn_h)
         )
         del_btn.setTitle_("✕")
         del_btn.setBordered_(False)
@@ -109,7 +130,7 @@ class KeywordChipView(AppKit.NSView):
         pstyle = AppKit.NSMutableParagraphStyle.alloc().init()
         pstyle.setAlignment_(AppKit.NSTextAlignmentCenter)
         del_attrs = {
-            AppKit.NSFontAttributeName: AppKit.NSFont.boldSystemFontOfSize_(10.0),
+            AppKit.NSFontAttributeName: AppKit.NSFont.boldSystemFontOfSize_(9.5),
             AppKit.NSForegroundColorAttributeName: Theme.RED,
             AppKit.NSParagraphStyleAttributeName: pstyle,
         }
@@ -118,3 +139,5 @@ class KeywordChipView(AppKit.NSView):
         )
         chip.addSubview_(del_btn)
         return chip
+
+

@@ -3,11 +3,8 @@ import objc
 from core.services.calendar_service import calendar_service
 from core.services.event_bus import event_bus
 from core.services.language_service import t
-from ui.macos.dashboard_tabs.settings.helpers import (
-    add_section_header,
-    create_pill_chip,
-    update_pill_chip_style,
-)
+from ui.macos.components import ModernButton
+from ui.macos.dashboard_tabs.settings.helpers import add_section_header
 from ui.macos.theme import Theme
 
 
@@ -22,6 +19,35 @@ class CalendarsCardController(AppKit.NSObject):
     @property
     def config(self):
         return self.parent.config
+
+    @objc.python_method
+    def _update_calendar_toggle_style(self, btn, is_on):
+        """Applies sleek Catppuccin styling matching Qt."""
+        if is_on:
+            btn.layer().setBackgroundColor_(Theme.SURFACE0.CGColor())
+            btn.layer().setBorderWidth_(1.0)
+            btn.layer().setBorderColor_(Theme.GREEN.CGColor())
+            fg_color = Theme.GREEN
+            font = AppKit.NSFont.boldSystemFontOfSize_(11.5)
+        else:
+            btn.layer().setBackgroundColor_(Theme.MANTLE.CGColor())
+            btn.layer().setBorderWidth_(1.0)
+            btn.layer().setBorderColor_(Theme.SURFACE1.CGColor())
+            fg_color = Theme.SUBTEXT0
+            font = AppKit.NSFont.systemFontOfSize_weight_(11.5, AppKit.NSFontWeightMedium)
+
+        pstyle = AppKit.NSMutableParagraphStyle.alloc().init()
+        pstyle.setAlignment_(AppKit.NSTextAlignmentLeft)
+        pstyle.setFirstLineHeadIndent_(12.0)
+        pstyle.setHeadIndent_(12.0)
+        attrs = {
+            AppKit.NSFontAttributeName: font,
+            AppKit.NSForegroundColorAttributeName: fg_color,
+            AppKit.NSParagraphStyleAttributeName: pstyle,
+        }
+        title_str = btn.title() or ""
+        attr_str = AppKit.NSAttributedString.alloc().initWithString_attributes_(title_str, attrs)
+        btn.setAttributedTitle_(attr_str)
 
     @objc.python_method
     def build_card(self, card, w, h, cals=None):
@@ -71,24 +97,27 @@ class CalendarsCardController(AppKit.NSObject):
 
         for idx, cal in enumerate(cals):
             cal_name = cal.get("name", "Calendar")
-            title = f"📅 {cal_name}"
+            title = f"📅  {cal_name}"
             pill_w = max(120.0, w - 36.0 - popup_w - 12.0)
             is_cal_enabled = (cal_name not in ignored)
 
-            btn = create_pill_chip(
-                card,
-                title,
-                idx,
-                is_cal_enabled,
-                "onToggleCalendarSource:",
-                pill_x,
-                y_offset,
-                pill_w,
-                28.0,
-                "green",
-                target=self,
+            btn = ModernButton.alloc().initWithFrame_(
+                AppKit.NSMakeRect(pill_x, y_offset, pill_w, 28.0)
             )
+            btn.setButtonType_(AppKit.NSButtonTypePushOnPushOff)
+            btn.setBordered_(False)
+            btn.setFocusRingType_(AppKit.NSFocusRingTypeNone)
+            btn.setWantsLayer_(True)
+            btn.layer().setCornerRadius_(7.0)
+            btn.layer().setMasksToBounds_(True)
+            btn.setTag_(idx)
+            btn.setTitle_(title)
+            btn.setTarget_(self)
+            btn.setAction_("onToggleCalendarSource:")
+            btn.setState_(AppKit.NSControlStateValueOn if is_cal_enabled else AppKit.NSControlStateValueOff)
             btn.setToolTip_(cal_name)
+            self._update_calendar_toggle_style(btn, is_cal_enabled)
+            card.addSubview_(btn)
 
             popup = AppKit.NSPopUpButton.alloc().initWithFrame_pullsDown_(
                 AppKit.NSMakeRect(pill_x + pill_w + 12.0, y_offset, popup_w, 28.0), False
@@ -111,9 +140,9 @@ class CalendarsCardController(AppKit.NSObject):
 
     @objc.IBAction
     def onToggleCalendarSource_(self, sender):
-        cal_name = sender.toolTip() or sender.title().replace("📅 ", "")
+        cal_name = sender.toolTip() or sender.title().replace("📅  ", "").replace("📅 ", "")
         is_on = (sender.state() == AppKit.NSControlStateValueOn)
-        update_pill_chip_style(sender, is_on, "green")
+        self._update_calendar_toggle_style(sender, is_on)
         ignored = set(self.config.get("ignored_calendars", []))
         if is_on:
             ignored.discard(cal_name)

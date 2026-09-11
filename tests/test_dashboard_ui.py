@@ -70,6 +70,10 @@ class TestDashboardUI(unittest.TestCase):
             self.assertIn("quantum", study_kws)
             self.assertIn("calculus", study_kws)
             self.assertIn("algebra", study_kws)
+            # Clean up test keywords so user configuration is not polluted
+            config.remove_custom_keyword("study", "quantum")
+            config.remove_custom_keyword("study", "calculus")
+            config.remove_custom_keyword("study", "algebra")
 
             # Test mini_canvases persistence and animation ticks across cached render
             self.assertGreater(len(hangar.mini_canvases), 0)
@@ -98,6 +102,79 @@ class TestDashboardUI(unittest.TestCase):
 
         except ImportError as e:
             self.fail(f"Failed to import UI controllers: {e}")
+
+    @unittest.skipUnless(HAS_APPKIT, "macOS AppKit required")
+    def test_hangar_dual_tier_deck_and_presets(self):
+        from ui.macos.components import KeywordChipView
+        from ui.macos.dashboard_tabs.hangar_tab import HangarTabController
+        from core.services.config_service import config
+
+        # 1. Test KeywordChipView with custom vs preset styling
+        custom_chip = KeywordChipView.create(0, 0, 100, 24, text="deep learning", is_custom=True)
+        self.assertIsNotNone(custom_chip)
+        # Find the text label inside custom_chip
+        labels = [sub for sub in custom_chip.subviews() if isinstance(sub, AppKit.NSTextField)]
+        self.assertEqual(len(labels), 1)
+        self.assertTrue(labels[0].stringValue().startswith("✨ "))
+
+        preset_chip = KeywordChipView.create(0, 0, 100, 24, text="math", is_custom=False)
+        self.assertIsNotNone(preset_chip)
+        p_labels = [sub for sub in preset_chip.subviews() if isinstance(sub, AppKit.NSTextField)]
+        self.assertEqual(len(p_labels), 1)
+        self.assertEqual(p_labels[0].stringValue(), "math")
+
+        # 2. Test HangarTabController Dual-Tier Deck lifecycle
+        mock_container = MagicMock()
+        hangar = HangarTabController.alloc().init()
+        self.assertEqual(len(hangar.expanded_presets), 0)
+
+        # Expand 'work' category
+        fake_sender = MagicMock()
+        fake_sender.identifier.return_value = "work"
+        hangar.onToggleKeywordsDrawer_(fake_sender)
+        self.assertIn("work", hangar.expanded_categories)
+
+        # Render with collapsed presets
+        view_collapsed = hangar.render(mock_container, 800, 600)
+        h_collapsed = view_collapsed.documentView().frame().size.height
+
+        self.assertIn("work", hangar.custom_cnt_labels)
+        self.assertIn("work", hangar.preset_toggle_buttons)
+        self.assertIn("work", hangar.custom_doc_views)
+
+        # Toggle presets open for 'work'
+        hangar.onTogglePresets_(fake_sender)
+        self.assertIn("work", hangar.expanded_presets)
+
+        # Re-render with expanded presets
+        view_expanded = hangar.render(mock_container, 800, 600)
+        h_expanded = view_expanded.documentView().frame().size.height
+        # Height difference must match the extra height for expanded presets (123px)
+        self.assertAlmostEqual(h_expanded - h_collapsed, 123.0, delta=1.0)
+        self.assertIn("work", hangar.preset_doc_views)
+
+        # Add custom keywords
+        fake_input = MagicMock()
+        fake_input.stringValue.return_value = "sprint planning, retro"
+        hangar.kw_inputs["work"] = fake_input
+        hangar.onAddCategoryKeyword_(fake_sender)
+        work_kws = config.get_custom_keywords("work")
+        self.assertIn("sprint planning", work_kws)
+        self.assertIn("retro", work_kws)
+
+        # Remove custom keyword
+        del_btn = MagicMock()
+        del_btn.toolTip.return_value = "work:::sprint planning"
+        hangar.onRemoveCategoryKeyword_(del_btn)
+        work_kws_after = config.get_custom_keywords("work")
+        self.assertNotIn("sprint planning", work_kws_after)
+        self.assertIn("retro", work_kws_after)
+
+        # Reset to defaults
+        hangar.onResetCategoryKeywords_(fake_sender)
+        work_kws_reset = config.get_custom_keywords("work")
+        self.assertNotIn("retro", work_kws_reset)
+
 
     @unittest.skipUnless(HAS_APPKIT, "macOS AppKit required")
     def test_menu_bar_build_with_upcoming_events(self):
@@ -374,6 +451,51 @@ class TestDashboardUI(unittest.TestCase):
             self.assertEqual(window.sync_btn.text(), "✅ Synced!")
         finally:
             window.close()
+
+
+    @unittest.skipUnless(sys.platform == "darwin", "macOS AppKit tests require Darwin")
+    def test_macos_keyword_chip_single_line_and_calendar_layout(self):
+        import AppKit
+        from ui.macos.components.keyword_chip_view import KeywordChipView
+        from ui.macos.dashboard_tabs.settings_tab import SettingsTabController
+        from core.services.config_service import config
+
+        # 1. Verify KeywordChipView creates single-line non-wrapping label
+        chip = KeywordChipView.create(
+            0, 0, 90.0, 24.0,
+            text="exam",
+            is_custom=True,
+            tooltip="study:::exam"
+        )
+        self.assertIsNotNone(chip)
+        # Find NSTextField label inside chip
+        labels = [sub for sub in chip.subviews() if isinstance(sub, AppKit.NSTextField)]
+        self.assertTrue(len(labels) > 0)
+        lbl = labels[0]
+        self.assertEqual(lbl.stringValue(), "✨ exam")
+        self.assertFalse(lbl.cell().wraps())
+        self.assertTrue(lbl.usesSingleLineMode())
+
+        # 2. Verify SettingsTab Card 2 height calculation handles multiple calendars
+        settings = SettingsTabController.alloc().init()
+        container = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 0, 780, 600))
+        sample_cals = [
+            {"name": "Personal", "enabled": True},
+            {"name": "University", "enabled": True},
+            {"name": "Work", "enabled": False},
+        ]
+        # Calling render should calculate card_heights[2] for 3 calendars without clipping
+        v = settings.render(container, 780, 600, config, sample_cals)
+        self.assertIsNotNone(v)
+        settings.select_category(2)
+        cal_page = settings._category_pages.get(2)
+        self.assertIsNotNone(cal_page)
+        # Verify document view height has bottom breathing room
+        doc_view = cal_page.documentView()
+        self.assertIsNotNone(doc_view)
+        # Card height for 3 calendars: 80.0 + 3 * 40.0 + 16.0 = 216.0
+        # doc_h = max(600.0, 216.0 + 36.0) = 600.0
+        self.assertGreaterEqual(doc_view.frame().size.height, 216.0)
 
 
 if __name__ == '__main__':
