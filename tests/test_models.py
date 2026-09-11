@@ -100,7 +100,6 @@ class TestMeetingModel(unittest.TestCase):
     def test_calendar_event_composed_value_objects(self):
         from core.domain.models import (
             CalendarEvent,
-            Event,
             EventTime,
             Location,
             MeetingLink,

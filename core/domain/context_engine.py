@@ -140,7 +140,23 @@ class ContextEngine:
                 return f"🧘 Wellness session in progress • ~{rem_str} remaining (until {end_clock}) • Relax & recharge."
             return "🧘 Rilassati e ricaricati." if is_it else "🧘 Wellness session in progress • Relax & recharge."
 
-        # 7. General Fallback
+        # 7. Work
+        if cat == "work" or any(w in search_blob for w in ["work", "working", "office", "lavoro", "ufficio", "progetto", "coworking"]):
+            if et:
+                if is_it:
+                    return f"💼 Sessione di lavoro in corso • ~{rem_str} rimanenti (fino alle {end_clock}) • Buona produttività!"
+                return f"💼 Work session in progress • ~{rem_str} remaining (until {end_clock}) • Have a productive session!"
+            return "💼 Sessione di lavoro in corso • Buona produttività!" if is_it else "💼 Work session in progress • Have a productive session!"
+
+        # 8. Concert / Live Music
+        if cat == "concert" or any(w in search_blob for w in ["concert", "concerto", "live music", "musica dal vivo", "festival", "show"]):
+            if et:
+                if is_it:
+                    return f"🎸 Concerto dal vivo in corso • ~{rem_str} rimanenti (fino alle {end_clock}) • Goditi lo spettacolo!"
+                return f"🎸 Live concert in progress • ~{rem_str} remaining (until {end_clock}) • Enjoy the show!"
+            return "🎸 Concerto dal vivo in corso • Goditi lo spettacolo!" if is_it else "🎸 Live concert in progress • Enjoy the show!"
+
+        # 9. General Fallback
         if is_arr or "wifi" in arr_reason:
             if et:
                 return f"📍 Presenza confermata sul posto • ~{rem_str} rimanenti (fino alle {end_clock})" if is_it else f"📍 On-site presence confirmed • ~{rem_str} remaining (until {end_clock})"
@@ -247,7 +263,7 @@ class ContextEngine:
                         action_type=ActionType.JOIN_CALL,
                         context_state=UserContextState.IN_SESSION,
                         headline=f"Starting Now: {title}",
-                        rationale=f"Event has started. Online meeting link is active and ready to join.",
+                        rationale="Event has started. Online meeting link is active and ready to join.",
                         urgency_level="critical",
                         target_event=event,
                         action_url=action_url,

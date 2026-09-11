@@ -33,6 +33,8 @@ class EventCategory(str, Enum):
     HEALTH = "health"
     IN_PERSON = "in_person"
     SPORT = "sport"
+    WORK = "work"
+    CONCERT = "concert"
     GENERAL = "general"
 
 

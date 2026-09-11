@@ -21,11 +21,13 @@ def get_animals():
 
 CATEGORIES_DEF = [
     ("study", "cat_study_title", "cat_study_desc", "student", "owl", Theme.MAUVE),
-    ("food", "cat_food_title", "cat_food_desc", "chef", "duck", Theme.PEACH),
+    ("food", "cat_food_title", "cat_food_desc", "chef", "squirrel", Theme.PEACH),
     ("travel", "cat_travel_title", "cat_travel_desc", "captain", "duck", Theme.SAPPHIRE),
     ("sport", "cat_sport_title", "cat_sport_desc", "gym", "bunny", Theme.RED),
-    ("in_person", "cat_in_person_title", "cat_in_person_desc", "racer", "squirrel", Theme.YELLOW),
-    ("health", "cat_health_title", "cat_health_desc", "zen", "bunny", Theme.TEAL),
+    ("in_person", "cat_in_person_title", "cat_in_person_desc", "racer", "fox", Theme.YELLOW),
+    ("health", "cat_health_title", "cat_health_desc", "zen", "panda", Theme.TEAL),
+    ("work", "cat_work_title", "cat_work_desc", "agent", "penguin", Theme.BLUE),
+    ("concert", "cat_concert_title", "cat_concert_desc", "aviator", "fox", Theme.MAUVE),
     ("general", "cat_general_title", "cat_general_desc", "aviator", "duck", Theme.GREEN)
 ]
 
@@ -990,11 +992,13 @@ class HangarTabController(AppKit.NSObject):
     def onResetDefaults_(self, sender):
         defaults = {
             "study": {"animal": "owl", "outfit": "student"},
-            "food": {"animal": "duck", "outfit": "chef"},
+            "food": {"animal": "squirrel", "outfit": "chef"},
             "travel": {"animal": "duck", "outfit": "captain"},
             "sport": {"animal": "bunny", "outfit": "gym"},
-            "in_person": {"animal": "squirrel", "outfit": "racer"},
-            "health": {"animal": "bunny", "outfit": "zen"},
+            "in_person": {"animal": "fox", "outfit": "racer"},
+            "health": {"animal": "panda", "outfit": "zen"},
+            "work": {"animal": "penguin", "outfit": "agent"},
+            "concert": {"animal": "fox", "outfit": "aviator"},
             "general": {"animal": "duck", "outfit": "aviator"}
         }
         animals = get_animals()
@@ -1042,6 +1046,8 @@ class HangarTabController(AppKit.NSObject):
             "sport": "CrossFit & Palestra Workout Session",
             "in_person": "Architectural Studio Consultation",
             "health": "Serenis Mindfulness & Yoga Session",
+            "work": "Executive Board Strategy & Sprint Review",
+            "concert": "Rock Arena Live World Tour Concert",
             "secret": "Top Secret Agent Mission Briefing",
             "general": "Weekly Team Sprint Planning"
         }
@@ -1058,7 +1064,7 @@ class HangarTabController(AppKit.NSObject):
             "start_time": now + timedelta(minutes=10),
             "end_time": now + timedelta(minutes=70),
             "reminder_stage": 10,
-            "is_travel": cat_key in ("food", "travel", "sport", "in_person"),
+            "is_travel": cat_key in ("food", "travel", "sport", "in_person", "concert"),
             "is_test_banner": True,
             "is_late": False
         })

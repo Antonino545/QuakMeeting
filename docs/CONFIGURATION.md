@@ -32,8 +32,28 @@ QuakMeeting stores all user preferences, timing thresholds, routing configuratio
 | `enable_eta_service` | `bool` | `true` | Whether to calculate departure times and routing links via Apple Maps / Google Maps. |
 | `eta_buffer_minutes` | `int` | `10` | Buffer minutes added before departure to account for reaching transit stop/parking. |
 | `auto_walking_threshold_km` | `float` | `1.2` | Distance threshold (in km) to automatically suggest/switch to walking route ETA instead of public transit/driving. Set to `0` to disable. |
-| `custom_keywords` | `dict` | `{...}` | Custom keyword mappings for standard event categories (`study`, `class`, `exam`, `food`, `travel`, `sport`, `in_person`, `health`, `general`). |
-| `category_pilots` | `dict` | `{...}` | Mascot assignment per event category or academic subcategory (`study`, `class`, `exam`, `food`, etc.). |
+| `calendar_category_map` | `dict[str, str]` | `{}` | Direct calendar-to-category binding (e.g. `{"Studio": "study", "Work": "work", "Concerti": "concert"}`). Overrides keyword guessing for events originating from that calendar. |
+| `custom_keywords` | `dict` | `{...}` | Custom keyword mappings for event categories (`study`, `class`, `exam`, `food`, `travel`, `sport`, `in_person`, `health`, `work`, `concert`, `general`). |
+| `mascot_customization` | `dict` | `{...}` | Mascot animal, outfit, and accessory assignments per event category (`study`, `food`, `travel`, `sport`, `in_person`, `health`, `work`, `concert`, `general`). |
+
+---
+
+## 📅 Direct Calendar-to-Category Mapping (`calendar_category_map`)
+
+You can connect any calendar source directly to a specific category. When an event originates from a mapped calendar, QuakMeeting immediately assigns that category without needing keyword matching heuristics:
+
+```json
+{
+  "calendar_category_map": {
+    "Studio": "study",
+    "Lavoro": "work",
+    "Concerti & Spettacoli": "concert",
+    "Palestra": "sport"
+  }
+}
+```
+
+This mapping can be configured interactively from the **Settings > Connected Calendars** panel via the category dropdown next to each calendar source.
 
 ---
 
@@ -63,10 +83,16 @@ Category keywords can be managed visually directly within the application's **Ha
       "palestra", "gym", "workout", "allenamento", "crossfit", "fitness", "sport", "padel", "tennis", "calcio", "calcetto", "partita", "match", "nuoto", "swimming", "running", "corsa", "boxe", "boxing", "basket", "pallavolo", "pesi", "cardio", "training", "maratona", "pilates", "atletica"
     ],
     "in_person": [
-      "dentista", "dottore", "visita", "medico", "studio", "ufficio", "appuntamento"
+      "dentista", "dottore", "visita", "medico", "clinica", "ospedale", "appuntamento", "consulenza", "meccanico"
     ],
     "health": [
       "serenis", "terapia", "yoga", "meditazione", "benessere", "relax"
+    ],
+    "work": [
+      "work", "working", "office", "client", "job", "shift", "shifts", "coworking", "business", "company", "colleagues", "standup", "sprint review", "lavoro", "lavorativo", "ufficio", "cliente", "turno", "progetto", "riunione di lavoro"
+    ],
+    "concert": [
+      "concert", "concerts", "live music", "festival", "gig", "gigs", "tour", "band", "stadium", "arena", "tickets", "concerto", "concerti", "musica dal vivo", "spettacolo", "palasport", "teatro", "opera", "dj set", "biglietti"
     ],
     "general": []
   }

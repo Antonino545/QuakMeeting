@@ -150,6 +150,48 @@ class TestContextEngine(unittest.TestCase):
         self.assertIn("30m remaining", guidance.rationale)
         self.assertIn("Keep pushing!", guidance.rationale)
 
+    def test_active_work_session_rationale(self):
+        self.clock.set_time(datetime(2026, 9, 10, 14, 30, 0, tzinfo=timezone.utc))
+
+        event = CalendarEvent(
+            uid="evt-work",
+            title="Sprint Review",
+            start_time=datetime(2026, 9, 10, 14, 0, 0, tzinfo=timezone.utc),
+            end_time=datetime(2026, 9, 10, 16, 0, 0, tzinfo=timezone.utc),
+            category="work"
+        )
+
+        guidance_en = ContextEngine.evaluate([event], clock=self.clock, lang="en")
+        self.assertEqual(guidance_en.action_type, ActionType.ACTIVE_SESSION)
+        self.assertIn("Work session in progress", guidance_en.rationale)
+        self.assertIn("1h 30m remaining", guidance_en.rationale)
+        self.assertIn("productive session", guidance_en.rationale)
+
+        guidance_it = ContextEngine.evaluate([event], clock=self.clock, lang="it")
+        self.assertIn("Sessione di lavoro in corso", guidance_it.rationale)
+        self.assertIn("Buona produttività!", guidance_it.rationale)
+
+    def test_active_concert_session_rationale(self):
+        self.clock.set_time(datetime(2026, 9, 10, 21, 30, 0, tzinfo=timezone.utc))
+
+        event = CalendarEvent(
+            uid="evt-concert",
+            title="Rock Band Live",
+            start_time=datetime(2026, 9, 10, 21, 0, 0, tzinfo=timezone.utc),
+            end_time=datetime(2026, 9, 10, 23, 30, 0, tzinfo=timezone.utc),
+            category="concert"
+        )
+
+        guidance_en = ContextEngine.evaluate([event], clock=self.clock, lang="en")
+        self.assertEqual(guidance_en.action_type, ActionType.ACTIVE_SESSION)
+        self.assertIn("Live concert in progress", guidance_en.rationale)
+        self.assertIn("2h remaining", guidance_en.rationale)
+        self.assertIn("Enjoy the show!", guidance_en.rationale)
+
+        guidance_it = ContextEngine.evaluate([event], clock=self.clock, lang="it")
+        self.assertIn("Concerto dal vivo in corso", guidance_it.rationale)
+        self.assertIn("Goditi lo spettacolo!", guidance_it.rationale)
+
 
 if __name__ == "__main__":
     unittest.main()

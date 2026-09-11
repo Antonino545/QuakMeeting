@@ -411,7 +411,7 @@ class BannerHUDPainter:
         min_bx = card_right_x + 10.0
         ideal_bx = px - bw * 0.5
         bx = max(min_bx, ideal_bx)
-        by = py + 36.0 + math.sin(tick * 0.08) * 3.0
+        by = py + 62.0 + math.sin(tick * 0.08) * 3.0
 
         # Anchor tail securely between bubble base and pilot tip
         tail_tip_x = px
@@ -424,7 +424,7 @@ class BannerHUDPainter:
         # Tail pointing to pilot
         tail_path = AppKit.NSBezierPath.bezierPath()
         tail_path.moveToPoint_(AppKit.NSMakePoint(tail_base_x - 6.0, by))
-        tail_path.lineToPoint_(AppKit.NSMakePoint(tail_tip_x, by - 8.0))
+        tail_path.lineToPoint_(AppKit.NSMakePoint(tail_tip_x, by - 7.0))
         tail_path.lineToPoint_(AppKit.NSMakePoint(tail_base_x + 6.0, by))
         tail_path.closePath()
 

@@ -53,15 +53,18 @@ DEFAULT_CONFIG = {
     "debug_mode": False,               # Show developer & diagnostics test banners and tools
     "default_pilot": "duck",           # Active default mascot ("duck", "owl", "bunny")
     "force_default_pilot": False,      # If True, always uses default_pilot for all notifications instead of auto-categorization
+    "calendar_category_map": {},       # Direct Calendar -> Category mappings e.g. {"Studio": "study", "Work": "work"}
     "mascot_customization": {
         "exam": {"animal": "owl", "outfit": "student"},
         "study": {"animal": "owl", "outfit": "student"},
         "class": {"animal": "owl", "outfit": "student"},
-        "food": {"animal": "duck", "outfit": "chef"},
+        "food": {"animal": "squirrel", "outfit": "chef"},
         "travel": {"animal": "duck", "outfit": "captain"},
         "sport": {"animal": "bunny", "outfit": "gym"},
-        "in_person": {"animal": "squirrel", "outfit": "racer"},
-        "health": {"animal": "bunny", "outfit": "zen"},
+        "in_person": {"animal": "fox", "outfit": "racer"},
+        "health": {"animal": "panda", "outfit": "zen"},
+        "work": {"animal": "penguin", "outfit": "agent"},
+        "concert": {"animal": "fox", "outfit": "aviator", "accessories": ["headphones"]},
         "general": {"animal": "duck", "outfit": "aviator"}
     },
     "custom_keywords": {
@@ -110,6 +113,17 @@ DEFAULT_CONFIG = {
             "meditation", "mindfulness", "wellness", "relax", "spa", "massage", "sauna",
             "mental health", "serenis", "therapy", "calm", "meditazione", "benessere", "terme"
         ],
+        "work": [
+            "work", "working", "office", "client", "job", "shift", "shifts", "coworking",
+            "business", "company", "colleagues", "standup", "sprint review", "lavoro", "lavorativo",
+            "ufficio", "cliente", "clienti", "turno", "turni", "progetto", "riunione di lavoro",
+            "azienda", "aziendale", "colleghi"
+        ],
+        "concert": [
+            "concert", "concerts", "live music", "festival", "gig", "gigs", "tour", "band",
+            "stadium", "arena", "tickets", "ticket", "concerto", "concerti", "musica dal vivo",
+            "spettacolo", "palasport", "teatro", "opera", "dj set", "biglietti", "biglietto"
+        ],
         "general": [
             "meeting", "sync", "catchup", "call", "riunione", "allineamento", "confronto"
         ]
@@ -128,6 +142,9 @@ PILOT_TO_CATEGORY_MAP = {
     "gym": "sport",
     "driver": "in_person",
     "zen_duck": "health",
+    "penguin": "work",
+    "work": "work",
+    "concert": "concert",
     "general": "general"
 }
 

@@ -27,11 +27,13 @@ def get_animals():
 
 CATEGORIES_DEF = [
     ("study", "cat_study_title", "cat_study_desc", "student", "owl", "#cba6f7"),
-    ("food", "cat_food_title", "cat_food_desc", "chef", "duck", "#fab387"),
+    ("food", "cat_food_title", "cat_food_desc", "chef", "squirrel", "#fab387"),
     ("travel", "cat_travel_title", "cat_travel_desc", "captain", "duck", "#74c7ec"),
     ("sport", "cat_sport_title", "cat_sport_desc", "gym", "bunny", "#f38ba8"),
-    ("in_person", "cat_in_person_title", "cat_in_person_desc", "racer", "squirrel", "#f9e2af"),
-    ("health", "cat_health_title", "cat_health_desc", "zen", "bunny", "#94e2d5"),
+    ("in_person", "cat_in_person_title", "cat_in_person_desc", "racer", "fox", "#f9e2af"),
+    ("health", "cat_health_title", "cat_health_desc", "zen", "panda", "#94e2d5"),
+    ("work", "cat_work_title", "cat_work_desc", "agent", "penguin", "#89b4fa"),
+    ("concert", "cat_concert_title", "cat_concert_desc", "aviator", "fox", "#f5c2e7"),
     ("general", "cat_general_title", "cat_general_desc", "aviator", "duck", "#a6e3a1")
 ]
 
@@ -198,11 +200,13 @@ class QtHangarTab(QWidget):
         def _on_reset():
             defs = {
                 "study": {"animal": "owl", "outfit": "student"},
-                "food": {"animal": "duck", "outfit": "chef"},
+                "food": {"animal": "squirrel", "outfit": "chef"},
                 "travel": {"animal": "duck", "outfit": "captain"},
                 "sport": {"animal": "bunny", "outfit": "gym"},
-                "in_person": {"animal": "squirrel", "outfit": "racer"},
-                "health": {"animal": "bunny", "outfit": "zen"},
+                "in_person": {"animal": "fox", "outfit": "racer"},
+                "health": {"animal": "panda", "outfit": "zen"},
+                "work": {"animal": "penguin", "outfit": "agent"},
+                "concert": {"animal": "fox", "outfit": "aviator"},
                 "general": {"animal": "duck", "outfit": "aviator"}
             }
             config.set("mascot_customization", defs)
@@ -330,6 +334,8 @@ class QtHangarTab(QWidget):
                         "sport": "CrossFit & Palestra Workout Session",
                         "in_person": "Architectural Studio Consultation",
                         "health": "Serenis Mindfulness & Yoga Session",
+                        "work": "Executive Board Strategy & Sprint Review",
+                        "concert": "Rock Arena Live World Tour Concert",
                         "secret": "Top Secret Agent Mission Briefing",
                         "general": "Weekly Team Sprint Planning"
                     }
@@ -345,7 +351,7 @@ class QtHangarTab(QWidget):
                         "start_time": now + timedelta(minutes=10),
                         "end_time": now + timedelta(minutes=70),
                         "reminder_stage": 10,
-                        "is_travel": ck in ("food", "travel", "sport", "in_person"),
+                        "is_travel": ck in ("food", "travel", "sport", "in_person", "concert"),
                         "is_test_banner": True,
                         "is_late": False
                     }

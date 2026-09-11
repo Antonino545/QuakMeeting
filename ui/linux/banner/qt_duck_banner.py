@@ -55,7 +55,7 @@ class QtDuckBannerWindow(QWidget):
     WIN_W = 1000
     WIN_H = 195
 
-    PLANE_CX = CARD_X + 615.0
+    PLANE_CX = CARD_X + 630.0
     PLANE_CY = CARD_Y + 54.0
 
     def __init__(self, event_data: Dict[str, Any], parent=None):
@@ -161,7 +161,7 @@ class QtDuckBannerWindow(QWidget):
         )
         self.card_h = 96.0 if self.is_slim else self.CARD_H
         self.plane_cy = self.CARD_Y + (42.0 if self.is_slim else 54.0)
-        self.plane_cx = self.CARD_X + 615.0
+        self.plane_cx = self.CARD_X + 630.0
 
         # Precompute Theme Palette & Cached Text
         self._palette = self._build_theme_palette()
@@ -1084,9 +1084,9 @@ class QtDuckBannerWindow(QWidget):
         ideal_bx = px - bw * 0.5
         bx = max(min_bx, ideal_bx)
 
-        # Float above plane with bobbing
+        # Float above plane with bobbing - elevated so hats and ears are fully clear
         bob = math.sin(self.tick * 0.08) * 3.0
-        by = py - 46.0 + bob
+        by = py - 72.0 + bob
 
         bubble_rect = QRectF(bx, by, bw, bh)
 
@@ -1097,7 +1097,7 @@ class QtDuckBannerWindow(QWidget):
         # Bubble Container Shape & Tail pointing to pilot
         tail = QPainterPath()
         tail.moveTo(tail_base_x - 6.0, by + bh)
-        tail.lineTo(tail_tip_x, by + bh + 8.0)
+        tail.lineTo(tail_tip_x, by + bh + 7.0)
         tail.lineTo(tail_base_x + 6.0, by + bh)
         tail.closeSubpath()
 

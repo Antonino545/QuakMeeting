@@ -6,15 +6,19 @@ import threading
 
 from PyQt6.QtWidgets import (
     QFrame, QLabel, QPushButton, QHBoxLayout, QVBoxLayout, QWidget,
+    QComboBox, QSizePolicy
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 
 from core.services.config_service import config
 from core.services.calendar_service import calendar_service
+from core.services.event_bus import event_bus
+from core.services.language_service import t
+from ui.linux.theme import get_combo_box_qss
 
 
 class CalendarsCardWidget(QFrame):
-    """Monitored system calendar sources filter."""
+    """Monitored system calendar sources filter and direct category mapping."""
 
     calendars_loaded = pyqtSignal(list)
 
@@ -26,9 +30,9 @@ class CalendarsCardWidget(QFrame):
         cc_layout.setContentsMargins(18, 14, 18, 14)
         cc_layout.setSpacing(10)
 
-        cc_title = QLabel("📅 Included System Calendars", self)
+        cc_title = QLabel(f"📅 {t('settings_calendars')}", self)
         cc_title.setObjectName("CardTitle")
-        cc_sub = QLabel("Select which local, EDS, or CalDAV calendars to actively monitor for reminders.", self)
+        cc_sub = QLabel("Select which calendars to monitor and optionally link each directly to an event category.", self)
         cc_sub.setObjectName("CardSub")
         cc_layout.addWidget(cc_title)
         cc_layout.addWidget(cc_sub)
@@ -60,25 +64,44 @@ class CalendarsCardWidget(QFrame):
             empty_lbl = QLabel("All calendar sources are currently monitored.", self.content_host)
             empty_lbl.setStyleSheet("color: #a6adc8; font-size: 12px;")
             self.content_layout.addWidget(empty_lbl)
+            empty_lbl.show()
         else:
-            grid_widget = QWidget(self.content_host)
-            grid_layout = QVBoxLayout(grid_widget)
-            grid_layout.setContentsMargins(0, 0, 0, 0)
-            grid_layout.setSpacing(8)
+            list_widget = QWidget(self.content_host)
+            list_layout = QVBoxLayout(list_widget)
+            list_layout.setContentsMargins(0, 0, 0, 0)
+            list_layout.setSpacing(8)
 
-            row_layout = QHBoxLayout()
-            row_layout.setSpacing(8)
-            count_in_row = 0
+            category_options = [
+                ("", t("cal_cat_auto")),
+                ("study", t("cal_cat_study")),
+                ("work", t("cal_cat_work")),
+                ("concert", t("cal_cat_concert")),
+                ("food", t("cal_cat_food")),
+                ("travel", t("cal_cat_travel")),
+                ("sport", t("cal_cat_sport")),
+                ("in_person", t("cal_cat_in_person")),
+                ("health", t("cal_cat_health")),
+                ("general", t("cal_cat_general")),
+            ]
+            cal_map = config.get("calendar_category_map", {})
+            if not isinstance(cal_map, dict):
+                cal_map = {}
 
             for cal in avail_cals:
                 c_name = cal.get("name", "Calendar")
                 c_enabled = cal.get("enabled", True)
                 display_name = c_name.replace("&", "&&")
-                btn = QPushButton(f"📅 {display_name}", grid_widget)
+
+                row_widget = QWidget(list_widget)
+                row_layout = QHBoxLayout(row_widget)
+                row_layout.setContentsMargins(0, 0, 0, 0)
+                row_layout.setSpacing(10)
+
+                btn = QPushButton(f"📅 {display_name}", row_widget)
                 btn.setCheckable(True)
                 btn.setCursor(Qt.CursorShape.PointingHandCursor)
                 btn.setChecked(c_enabled)
-                btn.setMinimumWidth(btn.sizeHint().width() + 16)
+                btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
                 btn.setStyleSheet("""
                     QPushButton {
                         background: #242438;
@@ -88,14 +111,15 @@ class CalendarsCardWidget(QFrame):
                         padding: 6px 14px;
                         font-size: 11.5px;
                         font-weight: 500;
+                        text-align: left;
                     }
                     QPushButton:hover {
                         background: #313244;
                         border-color: #a6e3a1;
                     }
                     QPushButton:checked {
-                        background: #a6e3a1;
-                        color: #11111b;
+                        background: #313244;
+                        color: #a6e3a1;
                         font-weight: bold;
                         border: 1px solid #a6e3a1;
                     }
@@ -107,19 +131,48 @@ class CalendarsCardWidget(QFrame):
                     else:
                         ignored.add(name)
                     config.set("ignored_calendars", list(ignored))
+                    try:
+                        event_bus.publish("CONFIG_CHANGED", key="ignored_calendars", value=list(ignored))
+                    except Exception:
+                        pass
                 btn.toggled.connect(_cal_toggled)
-
                 row_layout.addWidget(btn)
-                count_in_row += 1
-                if count_in_row >= 2:
-                    row_layout.addStretch()
-                    grid_layout.addLayout(row_layout)
-                    row_layout = QHBoxLayout()
-                    row_layout.setSpacing(8)
-                    count_in_row = 0
 
-            if count_in_row > 0:
-                row_layout.addStretch()
-                grid_layout.addLayout(row_layout)
+                # Category Mapping Dropdown
+                combo = QComboBox(row_widget)
+                combo.setFixedHeight(28)
+                combo.setFixedWidth(175)
+                combo.setStyleSheet(get_combo_box_qss(bg_color="#242438", min_width=175))
+                combo.setToolTip(t("cal_category_mapping"))
 
-            self.content_layout.addWidget(grid_widget)
+                mapped_val = cal_map.get(c_name, "")
+                sel_idx = 0
+                for opt_idx, (cat_val, cat_lbl) in enumerate(category_options):
+                    combo.addItem(cat_lbl, cat_val)
+                    if cat_val == mapped_val:
+                        sel_idx = opt_idx
+                combo.setCurrentIndex(sel_idx)
+
+                def _cat_changed(idx_val, name=c_name, cb=combo):
+                    val_cat = cb.itemData(idx_val)
+                    cmap = config.get("calendar_category_map", {})
+                    if not isinstance(cmap, dict):
+                        cmap = {}
+                    else:
+                        cmap = cmap.copy()
+                    if val_cat:
+                        cmap[name] = val_cat
+                    else:
+                        cmap.pop(name, None)
+                    config.set("calendar_category_map", cmap)
+                    try:
+                        event_bus.publish("CONFIG_CHANGED", key="calendar_category_map", value=cmap)
+                    except Exception:
+                        pass
+                combo.currentIndexChanged.connect(_cat_changed)
+                row_layout.addWidget(combo)
+
+                list_layout.addWidget(row_widget)
+
+            self.content_layout.addWidget(list_widget)
+            list_widget.show()

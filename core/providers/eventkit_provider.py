@@ -104,6 +104,8 @@ class EventKitCalendarProvider(BaseCalendarProvider):
                 end_ts = ev.endDate().timeIntervalSince1970()
                 end_dt = datetime.fromtimestamp(end_ts, tz=timezone.utc)
 
+            cal_name = str(ev.calendar().title()) if ev.calendar() else None
+
             meeting = EventClassifier.classify(
                 title=title,
                 location=loc,
@@ -111,7 +113,8 @@ class EventKitCalendarProvider(BaseCalendarProvider):
                 meeting_url=meeting_url,
                 custom_keywords=custom_kw,
                 start_time=start_dt,
-                end_time=end_dt
+                end_time=end_dt,
+                calendar_name=cal_name
             )
             
             try:

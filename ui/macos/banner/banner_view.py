@@ -255,7 +255,7 @@ class QuakPitBannerView(AppKit.NSView):
         y_wave = self.base_y + math.sin(self.tick * 0.038) * 8.0
         banner_x = self.x
         banner_y = y_wave + (20.0 if self.is_slim else -10.0)
-        base_px = self.x + 605.0
+        base_px = self.x + 620.0
         base_py = y_wave + (19.0 if self.is_slim else 4.0)
 
         float_x, float_y, pitch_deg = compute_airplane_flight_dynamics(self.tick, self.is_paused)
