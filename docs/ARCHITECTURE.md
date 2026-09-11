@@ -134,13 +134,14 @@ Cross-platform presentation layer structured by operating system:
     - `banner_hud_painter.py`: Quartz 2D drawing routines (Glass card, pills, action buttons, vibrating towing cables, speech bubble).
     - `quiet_banner_view.py`: Distraction-free compact notifications.
     - `renderers/`: Vector pilot & vehicle renderers (`duck_renderer.py`, `modular_renderer.py`) featuring 4-blade high-RPM propeller discs, pulsating wingtip strobe beacons, natural mascot eye blinking, head bobbing, and species-specific slipstream inertia.
-- **`ui/linux/`**: Native Linux / Ubuntu UI using PyQt6 (Wayland / X11):
+  - **`ui/linux/`**: Native Linux / Ubuntu UI using PyQt6 (Wayland / X11):
   - **`theme.py`**: Native `QColor` and RGBA string converters derived directly from `ui.common.theme.CatppuccinMocha`.
   - **`qt_tray_app.py`**: PyQt6 `QSystemTrayIcon` with custom Catppuccin context menu.
   - **`qt_dashboard.py`**: PyQt6 Flight Deck window coordinator with capsule pill switcher and window lifecycle management.
+  - **`components/`**: Reusable Qt GUI components (`flow_layout.py` for responsive multi-line pill wrapping).
   - **`dashboard_tabs/`**: Dedicated modular tab views matching macOS:
     - `agenda_tab.py`: Today's Command Center (NOW Hero Card with "Why?" transparency box, NEXT primary upcoming event, LATER timeline agenda, and EARLIER TODAY concluded events section with arrival badges `[✅ Arrived]`, `[🟢 In Call]`, `[📍 On Site]`).
-    - `hangar_tab.py`: Hangar pilot selection and test flight controls.
+    - `hangar_tab.py`: Pilot selection, mascot workshop, category filtering, live alert preview mockup simulator, and Dual-Tier keyword management deck ("a scomparsa" collapsible presets and top-level custom triggers).
     - `settings_tab.py`: High-level coordinator featuring a modern Two-Pane Sidebar Navigation layout (Left: Category navigation sidebar; Right: Dedicated card scroll pane).
     - `settings/`: Decomposed sub-card widgets (`timing_card.py`, `eta_card.py`, `arrival_card.py`, `calendars_card.py`, `system_card.py`).
   - **`banner/`**: PyQt6 Wayland/X11 animated overlay banner (`qt_duck_banner.py`) with dynamic pitch rotation and software update banners (`qt_update_banner.py`), managed via `qt_banner.py` and a dedicated XCB helper process (`qt_banner_helper.py`) for Wayland environments.

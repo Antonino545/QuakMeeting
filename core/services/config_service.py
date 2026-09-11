@@ -274,6 +274,12 @@ class ConfigService:
         self.set("custom_keywords", kw_dict)
         return True
 
+    def get_default_keywords(self, category_key: str) -> list[str]:
+        """Returns the built-in default keywords for a given category."""
+        norm_k = self._normalize_category_key(category_key) or category_key
+        defaults = DEFAULT_CONFIG.get("custom_keywords", {})
+        return list(defaults.get(norm_k, []))
+
     def reset_custom_keywords(self, category_key: Optional[str] = None) -> None:
         """Resets custom keywords to default values."""
         defaults = DEFAULT_CONFIG.get("custom_keywords", {})
