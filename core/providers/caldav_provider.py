@@ -92,7 +92,8 @@ class CalDAVCalendarProvider(BaseCalendarProvider):
                     ),
                     custom_keywords=custom_kw,
                     start_time=s_dt,
-                    end_time=e_dt or (s_dt + timedelta(hours=1))
+                    end_time=e_dt or (s_dt + timedelta(hours=1)),
+                    calendar_name=cal_name
                 )
                 meeting.provider = cal_name
                 if uid:

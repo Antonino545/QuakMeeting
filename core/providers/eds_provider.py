@@ -148,7 +148,8 @@ class EDSCalendarProvider(BaseCalendarProvider):
                                 meeting_url=meeting_url,
                                 custom_keywords=custom_kw,
                                 start_time=s_dt,
-                                end_time=e_dt or (s_dt + timedelta(hours=1))
+                                end_time=e_dt or (s_dt + timedelta(hours=1)),
+                                calendar_name=name
                             )
                             meeting.provider = name
                             meetings.append(meeting)

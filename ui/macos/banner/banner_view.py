@@ -62,10 +62,16 @@ class QuakPitBannerView(AppKit.NSView):
         # Modular mascot customization & renderer
         self.animal = meeting_data.get("animal")
         self.outfit = meeting_data.get("outfit")
-        self.renderer = get_pilot_renderer(self.pilot_type, animal=self.animal, outfit=self.outfit)
+        self.renderer = get_pilot_renderer(
+            self.pilot_type,
+            animal=self.animal,
+            outfit=self.outfit,
+            accessories=meeting_data.get("accessories"),
+        )
 
         # Stage metadata
         self.reminder_stage = meeting_data.get("reminder_stage")
+        self.renderer.status = "urgent" if self.is_late else "upcoming" if self.reminder_stage and self.reminder_stage > 0 else "normal"
 
         # Flight dynamics & geometry (Boost speed by 40% when late)
         base_speed = float(config.get("flight_speed", 3.2))
@@ -163,9 +169,10 @@ class QuakPitBannerView(AppKit.NSView):
         return False
 
     def _init_cached_resources(self):
-        # Truncate title cleanly
+        # Truncate title cleanly (sanitizing newlines/tabs)
+        clean_title = " ".join(str(self.title or "").split())
         max_chars = 34
-        self._cached_short_title = self.title if len(self.title) <= max_chars else self.title[:max_chars - 3] + "..."
+        self._cached_short_title = clean_title if len(clean_title) <= max_chars else clean_title[:max_chars - 3] + "..."
 
         # Precompute static details string
         detail_text = ""
@@ -178,9 +185,11 @@ class QuakPitBannerView(AppKit.NSView):
                 detail_text = f"🕒 At {s_time}"
 
         if self.classroom:
-            detail_text += f"  •  🏫 {self.classroom}"
+            clean_cls = " ".join(str(self.classroom).split())
+            detail_text += f"  •  🏫 {clean_cls}"
         elif self.location:
-            loc_short = self.location if len(self.location) <= 20 else self.location[:17] + "..."
+            clean_loc = " ".join(str(self.location).split())
+            loc_short = clean_loc if len(clean_loc) <= 24 else clean_loc[:21] + "..."
             detail_text += f"  •  📍 {loc_short}"
             if self.travel_time_minutes:
                 mode_icon = MODE_ICONS.get(self.transport_mode, "🚆")
@@ -190,7 +199,8 @@ class QuakPitBannerView(AppKit.NSView):
             detail_text += "  •  🌐 Online Meeting"
 
         if self.teacher:
-            detail_text += f" ({self.teacher})"
+            clean_tch = " ".join(str(self.teacher).split())
+            detail_text += f" ({clean_tch})"
 
         self._cached_detail_text = detail_text
         self._cached_speech_text = build_pilot_speech_text(
@@ -245,7 +255,7 @@ class QuakPitBannerView(AppKit.NSView):
         y_wave = self.base_y + math.sin(self.tick * 0.038) * 8.0
         banner_x = self.x
         banner_y = y_wave + (20.0 if self.is_slim else -10.0)
-        base_px = self.x + 605.0
+        base_px = self.x + 620.0
         base_py = y_wave + (19.0 if self.is_slim else 4.0)
 
         float_x, float_y, pitch_deg = compute_airplane_flight_dynamics(self.tick, self.is_paused)
@@ -576,7 +586,7 @@ class QuakPitBannerView(AppKit.NSView):
         self.hud_painter.draw_close_button(banner_x, banner_y, banner_w, banner_h, self.pressed_button, self.hovered_button)
 
         # 8. Event Details
-        self.hud_painter.draw_event_details(banner_x, banner_y, banner_h, self._cached_short_title, self._cached_detail_text)
+        self.hud_painter.draw_event_details(banner_x, banner_y, banner_h, self._cached_short_title, self._cached_detail_text, bw=banner_w)
 
         # 9. Action Buttons Bar
         rects = self._get_button_rects(banner_x, banner_y)

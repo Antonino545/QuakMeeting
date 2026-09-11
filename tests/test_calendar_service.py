@@ -189,11 +189,11 @@ class TestCalendarServiceTravelTime(unittest.TestCase):
             self.assertEqual(m.action_url, "https://maps.apple.com/walk")
 
     def test_deduplicate_duplicate_exam_and_lecture(self):
-        now = datetime.now()
-        start_exam = now + timedelta(hours=2) # e.g. 07:40
-        end_exam = start_exam + timedelta(hours=2, minutes=15) # 09:55
-        start_class = start_exam + timedelta(minutes=20) # e.g. 08:00
-        end_class = start_class + timedelta(hours=2, minutes=30) # 10:30
+        now = datetime.now().replace(hour=8, minute=0, second=0, microsecond=0)
+        start_exam = now + timedelta(hours=2) # e.g. 10:00
+        end_exam = start_exam + timedelta(hours=2, minutes=15) # 12:15
+        start_class = start_exam + timedelta(minutes=20) # e.g. 10:20
+        end_class = start_class + timedelta(hours=2, minutes=30) # 12:50
 
         # Duplicate situation from user prompt:
         # Event 1: 07:40 - 09:55 • Exam:Satellite Systems for Positioning and Maps (Politecnico di Torino, Aula 5M)

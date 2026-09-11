@@ -20,11 +20,13 @@ except (ImportError, ModuleNotFoundError):
     QPainterPath = object
 
 from .base_renderer import BaseQtPilotRenderer
+from ui.common.mascot_catalog import normalize_accessories
 
 class QtModularRenderer(BaseQtPilotRenderer):
-    def __init__(self, animal: str = "duck", outfit: str = "aviator"):
+    def __init__(self, animal: str = "duck", outfit: str = "aviator", accessories=None):
         self.animal = animal.lower()
         self.outfit = outfit.lower()
+        self.accessories = normalize_accessories(outfit, accessories, self.animal)
 
     def draw_pilot(self, p: QPainter, px: float, py: float, tick: int) -> None:
         p.save()
@@ -42,11 +44,18 @@ class QtModularRenderer(BaseQtPilotRenderer):
             self._draw_platypus(p, px, py, tick)
         elif self.animal == "squirrel":
             self._draw_squirrel(p, px, py, tick)
+        elif self.animal == "fox":
+            self._draw_fox(p, px, py, tick)
+        elif self.animal == "penguin":
+            self._draw_penguin(p, px, py, tick)
+        elif self.animal == "panda":
+            self._draw_panda(p, px, py, tick)
         else:
             self._draw_duck(p, px, py, tick)
 
         # 3. Costume / Headwear Overlay
         self._draw_outfit(p, px, py, tick)
+        self._draw_accessories(p, px, py, tick)
 
         # 4. Propeller
         self.draw_propeller(p, px + 34, py + 1, tick)
@@ -406,6 +415,337 @@ class QtModularRenderer(BaseQtPilotRenderer):
             p.setBrush(QColor(255, 255, 255))
             p.drawEllipse(QRectF(px + 3.5, py + 12 + hb_y, 1.8, 1.8))
 
+    def _draw_fox(self, p: QPainter, px: float, py: float, tick: int) -> None:
+        hb_y = math.sin(tick * 0.14) * 1.2
+        tail_sway = math.sin(tick * 0.18) * 3.2
+        p.setPen(Qt.PenStyle.NoPen)
+
+        # 🦊 1. Fluffy S-curved Bushy Tail behind cockpit
+        tail = QPainterPath()
+        tail.moveTo(px - 34, py - 4)
+        tail.cubicTo(
+            px - 46, py + 4 + tail_sway * 0.4,
+            px - 58, py + 16 + tail_sway,
+            px - 48, py + 22 + tail_sway,
+        )
+        tail.cubicTo(
+            px - 42, py + 24 + tail_sway,
+            px - 32, py + 10,
+            px - 28, py + 2,
+        )
+        tail.closeSubpath()
+        p.setBrush(QColor(235, 97, 38))
+        p.drawPath(tail)
+
+        # Cream-white fluffy tail tip
+        tip = QPainterPath()
+        tip.moveTo(px - 44, py + 15 + tail_sway)
+        tip.cubicTo(
+            px - 47, py + 17 + tail_sway,
+            px - 52, py + 20 + tail_sway,
+            px - 48, py + 22 + tail_sway,
+        )
+        tip.cubicTo(
+            px - 45, py + 22 + tail_sway,
+            px - 42, py + 19 + tail_sway,
+            px - 40, py + 17 + tail_sway,
+        )
+        tip.closeSubpath()
+        p.setBrush(QColor(250, 242, 230))
+        p.drawPath(tip)
+
+        # 🦊 2. Back Ear
+        back_ear = QPainterPath()
+        back_ear.moveTo(px - 10, py + 15 + hb_y)
+        back_ear.lineTo(px - 9, py + 27 + hb_y)
+        back_ear.lineTo(px - 2, py + 18 + hb_y)
+        back_ear.closeSubpath()
+        p.setBrush(QColor(199, 71, 26))
+        p.drawPath(back_ear)
+
+        back_tip = QPainterPath()
+        back_tip.moveTo(px - 10, py + 23 + hb_y)
+        back_tip.lineTo(px - 9, py + 27 + hb_y)
+        back_tip.lineTo(px - 5, py + 22 + hb_y)
+        back_tip.closeSubpath()
+        p.setBrush(QColor(51, 31, 26))
+        p.drawPath(back_tip)
+
+        # 🦊 3. Round Warm Terracotta Head
+        p.setBrush(QColor(242, 115, 46))
+        p.drawEllipse(QRectF(px - 10, py + 2 + hb_y, 22, 20))
+
+        # 🦊 4. Front Ear
+        front_ear = QPainterPath()
+        front_ear.moveTo(px - 4, py + 17 + hb_y)
+        front_ear.lineTo(px - 1, py + 29 + hb_y)
+        front_ear.lineTo(px + 6, py + 17 + hb_y)
+        front_ear.closeSubpath()
+        p.setBrush(QColor(242, 115, 46))
+        p.drawPath(front_ear)
+
+        ear_tip = QPainterPath()
+        ear_tip.moveTo(px - 3, py + 24 + hb_y)
+        ear_tip.lineTo(px - 1, py + 29 + hb_y)
+        ear_tip.lineTo(px + 3, py + 22 + hb_y)
+        ear_tip.closeSubpath()
+        p.setBrush(QColor(46, 31, 26))
+        p.drawPath(ear_tip)
+
+        inner_ear = QPainterPath()
+        inner_ear.moveTo(px - 2, py + 18 + hb_y)
+        inner_ear.lineTo(px - 1, py + 24 + hb_y)
+        inner_ear.lineTo(px + 3, py + 18 + hb_y)
+        inner_ear.closeSubpath()
+        p.setBrush(QColor(255, 235, 214))
+        p.drawPath(inner_ear)
+
+        # 🦊 5. Chubby Cream Muzzle & Cheeks
+        muzzle = QPainterPath()
+        muzzle.moveTo(px - 1, py + 3 + hb_y)
+        muzzle.cubicTo(
+            px + 4, py + 2.5 + hb_y,
+            px + 11, py + 4.5 + hb_y,
+            px + 14, py + 6.5 + hb_y,
+        )
+        muzzle.cubicTo(
+            px + 13, py + 9.5 + hb_y,
+            px + 8, py + 11.5 + hb_y,
+            px + 3, py + 11 + hb_y,
+        )
+        muzzle.closeSubpath()
+        p.setBrush(QColor(250, 242, 230))
+        p.drawPath(muzzle)
+
+        # Soft peach blush
+        p.setBrush(QColor(255, 122, 102, 102))
+        p.drawEllipse(QRectF(px + 1, py + 5.5 + hb_y, 7, 5))
+
+        # 🦊 6. Button Nose & Sweet Smile
+        p.setBrush(QColor(38, 26, 26))
+        p.drawEllipse(QRectF(px + 12.0, py + 6.8 + hb_y, 3.2, 2.4))
+        p.setBrush(QColor(255, 255, 255))
+        p.drawEllipse(QRectF(px + 13.0, py + 7.8 + hb_y, 1.0, 0.8))
+
+        p.setPen(QPen(QColor(128, 51, 26, 217), 0.9))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        smile = QPainterPath()
+        smile.moveTo(px + 8.5, py + 5.5 + hb_y)
+        smile.cubicTo(
+            px + 10.0, py + 4.6 + hb_y,
+            px + 11.5, py + 4.8 + hb_y,
+            px + 12.5, py + 6.2 + hb_y,
+        )
+        p.drawPath(smile)
+        p.setPen(Qt.PenStyle.NoPen)
+
+        # 🦊 7. Expressive Blinking Eyes
+        if self.is_eye_blinking(tick):
+            p.setPen(QPen(QColor(38, 26, 20), 1.8, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            eye_arc = QPainterPath()
+            eye_arc.moveTo(px + 1.5, py + 13.0 + hb_y)
+            eye_arc.cubicTo(
+                px + 3.5, py + 15.8 + hb_y,
+                px + 5.5, py + 15.8 + hb_y,
+                px + 7.5, py + 13.0 + hb_y,
+            )
+            p.drawPath(eye_arc)
+            p.setPen(Qt.PenStyle.NoPen)
+        else:
+            p.setBrush(QColor(38, 26, 20))
+            p.drawEllipse(QRectF(px + 2.0, py + 10.5 + hb_y, 4.8, 5.2))
+            p.setBrush(QColor(255, 255, 255))
+            p.drawEllipse(QRectF(px + 3.6, py + 12.6 + hb_y, 2.0, 2.0))
+            p.drawEllipse(QRectF(px + 4.8, py + 11.2 + hb_y, 0.9, 0.9))
+
+    def _draw_penguin(self, p: QPainter, px: float, py: float, tick: int) -> None:
+        hb_y = math.sin(tick * 0.12) * 1.0
+        wing_flap = math.sin(tick * 0.22) * 3.0
+        p.setPen(Qt.PenStyle.NoPen)
+
+        # 🐧 1. Flapping Little Wing
+        wing = QPainterPath()
+        wing.moveTo(px - 14, py + 10 + hb_y)
+        wing.cubicTo(
+            px - 19, py + 7 + hb_y + wing_flap * 0.5,
+            px - 21, py + 3 + hb_y + wing_flap,
+            px - 18, py + 1 + hb_y + wing_flap,
+        )
+        wing.cubicTo(
+            px - 16, py - 1 + hb_y + wing_flap,
+            px - 13, py + 2 + hb_y,
+            px - 12, py + 5 + hb_y,
+        )
+        wing.closeSubpath()
+        p.setBrush(QColor(36, 41, 61))
+        p.drawPath(wing)
+
+        # 🐧 2. Round Navy Head & Body
+        p.setBrush(QColor(36, 41, 61))
+        p.drawEllipse(QRectF(px - 11, py + 1 + hb_y, 23, 21))
+
+        # 🐧 3. Pearly White Face & Tummy Bib
+        p.setBrush(QColor(250, 247, 240))
+        p.drawEllipse(QRectF(px - 4, py + 2 + hb_y, 15, 17))
+
+        # Soft baby penguin blush
+        p.setBrush(QColor(255, 115, 140, 107))
+        p.drawEllipse(QRectF(px + 2, py + 5 + hb_y, 7, 5))
+
+        # 🐧 4. Cute Gold/Orange Beak
+        beak = QPainterPath()
+        beak.moveTo(px + 7.5, py + 9.5 + hb_y)
+        beak.cubicTo(
+            px + 10.5, py + 9.8 + hb_y,
+            px + 13.5, py + 8.8 + hb_y,
+            px + 15.0, py + 7.0 + hb_y,
+        )
+        beak.cubicTo(
+            px + 12.5, py + 5.8 + hb_y,
+            px + 9.5, py + 5.4 + hb_y,
+            px + 7.5, py + 5.5 + hb_y,
+        )
+        beak.closeSubpath()
+        p.setBrush(QColor(250, 166, 38))
+        p.drawPath(beak)
+
+        p.setPen(QPen(QColor(255, 209, 89, 230), 0.8))
+        p.drawLine(QPointF(px + 8.5, py + 8.8 + hb_y), QPointF(px + 12.5, py + 7.8 + hb_y))
+        p.setPen(Qt.PenStyle.NoPen)
+
+        # 🐧 5. Dapper Ruby Bow Tie
+        p.setBrush(QColor(224, 56, 71))
+        bow_l = QPainterPath()
+        bow_l.moveTo(px + 1, py + 3 + hb_y)
+        bow_l.lineTo(px - 3, py + 5.5 + hb_y)
+        bow_l.lineTo(px - 3, py + 1.5 + hb_y)
+        bow_l.closeSubpath()
+        p.drawPath(bow_l)
+        bow_r = QPainterPath()
+        bow_r.moveTo(px + 1, py + 3 + hb_y)
+        bow_r.lineTo(px + 5, py + 5.5 + hb_y)
+        bow_r.lineTo(px + 5, py + 1.5 + hb_y)
+        bow_r.closeSubpath()
+        p.drawPath(bow_r)
+        p.setBrush(QColor(179, 38, 51))
+        p.drawEllipse(QRectF(px - 0.5, py + 2.0 + hb_y, 3, 3))
+
+        # 🐧 6. Sparkling Blinking Eyes
+        if self.is_eye_blinking(tick):
+            p.setPen(QPen(QColor(31, 36, 51), 1.8, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            eye_arc = QPainterPath()
+            eye_arc.moveTo(px + 1.0, py + 12.0 + hb_y)
+            eye_arc.cubicTo(
+                px + 3.0, py + 14.8 + hb_y,
+                px + 5.0, py + 14.8 + hb_y,
+                px + 7.0, py + 12.0 + hb_y,
+            )
+            p.drawPath(eye_arc)
+            p.setPen(Qt.PenStyle.NoPen)
+        else:
+            p.setBrush(QColor(26, 31, 46))
+            p.drawEllipse(QRectF(px + 1.5, py + 9.5 + hb_y, 4.8, 5.2))
+            p.setBrush(QColor(255, 255, 255))
+            p.drawEllipse(QRectF(px + 3.0, py + 11.8 + hb_y, 2.0, 2.0))
+            p.drawEllipse(QRectF(px + 4.2, py + 10.4 + hb_y, 0.9, 0.9))
+
+    def _draw_panda(self, p: QPainter, px: float, py: float, tick: int) -> None:
+        hb_y = math.sin(tick * 0.10) * 0.9
+        ear_twitch = math.sin(tick * 0.15) * 0.6
+        p.setPen(Qt.PenStyle.NoPen)
+
+        # 🐼 1. Furry Round Ears with 3D Depth
+        p.setBrush(QColor(38, 38, 46))
+        p.drawEllipse(QRectF(px - 11, py + 16 + hb_y + ear_twitch, 8, 8))
+        p.setBrush(QColor(31, 31, 38))
+        p.drawEllipse(QRectF(px + 4, py + 16 + hb_y + ear_twitch, 8, 8))
+        p.setBrush(QColor(64, 64, 76, 153))
+        p.drawEllipse(QRectF(px + 5.5, py + 17.5 + hb_y + ear_twitch, 5, 5))
+
+        # 🐼 2. Plump Cream-White Head
+        p.setBrush(QColor(250, 250, 245))
+        p.drawEllipse(QRectF(px - 10, py + 2 + hb_y, 22, 20))
+
+        # 🐼 3. Soft Rosy Blush
+        p.setBrush(QColor(255, 115, 148, 102))
+        p.drawEllipse(QRectF(px + 1, py + 4.5 + hb_y, 7.5, 5))
+
+        # 🐼 4. Characteristic Tilted Teardrop Eye Patch
+        p.save()
+        p.translate(px + 4.5, py + 12.0 + hb_y)
+        p.rotate(-18.0)
+        p.setBrush(QColor(31, 31, 41))
+        p.drawEllipse(QRectF(-3.5, -4.5, 7.0, 9.0))
+        p.restore()
+
+        # 🐼 5. Sparkling Eyes inside Eye Patch with Blinking
+        if self.is_eye_blinking(tick):
+            p.setPen(QPen(QColor(255, 255, 255), 1.8, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            eye_arc = QPainterPath()
+            eye_arc.moveTo(px + 2.0, py + 13.0 + hb_y)
+            eye_arc.cubicTo(
+                px + 4.0, py + 15.5 + hb_y,
+                px + 5.5, py + 15.5 + hb_y,
+                px + 7.5, py + 13.0 + hb_y,
+            )
+            p.drawPath(eye_arc)
+            p.setPen(Qt.PenStyle.NoPen)
+        else:
+            p.setBrush(QColor(13, 13, 20))
+            p.drawEllipse(QRectF(px + 2.5, py + 10.5 + hb_y, 4.5, 4.8))
+            p.setBrush(QColor(255, 255, 255))
+            p.drawEllipse(QRectF(px + 3.8, py + 12.5 + hb_y, 2.2, 2.2))
+            p.drawEllipse(QRectF(px + 5.0, py + 11.2 + hb_y, 1.0, 1.0))
+
+        # 🐼 6. Button Nose & Sweet Smile
+        p.setBrush(QColor(255, 255, 255, 204))
+        p.drawEllipse(QRectF(px + 6.0, py + 4.0 + hb_y, 7.5, 6.0))
+
+        p.setBrush(QColor(31, 31, 38))
+        p.drawEllipse(QRectF(px + 9.5, py + 6.5 + hb_y, 3.2, 2.2))
+        p.setBrush(QColor(255, 255, 255))
+        p.drawEllipse(QRectF(px + 10.5, py + 7.4 + hb_y, 0.9, 0.7))
+
+        p.setPen(QPen(QColor(64, 51, 51, 217), 0.85))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        mouth = QPainterPath()
+        mouth.moveTo(px + 8.5, py + 5.2 + hb_y)
+        mouth.cubicTo(
+            px + 9.2, py + 4.2 + hb_y,
+            px + 10.5, py + 4.2 + hb_y,
+            px + 11.0, py + 5.0 + hb_y,
+        )
+        p.drawPath(mouth)
+        p.setPen(Qt.PenStyle.NoPen)
+
+        # 🐼 7. Fresh Green Bamboo Shoot with Leaf
+        bamboo_sway = math.sin(tick * 0.12) * 1.5
+        p.setPen(QPen(QColor(76, 184, 82), 2.2))
+        p.drawLine(QPointF(px - 1, py + 5 + hb_y), QPointF(px + 14, py + 1 + bamboo_sway))
+
+        p.setPen(QPen(QColor(51, 140, 56), 1.2))
+        p.drawLine(QPointF(px + 6, py + 5 + hb_y * 0.5), QPointF(px + 7, py + 2.5 + hb_y * 0.5))
+        p.setPen(Qt.PenStyle.NoPen)
+
+        p.setBrush(QColor(97, 209, 97))
+        leaf = QPainterPath()
+        leaf.moveTo(px + 14, py + 1 + bamboo_sway)
+        leaf.cubicTo(
+            px + 16, py + 5 + bamboo_sway,
+            px + 18, py + 5 + bamboo_sway,
+            px + 20, py + 4 + bamboo_sway,
+        )
+        leaf.cubicTo(
+            px + 18, py + 2 + bamboo_sway,
+            px + 16, py + 1 + bamboo_sway,
+            px + 14, py + 1 + bamboo_sway,
+        )
+        leaf.closeSubpath()
+        p.drawPath(leaf)
+
     def _draw_outfit(self, p: QPainter, px: float, py: float, tick: int) -> None:
         p.setPen(Qt.PenStyle.NoPen)
         if self.outfit == "student":
@@ -452,17 +792,22 @@ class QtModularRenderer(BaseQtPilotRenderer):
 
         elif self.outfit == "agent":
             # 🕵️ Fedora
-            p.setBrush(QColor(122, 71, 38))
+            p.setPen(QPen(QColor(64, 33, 17), 1.0))
+            p.setBrush(QColor(140, 82, 43))
             p.drawEllipse(QRectF(px - 14, py + 16, 28, 6))
             crown_path = QPainterPath()
             crown_path.moveTo(px - 7, py + 18)
-            crown_path.lineTo(px - 5, py + 28)
-            crown_path.lineTo(px + 5, py + 29)
+            crown_path.lineTo(px - 6, py + 28)
+            crown_path.lineTo(px - 1, py + 30)
+            crown_path.lineTo(px + 5, py + 28)
             crown_path.lineTo(px + 7, py + 18)
             crown_path.closeSubpath()
+            p.setBrush(QColor(153, 92, 49))
             p.drawPath(crown_path)
             p.setBrush(QColor(38, 38, 46))
             p.drawRect(QRectF(px - 6.5, py + 18, 13, 3))
+            p.setPen(QPen(QColor(194, 128, 71, 204), 0.8))
+            p.drawLine(QPointF(px - 1, py + 28.5), QPointF(px + 1, py + 28.5))
 
         elif self.outfit == "gym":
             p.setBrush(QColor(235, 64, 64))
@@ -490,3 +835,24 @@ class QtModularRenderer(BaseQtPilotRenderer):
             p.setPen(QPen(QColor(230, 191, 89), 1.6))
             p.setBrush(QColor(140, 224, 250, 191))
             p.drawEllipse(QRectF(px, py + 9, 10, 10))
+
+    def _draw_accessories(self, p: QPainter, px: float, py: float, tick: int) -> None:
+        """Draws optional reusable layers without changing animal geometry."""
+        p.setPen(Qt.PenStyle.NoPen)
+        if "sunglasses" in self.accessories:
+            p.setBrush(QColor(20, 24, 34, 235))
+            p.drawEllipse(QRectF(px + 1, py + 9, 8, 5))
+            p.drawEllipse(QRectF(px + 10, py + 9, 8, 5))
+        if "bow_tie" in self.accessories:
+            p.setBrush(QColor(217, 70, 76))
+            p.drawEllipse(QRectF(px - 1, py + 1, 6, 5))
+            p.drawEllipse(QRectF(px + 5, py + 1, 6, 5))
+        if "briefcase" in self.accessories:
+            p.setBrush(QColor(140, 82, 43))
+            p.drawRect(QRectF(px - 28, py - 9, 12, 8))
+        if "badge" in self.accessories:
+            p.setBrush(QColor(245, 204, 64))
+            p.drawEllipse(QRectF(px - 2, py + 5, 4, 4))
+        if "earpiece" in self.accessories:
+            p.setBrush(QColor(38, 38, 46))
+            p.drawEllipse(QRectF(px - 12, py + 10, 3, 3))

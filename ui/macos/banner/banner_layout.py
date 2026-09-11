@@ -102,5 +102,5 @@ class BannerLayout:
         min_bx = card_right_x + 10.0
         ideal_bx = plane_x - bw * 0.5
         bx = max(min_bx, ideal_bx)
-        by = plane_y + 36.0 + math.sin(tick * 0.08) * 3.0
-        return AppKit.NSMakeRect(bx, by - 8.0, bw, bh + 8.0)
+        by = plane_y + 62.0 + math.sin(tick * 0.08) * 3.0
+        return AppKit.NSMakeRect(bx, by - 7.0, bw, bh + 7.0)

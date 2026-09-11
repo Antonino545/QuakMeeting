@@ -84,7 +84,7 @@ PROVIDER_DOTS = {
 }
 
 
-from ui.common.banner_presets import get_test_preset, get_update_preset
+from ui.common.banner_presets import get_test_preset, get_update_preset, get_up_to_date_preset, get_update_error_preset
 
 
 # ── Layout constants ──────────────────────────────────────────────────────────

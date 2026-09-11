@@ -8,27 +8,14 @@ from core.services.event_bus import event_bus
 from core.services.updater_service import updater_service
 from ui.macos.theme import Theme
 
+from ui.common.banner_presets import get_update_preset, get_up_to_date_preset, get_update_error_preset
+
 CARD_W = 500.0
 CARD_H = 148.0
 CARD_R = 18.0
 BTN_H = 32.0
 BTN_JOIN_W = 170.0
 BTN_SMALL_W = 100.0
-
-def get_update_preset(version_str: str = "New Version", release_url: str = "") -> Dict[str, Any]:
-    """Generates banner payload for QuakMeeting software updates."""
-    return {
-        "title": f"QuakMeeting {version_str} Ready!",
-        "provider": "Software Update ✨",
-        "pilot_type": "captain",
-        "action_btn_text": "⚡ UPDATE NOW",
-        "quote_text": f"🚀 {version_str} IS READY!",
-        "action_url": release_url or "https://github.com/Antonino545/QuakMeeting/releases",
-        "start_time": datetime.now(),
-        "is_travel": False,
-        "is_update_banner": True,
-        "location": "Click to download & install update",
-    }
 
 class MacUpdateBannerView(AppKit.NSView):
     def initWithFrame_meetingData_controller_(self, frame, meeting_data: Dict[str, Any], controller):
@@ -38,9 +25,12 @@ class MacUpdateBannerView(AppKit.NSView):
 
         self.meeting_data = meeting_data
         self.controller = controller
+        self.is_up_to_date = bool(meeting_data.get("is_up_to_date", False))
+        self.is_update_error = bool(meeting_data.get("is_update_error", False))
         self.title = str(meeting_data.get("title", "Software Update"))
         self.provider = str(meeting_data.get("provider", "Software Update ✨"))
-        self.btn_text = str(meeting_data.get("action_btn_text", "⚡ UPDATE NOW"))
+        self.subtitle = str(meeting_data.get("subtitle") or ("⚡ Ready to download & install update" if not self.is_up_to_date else "QuakMeeting is up to date"))
+        self.btn_text = str(meeting_data.get("action_btn_text", "⚡ UPDATE NOW" if not self.is_up_to_date else "✓ Great"))
         self.quote_text = str(meeting_data.get("quote_text", "🚀 QuakMeeting Update Ready!"))
 
         self.tick = 0
@@ -141,11 +131,13 @@ class MacUpdateBannerView(AppKit.NSView):
         card_y = 6.0
         btn_y = card_y + 14.0
         btn_x0 = card_x + 16.0
+        if self.is_up_to_date or self.is_update_error:
+            return AppKit.NSMakeRect(btn_x0, btn_y, 140.0, BTN_H)
         return AppKit.NSMakeRect(btn_x0, btn_y, BTN_JOIN_W, BTN_H)
 
     @objc.python_method
     def _snooze_rect(self) -> AppKit.NSRect:
-        if self.install_mode:
+        if self.install_mode or self.is_up_to_date or self.is_update_error:
             return AppKit.NSMakeRect(0, 0, 0, 0)
         card_x = 6.0
         card_y = 6.0
@@ -257,7 +249,9 @@ class MacUpdateBannerView(AppKit.NSView):
         elif AppKit.NSPointInRect(p, self._snooze_rect()):
             self.controller.dismiss()
         elif AppKit.NSPointInRect(p, self._join_rect()):
-            if not self.install_mode:
+            if self.is_up_to_date or self.is_update_error:
+                self.controller.dismiss()
+            elif not self.install_mode:
                 self.install_mode = True
                 self.setNeedsDisplay_(True)
                 updater_service.download_and_install_update(background=True)
@@ -274,16 +268,26 @@ class MacUpdateBannerView(AppKit.NSView):
         Theme.BASE.setFill()
         path.fill()
 
-        # ── Animated Sweep Border (Blue to Mauve) ──
-        speed_mult = 5.0 if self.install_mode else 1.0
-        phase = (math.sin(self.tick * 0.04 * speed_mult) + 1.0) / 2.0  # 0.0 to 1.0
-
-        c_blue = Theme.BLUE
-        c_mauve = Theme.MAUVE
-        r_blend = (1.0 - phase) * c_blue.redComponent() + phase * c_mauve.redComponent()
-        g_blend = (1.0 - phase) * c_blue.greenComponent() + phase * c_mauve.greenComponent()
-        b_blend = (1.0 - phase) * c_blue.blueComponent() + phase * c_mauve.blueComponent()
-        sweep_col = AppKit.NSColor.colorWithSRGBRed_green_blue_alpha_(r_blend, g_blend, b_blend, 1.0)
+        # ── Animated Sweep Border (Blue to Mauve for updates, Green to Teal for up-to-date) ──
+        if self.is_up_to_date:
+            phase = (math.sin(self.tick * 0.04) + 1.0) / 2.0  # 0.0 to 1.0
+            c_green = Theme.GREEN
+            c_teal = Theme.TEAL
+            r_blend = (1.0 - phase) * c_green.redComponent() + phase * c_teal.redComponent()
+            g_blend = (1.0 - phase) * c_green.greenComponent() + phase * c_teal.greenComponent()
+            b_blend = (1.0 - phase) * c_green.blueComponent() + phase * c_teal.blueComponent()
+            sweep_col = AppKit.NSColor.colorWithSRGBRed_green_blue_alpha_(r_blend, g_blend, b_blend, 1.0)
+        elif self.is_update_error:
+            sweep_col = Theme.RED
+        else:
+            speed_mult = 5.0 if self.install_mode else 1.0
+            phase = (math.sin(self.tick * 0.04 * speed_mult) + 1.0) / 2.0  # 0.0 to 1.0
+            c_blue = Theme.BLUE
+            c_mauve = Theme.MAUVE
+            r_blend = (1.0 - phase) * c_blue.redComponent() + phase * c_mauve.redComponent()
+            g_blend = (1.0 - phase) * c_blue.greenComponent() + phase * c_mauve.greenComponent()
+            b_blend = (1.0 - phase) * c_blue.blueComponent() + phase * c_mauve.blueComponent()
+            sweep_col = AppKit.NSColor.colorWithSRGBRed_green_blue_alpha_(r_blend, g_blend, b_blend, 1.0)
 
         sweep_col.setStroke()
         path.setLineWidth_(2.2)
@@ -315,7 +319,12 @@ class MacUpdateBannerView(AppKit.NSView):
         dot_path = AppKit.NSBezierPath.bezierPathWithOvalInRect_(
             AppKit.NSMakeRect(pill_x + 8.0, pill_y + 7.0, 8.0, 8.0)
         )
-        Theme.BLUE.setFill()
+        if self.is_up_to_date:
+            Theme.GREEN.setFill()
+        elif self.is_update_error:
+            Theme.RED.setFill()
+        else:
+            Theme.BLUE.setFill()
         dot_path.fill()
 
         # Pill text
@@ -355,7 +364,7 @@ class MacUpdateBannerView(AppKit.NSView):
             AppKit.NSFontAttributeName: AppKit.NSFont.systemFontOfSize_(10.5),
             AppKit.NSForegroundColorAttributeName: Theme.SUBTEXT0
         }
-        sub_str = AppKit.NSString.stringWithString_("⚡ Ready to download & install update")
+        sub_str = AppKit.NSString.stringWithString_(self.subtitle)
         sub_str.drawAtPoint_withAttributes_(AppKit.NSMakePoint(cx + 14.0, cy + CARD_H - 86.0), s_attrs)
 
         # ── Row 4: Action Buttons or Installation Mode Progress ──
@@ -394,8 +403,15 @@ class MacUpdateBannerView(AppKit.NSView):
         join_path = AppKit.NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(jr, 10.0, 10.0)
 
         # Gradient Join Button
-        start_c = Theme.BLUE if join_hover else Theme.SAPPHIRE
-        end_c = Theme.MAUVE if join_hover else Theme.BLUE
+        if self.is_up_to_date:
+            start_c = Theme.GREEN if join_hover else Theme.TEAL
+            end_c = Theme.TEAL if join_hover else Theme.GREEN
+        elif self.is_update_error:
+            start_c = Theme.RED if join_hover else Theme.PEACH
+            end_c = Theme.PEACH if join_hover else Theme.RED
+        else:
+            start_c = Theme.BLUE if join_hover else Theme.SAPPHIRE
+            end_c = Theme.MAUVE if join_hover else Theme.BLUE
         btn_grad = AppKit.NSGradient.alloc().initWithStartingColor_endingColor_(start_c, end_c)
         btn_grad.drawInBezierPath_angle_(join_path, 0.0)
 
@@ -408,19 +424,20 @@ class MacUpdateBannerView(AppKit.NSView):
         btn_str.drawAtPoint_withAttributes_(AppKit.NSMakePoint(jr.origin.x + (jr.size.width - btn_sz.width)/2.0, jr.origin.y + (jr.size.height - btn_sz.height)/2.0), j_attrs)
 
         # Snooze Button (✕ Later)
-        sr = self._snooze_rect()
-        snz_hover = (self._hover_target == "snooze")
-        snz_path = AppKit.NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(sr, 10.0, 10.0)
-        if snz_hover:
-            AppKit.NSColor.colorWithSRGBRed_green_blue_alpha_(0.27, 0.28, 0.38, 0.7).setFill()
-        else:
-            Theme.SURFACE0.setFill()
-        snz_path.fill()
+        if not self.is_up_to_date and not self.is_update_error:
+            sr = self._snooze_rect()
+            snz_hover = (self._hover_target == "snooze")
+            snz_path = AppKit.NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(sr, 10.0, 10.0)
+            if snz_hover:
+                AppKit.NSColor.colorWithSRGBRed_green_blue_alpha_(0.27, 0.28, 0.38, 0.7).setFill()
+            else:
+                Theme.SURFACE0.setFill()
+            snz_path.fill()
 
-        s_attrs = {
-            AppKit.NSFontAttributeName: AppKit.NSFont.boldSystemFontOfSize_(10.5),
-            AppKit.NSForegroundColorAttributeName: Theme.TEXT if snz_hover else Theme.SUBTEXT0
-        }
-        snz_str = AppKit.NSString.stringWithString_("✕ Later")
-        snz_sz = snz_str.sizeWithAttributes_(s_attrs)
-        snz_str.drawAtPoint_withAttributes_(AppKit.NSMakePoint(sr.origin.x + (sr.size.width - snz_sz.width)/2.0, sr.origin.y + (sr.size.height - snz_sz.height)/2.0), s_attrs)
+            s_attrs = {
+                AppKit.NSFontAttributeName: AppKit.NSFont.boldSystemFontOfSize_(10.5),
+                AppKit.NSForegroundColorAttributeName: Theme.TEXT if snz_hover else Theme.SUBTEXT0
+            }
+            snz_str = AppKit.NSString.stringWithString_("✕ Later")
+            snz_sz = snz_str.sizeWithAttributes_(s_attrs)
+            snz_str.drawAtPoint_withAttributes_(AppKit.NSMakePoint(sr.origin.x + (sr.size.width - snz_sz.width)/2.0, sr.origin.y + (sr.size.height - snz_sz.height)/2.0), s_attrs)

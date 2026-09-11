@@ -432,6 +432,15 @@ class QtFlightDeckWindow(QMainWindow):
             btn.style().unpolish(btn)
             btn.style().polish(btn)
 
+    def close(self):
+        """Unsubscribes from event_bus and closes the window."""
+        if hasattr(self, "_on_bus_synced"):
+            try:
+                event_bus.unsubscribe("CALENDAR_SYNCED", self._on_bus_synced)
+            except Exception:
+                pass
+        return super().close()
+
     def closeEvent(self, event):
         """Cleans up animation timers and event subscriptions when window is closed."""
         logger.debug("Closing Flight Deck dashboard window.")

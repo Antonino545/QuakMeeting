@@ -45,6 +45,24 @@ def build_pilot_speech_text(
         or "HOMEWORK" in (title or "").upper()
     )
 
+    quotes = {
+        "fox": {
+            "it": ("FOCUS TOTALE! 🚨 NESSUN BUG SFUGGE ALLA VOLPE! 🦊", "Focus totale! Strategia pronta. 🦊✈️", "Focus totale! Nessun bug sfugge alla volpe! 🦊"),
+            "en": ("FULL FOCUS! 🚨 NO BUG ESCAPES THE FOX! 🦊", "Full focus! Strategy locked in. 🦊✈️", "Full focus! No bug escapes the fox! 🦊"),
+        },
+        "penguin": {
+            "it": ("PAPILLON A POSTO! 🚨 DECOLLO FORMALE! 🐧", "Cravatta a posto, decollo formale! 🐧✈️", "Cravatta a posto, decollo formale! 🐧"),
+            "en": ("BOW TIE READY! 🚨 FORMAL TAKEOFF! 🐧", "Bow tie ready, formal takeoff! 🐧✈️", "Bow tie ready, formal takeoff! 🐧"),
+        },
+        "panda": {
+            "it": ("RESPIRA... 🚨 UN PASSO CALMO ALLA VOLTA. 🐼", "Pausa zen in arrivo. Respira. 🐼✈️", "Respira, bambù e calma. 🐼"),
+            "en": ("BREATHE... 🚨 ONE CALM STEP AT A TIME. 🐼", "Zen break incoming. Breathe. 🐼✈️", "Breathe, bamboo, and calm. 🐼"),
+        },
+    }
+    if chosen_animal in quotes:
+        localized = quotes[chosen_animal]["it" if active_lang == "it" else "en"]
+        return localized[0] if is_late else localized[1] if stage is not None and stage > 0 else localized[2]
+
     if active_lang == "it":
         if is_late:
             if chosen_animal == "owl":
@@ -299,6 +317,12 @@ def build_pilot_hover_speech_text(animal: Optional[str] = None, lang: Optional[s
             return "Squit! Metto il tempo da parte! 🐿️"
         elif chosen_animal == "platypus":
             return "Kk-kk! (Planata silenziosa!) 🦆🏊"
+        elif chosen_animal == "fox":
+            return "Focus! Il radar anti-bug è attivo! 🦊✨"
+        elif chosen_animal == "penguin":
+            return "Tutto in ordine, signore! 🐧✨"
+        elif chosen_animal == "panda":
+            return "Shhh... modalità bambù. 🐼✨"
         else:
             return "Quak! Modalità stazionaria attiva! 🛸"
     else:
@@ -310,6 +334,12 @@ def build_pilot_hover_speech_text(animal: Optional[str] = None, lang: Optional[s
             return "Squeak! Stashing time! 🐿️"
         elif chosen_animal == "platypus":
             return "Kk-kk! (Gliding silently!) 🦆🏊"
+        elif chosen_animal == "fox":
+            return "Focus! Anti-bug radar online! 🦊✨"
+        elif chosen_animal == "penguin":
+            return "Everything in order, sir! 🐧✨"
+        elif chosen_animal == "panda":
+            return "Shhh... bamboo mode. 🐼✨"
         else:
             return "Quak! Hover mode engaged! 🛸"
 

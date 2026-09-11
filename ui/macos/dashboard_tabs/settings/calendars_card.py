@@ -46,37 +46,68 @@ class CalendarsCardController(AppKit.NSObject):
             card.addSubview_(lbl)
             return
 
-        pill_h = 28.0
-        pill_gap = 8.0
-        y_offset = h - 72.0 - pill_h
-        x_offset = 18.0
+        row_h = 32.0
+        row_gap = 8.0
+        y_offset = h - 72.0 - row_h
+        popup_w = 175.0
+        pill_x = 18.0
         ignored = set(self.config.get("ignored_calendars", []))
+        cal_map = self.config.get("calendar_category_map", {})
+        if not isinstance(cal_map, dict):
+            cal_map = {}
+
+        category_options = [
+            ("", t("cal_cat_auto")),
+            ("study", t("cal_cat_study")),
+            ("work", t("cal_cat_work")),
+            ("concert", t("cal_cat_concert")),
+            ("food", t("cal_cat_food")),
+            ("travel", t("cal_cat_travel")),
+            ("sport", t("cal_cat_sport")),
+            ("in_person", t("cal_cat_in_person")),
+            ("health", t("cal_cat_health")),
+            ("general", t("cal_cat_general")),
+        ]
 
         for idx, cal in enumerate(cals):
             cal_name = cal.get("name", "Calendar")
             title = f"📅 {cal_name}"
-            pill_w = max(110.0, min(240.0, len(cal_name) * 8.5 + 42.0))
-
-            if x_offset > 18.0 and x_offset + pill_w > w - 18.0:
-                x_offset = 18.0
-                y_offset -= (pill_h + pill_gap)
-
+            pill_w = max(120.0, w - 36.0 - popup_w - 12.0)
             is_cal_enabled = (cal_name not in ignored)
+
             btn = create_pill_chip(
                 card,
                 title,
                 idx,
                 is_cal_enabled,
                 "onToggleCalendarSource:",
-                x_offset,
+                pill_x,
                 y_offset,
                 pill_w,
-                pill_h,
+                28.0,
                 "green",
                 target=self,
             )
             btn.setToolTip_(cal_name)
-            x_offset += (pill_w + pill_gap)
+
+            popup = AppKit.NSPopUpButton.alloc().initWithFrame_pullsDown_(
+                AppKit.NSMakeRect(pill_x + pill_w + 12.0, y_offset, popup_w, 28.0), False
+            )
+            popup.setFont_(AppKit.NSFont.systemFontOfSize_(12.0))
+            popup.setTarget_(self)
+            popup.setAction_("onSelectCalendarCategory:")
+            popup.setToolTip_(cal_name)
+
+            curr_cat = cal_map.get(cal_name, "")
+            for opt_val, opt_lbl in category_options:
+                item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(opt_lbl, None, "")
+                item.setRepresentedObject_(opt_val)
+                popup.menu().addItem_(item)
+                if opt_val == curr_cat:
+                    popup.selectItem_(item)
+
+            card.addSubview_(popup)
+            y_offset -= (row_h + row_gap)
 
     @objc.IBAction
     def onToggleCalendarSource_(self, sender):
@@ -91,6 +122,30 @@ class CalendarsCardController(AppKit.NSObject):
         self.config.set("ignored_calendars", list(ignored))
         try:
             event_bus.publish("CONFIG_CHANGED", key="ignored_calendars", value=list(ignored))
+        except Exception:
+            pass
+
+    @objc.IBAction
+    def onSelectCalendarCategory_(self, sender):
+        cal_name = sender.toolTip()
+        if not cal_name:
+            return
+        sel_item = sender.selectedItem()
+        cat_val = str(sel_item.representedObject() or "")
+        cal_map = self.config.get("calendar_category_map", {})
+        if not isinstance(cal_map, dict):
+            cal_map = {}
+        else:
+            cal_map = cal_map.copy()
+
+        if cat_val:
+            cal_map[cal_name] = cat_val
+        else:
+            cal_map.pop(cal_name, None)
+
+        self.config.set("calendar_category_map", cal_map)
+        try:
+            event_bus.publish("CONFIG_CHANGED", key="calendar_category_map", value=cal_map)
         except Exception:
             pass
 

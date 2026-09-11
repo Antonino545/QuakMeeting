@@ -6,11 +6,13 @@ with any costume/headwear (Student 🎓, Chef 👨‍🍳, Captain 🧑‍✈️
 import math
 import AppKit
 from .base_renderer import BasePilotRenderer
+from ui.common.mascot_catalog import normalize_accessories
 
 class ModularPilotRenderer(BasePilotRenderer):
-    def __init__(self, animal: str = "duck", outfit: str = "aviator"):
+    def __init__(self, animal: str = "duck", outfit: str = "aviator", accessories=None):
         self.animal = animal.lower()
         self.outfit = outfit.lower()
+        self.accessories = normalize_accessories(outfit, accessories, self.animal)
 
     def draw_pilot(self, px: float, py: float, tick: int) -> None:
         ctx = AppKit.NSGraphicsContext.currentContext()
@@ -28,11 +30,18 @@ class ModularPilotRenderer(BasePilotRenderer):
             self._draw_platypus(px, py, tick)
         elif self.animal == "squirrel":
             self._draw_squirrel(px, py, tick)
+        elif self.animal == "fox":
+            self._draw_fox(px, py, tick)
+        elif self.animal == "penguin":
+            self._draw_penguin(px, py, tick)
+        elif self.animal == "panda":
+            self._draw_panda(px, py, tick)
         else:
             self._draw_duck(px, py, tick)
 
         # 3. Costume / Headwear Overlay
         self._draw_outfit(px, py, tick)
+        self._draw_accessories(px, py, tick)
 
         # 4. Front Propeller
         self.draw_propeller(px + 34, py + 1, tick)
@@ -457,6 +466,345 @@ class ModularPilotRenderer(BasePilotRenderer):
             AppKit.NSColor.whiteColor().set()
             AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 3.5, py + 12 + hb_y, 1.8, 1.8)).fill()
 
+    def _draw_fox(self, px: float, py: float, tick: int) -> None:
+        hb_y = math.sin(tick * 0.14) * 1.2
+        tail_sway = math.sin(tick * 0.18) * 3.2
+
+        # 🦊 1. Fluffy S-curved Bushy Tail behind cockpit
+        tail = AppKit.NSBezierPath.bezierPath()
+        tail.moveToPoint_(AppKit.NSMakePoint(px - 34, py - 4))
+        tail.curveToPoint_controlPoint1_controlPoint2_(
+            AppKit.NSMakePoint(px - 48, py + 22 + tail_sway),
+            AppKit.NSMakePoint(px - 46, py + 4 + tail_sway * 0.4),
+            AppKit.NSMakePoint(px - 58, py + 16 + tail_sway)
+        )
+        tail.curveToPoint_controlPoint1_controlPoint2_(
+            AppKit.NSMakePoint(px - 28, py + 2),
+            AppKit.NSMakePoint(px - 42, py + 24 + tail_sway),
+            AppKit.NSMakePoint(px - 32, py + 10)
+        )
+        tail.closePath()
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.92, 0.38, 0.15, 1.0).set()
+        tail.fill()
+
+        # Cream-white fluffy tail tip
+        tip = AppKit.NSBezierPath.bezierPath()
+        tip.moveToPoint_(AppKit.NSMakePoint(px - 44, py + 15 + tail_sway))
+        tip.curveToPoint_controlPoint1_controlPoint2_(
+            AppKit.NSMakePoint(px - 48, py + 22 + tail_sway),
+            AppKit.NSMakePoint(px - 47, py + 17 + tail_sway),
+            AppKit.NSMakePoint(px - 52, py + 20 + tail_sway)
+        )
+        tip.curveToPoint_controlPoint1_controlPoint2_(
+            AppKit.NSMakePoint(px - 40, py + 17 + tail_sway),
+            AppKit.NSMakePoint(px - 45, py + 22 + tail_sway),
+            AppKit.NSMakePoint(px - 42, py + 19 + tail_sway)
+        )
+        tip.closePath()
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.98, 0.95, 0.90, 1.0).set()
+        tip.fill()
+
+        # 🦊 2. Back Ear (Orecchio Posteriore con profondità 3D)
+        back_ear = AppKit.NSBezierPath.bezierPath()
+        back_ear.moveToPoint_(AppKit.NSMakePoint(px - 10, py + 15 + hb_y))
+        back_ear.lineToPoint_(AppKit.NSMakePoint(px - 9, py + 27 + hb_y))
+        back_ear.lineToPoint_(AppKit.NSMakePoint(px - 2, py + 18 + hb_y))
+        back_ear.closePath()
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.78, 0.28, 0.10, 1.0).set()
+        back_ear.fill()
+
+        back_tip = AppKit.NSBezierPath.bezierPath()
+        back_tip.moveToPoint_(AppKit.NSMakePoint(px - 10, py + 23 + hb_y))
+        back_tip.lineToPoint_(AppKit.NSMakePoint(px - 9, py + 27 + hb_y))
+        back_tip.lineToPoint_(AppKit.NSMakePoint(px - 5, py + 22 + hb_y))
+        back_tip.closePath()
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.20, 0.12, 0.10, 1.0).set()
+        back_tip.fill()
+
+        # 🦊 3. Testa Rotonda e Morbida (Warm terracotta fox head)
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.95, 0.45, 0.18, 1.0).set()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 10, py + 2 + hb_y, 22, 20)).fill()
+
+        # 🦊 4. Front Ear (Orecchio Anteriore con ciuffo interno crema/rosa)
+        front_ear = AppKit.NSBezierPath.bezierPath()
+        front_ear.moveToPoint_(AppKit.NSMakePoint(px - 4, py + 17 + hb_y))
+        front_ear.lineToPoint_(AppKit.NSMakePoint(px - 1, py + 29 + hb_y))
+        front_ear.lineToPoint_(AppKit.NSMakePoint(px + 6, py + 17 + hb_y))
+        front_ear.closePath()
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.95, 0.45, 0.18, 1.0).set()
+        front_ear.fill()
+
+        ear_tip = AppKit.NSBezierPath.bezierPath()
+        ear_tip.moveToPoint_(AppKit.NSMakePoint(px - 3, py + 24 + hb_y))
+        ear_tip.lineToPoint_(AppKit.NSMakePoint(px - 1, py + 29 + hb_y))
+        ear_tip.lineToPoint_(AppKit.NSMakePoint(px + 3, py + 22 + hb_y))
+        ear_tip.closePath()
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.18, 0.12, 0.10, 1.0).set()
+        ear_tip.fill()
+
+        inner_ear = AppKit.NSBezierPath.bezierPath()
+        inner_ear.moveToPoint_(AppKit.NSMakePoint(px - 2, py + 18 + hb_y))
+        inner_ear.lineToPoint_(AppKit.NSMakePoint(px - 1, py + 24 + hb_y))
+        inner_ear.lineToPoint_(AppKit.NSMakePoint(px + 3, py + 18 + hb_y))
+        inner_ear.closePath()
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.92, 0.84, 1.0).set()
+        inner_ear.fill()
+
+        # 🦊 5. Guanciotti Morbidi e Musetto Bianco Crema
+        muzzle = AppKit.NSBezierPath.bezierPath()
+        muzzle.moveToPoint_(AppKit.NSMakePoint(px - 1, py + 3 + hb_y))
+        muzzle.curveToPoint_controlPoint1_controlPoint2_(
+            AppKit.NSMakePoint(px + 14, py + 6.5 + hb_y),
+            AppKit.NSMakePoint(px + 4, py + 2.5 + hb_y),
+            AppKit.NSMakePoint(px + 11, py + 4.5 + hb_y)
+        )
+        muzzle.curveToPoint_controlPoint1_controlPoint2_(
+            AppKit.NSMakePoint(px + 3, py + 11 + hb_y),
+            AppKit.NSMakePoint(px + 13, py + 9.5 + hb_y),
+            AppKit.NSMakePoint(px + 8, py + 11.5 + hb_y)
+        )
+        muzzle.closePath()
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.98, 0.95, 0.90, 1.0).set()
+        muzzle.fill()
+
+        # Blush guance rosa pesca
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.48, 0.40, 0.40).set()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 1, py + 5.5 + hb_y, 7, 5)).fill()
+
+        # 🦊 6. Nasino a Bottone e Sorriso Dolce
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.15, 0.10, 0.10, 1.0).set()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 12.0, py + 6.8 + hb_y, 3.2, 2.4)).fill()
+        AppKit.NSColor.whiteColor().set()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 13.0, py + 7.8 + hb_y, 1.0, 0.8)).fill()
+
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.50, 0.20, 0.10, 0.85).set()
+        smile = AppKit.NSBezierPath.bezierPath()
+        smile.moveToPoint_(AppKit.NSMakePoint(px + 8.5, py + 5.5 + hb_y))
+        smile.curveToPoint_controlPoint1_controlPoint2_(
+            AppKit.NSMakePoint(px + 12.5, py + 6.2 + hb_y),
+            AppKit.NSMakePoint(px + 10.0, py + 4.6 + hb_y),
+            AppKit.NSMakePoint(px + 11.5, py + 4.8 + hb_y)
+        )
+        smile.setLineWidth_(0.9)
+        smile.stroke()
+
+        # 🦊 7. Occhio Furbo e Dolce con riflessi e ammiccamento
+        if self.is_eye_blinking(tick):
+            eye_arc = AppKit.NSBezierPath.bezierPath()
+            eye_arc.setLineWidth_(1.8)
+            eye_arc.setLineCapStyle_(AppKit.NSLineCapStyleRound)
+            eye_arc.moveToPoint_(AppKit.NSMakePoint(px + 1.5, py + 13.0 + hb_y))
+            eye_arc.curveToPoint_controlPoint1_controlPoint2_(
+                AppKit.NSMakePoint(px + 7.5, py + 13.0 + hb_y),
+                AppKit.NSMakePoint(px + 3.5, py + 15.8 + hb_y),
+                AppKit.NSMakePoint(px + 5.5, py + 15.8 + hb_y)
+            )
+            AppKit.NSColor.colorWithRed_green_blue_alpha_(0.15, 0.10, 0.08, 1.0).set()
+            eye_arc.stroke()
+        else:
+            AppKit.NSColor.colorWithRed_green_blue_alpha_(0.15, 0.10, 0.08, 1.0).set()
+            AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 2.0, py + 10.5 + hb_y, 4.8, 5.2)).fill()
+            AppKit.NSColor.whiteColor().set()
+            AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 3.6, py + 12.6 + hb_y, 2.0, 2.0)).fill()
+            AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 4.8, py + 11.2 + hb_y, 0.9, 0.9)).fill()
+
+    def _draw_penguin(self, px: float, py: float, tick: int) -> None:
+        hb_y = math.sin(tick * 0.12) * 1.0
+        wing_flap = math.sin(tick * 0.22) * 3.0
+
+        # 🐧 1. Flapping Little Wing / Flipper
+        wing = AppKit.NSBezierPath.bezierPath()
+        wing.moveToPoint_(AppKit.NSMakePoint(px - 14, py + 10 + hb_y))
+        wing.curveToPoint_controlPoint1_controlPoint2_(
+            AppKit.NSMakePoint(px - 18, py + 1 + hb_y + wing_flap),
+            AppKit.NSMakePoint(px - 19, py + 7 + hb_y + wing_flap * 0.5),
+            AppKit.NSMakePoint(px - 21, py + 3 + hb_y + wing_flap)
+        )
+        wing.curveToPoint_controlPoint1_controlPoint2_(
+            AppKit.NSMakePoint(px - 12, py + 5 + hb_y),
+            AppKit.NSMakePoint(px - 16, py - 1 + hb_y + wing_flap),
+            AppKit.NSMakePoint(px - 13, py + 2 + hb_y)
+        )
+        wing.closePath()
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.14, 0.16, 0.24, 1.0).set()
+        wing.fill()
+
+        # 🐧 2. Round Navy Body & Head
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.14, 0.16, 0.24, 1.0).set()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 11, py + 1 + hb_y, 23, 21)).fill()
+
+        # 🐧 3. Pearly White Heart/Oval Face & Belly Bib
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.98, 0.97, 0.94, 1.0).set()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 4, py + 2 + hb_y, 15, 17)).fill()
+
+        # Soft baby penguin blush
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.45, 0.55, 0.42).set()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 2, py + 5 + hb_y, 7, 5)).fill()
+
+        # 🐧 4. Cute Little Gold/Orange Beak
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.98, 0.65, 0.15, 1.0).set()
+        beak = AppKit.NSBezierPath.bezierPath()
+        beak.moveToPoint_(AppKit.NSMakePoint(px + 7.5, py + 9.5 + hb_y))
+        beak.curveToPoint_controlPoint1_controlPoint2_(
+            AppKit.NSMakePoint(px + 15.0, py + 7.0 + hb_y),
+            AppKit.NSMakePoint(px + 10.5, py + 9.8 + hb_y),
+            AppKit.NSMakePoint(px + 13.5, py + 8.8 + hb_y)
+        )
+        beak.curveToPoint_controlPoint1_controlPoint2_(
+            AppKit.NSMakePoint(px + 7.5, py + 5.5 + hb_y),
+            AppKit.NSMakePoint(px + 12.5, py + 5.8 + hb_y),
+            AppKit.NSMakePoint(px + 9.5, py + 5.4 + hb_y)
+        )
+        beak.closePath()
+        beak.fill()
+
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.82, 0.35, 0.90).set()
+        beak_hl = AppKit.NSBezierPath.bezierPath()
+        beak_hl.moveToPoint_(AppKit.NSMakePoint(px + 8.5, py + 8.8 + hb_y))
+        beak_hl.lineToPoint_(AppKit.NSMakePoint(px + 12.5, py + 7.8 + hb_y))
+        beak_hl.setLineWidth_(0.8)
+        beak_hl.stroke()
+
+        # 🐧 5. Dapper Ruby Bow Tie
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.88, 0.22, 0.28, 1.0).set()
+        bow_l = AppKit.NSBezierPath.bezierPath()
+        bow_l.moveToPoint_(AppKit.NSMakePoint(px + 1, py + 3 + hb_y))
+        bow_l.lineToPoint_(AppKit.NSMakePoint(px - 3, py + 5.5 + hb_y))
+        bow_l.lineToPoint_(AppKit.NSMakePoint(px - 3, py + 1.5 + hb_y))
+        bow_l.closePath()
+        bow_l.fill()
+        bow_r = AppKit.NSBezierPath.bezierPath()
+        bow_r.moveToPoint_(AppKit.NSMakePoint(px + 1, py + 3 + hb_y))
+        bow_r.lineToPoint_(AppKit.NSMakePoint(px + 5, py + 5.5 + hb_y))
+        bow_r.lineToPoint_(AppKit.NSMakePoint(px + 5, py + 1.5 + hb_y))
+        bow_r.closePath()
+        bow_r.fill()
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.70, 0.15, 0.20, 1.0).set()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 0.5, py + 2.0 + hb_y, 3, 3)).fill()
+
+        # 🐧 6. Sparkling Baby Penguin Eyes with Blinking
+        if self.is_eye_blinking(tick):
+            eye_arc = AppKit.NSBezierPath.bezierPath()
+            eye_arc.setLineWidth_(1.8)
+            eye_arc.setLineCapStyle_(AppKit.NSLineCapStyleRound)
+            eye_arc.moveToPoint_(AppKit.NSMakePoint(px + 1.0, py + 12.0 + hb_y))
+            eye_arc.curveToPoint_controlPoint1_controlPoint2_(
+                AppKit.NSMakePoint(px + 7.0, py + 12.0 + hb_y),
+                AppKit.NSMakePoint(px + 3.0, py + 14.8 + hb_y),
+                AppKit.NSMakePoint(px + 5.0, py + 14.8 + hb_y)
+            )
+            AppKit.NSColor.colorWithRed_green_blue_alpha_(0.12, 0.14, 0.20, 1.0).set()
+            eye_arc.stroke()
+        else:
+            AppKit.NSColor.colorWithRed_green_blue_alpha_(0.10, 0.12, 0.18, 1.0).set()
+            AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 1.5, py + 9.5 + hb_y, 4.8, 5.2)).fill()
+            AppKit.NSColor.whiteColor().set()
+            AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 3.0, py + 11.8 + hb_y, 2.0, 2.0)).fill()
+            AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 4.2, py + 10.4 + hb_y, 0.9, 0.9)).fill()
+
+    def _draw_panda(self, px: float, py: float, tick: int) -> None:
+        hb_y = math.sin(tick * 0.10) * 0.9
+        ear_twitch = math.sin(tick * 0.15) * 0.6
+
+        # 🐼 1. Furry Round Ears with 3D Depth
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.15, 0.15, 0.18, 1.0).set()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 11, py + 16 + hb_y + ear_twitch, 8, 8)).fill()
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.12, 0.12, 0.15, 1.0).set()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 4, py + 16 + hb_y + ear_twitch, 8, 8)).fill()
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.25, 0.25, 0.30, 0.6).set()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 5.5, py + 17.5 + hb_y + ear_twitch, 5, 5)).fill()
+
+        # 🐼 2. Plump Cream-White Head
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.98, 0.98, 0.96, 1.0).set()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 10, py + 2 + hb_y, 22, 20)).fill()
+
+        # 🐼 3. Soft Pink Blushing Cheeks
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 0.45, 0.58, 0.40).set()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 1, py + 4.5 + hb_y, 7.5, 5)).fill()
+
+        # 🐼 4. Characteristic Tilted Teardrop Eye Patch
+        ctx = AppKit.NSGraphicsContext.currentContext()
+        ctx.saveGraphicsState()
+        patch_tf = AppKit.NSAffineTransform.transform()
+        patch_tf.translateXBy_yBy_(px + 4.5, py + 12.0 + hb_y)
+        patch_tf.rotateByDegrees_(-18.0)
+        patch_tf.concat()
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.12, 0.12, 0.16, 1.0).set()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(-3.5, -4.5, 7.0, 9.0)).fill()
+        ctx.restoreGraphicsState()
+
+        # 🐼 5. Sparkling Eyes inside Eye Patch with Blinking
+        if self.is_eye_blinking(tick):
+            eye_arc = AppKit.NSBezierPath.bezierPath()
+            eye_arc.setLineWidth_(1.8)
+            eye_arc.setLineCapStyle_(AppKit.NSLineCapStyleRound)
+            eye_arc.moveToPoint_(AppKit.NSMakePoint(px + 2.0, py + 13.0 + hb_y))
+            eye_arc.curveToPoint_controlPoint1_controlPoint2_(
+                AppKit.NSMakePoint(px + 7.5, py + 13.0 + hb_y),
+                AppKit.NSMakePoint(px + 4.0, py + 15.5 + hb_y),
+                AppKit.NSMakePoint(px + 5.5, py + 15.5 + hb_y)
+            )
+            AppKit.NSColor.whiteColor().set()
+            eye_arc.stroke()
+        else:
+            AppKit.NSColor.colorWithRed_green_blue_alpha_(0.05, 0.05, 0.08, 1.0).set()
+            AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 2.5, py + 10.5 + hb_y, 4.5, 4.8)).fill()
+            AppKit.NSColor.whiteColor().set()
+            AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 3.8, py + 12.5 + hb_y, 2.2, 2.2)).fill()
+            AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 5.0, py + 11.2 + hb_y, 1.0, 1.0)).fill()
+
+        # 🐼 6. Cute Button Nose & Sweet Smile
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(1.0, 1.0, 1.0, 0.80).set()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 6.0, py + 4.0 + hb_y, 7.5, 6.0)).fill()
+
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.12, 0.12, 0.15, 1.0).set()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 9.5, py + 6.5 + hb_y, 3.2, 2.2)).fill()
+        AppKit.NSColor.whiteColor().set()
+        AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 10.5, py + 7.4 + hb_y, 0.9, 0.7)).fill()
+
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.25, 0.20, 0.20, 0.85).set()
+        mouth = AppKit.NSBezierPath.bezierPath()
+        mouth.moveToPoint_(AppKit.NSMakePoint(px + 8.5, py + 5.2 + hb_y))
+        mouth.curveToPoint_controlPoint1_controlPoint2_(
+            AppKit.NSMakePoint(px + 11.0, py + 5.0 + hb_y),
+            AppKit.NSMakePoint(px + 9.2, py + 4.2 + hb_y),
+            AppKit.NSMakePoint(px + 10.5, py + 4.2 + hb_y)
+        )
+        mouth.setLineWidth_(0.85)
+        mouth.stroke()
+
+        # 🐼 7. Juicy Green Bamboo Shoot with Leaf
+        bamboo_sway = math.sin(tick * 0.12) * 1.5
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.30, 0.72, 0.32, 1.0).set()
+        bamboo = AppKit.NSBezierPath.bezierPath()
+        bamboo.moveToPoint_(AppKit.NSMakePoint(px - 1, py + 5 + hb_y))
+        bamboo.lineToPoint_(AppKit.NSMakePoint(px + 14, py + 1 + bamboo_sway))
+        bamboo.setLineWidth_(2.2)
+        bamboo.stroke()
+
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.20, 0.55, 0.22, 1.0).set()
+        joint = AppKit.NSBezierPath.bezierPath()
+        joint.moveToPoint_(AppKit.NSMakePoint(px + 6, py + 5 + hb_y * 0.5))
+        joint.lineToPoint_(AppKit.NSMakePoint(px + 7, py + 2.5 + hb_y * 0.5))
+        joint.setLineWidth_(1.2)
+        joint.stroke()
+
+        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.38, 0.82, 0.38, 1.0).set()
+        leaf = AppKit.NSBezierPath.bezierPath()
+        leaf.moveToPoint_(AppKit.NSMakePoint(px + 14, py + 1 + bamboo_sway))
+        leaf.curveToPoint_controlPoint1_controlPoint2_(
+            AppKit.NSMakePoint(px + 20, py + 4 + bamboo_sway),
+            AppKit.NSMakePoint(px + 16, py + 5 + bamboo_sway),
+            AppKit.NSMakePoint(px + 18, py + 5 + bamboo_sway)
+        )
+        leaf.curveToPoint_controlPoint1_controlPoint2_(
+            AppKit.NSMakePoint(px + 14, py + 1 + bamboo_sway),
+            AppKit.NSMakePoint(px + 18, py + 2 + bamboo_sway),
+            AppKit.NSMakePoint(px + 16, py + 1 + bamboo_sway)
+        )
+        leaf.closePath()
+        leaf.fill()
+
     def _draw_outfit(self, px: float, py: float, tick: int) -> None:
         if self.outfit == "student":
             # 🎓 CAPPELLO DA LAUREA (Mortarboard Academic Cap with dangling tassel)
@@ -567,3 +915,23 @@ class ModularPilotRenderer(BasePilotRenderer):
             goggle.stroke()
             AppKit.NSColor.colorWithRed_green_blue_alpha_(0.55, 0.88, 0.98, 0.75).set()
             goggle.fill()
+ 
+    def _draw_accessories(self, px: float, py: float, tick: int) -> None:
+        """Draws optional reusable accessory layers without changing animal geometry."""
+        if "sunglasses" in self.accessories:
+            AppKit.NSColor.colorWithRed_green_blue_alpha_(0.08, 0.09, 0.13, 0.92).set()
+            AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 1, py + 9, 8, 5)).fill()
+            AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 10, py + 9, 8, 5)).fill()
+        if "bow_tie" in self.accessories and self.animal != "penguin":
+            AppKit.NSColor.colorWithRed_green_blue_alpha_(0.85, 0.27, 0.30, 1.0).set()
+            AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 1, py + 1, 6, 5)).fill()
+            AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px + 5, py + 1, 6, 5)).fill()
+        if "briefcase" in self.accessories:
+            AppKit.NSColor.colorWithRed_green_blue_alpha_(0.55, 0.32, 0.17, 1.0).set()
+            AppKit.NSBezierPath.bezierPathWithRect_(AppKit.NSMakeRect(px - 28, py - 9, 12, 8)).fill()
+        if "badge" in self.accessories:
+            AppKit.NSColor.colorWithRed_green_blue_alpha_(0.96, 0.80, 0.25, 1.0).set()
+            AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 2, py + 5, 4, 4)).fill()
+        if "earpiece" in self.accessories:
+            AppKit.NSColor.colorWithRed_green_blue_alpha_(0.15, 0.15, 0.18, 1.0).set()
+            AppKit.NSBezierPath.bezierPathWithOvalInRect_(AppKit.NSMakeRect(px - 12, py + 10, 3, 3)).fill()

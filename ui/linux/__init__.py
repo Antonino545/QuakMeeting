@@ -4,7 +4,7 @@ Linux / Ubuntu Native UI Package (PyQt6, Wayland / X11).
 try:
     from .qt_tray_app import QuakMeetingTrayApp, run_qt_tray_app
     from .qt_dashboard import show_qt_dashboard, close_qt_dashboard, QtFlightDeckWindow
-    from .banner import show_qt_banner, get_test_preset, get_update_preset
+    from .banner import show_qt_banner, get_test_preset, get_update_preset, get_up_to_date_preset, get_update_error_preset
 except (ImportError, ModuleNotFoundError):
     QuakMeetingTrayApp = None
     run_qt_tray_app = None
@@ -14,6 +14,8 @@ except (ImportError, ModuleNotFoundError):
     show_qt_banner = None
     get_test_preset = None
     get_update_preset = None
+    get_up_to_date_preset = None
+    get_update_error_preset = None
 
 __all__ = [
     "QuakMeetingTrayApp",
@@ -24,4 +26,6 @@ __all__ = [
     "show_qt_banner",
     "get_test_preset",
     "get_update_preset",
+    "get_up_to_date_preset",
+    "get_update_error_preset",
 ]

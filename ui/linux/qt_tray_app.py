@@ -169,7 +169,7 @@ class QuakMeetingTrayApp:
             menu.addAction(up_act)
         else:
             chk_act = QAction("🔍 Check for Updates...", menu)
-            chk_act.triggered.connect(lambda chk=False: updater_service.check_for_updates(background=True))
+            chk_act.triggered.connect(lambda chk=False: updater_service.check_for_updates(background=True, manual=True))
             menu.addAction(chk_act)
 
         menu.addSeparator()

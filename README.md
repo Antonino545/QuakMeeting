@@ -35,9 +35,20 @@ Instead of tiny, easily-missed system notification banners, QuakMeeting animates
 
 ## ✨ Key Features
 
+- 💡 **Context Engine & "Why?" Transparency Authority (`core/domain/context_engine.py`)**:
+  - **Actionable Decision Engine**: Evaluates real-time calendar items, commute times, and presence to answer: *"What is the ONE action I should take right now, and why?"* (`LEAVE_NOW`, `PREPARE_DEPARTURE`, `JOIN_CALL`, `HEAD_TO_CLASS`, `ACTIVE_SESSION`, `RELAX`).
+  - **Transparent Rationale ("Why?" Box)**: Clear human-readable explanations behind every prompt (e.g. *"Departure deadline reached: ~25m travel + 10m buffer to reach venue on time"* or *"Attending Zoom call: notification banners suppressed"*).
+  - **Dynamic Active Session Focus & Motivation**: Dynamic countdown and exact finish time (`Ends in 1h 45m (until 17:00)`), coupled with category-tailored encouragement:
+    - 📖 **Study**: `📖 Study session in progress • ~1h 45m remaining (until 17:00) • Good luck & stay focused!`
+    - 🎯 **Exam**: `🎯 Exam in progress • ~1h 30m remaining (until 11:30) • Good luck!`
+    - 🎓 **Lecture**: `🎓 Lecture in progress • ~45m remaining (until 16:00)`
+    - 🏋️ **Workout**: `🏋️ Workout in progress • ~30m remaining (until 19:30) • Keep pushing!`
+    - 🍽️ **Meal**: `🍽️ Meal in progress • ~40m remaining (until 14:00) • Enjoy your meal!`
+    - 🧘 **Wellness**: `🧘 Wellness session in progress • ~25m remaining (until 18:00) • Relax & recharge`
+  - **Command Center Bucketing (`ui/common/agenda_viewmodel.py`)**: Partitions Today's Agenda into `⚡ NOW` (Hero Card), `⏰ NEXT`, `📅 LATER`, and `🏁 EARLIER TODAY` buckets.
 - 🖥️ **Flight Deck Control Center (`ui/macos/dashboard_window.py` & `ui/linux/qt_dashboard.py`)**:
-  - **📅 Today's Agenda**: Timeline of all today's events, departure countdowns, and 1-click launch / navigation actions.
-  - **🦆 Pilot Hangar**: Interactive flight test playground for all 7 pilot personas and 5 animal species.
+  - **📅 Today's Agenda**: Timeline of all today's events, departure countdowns, dynamic Hero Card, and 1-click launch / navigation actions.
+  - **🦆 Pilot Hangar**: Interactive flight test playground for all mascot species, pilot personas, and multi-layer accessories.
   - **⚙️ Preferences & Timing**: Customizable staged alert windows (e.g. 45m, 30m, 20m, 15m, 10m, 5m, 2m, 0m), starting location for Apple/Google Maps ETA, chimes, and calendar feeds.
 - 🌐 **Bilingual Multi-Language Support (English & Italiano)**:
   - Automatically detects system language from macOS `NSLocale` or Linux `$LANG`.
@@ -47,8 +58,9 @@ Instead of tiny, easily-missed system notification banners, QuakMeeting animates
   - Automatically calculates transit, driving, walking, or cycling duration with configurable departure buffers.
   - Triggers alerts relative to **Leave Time** instead of meeting start time.
   - 1-Click deep links to **Apple Maps** (macOS) or **Google Maps Directions** (Linux).
-- ✈️ **7 Specialized Mascot Personas & 5 Animal Species**:
-  - Custom vector graphics and speech vocalizations tailored to event context.
+- ✈️ **8 Mascot Animal Species & 9 Specialized Pilot Personas**:
+  - Distinct species: **Duck, Owl, Bunny, Platypus, Squirrel, Fox, Penguin, and Panda**.
+  - Multi-layer accessory compositing system (Fedora, Aviator Goggles, Pilot Helmet, Graduation Cap, Crown, Sunglasses, Scarf, and more).
 - 🔄 **In-App GitHub Releases Auto-Updater**:
   - Checks for updates automatically with live download/installation progress tracking.
 - ⚡ **Multiplatform Calendar Sync & Recurrence Engine**:
@@ -61,13 +73,15 @@ Instead of tiny, easily-missed system notification banners, QuakMeeting animates
 - 📍 **Smart Presence & Auto-Arrival Detection**:
   - Automatically suppresses redundant reminder banners when already in an active video call (Zoom, Teams, Webex, Skype, Slack) or connected to venue Wi-Fi (Eduroam, university campus, office networks).
   - Dedicated Settings card with customizable SSIDs, call/Wi-Fi toggles, live presence diagnostics, and transparent badges in Today's Agenda (`[✅ Arrived]`, `[🟢 In Call]`, `[📍 On Site]`).
+- 🗄️ **Robust SQLite ACID State Storage (`core/services/database_service.py`)**:
+  - Centralized SQLite database (`~/.quakmeeting/quakmeeting.db`) with WAL mode, foreign keys, and sandboxed in-memory test fallback.
 - 🔒 **Privacy-First & Local**: No telemetry, tracking, or cloud account requirements.
 
 ---
 
 ## 🦆 Mascot Animal Roster & Pilot Personas
 
-QuakMeeting features a diverse crew of animal pilots automatically chosen based on event classification. Each pilot features dynamic flight physics including high-RPM spinning propellers, wingtip navigation strobe beacons, vertical wave bobbing, blinking expressions, and fluttering accessories in the slipstream:
+QuakMeeting features a rich squadron of animal pilots automatically chosen based on event classification. Each pilot features dynamic flight physics including high-RPM spinning propellers, wingtip navigation strobe beacons, vertical wave bobbing, blinking expressions, and fluttering accessories in the slipstream:
 
 <div align="center">
   <img src="assets/animations/mascot_squadron.gif" width="100%" alt="QuakMeeting Animated Mascot Squadron" />
@@ -79,10 +93,19 @@ QuakMeeting features a diverse crew of animal pilots automatically chosen based 
 | <img src="assets/animations/duck_flight.gif" width="110" alt="Mallard Duck" /> | 🦆 **Mallard Duck** | **Aviator Pilot** | Catppuccin Green | Google Meet, Zoom, MS Teams, Webex, Jitsi, Whereby, Skype, Discord, Slack calls | `[🚀 JOIN MEETING]` |
 | <img src="assets/animations/owl_flight.gif" width="110" alt="Wise Owl" /> | 🦉 **Wise Owl** | **Academic Scholar** | Catppuccin Mauve | University lectures, exams, campus study, research | `[📚 CLASSROOM & NOTES]` |
 | <img src="assets/animations/bunny_flight.gif" width="110" alt="Athletic Bunny" /> | 🐰 **Athletic Bunny** | **Gym & Sport Hero** | Catppuccin Red | Palestra, Gym, CrossFit, Padel, Tennis, Football, Running | `[🗺️ GYM DIRECTIONS]` |
-| <img src="assets/animations/platypus_flight.gif" width="110" alt="Zen Platypus" /> | 🦔 **Zen Platypus** | **Mindfulness Guru** | Catppuccin Teal | Serenis, Therapy, Yoga, Wellness, Meditation | `[🛋️ JOIN SESSION]` |
+| <img src="assets/animations/platypus_flight.gif" width="110" alt="Zen Platypus" /> | 🕵️ **Perry the Platypus** | **Secret Agent / Zen** | Catppuccin Teal | Confidential missions, Serenis, Therapy, Yoga, Meditation | `[🛋️ JOIN SESSION]` |
 | <img src="assets/animations/squirrel_flight.gif" width="110" alt="Gourmet Squirrel" /> | 🐿️ **Gourmet Squirrel** | **Chef & Foodie** | Catppuccin Peach | Dinner, Lunch, Restaurant, Pizzeria, Sushi, Cooking | `[🗺️ RESTAURANT MAPS]` |
 | <img src="assets/animations/captain_flight.gif" width="110" alt="Captain Duck" /> | 🧑‍✈️ **Captain Duck** | **Airline & Train Pilot**| Catppuccin Sapphire | Flights, Airports, High-speed trains, Buses, Transit | `[🗺️ TRANSIT / AIRPORT]` |
 | <img src="assets/animations/racer_flight.gif" width="110" alt="Speed Racer" /> | 🏎️ **Speed Racer** | **Driver** | Catppuccin Yellow | Appointments, Doctor, Dentist, Errands, Commutes | `[🗺️ NAVIGATE MAPS]` |
+| 🦊 | 🦊 **Fox Strategist** | **Tactical Strategist** | Catppuccin Flamingo | Hackathons, Sprint Planning, Brainstorming, Strategy syncs | `[💡 STRATEGY SYNC]` |
+| 🐧 | 🐧 **Dapper Penguin** | **Executive Presenter** | Catppuccin Lavender | Keynotes, Client demos, Board meetings, Formal presentations | `[📊 OPEN DECK]` |
+| 🐼 | 🐼 **Chill Panda** | **Deep Focus Master** | Catppuccin Rosewater | Solo study, Pomodoro deep work blocks, Calm focus | `[🧘 FOCUS MODE]` |
+
+### 🎩 Modular Accessory & Customization System
+In the **Pilot Hangar**, customize your mascot with layered accessories:
+`Animal → Outfit → Accessories → Slipstream Effects`
+- **13 Accessories**: Fedora, Aviator Goggles, Pilot Helmet, Graduation Cap, Crown, Headphones, Bow Tie, Scarf, Sunglasses, Briefcase, Badge, Earpiece, and Cap.
+- Multi-layer rendering engine supported across both macOS Quartz and Linux/Windows Qt.
 
 ---
 
@@ -160,6 +183,10 @@ QuakMeeting/
 ├── core/
 │   ├── domain/
 │   │   ├── models.py              # Meeting dataclass, PilotType, TransportMode, format_duration()
+│   │   ├── context_engine.py      # Context Engine & "Why?" Transparency authority (TransitionGuidance)
+│   │   ├── state_machine.py       # EventState deterministic lifecycle machine (NOW/NEXT/LATER)
+│   │   ├── reminder_policy.py     # Strategy-based ReminderPolicy & ReminderPolicyRegistry
+│   │   ├── capabilities.py        # EventCapabilities presentation and action flags
 │   │   └── classifier.py          # Bilingual keyword taxonomy matching & smart categorization
 │   ├── providers/
 │   │   ├── base.py                # BaseCalendarProvider abstract class
@@ -167,8 +194,10 @@ QuakMeeting/
 │   │   ├── eds_provider.py        # GNOME Evolution Data Server calendar provider (Linux)
 │   │   └── caldav_provider.py     # CalDAV / .ics provider with Today RRULE expansion & TZID (Linux/Windows)
 │   ├── services/
+│   │   ├── database_service.py    # Centralized ACID SQLite state storage (~/.quakmeeting/quakmeeting.db)
 │   │   ├── calendar_service.py    # Synchronizes & caches Today-only events (00:00 to 23:59:59)
 │   │   ├── reminder_engine.py     # Multi-stage notification triggers (evaluates leave vs start time)
+│   │   ├── notification_service.py # Unified NotificationProvider architecture (Mascot, System, Sound)
 │   │   ├── eta_service.py         # Multi-modal routing & Apple/Google Maps URL builder
 │   │   ├── language_service.py    # OS detection & centralized English/Italian dictionary
 │   │   ├── updater_service.py     # GitHub Releases auto-updater
@@ -179,9 +208,11 @@ QuakMeeting/
 ├── ui/
 │   ├── app_launcher.py            # Platform-aware UI dispatcher
 │   ├── common/                    # Shared UI helpers & viewmodels
+│   │   ├── mascot_catalog.py      # 8 animal species, 13 accessories, and normalization
+│   │   ├── agenda_viewmodel.py    # CommandCenterVM bucketing (NOW, NEXT, LATER, EARLIER)
 │   │   ├── theme.py               # Catppuccin Mocha color tokens & pilot palettes
 │   │   ├── tray_viewmodel.py      # Status formatting & countdown badge logic
-│   │   ├── banner_speech.py       # Animal vocalization generator (duck, owl, bunny, squirrel, platypus)
+│   │   ├── banner_speech.py       # Animal vocalization generator (duck, owl, bunny, squirrel, platypus...)
 │   │   ├── banner_formatting.py   # Time differentials & travel badges
 │   │   ├── banner_particles.py    # Turbo afterburner & exhaust smoke physics engine
 │   │   ├── banner_queue.py        # Cross-platform banner sequencing queue
@@ -196,7 +227,7 @@ QuakMeeting/
 │       ├── qt_tray_app.py         # PyQt6 QSystemTrayIcon menu & status
 │       ├── qt_dashboard.py        # PyQt6 Flight Deck window
 │       └── banner/                # PyQt6 animated banner overlay & pilot renderers
-└── tests/                         # Full automated unit test suite (195+ tests)
+└── tests/                         # Full automated unit test suite (260+ tests)
 ```
 
 ---

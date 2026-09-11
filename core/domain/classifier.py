@@ -79,11 +79,11 @@ DEFAULT_KEYWORDS = {
         "doctor", "dr.", "physician", "dentist", "medical", "clinic", "hospital",
         "therapy", "checkup", "appointment", "consultation", "optician", "eye doctor",
         "vet", "veterinarian", "mechanic", "garage", "car inspection", "car wash", "driving",
-        "drive", "post office", "bank", "barber", "haircut", "errand", "office",
+        "drive", "post office", "bank", "barber", "haircut", "errand",
         "dottore", "medico", "visita", "dentista", "ortodontista", "clinica", "ospedale",
         "controllo", "appuntamento", "consulenza", "oculista", "veterinario", "meccanico",
         "tagliando", "revisione auto", "posta", "banca", "barbiere", "parrucchiere",
-        "commissione", "ufficio", "studio"
+        "commissione"
     ],
     "zen_duck": [
         "meditation", "mindfulness", "wellness", "relax", "spa", "massage", "thermal",
@@ -101,6 +101,17 @@ DEFAULT_KEYWORDS = {
         "brainstorm", "brainstorming", "idea", "quick", "sync", "flash", "agile",
         "standup", "sprint", "retro", "retrospettiva", "hackathon", "nut", "squirrel",
         "speed", "allineamento", "confronto", "chiacchierata", "touchpoint", "huddle"
+    ],
+    "work": [
+        "work", "working", "office", "client", "job", "shift", "shifts", "coworking",
+        "business", "company", "colleagues", "standup", "sprint review", "lavoro", "lavorativo",
+        "ufficio", "cliente", "clienti", "turno", "turni", "progetto", "riunione di lavoro",
+        "azienda", "aziendale", "colleghi"
+    ],
+    "concert": [
+        "concert", "concerts", "live music", "festival", "gig", "gigs", "tour", "band",
+        "stadium", "arena", "tickets", "ticket", "concerto", "concerti", "musica dal vivo",
+        "spettacolo", "palasport", "teatro", "opera", "dj set", "biglietti", "biglietto"
     ]
 }
 
@@ -167,6 +178,13 @@ PREFIX_CATEGORY_WORDS: Dict[str, EventCategory] = {
     "cena": EventCategory.FOOD,
     "lunch": EventCategory.FOOD,
     "pranzo": EventCategory.FOOD,
+    "work": EventCategory.WORK,
+    "lavoro": EventCategory.WORK,
+    "office": EventCategory.WORK,
+    "ufficio": EventCategory.WORK,
+    "concert": EventCategory.CONCERT,
+    "concerto": EventCategory.CONCERT,
+    "live": EventCategory.CONCERT,
 }
 
 _PREFIX_ALTS = "|".join(re.escape(k) for k in sorted(PREFIX_CATEGORY_WORDS.keys(), key=len, reverse=True))
@@ -220,10 +238,13 @@ ANCHOR_CATEGORY_MAP: Dict[str, EventCategory] = {
     "aereo": EventCategory.TRAVEL,
     "treno": EventCategory.TRAVEL,
     # Work
-    "work": EventCategory.GENERAL,
-    "office": EventCategory.GENERAL,
-    "lavoro": EventCategory.GENERAL,
-    "ufficio": EventCategory.GENERAL,
+    "work": EventCategory.WORK,
+    "office": EventCategory.WORK,
+    "lavoro": EventCategory.WORK,
+    "ufficio": EventCategory.WORK,
+    # Concert
+    "concert": EventCategory.CONCERT,
+    "concerto": EventCategory.CONCERT,
     # Appointments
     "dentist": EventCategory.IN_PERSON,
     "doctor": EventCategory.IN_PERSON,
@@ -493,6 +514,32 @@ class EventClassifier:
                 action_url="https://calendar.apple.com", theme_name="Teal Modern", is_travel=False,
                 classroom=classroom, teacher=teacher
             )
+        elif category == EventCategory.WORK:
+            is_trav = bool(location and location != "missing value" and "online" not in search_blob.lower())
+            work_dest = location if is_trav else title
+            maps_url = f"https://maps.apple.com/?q={urllib.parse.quote(work_dest)}" if is_trav else "https://calendar.apple.com"
+            m = Meeting(
+                title=title, start_time=now_time, end_time=end_time,
+                location=location, description=description,
+                event_type=EventCategory.WORK.value, pilot_type="penguin",
+                provider="Work Session 💼",
+                action_btn_text=f"🗺️ {location}" if is_trav else "💼 OPEN WORK",
+                action_url=maps_url, theme_name="Midnight Slate", is_travel=is_trav,
+                classroom=classroom, teacher=teacher
+            )
+        elif category == EventCategory.CONCERT:
+            is_trav = bool(location and location != "missing value")
+            concert_dest = location if is_trav else title
+            maps_url = f"https://maps.apple.com/?q={urllib.parse.quote(concert_dest)}"
+            m = Meeting(
+                title=title, start_time=now_time, end_time=end_time,
+                location=location, description=description,
+                event_type=EventCategory.CONCERT.value, pilot_type="fox",
+                provider="Concert & Live 🎸🎵",
+                action_btn_text=f"🎸 {location}" if is_trav else "🎸 TICKETS & MAPS",
+                action_url=maps_url, theme_name="Sunset Orange", is_travel=True,
+                classroom=classroom, teacher=teacher
+            )
         else:  # GENERAL
             default_pilot_id = special_pilot or cls._get_default_pilot()
             m = Meeting(
@@ -534,8 +581,9 @@ class EventClassifier:
                  meeting_url: Optional[str] = None,
                  custom_keywords: Optional[Dict[str, List[str]]] = None,
                  start_time: Optional[datetime] = None,
-                 end_time: Optional[datetime] = None) -> Meeting:
-        """Classifies an event by inspecting URLs, keywords, and location metadata."""
+                 end_time: Optional[datetime] = None,
+                 calendar_name: Optional[str] = None) -> Meeting:
+        """Classifies an event by inspecting URLs, keywords, location metadata, and calendar mappings."""
         keywords_dict = DEFAULT_KEYWORDS.copy()
         if isinstance(cls, EventClassifier) and hasattr(cls, 'keywords') and cls.keywords:
             keywords_dict.update(cls.keywords)
@@ -551,6 +599,8 @@ class EventClassifier:
             "sport": ["gym"],
             "in_person": ["driver"],
             "health": ["zen_duck"],
+            "work": ["work"],
+            "concert": ["concert"],
             "general": ["general"],
         }
 
@@ -568,9 +618,33 @@ class EventClassifier:
         classroom, teacher = cls.extract_classroom_and_teacher(title, location, description)
         raw_blob = f"{title} {location} {description} {meeting_url or ''}"
         search_blob = raw_blob.lower()
-
-        # 1. Match Video Meeting Patterns
         active_url = meeting_url or cls.extract_meeting_url(raw_blob)
+
+        # Check calendar-to-category mapping direct override
+        if calendar_name:
+            try:
+                from core.services.config_service import config
+                cal_map = config.get("calendar_category_map", {})
+                if isinstance(cal_map, dict):
+                    target_cat_str = cal_map.get(calendar_name)
+                    if not target_cat_str:
+                        cal_lower = calendar_name.strip().lower()
+                        for k, v in cal_map.items():
+                            if k.strip().lower() == cal_lower:
+                                target_cat_str = v
+                                break
+                    if target_cat_str:
+                        try:
+                            mapped_category = EventCategory(target_cat_str)
+                            return cls._build_meeting(
+                                mapped_category, title=title, location=location, description=description,
+                                start_time=start_time, end_time=end_time, classroom=classroom, teacher=teacher,
+                                search_blob=search_blob, active_url=active_url
+                            )
+                        except ValueError:
+                            pass
+            except Exception:
+                pass
         if active_url:
             for pattern, provider_name, p_type, btn_text in MEETING_PATTERNS:
                 if re.search(pattern, active_url, re.IGNORECASE):
@@ -739,6 +813,24 @@ class EventClassifier:
                     search_blob=search_blob, active_url=active_url
                 )
 
+        # Check Work / Lavoro
+        for kw in keywords_dict.get("work", []):
+            if cls._matches_kw(kw, core_blob) or cls._matches_kw(kw, cleaned_search_blob):
+                return cls._build_meeting(
+                    EventCategory.WORK, title=title, location=location, description=description,
+                    start_time=start_time, end_time=end_time, classroom=classroom, teacher=teacher,
+                    search_blob=search_blob, active_url=active_url
+                )
+
+        # Check Concert / Live Music
+        for kw in keywords_dict.get("concert", []):
+            if cls._matches_kw(kw, core_blob) or cls._matches_kw(kw, cleaned_search_blob):
+                return cls._build_meeting(
+                    EventCategory.CONCERT, title=title, location=location, description=description,
+                    start_time=start_time, end_time=end_time, classroom=classroom, teacher=teacher,
+                    search_blob=search_blob, active_url=active_url
+                )
+
         # Check In-Person Appointments / Driver
         for kw in keywords_dict.get("driver", []):
             if cls._matches_kw(kw, core_blob) or cls._matches_kw(kw, cleaned_search_blob):
@@ -822,6 +914,8 @@ class EventClassifier:
                 "sport": "gym",
                 "in_person": "racer",
                 "health": "zen",
+                "work": "agent",
+                "concert": "aviator",
                 "general": "aviator"
             }
 
@@ -831,6 +925,7 @@ class EventClassifier:
                 if isinstance(custom_val, dict):
                     meeting.animal = custom_val.get("animal", "duck")
                     meeting.outfit = custom_val.get("outfit", def_outfit)
+                    meeting.accessories = custom_val.get("accessories", [])
                     meeting.pilot_type = LEGACY_PILOT_MAP.get(
                         (meeting.animal, meeting.outfit),
                         f"{meeting.animal}_{meeting.outfit}"

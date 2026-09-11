@@ -55,7 +55,7 @@ class QtDuckBannerWindow(QWidget):
     WIN_W = 1000
     WIN_H = 195
 
-    PLANE_CX = CARD_X + 615.0
+    PLANE_CX = CARD_X + 630.0
     PLANE_CY = CARD_Y + 54.0
 
     def __init__(self, event_data: Dict[str, Any], parent=None):
@@ -130,7 +130,13 @@ class QtDuckBannerWindow(QWidget):
         self.outfit = event_data.get("outfit")
 
         # Instantiate pilot renderer
-        self.renderer = get_pilot_renderer(self.pilot_type, animal=self.animal, outfit=self.outfit)
+        self.renderer = get_pilot_renderer(
+            self.pilot_type,
+            animal=self.animal,
+            outfit=self.outfit,
+            accessories=event_data.get("accessories"),
+        )
+        self.renderer.status = "urgent" if self.is_late else "upcoming" if self.reminder_stage and self.reminder_stage > 0 else "normal"
 
         # Flight dynamics & geometry (Boost speed by 40% when late)
         base_speed = float(config.get("flight_speed", 3.2))
@@ -155,7 +161,7 @@ class QtDuckBannerWindow(QWidget):
         )
         self.card_h = 96.0 if self.is_slim else self.CARD_H
         self.plane_cy = self.CARD_Y + (42.0 if self.is_slim else 54.0)
-        self.plane_cx = self.CARD_X + 615.0
+        self.plane_cx = self.CARD_X + 630.0
 
         # Precompute Theme Palette & Cached Text
         self._palette = self._build_theme_palette()
@@ -238,9 +244,10 @@ class QtDuckBannerWindow(QWidget):
 
     def _init_cached_resources(self):
         """Precomputes static details, pilot speech quotes, and countdown text."""
-        # Static truncated title
+        # Static truncated title (sanitizing newlines/tabs)
+        clean_title = " ".join(str(self.title or "").split())
         max_chars = 34
-        self._cached_short_title = self.title if len(self.title) <= max_chars else self.title[:max_chars - 3] + "..."
+        self._cached_short_title = clean_title if len(clean_title) <= max_chars else clean_title[:max_chars - 3] + "..."
 
         # Static details string
         detail_text = ""
@@ -255,9 +262,11 @@ class QtDuckBannerWindow(QWidget):
                 detail_text = f"🕒 At {s_time}"
 
         if self.classroom:
-            detail_text += f"  •  🏫 {self.classroom}"
+            clean_cls = " ".join(str(self.classroom).split())
+            detail_text += f"  •  🏫 {clean_cls}"
         elif self.location:
-            loc_short = self.location if len(self.location) <= 20 else self.location[:17] + "..."
+            clean_loc = " ".join(str(self.location).split())
+            loc_short = clean_loc if len(clean_loc) <= 24 else clean_loc[:21] + "..."
             detail_text += f"  •  📍 {loc_short}"
             if self.travel_time_minutes:
                 mode_icon = MODE_ICONS.get(self.transport_mode, "🚆")
@@ -267,7 +276,8 @@ class QtDuckBannerWindow(QWidget):
             detail_text += "  •  🌐 Online Meeting"
 
         if self.teacher:
-            detail_text += f" ({self.teacher})"
+            clean_tch = " ".join(str(self.teacher).split())
+            detail_text += f" ({clean_tch})"
 
         self._cached_detail_text = detail_text
 
@@ -923,19 +933,22 @@ class QtDuckBannerWindow(QWidget):
         p.drawText(btn_rect, Qt.AlignmentFlag.AlignCenter, "✕")
 
     def _draw_event_details(self, p: QPainter, bx: float, by: float, bw: float, bh: float):
+        clean_title = " ".join(str(self._cached_short_title or "").split())
+        clean_detail = " ".join(str(self._cached_detail_text or "").split())
+
         # Title
         p.setPen(Qt.GlobalColor.white)
         tf = QFont("Inter, Arial", 12, QFont.Weight.Bold)
         p.setFont(tf)
         title_rect = QRectF(bx + 18.0, by + 36.0, bw - 36.0, 20.0)
-        p.drawText(title_rect, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft, self._cached_short_title)
+        p.drawText(title_rect, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft | Qt.TextFlag.TextSingleLine, clean_title)
 
         # Subtitle details
         p.setPen(QColor(184, 194, 224))
         sf = QFont("Inter, Arial", 10)
         p.setFont(sf)
         sub_rect = QRectF(bx + 18.0, by + 58.0, bw - 36.0, 18.0)
-        p.drawText(sub_rect, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft, self._cached_detail_text)
+        p.drawText(sub_rect, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft | Qt.TextFlag.TextSingleLine, clean_detail)
 
     def _draw_buttons_bar(self, p: QPainter, bx: float, by: float, palette: Dict[str, Any]):
         rects = self._get_button_rects(bx, by)
@@ -1071,9 +1084,9 @@ class QtDuckBannerWindow(QWidget):
         ideal_bx = px - bw * 0.5
         bx = max(min_bx, ideal_bx)
 
-        # Float above plane with bobbing
+        # Float above plane with bobbing - elevated so hats and ears are fully clear
         bob = math.sin(self.tick * 0.08) * 3.0
-        by = py - 46.0 + bob
+        by = py - 72.0 + bob
 
         bubble_rect = QRectF(bx, by, bw, bh)
 
@@ -1084,7 +1097,7 @@ class QtDuckBannerWindow(QWidget):
         # Bubble Container Shape & Tail pointing to pilot
         tail = QPainterPath()
         tail.moveTo(tail_base_x - 6.0, by + bh)
-        tail.lineTo(tail_tip_x, by + bh + 8.0)
+        tail.lineTo(tail_tip_x, by + bh + 7.0)
         tail.lineTo(tail_base_x + 6.0, by + bh)
         tail.closeSubpath()
 

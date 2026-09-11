@@ -24,15 +24,15 @@ RENDERER_MAP: Dict[str, Type[BasePilotRenderer]] = {
     "squirrel": SquirrelPilotRenderer,
 }
 
-def get_pilot_renderer(pilot_type: str, animal: str = None, outfit: str = None) -> BasePilotRenderer:
+def get_pilot_renderer(pilot_type: str, animal: str = None, outfit: str = None, accessories=None) -> BasePilotRenderer:
     """Factory function to get instantiated pilot renderer."""
     if animal and outfit:
-        return ModularPilotRenderer(animal=animal, outfit=outfit)
+        return ModularPilotRenderer(animal=animal, outfit=outfit, accessories=accessories)
 
     if "_" in pilot_type and pilot_type not in ("zen_duck",):
         parts = pilot_type.split("_", 1)
-        if parts[0] in ("duck", "owl", "bunny", "platypus", "squirrel"):
-            return ModularPilotRenderer(animal=parts[0], outfit=parts[1])
+        if parts[0] in ("duck", "owl", "bunny", "platypus", "squirrel", "fox", "penguin", "panda"):
+            return ModularPilotRenderer(animal=parts[0], outfit=parts[1], accessories=accessories)
 
     if pilot_type == "bunny":
         return ModularPilotRenderer(animal="bunny", outfit="aviator")

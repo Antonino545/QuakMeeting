@@ -247,7 +247,8 @@ class QuakMeetingMenuBar(AppKit.NSObject):
             return
         show_banner_async(payload)
 
-    def _on_calendar_synced(self, meetings: List[Any]) -> None:
+    def _on_calendar_synced(self, meetings: Optional[List[Any]] = None, **kwargs) -> None:
+        meetings = meetings or []
         self._check_startup_catch_up(meetings)
         self.meetings = [m.to_dict() if isinstance(m, Meeting) else m for m in meetings]
         self.performSelectorOnMainThread_withObject_waitUntilDone_(
@@ -528,8 +529,7 @@ class QuakMeetingMenuBar(AppKit.NSObject):
 
     @objc.IBAction
     def onCheckUpdatesAction_(self, sender):
-        show_dashboard(2)
-        updater_service.check_for_updates(background=True)
+        updater_service.check_for_updates(background=True, manual=True)
 
     @objc.IBAction
     def onInstallUpdateAction_(self, sender):

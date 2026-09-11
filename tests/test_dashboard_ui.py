@@ -207,6 +207,7 @@ class TestDashboardUI(unittest.TestCase):
         self.assertIsNotNone(mini)
         mini.update_mascot("bunny", "gym")
         mini.update_animal("duck")
+        window.close()
 
     def test_qt_tray_debug_menu_visibility(self):
         try:
@@ -363,14 +364,16 @@ class TestDashboardUI(unittest.TestCase):
             provider="EDS",
         )
 
-        event_bus.publish("CALENDAR_SYNCED", meetings=[m], success=True)
-        app.processEvents()
+        try:
+            event_bus.publish("CALENDAR_SYNCED", meetings=[m], success=True)
+            for _ in range(10):
+                app.processEvents()
 
-        # Agenda tab should now contain the synced meeting
-        self.assertFalse(window.sync_btn.is_spinning)
-        self.assertEqual(window.sync_btn.text(), "✅ Synced!")
-
-        window.close()
+            # Agenda tab should now contain the synced meeting
+            self.assertFalse(window.sync_btn.is_spinning)
+            self.assertEqual(window.sync_btn.text(), "✅ Synced!")
+        finally:
+            window.close()
 
 
 if __name__ == '__main__':

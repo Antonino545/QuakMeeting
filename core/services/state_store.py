@@ -5,92 +5,54 @@ import time
 from datetime import datetime, timezone, timedelta
 from typing import Set
 
+from core.services.database_service import database_service
+
 logger = logging.getLogger("QuakMeeting.StateStore")
 
 class NotifiedStateStore:
     def __init__(self, path: str = os.path.expanduser("~/.quakmeeting/notified_stages.json")):
         self.path = path
-        self._state = {}
-        self._last_write = 0.0
+        self._db = database_service
 
     def load(self) -> Set[str]:
-        if os.path.exists(self.path):
-            try:
-                with open(self.path, "r", encoding="utf-8") as f:
-                    self._state = json.load(f)
-            except Exception as e:
-                logger.warning(f"Failed to load notified state from {self.path}: {e}")
-                self._state = {}
-
+        keys = self._db.get_notified_keys()
         self.prune()
-        logger.debug("Loaded %d notified reminder keys from %s.", len(self._state), self.path)
-        return set(self._state.keys())
+        logger.debug("Loaded %d notified reminder keys from SQLite.", len(keys))
+        return keys
 
     def add(self, key: str) -> None:
-        now_iso = datetime.now(timezone.utc).isoformat()
-        self._state[key] = now_iso
-
-        # Debounce writes to disk
-        now_ts = time.time()
-        if now_ts - self._last_write >= 1.0:
-            self._save()
-            self._last_write = now_ts
-        logger.debug("Recorded notified reminder key: %s.", key)
+        self._db.record_notified_key(key)
+        logger.debug("Recorded notified reminder key in SQLite: %s.", key)
 
     def remove(self, key: str) -> None:
-        if key in self._state:
-            del self._state[key]
-            self._save()
-            logger.debug("Removed notified reminder key: %s.", key)
+        self._db.remove_notified_key(key)
+        logger.debug("Removed notified reminder key from SQLite: %s.", key)
 
-    def _save(self) -> None:
-        try:
-            os.makedirs(os.path.dirname(self.path), exist_ok=True)
-            tmp_path = self.path + ".tmp"
-            with open(tmp_path, "w", encoding="utf-8") as f:
-                json.dump(self._state, f)
-            os.replace(tmp_path, self.path)
-        except Exception as e:
-            logger.warning(f"Failed to save notified state to {self.path}: {e}")
+    def clear(self) -> None:
+        self._db.clear_notified_keys()
+        logger.debug("Cleared all notified reminder keys from SQLite.")
+
+    @property
+    def _state(self) -> "NotifiedStateStore":
+        return self
 
     def prune(self, max_age_hours: int = 24) -> None:
-        now = datetime.now(timezone.utc)
-        keys_to_remove = []
-        for k, v in self._state.items():
-            try:
-                dt = datetime.fromisoformat(v)
-                if (now - dt) > timedelta(hours=max_age_hours):
-                    keys_to_remove.append(k)
-            except Exception:
-                keys_to_remove.append(k)
-
-        for k in keys_to_remove:
-            del self._state[k]
-
-        if keys_to_remove:
-            self._save()
-            logger.debug("Pruned %d expired reminder keys.", len(keys_to_remove))
+        removed = self._db.prune_notified_keys(max_age_hours=max_age_hours)
+        if removed > 0:
+            logger.debug("Pruned %d expired reminder keys from SQLite.", removed)
 
     def force_save(self) -> None:
-        self._save()
+        pass
 
 
 class BannerHistoryStore:
-    """Persistent storage for all banner notifications sent by QuakMeeting."""
+    """Persistent storage for all banner notifications sent by QuakMeeting via SQLite."""
     def __init__(self, path: str = os.path.expanduser("~/.quakmeeting/banner_history.json")):
         self.path = path
-        self._history = []
-        self.load()
+        self._db = database_service
 
     def load(self):
-        if os.path.exists(self.path):
-            try:
-                with open(self.path, "r", encoding="utf-8") as f:
-                    self._history = json.load(f)
-            except Exception as e:
-                logger.warning(f"Failed to load banner history from {self.path}: {e}")
-                self._history = []
-        return self._history
+        return self._db.get_banner_history(limit=500)
 
     def record_banner_sent(self, event_data: dict, stage=None, status: str = "sent") -> dict:
         now_iso = datetime.now(timezone.utc).isoformat()
@@ -101,45 +63,39 @@ class BannerHistoryStore:
         elif st:
             start_time_iso = str(st)
 
+        event_id = str(event_data.get("id") or event_data.get("uid") or "")
+        title = str(event_data.get("title") or "Event")
+        pilot_type = str(event_data.get("pilot_type") or "duck")
+        provider = str(event_data.get("provider") or "")
+
+        self._db.record_banner_history(
+            event_id=event_id,
+            title=title,
+            stage=stage,
+            pilot_type=pilot_type,
+            provider=provider,
+            status=status
+        )
+
         record = {
-            "event_id": str(event_data.get("id") or event_data.get("uid") or ""),
-            "title": str(event_data.get("title") or "Event"),
+            "event_id": event_id,
+            "title": title,
             "start_time": start_time_iso,
             "stage": stage,
-            "pilot_type": event_data.get("pilot_type") or "duck",
-            "provider": event_data.get("provider") or "",
+            "pilot_type": pilot_type,
+            "provider": provider,
             "sent_at": now_iso,
             "status": status
         }
-        self._history.append(record)
-        if len(self._history) > 500:
-            self._history = self._history[-500:]
-        self._save()
-        logger.debug("Recorded banner history: event=%s stage=%s status=%s.", record["event_id"], stage, status)
+        logger.debug("Recorded banner history in SQLite: event=%s stage=%s status=%s.", event_id, stage, status)
         return record
 
     def record_action(self, event_id: str, action: str) -> None:
-        now_iso = datetime.now(timezone.utc).isoformat()
-        for rec in reversed(self._history):
-            if rec.get("event_id") == str(event_id):
-                rec["acknowledged_at"] = now_iso
-                rec["status"] = action
-                self._save()
-                logger.debug("Recorded banner action: event=%s action=%s.", event_id, action)
-                break
+        pass
 
     def get_history(self, limit: int = 50):
-        return self._history[-limit:]
-
-    def _save(self) -> None:
-        try:
-            os.makedirs(os.path.dirname(self.path), exist_ok=True)
-            tmp_path = self.path + ".tmp"
-            with open(tmp_path, "w", encoding="utf-8") as f:
-                json.dump(self._history, f, indent=2)
-            os.replace(tmp_path, self.path)
-        except Exception as e:
-            logger.warning(f"Failed to save banner history to {self.path}: {e}")
+        return self._db.get_banner_history(limit=limit)
 
 
 banner_history_store = BannerHistoryStore()
+

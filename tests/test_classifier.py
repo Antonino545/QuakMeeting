@@ -10,6 +10,7 @@ class TestEventClassifier(unittest.TestCase):
         self._patcher = patch("core.services.config_service.config.get", side_effect=lambda k, d=None: {
             "default_pilot": "duck",
             "force_default_pilot": False,
+            "calendar_category_map": {},
             "mascot_customization": {
                 "study": {"animal": "owl", "outfit": "student"},
                 "class": {"animal": "owl", "outfit": "student"},
@@ -18,6 +19,8 @@ class TestEventClassifier(unittest.TestCase):
                 "sport": {"animal": "duck", "outfit": "gym"},
                 "in_person": {"animal": "duck", "outfit": "racer"},
                 "health": {"animal": "duck", "outfit": "zen"},
+                "work": {"animal": "penguin", "outfit": "agent"},
+                "concert": {"animal": "fox", "outfit": "aviator"},
                 "general": {"animal": "duck", "outfit": "aviator"}
             }
         }.get(k, d))
@@ -378,6 +381,77 @@ class TestEventClassifier(unittest.TestCase):
             self.assertEqual(m_exam.animal, "platypus")
             self.assertEqual(m_exam.outfit, "student")
             self.assertEqual(m_exam.pilot_type, "platypus_student")
+
+    def test_work_classification(self):
+        # By keyword
+        m_work = self.classifier.classify(title="Sprint Review and Planning with Client")
+        self.assertEqual(m_work.event_type, EventCategory.WORK.value)
+        self.assertEqual(m_work.animal, "penguin")
+        self.assertEqual(m_work.outfit, "agent")
+
+        # By prefix
+        m_prefix = self.classifier.classify(title="Work: Prepare quarterly report")
+        self.assertEqual(m_prefix.event_type, EventCategory.WORK.value)
+
+        # In Italian
+        m_it = self.classifier.classify(title="Turno in ufficio con i colleghi")
+        self.assertEqual(m_it.event_type, EventCategory.WORK.value)
+
+    def test_concert_classification(self):
+        # By keyword
+        m_concert = self.classifier.classify(title="Coldplay Live Concert Tour")
+        self.assertEqual(m_concert.event_type, EventCategory.CONCERT.value)
+        self.assertEqual(m_concert.animal, "fox")
+        self.assertEqual(m_concert.outfit, "aviator")
+
+        # By prefix
+        m_prefix = self.classifier.classify(title="Concert: Symphony Orchestra")
+        self.assertEqual(m_prefix.event_type, EventCategory.CONCERT.value)
+
+        # In Italian
+        m_it = self.classifier.classify(title="Concerto e musica dal vivo al palasport")
+        self.assertEqual(m_it.event_type, EventCategory.CONCERT.value)
+
+    def test_calendar_category_map_direct_binding(self):
+        cal_map = {
+            "Studio Universitario": "study",
+            "Lavoro Aziendale": "work",
+            "Concerti & Eventi": "concert"
+        }
+        with unittest.mock.patch("core.services.config_service.config.get", side_effect=lambda k, d=None: {
+            "calendar_category_map": cal_map,
+            "mascot_customization": {
+                "study": {"animal": "owl", "outfit": "student"},
+                "work": {"animal": "penguin", "outfit": "agent"},
+                "concert": {"animal": "fox", "outfit": "aviator"},
+                "general": {"animal": "duck", "outfit": "aviator"}
+            }
+        }.get(k, d)):
+            # 1. Unrelated title bound to Study calendar -> study
+            m_study = self.classifier.classify(title="Random Ambiguous Sync", calendar_name="Studio Universitario")
+            self.assertEqual(m_study.event_type, EventCategory.STUDY.value)
+            self.assertEqual(m_study.animal, "owl")
+
+            # 2. Case-insensitive calendar binding -> work
+            m_work = self.classifier.classify(title="Weekly sync", calendar_name="lavoro aziendale")
+            self.assertEqual(m_work.event_type, EventCategory.WORK.value)
+            self.assertEqual(m_work.animal, "penguin")
+
+            # 3. Concert calendar binding -> concert
+            m_concert = self.classifier.classify(title="Ticket #49281", calendar_name="Concerti & Eventi")
+            self.assertEqual(m_concert.event_type, EventCategory.CONCERT.value)
+            self.assertEqual(m_concert.animal, "fox")
+
+            # 4. Video link in mapped Work calendar keeps category work but overlays join action
+            m_meet_work = self.classifier.classify(
+                title="Board Call",
+                description="https://meet.google.com/xyz-abcd-efg",
+                calendar_name="Lavoro Aziendale"
+            )
+            self.assertEqual(m_meet_work.event_type, EventCategory.WORK.value)
+            self.assertEqual(m_meet_work.meeting_url, "https://meet.google.com/xyz-abcd-efg")
+            self.assertIn("GOOGLE MEET", m_meet_work.action_btn_text)
+
 
 
 

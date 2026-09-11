@@ -110,11 +110,15 @@ def get_test_preset(pilot_type: str) -> Dict[str, Any]:
     return presets.get(pilot_type, presets["duck"])
 
 
+from core.services.language_service import t
+
+
 def get_update_preset(version_str: str = "New Version", release_url: str = "") -> Dict[str, Any]:
     """Generates banner payload for QuakMeeting software updates."""
     return {
         "title": f"QuakMeeting {version_str} Ready!",
         "provider": "Software Update ✨",
+        "subtitle": "⚡ Ready to download & install update",
         "pilot_type": "captain",
         "action_btn_text": "⚡ UPDATE NOW",
         "quote_text": f"🚀 {version_str} IS READY!",
@@ -122,5 +126,61 @@ def get_update_preset(version_str: str = "New Version", release_url: str = "") -
         "start_time": datetime.now().astimezone(),
         "is_travel": False,
         "is_update_banner": True,
+        "is_up_to_date": False,
         "location": "Click to download & install update",
     }
+
+
+def get_up_to_date_preset(version_str: str = "") -> Dict[str, Any]:
+    """Generates modular banner payload when QuakMeeting is already on the latest version."""
+    v = version_str or "v1.0.0"
+    if not v.startswith("v"):
+        v = f"v{v}"
+    title_str = t("update_up_to_date_title")
+    title = title_str if title_str != "update_up_to_date_title" else "You're Up to Date! ✨"
+    pill_str = t("update_up_to_date_pill")
+    provider = pill_str if pill_str != "update_up_to_date_pill" else "UP TO DATE ✨"
+    sub_str = t("update_up_to_date_sub", version=v)
+    sub = sub_str if sub_str != "update_up_to_date_sub" else f"QuakMeeting {v} is currently the newest version."
+    btn_str = t("update_up_to_date_btn")
+    btn = btn_str if btn_str != "update_up_to_date_btn" else "✓ Great"
+
+    return {
+        "title": title,
+        "provider": provider,
+        "subtitle": sub,
+        "pilot_type": "captain",
+        "action_btn_text": btn,
+        "quote_text": f"✨ {v} is the latest version!",
+        "action_url": "",
+        "start_time": datetime.now().astimezone(),
+        "is_travel": False,
+        "is_update_banner": True,
+        "is_up_to_date": True,
+        "location": "",
+    }
+
+
+def get_update_error_preset(error_msg: str = "") -> Dict[str, Any]:
+    """Generates modular banner payload when update check fails during manual request."""
+    title_str = t("update_check_failed_title")
+    title = title_str if title_str != "update_check_failed_title" else "Update Check Failed"
+    sub_str = t("update_check_failed_sub")
+    sub = error_msg or (sub_str if sub_str != "update_check_failed_sub" else "Could not connect to GitHub Releases.")
+
+    return {
+        "title": title,
+        "provider": "Software Update ⚠️",
+        "subtitle": sub,
+        "pilot_type": "captain",
+        "action_btn_text": "✕ Dismiss",
+        "quote_text": "Could not check for updates",
+        "action_url": "",
+        "start_time": datetime.now().astimezone(),
+        "is_travel": False,
+        "is_update_banner": True,
+        "is_up_to_date": False,
+        "is_update_error": True,
+        "location": "",
+    }
+

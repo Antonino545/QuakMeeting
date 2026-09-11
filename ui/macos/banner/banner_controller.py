@@ -137,9 +137,10 @@ class QuakPitFlyingBanner(AppKit.NSObject):
                 self.meeting_data,
                 self
             )
-            # Auto dismiss after 10 seconds for update banner if not in install mode
+            # Auto dismiss after 7 seconds for up-to-date banner, 10 seconds for update available
+            dismiss_delay = 7.0 if self.meeting_data.get("is_up_to_date") else 10.0
             AppKit.NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
-                10.0,
+                dismiss_delay,
                 self,
                 objc.selector(self.dismissIfIdleAction_, signature=b"v@:@"),
                 None,
@@ -206,8 +207,9 @@ class QuakPitFlyingBanner(AppKit.NSObject):
             pass
 
         if self.meeting_data.get("is_update_banner"):
-            from core.services.updater_service import updater_service
-            updater_service.download_and_install_update(background=True)
+            if not self.meeting_data.get("is_up_to_date") and not self.meeting_data.get("is_update_error"):
+                from core.services.updater_service import updater_service
+                updater_service.download_and_install_update(background=True)
         elif self.action_url:
             webbrowser.open(self.action_url)
         self.dismiss()
