@@ -243,7 +243,17 @@ class AgendaTabController(AppKit.NSObject):
         why_box.layer().setCornerRadius_(8.0)
         why_box.layer().setMasksToBounds_(True)
 
-        why_text = f"💡 {guidance.rationale}" if (guidance and guidance.rationale) else f"💡 {vm.countdown_text or 'Active event'}"
+        is_active_session = False
+        if guidance and getattr(guidance, "action_type", None):
+            from core.domain.context_engine import ActionType
+            is_active_session = (guidance.action_type == ActionType.ACTIVE_SESSION)
+
+        if is_active_session and guidance and guidance.rationale:
+            why_text = str(guidance.rationale)
+        elif guidance and guidance.rationale:
+            why_text = f"💡 {guidance.rationale}"
+        else:
+            why_text = f"💡 {vm.countdown_text or 'Active event'}"
         why_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(10, 8, w - 48, 22))
         why_lbl.setStringValue_(why_text)
         why_lbl.setFont_(AppKit.NSFont.systemFontOfSize_(11.5))

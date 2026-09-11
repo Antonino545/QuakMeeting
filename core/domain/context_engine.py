@@ -58,16 +58,113 @@ class ContextEngine:
     """Evaluates calendar items and environmental signals to generate clear recommendations."""
 
     @staticmethod
+    def _build_active_session_rationale(
+        event: Any,
+        now: datetime,
+        st: Optional[datetime],
+        et: Optional[datetime],
+        is_arr: bool = False,
+        arr_reason: str = "",
+        lang: Optional[str] = None
+    ) -> str:
+        """Constructs human-friendly, category-tailored context and progress for active events."""
+        from core.services.language_service import get_active_language
+        active_lang = lang or get_active_language()
+
+        def get_attr(ev: Any, key: str, default: Any = None) -> Any:
+            return ev.get(key, default) if isinstance(ev, dict) else getattr(ev, key, default)
+
+        title = str(get_attr(event, "title") or "").strip()
+        cat = str(get_attr(event, "category") or get_attr(event, "event_type") or "").lower()
+        provider = str(get_attr(event, "provider") or "").lower()
+        classroom = get_attr(event, "classroom")
+        search_blob = f"{title} {cat} {provider}".lower()
+
+        # Calculate time remaining and end clock
+        rem_str = ""
+        end_clock = ""
+        if et:
+            rem_min = max(0, int((et - now).total_seconds() / 60))
+            rem_str = format_duration(rem_min)
+            end_clock = et.astimezone().strftime("%H:%M")
+
+        is_it = (active_lang == "it")
+
+        # 1. Study
+        if cat == "study" or any(w in search_blob for w in ["study", "studio", "studiare", "ripasso", "compiti", "homework"]):
+            if et:
+                if is_it:
+                    return f"📖 Sessione di studio in corso • ~{rem_str} rimanenti (fino alle {end_clock}) • Buono studio e concentrazione!"
+                return f"📖 Study session in progress • ~{rem_str} remaining (until {end_clock}) • Good luck & stay focused!"
+            return "📖 Sessione di studio in corso • Buono studio e concentrazione!" if is_it else "📖 Study session in progress • Good luck & stay focused!"
+
+        # 2. Exam
+        if cat == "exam" or any(w in search_blob for w in ["exam", "esame", "appello", "parziale", "midterm"]):
+            if et:
+                if is_it:
+                    return f"🎯 Esame in corso • ~{rem_str} rimanenti (fino alle {end_clock}) • Buona fortuna!"
+                return f"🎯 Exam in progress • ~{rem_str} remaining (until {end_clock}) • Good luck!"
+            return "🎯 Esame in corso • Buona fortuna!" if is_it else "🎯 Exam in progress • Good luck!"
+
+        # 3. Class / Lecture
+        if cat == "class" or any(w in search_blob for w in ["class", "lecture", "lezione", "corso"]):
+            room_it = f" in aula {classroom}" if classroom else ""
+            room_en = f" in {classroom}" if classroom else ""
+            if et:
+                if is_it:
+                    return f"🎓 Lezione in corso{room_it} • ~{rem_str} rimanenti (fino alle {end_clock})"
+                return f"🎓 Lecture in progress{room_en} • ~{rem_str} remaining (until {end_clock})"
+            return f"🎓 Lezione in corso{room_it}" if is_it else f"🎓 Lecture in progress{room_en}"
+
+        # 4. Sport / Workout
+        if cat in ("sport", "gym") or any(w in search_blob for w in ["gym", "workout", "palestra", "allenamento", "fitness"]):
+            if et:
+                if is_it:
+                    return f"🏋️ Allenamento in corso • ~{rem_str} rimanenti (fino alle {end_clock}) • Dacci dentro!"
+                return f"🏋️ Workout in progress • ~{rem_str} remaining (until {end_clock}) • Keep pushing!"
+            return "🏋️ Allenamento in corso • Dacci dentro!" if is_it else "🏋️ Workout in progress • Keep pushing!"
+
+        # 5. Food / Meal
+        if cat in ("food", "chef") or any(w in search_blob for w in ["dinner", "lunch", "cena", "pranzo", "pizzeria", "ristorante"]):
+            if et:
+                if is_it:
+                    return f"🍽️ Pranzo o cena in corso • ~{rem_str} rimanenti (fino alle {end_clock}) • Buon appetito!"
+                return f"🍽️ Meal in progress • ~{rem_str} remaining (until {end_clock}) • Enjoy your meal!"
+            return "🍽️ Buon appetito!" if is_it else "🍽️ Meal in progress • Enjoy your meal!"
+
+        # 6. Wellness / Health
+        if cat in ("health", "zen_duck") or any(w in search_blob for w in ["meditation", "wellness", "relax", "yoga", "serenis"]):
+            if et:
+                if is_it:
+                    return f"🧘 Sessione benessere in corso • ~{rem_str} rimanenti (fino alle {end_clock}) • Rilassati e ricaricati."
+                return f"🧘 Wellness session in progress • ~{rem_str} remaining (until {end_clock}) • Relax & recharge."
+            return "🧘 Rilassati e ricaricati." if is_it else "🧘 Wellness session in progress • Relax & recharge."
+
+        # 7. General Fallback
+        if is_arr or "wifi" in arr_reason:
+            if et:
+                return f"📍 Presenza confermata sul posto • ~{rem_str} rimanenti (fino alle {end_clock})" if is_it else f"📍 On-site presence confirmed • ~{rem_str} remaining (until {end_clock})"
+            return "📍 Presenza confermata sul posto." if is_it else "📍 On-site venue presence confirmed."
+
+        if et:
+            return f"⏳ In corso • ~{rem_str} rimanenti (fino alle {end_clock})" if is_it else f"⏳ In progress • ~{rem_str} remaining (until {end_clock})"
+        return "⏳ In corso." if is_it else "⏳ In progress."
+
+    @staticmethod
     def evaluate(
         events: List[Any],
         clock: Optional[Clock] = None,
         default_buffer_minutes: int = 10,
-        current_time: Optional[datetime] = None
+        current_time: Optional[datetime] = None,
+        lang: Optional[str] = None
     ) -> TransitionGuidance:
         """
         Determines the immediate primary recommendation and transparent rationale for the user.
         """
         from core.domain.clock import FakeClock
+        from core.services.language_service import get_active_language
+        active_lang = lang or get_active_language()
+
         if current_time:
             current_clock = FakeClock(current_time)
         else:
@@ -127,57 +224,51 @@ class ContextEngine:
             action_btn = get_attr(event, "action_btn_text") or t("agenda_join_button", default="🚀 Join")
 
             if state == EventState.ACTIVE or (st <= now and (et is None or now < et)):
+                rem_dur = format_duration(max(0, int((et - now).total_seconds() / 60))) if et else ""
+                countdown_lbl = f"Ends in {rem_dur}" if rem_dur else "In Session"
+
                 if "call" in arr_reason:
                     app_name = arr_reason.split(":", 1)[1] if ":" in arr_reason else "Call"
+                    end_info = f" • ~{rem_dur} remaining" if rem_dur else ""
                     return TransitionGuidance(
                         action_type=ActionType.ACTIVE_SESSION,
                         context_state=UserContextState.IN_CALL,
                         headline=f"Active in {app_name}: {title}",
-                        rationale=f"Currently attending online conference via {app_name}. Banners suppressed.",
+                        rationale=f"Currently attending online conference via {app_name}{end_info}. Banners suppressed.",
                         urgency_level="normal",
                         target_event=event,
                         action_url=action_url,
                         action_btn_text=action_btn,
-                        countdown_text=f"Ends in {format_duration(int((et - now).total_seconds() / 60))}" if et else "In Session"
+                        countdown_text=countdown_lbl
                     )
-                elif is_arr or "wifi" in arr_reason:
+                elif action_url and ("meet." in action_url or "zoom." in action_url or "teams." in action_url or "serenis" in action_url) and not is_arr and (now - st).total_seconds() < 300:
+                    # Within first 5 minutes of online meeting start time, offer 1-click join if not joined yet
+                    return TransitionGuidance(
+                        action_type=ActionType.JOIN_CALL,
+                        context_state=UserContextState.IN_SESSION,
+                        headline=f"Starting Now: {title}",
+                        rationale=f"Event has started. Online meeting link is active and ready to join.",
+                        urgency_level="critical",
+                        target_event=event,
+                        action_url=action_url,
+                        action_btn_text=action_btn,
+                        countdown_text="Live Now"
+                    )
+                else:
+                    active_rationale = ContextEngine._build_active_session_rationale(
+                        event=event, now=now, st=st, et=et, is_arr=is_arr, arr_reason=arr_reason, lang=active_lang
+                    )
                     return TransitionGuidance(
                         action_type=ActionType.ACTIVE_SESSION,
                         context_state=UserContextState.IN_SESSION,
                         headline=f"In Session: {title}",
-                        rationale="On-site venue presence confirmed. Scheduled event in progress.",
+                        rationale=active_rationale,
                         urgency_level="normal",
                         target_event=event,
                         action_url=action_url,
                         action_btn_text=action_btn,
-                        countdown_text=f"Ends in {format_duration(int((et - now).total_seconds() / 60))}" if et else "In Session"
+                        countdown_text=countdown_lbl
                     )
-                else:
-                    # Active but not detected as arrived/joined
-                    if action_url and ("meet." in action_url or "zoom." in action_url or "teams." in action_url or "serenis" in action_url):
-                        return TransitionGuidance(
-                            action_type=ActionType.JOIN_CALL,
-                            context_state=UserContextState.IN_SESSION,
-                            headline=f"Starting Now: {title}",
-                            rationale=f"Event has started. Online meeting link is active and ready to join.",
-                            urgency_level="critical",
-                            target_event=event,
-                            action_url=action_url,
-                            action_btn_text=action_btn,
-                            countdown_text="Live Now"
-                        )
-                    else:
-                        return TransitionGuidance(
-                            action_type=ActionType.ACTIVE_SESSION,
-                            context_state=UserContextState.IN_SESSION,
-                            headline=f"Starting Now: {title}",
-                            rationale="Scheduled start time reached. Event is actively underway.",
-                            urgency_level="urgent",
-                            target_event=event,
-                            action_url=action_url,
-                            action_btn_text=action_btn,
-                            countdown_text="Live Now"
-                        )
 
         # 2. Check closest upcoming event
         closest_event, st, et = today_events[0]

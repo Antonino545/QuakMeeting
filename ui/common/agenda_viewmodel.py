@@ -368,7 +368,7 @@ class AgendaViewModel:
             return CommandCenterVM()
 
         from core.domain.context_engine import ContextEngine
-        guidance = ContextEngine.evaluate(events, current_time=now, clock=current_clock)
+        guidance = ContextEngine.evaluate(events, current_time=now, clock=current_clock, lang=lang)
 
         # 1. Partition into completed/past vs active/upcoming candidates
         earlier_vms = [

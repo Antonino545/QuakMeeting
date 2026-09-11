@@ -171,7 +171,17 @@ class QtAgendaTab(QWidget):
         why_box = QHBoxLayout(why_frame)
         why_box.setContentsMargins(8, 4, 8, 4)
 
-        why_text = f"💡 <b>Why:</b> {guidance.rationale}" if (guidance and getattr(guidance, 'rationale', None)) else f"💡 {vm.countdown_text or 'Active event'}"
+        is_active_session = False
+        if guidance and getattr(guidance, "action_type", None):
+            from core.domain.context_engine import ActionType
+            is_active_session = (guidance.action_type == ActionType.ACTIVE_SESSION)
+
+        if is_active_session and guidance and getattr(guidance, 'rationale', None):
+            why_text = str(guidance.rationale)
+        elif guidance and getattr(guidance, 'rationale', None):
+            why_text = f"💡 <b>Why:</b> {guidance.rationale}"
+        else:
+            why_text = f"💡 {vm.countdown_text or 'Active event'}"
         why_l = QLabel(why_text, why_frame)
         why_l.setStyleSheet("font-size: 12px; color: #f9e2af; border: none; background: transparent;")
         why_box.addWidget(why_l)

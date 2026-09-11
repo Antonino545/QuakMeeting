@@ -28,7 +28,7 @@ from core.domain.capabilities import EventCapabilities
 from ui.common.agenda_viewmodel import AgendaViewModel, AgendaEventVM
 
 # Artifacts output directory
-ARTIFACTS_DIR = os.environ.get("ARTIFACTS_DIR") or "/Users/antonino54/.gemini/antigravity/brain/474b406f-ce14-420a-9c00-6dc6e045f6bb"
+ARTIFACTS_DIR = os.environ.get("ARTIFACTS_DIR") or os.path.expanduser("~/.quakmeeting/test_artifacts")
 os.makedirs(ARTIFACTS_DIR, exist_ok=True)
 
 

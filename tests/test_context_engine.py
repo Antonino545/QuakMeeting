@@ -80,6 +80,76 @@ class TestContextEngine(unittest.TestCase):
         self.assertEqual(guidance.context_state, UserContextState.IN_CALL)
         self.assertIn("Banners suppressed", guidance.rationale)
 
+    def test_active_study_session_rationale_en(self):
+        # Active study session from 15:00 to 17:00, clock at 15:15
+        self.clock.set_time(datetime(2026, 9, 10, 15, 15, 0, tzinfo=timezone.utc))
+
+        event = CalendarEvent(
+            uid="evt-study",
+            title="OR Study: Dynamic Programming Recurrence",
+            start_time=datetime(2026, 9, 10, 15, 0, 0, tzinfo=timezone.utc),
+            end_time=datetime(2026, 9, 10, 17, 0, 0, tzinfo=timezone.utc),
+            category="study"
+        )
+
+        guidance = ContextEngine.evaluate([event], clock=self.clock, lang="en")
+        self.assertEqual(guidance.action_type, ActionType.ACTIVE_SESSION)
+        self.assertIn("Study session in progress", guidance.rationale)
+        self.assertIn("1h 45m remaining", guidance.rationale)
+        self.assertIn("Good luck & stay focused!", guidance.rationale)
+        self.assertEqual(guidance.countdown_text, "Ends in 1h 45m")
+
+    def test_active_study_session_rationale_it(self):
+        self.clock.set_time(datetime(2026, 9, 10, 15, 15, 0, tzinfo=timezone.utc))
+
+        event = CalendarEvent(
+            uid="evt-study-it",
+            title="Studio: Ricerca Operativa",
+            start_time=datetime(2026, 9, 10, 15, 0, 0, tzinfo=timezone.utc),
+            end_time=datetime(2026, 9, 10, 17, 0, 0, tzinfo=timezone.utc),
+            category="study"
+        )
+
+        guidance = ContextEngine.evaluate([event], clock=self.clock, lang="it")
+        self.assertEqual(guidance.action_type, ActionType.ACTIVE_SESSION)
+        self.assertIn("Sessione di studio in corso", guidance.rationale)
+        self.assertIn("1h 45m rimanenti", guidance.rationale)
+        self.assertIn("Buono studio e concentrazione!", guidance.rationale)
+
+    def test_active_exam_session_rationale(self):
+        self.clock.set_time(datetime(2026, 9, 10, 10, 30, 0, tzinfo=timezone.utc))
+
+        event = CalendarEvent(
+            uid="evt-exam",
+            title="Physics Final Exam",
+            start_time=datetime(2026, 9, 10, 10, 0, 0, tzinfo=timezone.utc),
+            end_time=datetime(2026, 9, 10, 12, 0, 0, tzinfo=timezone.utc),
+            category="exam"
+        )
+
+        guidance = ContextEngine.evaluate([event], clock=self.clock, lang="en")
+        self.assertEqual(guidance.action_type, ActionType.ACTIVE_SESSION)
+        self.assertIn("Exam in progress", guidance.rationale)
+        self.assertIn("1h 30m remaining", guidance.rationale)
+        self.assertIn("Good luck!", guidance.rationale)
+
+    def test_active_workout_session_rationale(self):
+        self.clock.set_time(datetime(2026, 9, 10, 18, 30, 0, tzinfo=timezone.utc))
+
+        event = CalendarEvent(
+            uid="evt-gym",
+            title="Gym Workout",
+            start_time=datetime(2026, 9, 10, 18, 0, 0, tzinfo=timezone.utc),
+            end_time=datetime(2026, 9, 10, 19, 0, 0, tzinfo=timezone.utc),
+            category="sport"
+        )
+
+        guidance = ContextEngine.evaluate([event], clock=self.clock, lang="en")
+        self.assertEqual(guidance.action_type, ActionType.ACTIVE_SESSION)
+        self.assertIn("Workout in progress", guidance.rationale)
+        self.assertIn("30m remaining", guidance.rationale)
+        self.assertIn("Keep pushing!", guidance.rationale)
+
 
 if __name__ == "__main__":
     unittest.main()
