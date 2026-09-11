@@ -29,9 +29,29 @@ CATEGORIES_DEF = [
     ("health", "cat_health_title", "cat_health_desc", "zen", "panda", Theme.TEAL),
     ("travel", "cat_travel_title", "cat_travel_desc", "captain", "duck", Theme.SAPPHIRE),
     ("in_person", "cat_in_person_title", "cat_in_person_desc", "racer", "fox", Theme.YELLOW),
-    ("concert", "cat_concert_title", "cat_concert_desc", "aviator", "fox", Theme.MAUVE),
+    ("concert", "cat_concert_title", "cat_concert_desc", "concert", "fox", Theme.MAUVE),
     ("general", "cat_general_title", "cat_general_desc", "aviator", "duck", Theme.GREEN)
 ]
+
+CATEGORY_GROUPS = {
+    "all": ["study", "work", "food", "sport", "health", "travel", "in_person", "concert", "general"],
+    "productivity": ["study", "work"],
+    "lifestyle": ["food", "sport", "health"],
+    "commute": ["travel", "in_person", "concert"],
+    "general": ["general"],
+}
+
+CATEGORY_BADGES = {
+    "study": ("🎓", "ACADEMIC"),
+    "food": ("🍕", "DINING"),
+    "travel": ("✈️", "TRANSIT"),
+    "sport": ("🏋️", "FITNESS"),
+    "in_person": ("📍", "ON-SITE"),
+    "health": ("🌸", "WELLNESS"),
+    "work": ("💼", "OFFICE"),
+    "concert": ("🎸", "SHOWTIME"),
+    "general": ("⭐", "STANDARD"),
+}
 
 def get_categories():
     return [
@@ -51,6 +71,9 @@ class HangarTabController(AppKit.NSObject):
         self._cached_view = None
         self._cached_sig = None
         self._anim_timer = None
+        self.active_filter = "all"
+        self.active_study_subcat = "study"
+        self.filter_buttons = {}
         self.expanded_categories = set()
         self.expanded_presets = set()
         self.mini_canvases = {}
@@ -100,14 +123,25 @@ class HangarTabController(AppKit.NSObject):
         self._cached_sig = None
 
     @objc.python_method
+    def get_drawer_h(self, ck: str) -> float:
+        target_k = getattr(self, "active_study_subcat", "study") if ck == "study" else ck
+        is_preset_open = target_k in self.expanded_presets
+        preset_extra = 123.0 if is_preset_open else 0.0
+        return (238.0 if ck == "study" else 226.0) + preset_extra
+
+    @objc.python_method
     def render(self, container, w, h):
         self.dashboard_controller = container
+        if not hasattr(self, "expanded_categories") or self.expanded_categories is None:
+            self.expanded_categories = set()
         if not hasattr(self, "expanded_categories") or self.expanded_categories is None:
             self.expanded_categories = set()
         if not hasattr(self, "expanded_presets") or self.expanded_presets is None:
             self.expanded_presets = set()
         if not hasattr(self, "active_study_subcat") or not self.active_study_subcat:
             self.active_study_subcat = "study"
+        if not hasattr(self, "active_filter") or not self.active_filter:
+            self.active_filter = "all"
         customs = config.get("mascot_customization", {})
         sig = (
             round(w),
@@ -118,6 +152,7 @@ class HangarTabController(AppKit.NSObject):
             tuple(sorted(self.expanded_categories)),
             tuple(sorted(self.expanded_presets)),
             str(self.active_study_subcat),
+            str(self.active_filter),
         )
         if self._cached_view is not None and self._cached_sig == sig:
             self.start_animation_timer()
@@ -134,40 +169,48 @@ class HangarTabController(AppKit.NSObject):
         self.preset_toggle_buttons = {}
         self.preset_doc_views = {}
         self.preset_scrolls = {}
+        self.filter_buttons = {}
 
         scroll_view = AppKit.NSScrollView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 0, w, h))
         scroll_view.setHasVerticalScroller_(True)
         scroll_view.setDrawsBackground_(False)
 
-        card_base_h = 102.0
+        def get_card_base_h(ck: str) -> float:
+            return 148.0 if ck == "study" else 102.0
+
         gap = 14.0
         header_h = 52.0
+        filter_bar_h = 32.0
         categories = get_categories()
-        n_cards = len(categories)
+
+        allowed_cats = set(CATEGORY_GROUPS.get(self.active_filter, CATEGORY_GROUPS["all"]))
+        visible_categories = [c for c in categories if c[0] in allowed_cats]
+        n_cards = len(visible_categories)
 
         def get_drawer_h(ck: str) -> float:
-            target_k = self.active_study_subcat if ck == "study" else ck
-            is_preset_open = target_k in self.expanded_presets
-            preset_extra = 123.0 if is_preset_open else 0.0
-            return (424.0 if ck == "study" else 226.0) + preset_extra
-
+            return self.get_drawer_h(ck)
 
         total_cards_h = sum(
-            (card_base_h + get_drawer_h(cat_key) if cat_key in self.expanded_categories else card_base_h)
-            for cat_key, *_ in categories
+            (get_card_base_h(cat_key) + get_drawer_h(cat_key) if cat_key in self.expanded_categories else get_card_base_h(cat_key))
+            for cat_key, *_ in visible_categories
         )
-        content_h = max(h, 20.0 + header_h + 16.0 + total_cards_h + (n_cards - 1) * gap + 36.0)
+        content_h = max(h, 20.0 + header_h + 10.0 + filter_bar_h + 16.0 + total_cards_h + max(0, n_cards - 1) * gap + 36.0)
         content_view = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 0, w - 16, content_h))
 
         # 1. Top Compact Toolbar
         header_card = self._create_header_card(20, content_h - 20 - header_h, w - 56, header_h)
         content_view.addSubview_(header_card)
 
-        # 2. Category Cards
-        cur_top = content_h - 20.0 - header_h - 16.0
-        for cat_key, cat_title, cat_desc, fixed_outfit, def_animal, cat_color in categories:
+        # 2. Modern Segmented Filter Pills Bar
+        filter_bar = self._create_filter_bar(20, content_h - 20 - header_h - 10 - filter_bar_h, w - 56, filter_bar_h, len(categories))
+        content_view.addSubview_(filter_bar)
+
+        # 3. Category Cards
+        cur_top = content_h - 20.0 - header_h - 10.0 - filter_bar_h - 16.0
+        for cat_key, cat_title, cat_desc, fixed_outfit, def_animal, cat_color in visible_categories:
             is_exp = cat_key in self.expanded_categories
             this_drawer_h = get_drawer_h(cat_key)
+            card_base_h = get_card_base_h(cat_key)
             this_card_h = (card_base_h + this_drawer_h) if is_exp else card_base_h
             c_y = cur_top - this_card_h
 
@@ -177,6 +220,15 @@ class HangarTabController(AppKit.NSObject):
                 if isinstance(current_setting, dict)
                 else (current_setting or def_animal)
             )
+            if cat_key == "study":
+                active_sc = getattr(self, "active_study_subcat", "study")
+                sc_val = customs.get(active_sc, current_setting)
+                sc_animal = (
+                    sc_val.get("animal", current_animal)
+                    if isinstance(sc_val, dict)
+                    else (sc_val or current_animal)
+                )
+                current_animal = sc_animal
 
             card = self._create_customizer_card(
                 cat_key,
@@ -276,6 +328,54 @@ class HangarTabController(AppKit.NSObject):
         return container
 
     @objc.python_method
+    def _create_filter_bar(self, x, y, w, h, total_cats_count):
+        bar = FlippedView.alloc().initWithFrame_(AppKit.NSMakeRect(x, y, w, h))
+        filter_items = [
+            ("all", t("hangar_filter_all", count=total_cats_count)),
+            ("productivity", t("hangar_filter_productivity")),
+            ("lifestyle", t("hangar_filter_lifestyle")),
+            ("commute", t("hangar_filter_commute")),
+            ("general", t("hangar_filter_general")),
+        ]
+
+        active_f = getattr(self, "active_filter", "all")
+        bx = 0.0
+        b_font = AppKit.NSFont.boldSystemFontOfSize_(11.0)
+        self.filter_buttons = {}
+
+        for f_key, f_label in filter_items:
+            str_w = AppKit.NSString.stringWithString_(f_label).sizeWithAttributes_({AppKit.NSFontAttributeName: b_font}).width
+            btn_w = max(86.0, math.ceil(str_w) + 26.0)
+            is_active = (f_key == active_f)
+
+            btn = Theme.create_button(
+                AppKit.NSMakeRect(bx, 2.0, btn_w, 28.0),
+                title=f_label,
+                bg_color=(Theme.SURFACE1 if is_active else Theme.BASE),
+                text_color=(Theme.TEXT if is_active else Theme.SUBTEXT0),
+                border_color=(Theme.BLUE if is_active else Theme.SURFACE0),
+                corner_radius=14.0,
+                font_size=11.0,
+                bold=is_active,
+            )
+            btn.setIdentifier_(f_key)
+            btn.setTarget_(self)
+            btn.setAction_("onFilterPillClicked:")
+            self.filter_buttons[f_key] = btn
+            bar.addSubview_(btn)
+            bx += btn_w + 8.0
+
+        return bar
+
+    @objc.IBAction
+    def onFilterPillClicked_(self, sender):
+        fk = str(sender.identifier())
+        self.active_filter = fk
+        self.invalidate_cache()
+        if self.dashboard_controller and hasattr(self.dashboard_controller, "refresh_current_tab"):
+            self.dashboard_controller.refresh_current_tab()
+
+    @objc.python_method
     def _create_customizer_card(
         self,
         cat_key,
@@ -296,16 +396,19 @@ class HangarTabController(AppKit.NSObject):
             bg_color=(Theme.MANTLE if is_expanded else Theme.BASE),
             corner_radius=12.0,
             border_width=(1.5 if is_expanded else 1.0),
-            border_color=(accent_color if is_expanded else Theme.SURFACE0),
+            border_color=(accent_color.colorWithAlphaComponent_(0.55) if is_expanded else accent_color.colorWithAlphaComponent_(0.22)),
         )
 
-        # ── Upper section (always 102px tall) ──
+        # ── Upper section (148px tall for study, 102px for others) ──
         upper_y = drawer_h if is_expanded else 0.0
-        upper_view = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(0, upper_y, w, 102.0))
+        base_h = 148.0 if cat_key == "study" else 102.0
+        upper_view = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(0, upper_y, w, base_h))
         card.addSubview_(upper_view)
 
+        y_off = 46.0 if cat_key == "study" else 0.0
+
         # Accent Pill Indicator
-        pill = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(12, 24, 4, 54))
+        pill = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(12, 18 + y_off, 4, 66))
         pill.setWantsLayer_(True)
         pill.layer().setBackgroundColor_(accent_color.CGColor())
         pill.layer().setCornerRadius_(2.0)
@@ -314,49 +417,126 @@ class HangarTabController(AppKit.NSObject):
         # 🌟 Embedded Live Mini Mascot Viewport
         preview_outfit = "agent" if cur_animal == "platypus" else fixed_outfit
         mini_canvas = MascotMiniCanvasView.alloc().initWithFrame_animal_outfit_(
-            AppKit.NSMakeRect(22, 16, 74, 68), cur_animal, preview_outfit
+            AppKit.NSMakeRect(22, 16 + y_off, 74, 68), cur_animal, preview_outfit
         )
+        mini_canvas.setCustomCornerRadius_(8.0)
+        mini_canvas.setBgColor_(Theme.MANTLE)
+        mini_canvas.setAccentColor_(accent_color)
         self.mini_canvases[cat_key] = mini_canvas
         upper_view.addSubview_(mini_canvas)
 
-        # Title and Description
-        text_w = max(240.0, w - 316.0)
-        title_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(106, 64, text_w, 24))
+        # Title Row: Category Badge + Category Title
+        text_x = 106.0
+        text_w = max(220.0, w - 106.0 - 246.0)
+
+        badge_icon, badge_tag = CATEGORY_BADGES.get(cat_key, ("⭐", cat_key.upper()))
+        badge_str = f"{badge_icon} {badge_tag}"
+        b_font = AppKit.NSFont.boldSystemFontOfSize_(9.5)
+        badge_w = math.ceil(AppKit.NSString.stringWithString_(badge_str).sizeWithAttributes_({AppKit.NSFontAttributeName: b_font}).width) + 14.0
+
+        badge_view = FlippedView.alloc().initWithFrame_(AppKit.NSMakeRect(text_x, 70.0 + y_off, badge_w, 20.0))
+        badge_view.setWantsLayer_(True)
+        badge_view.layer().setBackgroundColor_(accent_color.colorWithAlphaComponent_(0.15).CGColor())
+        badge_view.layer().setBorderWidth_(1.0)
+        badge_view.layer().setBorderColor_(accent_color.colorWithAlphaComponent_(0.35).CGColor())
+        badge_view.layer().setCornerRadius_(4.0)
+
+        badge_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(0, 2.0, badge_w, 16.0))
+        badge_lbl.setStringValue_(badge_str)
+        badge_lbl.setFont_(b_font)
+        badge_lbl.setTextColor_(accent_color)
+        badge_lbl.setAlignment_(AppKit.NSTextAlignmentCenter)
+        badge_lbl.setBezeled_(False)
+        badge_lbl.setDrawsBackground_(False)
+        badge_lbl.setEditable_(False)
+        badge_lbl.setUsesSingleLineMode_(True)
+        badge_view.addSubview_(badge_lbl)
+        upper_view.addSubview_(badge_view)
+
+        title_lbl = AppKit.NSTextField.alloc().initWithFrame_(
+            AppKit.NSMakeRect(text_x + badge_w + 8.0, 68.0 + y_off, text_w - badge_w - 8.0, 22.0)
+        )
         title_lbl.setStringValue_(cat_title)
-        title_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(13))
+        title_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(13.5))
         title_lbl.setTextColor_(Theme.TEXT)
         title_lbl.setBezeled_(False)
         title_lbl.setDrawsBackground_(False)
         title_lbl.setEditable_(False)
+        title_lbl.setUsesSingleLineMode_(True)
         upper_view.addSubview_(title_lbl)
 
+        # Description
+        desc_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(text_x, 46.0 + y_off, text_w, 18.0))
+        desc_lbl.setStringValue_(cat_desc)
+        desc_lbl.setFont_(AppKit.NSFont.systemFontOfSize_(10.5))
+        desc_lbl.setTextColor_(Theme.SUBTEXT0)
+        desc_lbl.setBezeled_(False)
+        desc_lbl.setDrawsBackground_(False)
+        desc_lbl.setEditable_(False)
+        desc_lbl.setUsesSingleLineMode_(True)
+        upper_view.addSubview_(desc_lbl)
+
+        # Dedicated Active Pilot Pill Chip
         combo_name = get_combo_title(cur_animal, preview_outfit)
-        sub_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(106, 12, text_w, 50))
-        sub_lbl.setStringValue_(f"{cat_desc}\n✨ {t('hangar_active_pilot_label')}: {combo_name}")
-        sub_lbl.setFont_(AppKit.NSFont.systemFontOfSize_(10.5))
-        sub_lbl.setTextColor_(Theme.SUBTEXT0)
-        sub_lbl.setBezeled_(False)
-        sub_lbl.setDrawsBackground_(False)
-        sub_lbl.setEditable_(False)
-        sub_lbl.cell().setWraps_(True)
-        sub_lbl.setUsesSingleLineMode_(False)
-        self.subtitle_labels[cat_key] = (sub_lbl, cat_desc, preview_outfit)
-        upper_view.addSubview_(sub_lbl)
+        chip_w = min(text_w, 270.0)
+        pilot_chip = FlippedView.alloc().initWithFrame_(
+            AppKit.NSMakeRect(text_x, 15.0 + y_off, chip_w, 24.0)
+        )
+        pilot_chip.setWantsLayer_(True)
+        pilot_chip.layer().setBackgroundColor_(Theme.SURFACE0.colorWithAlphaComponent_(0.45).CGColor())
+        pilot_chip.layer().setBorderWidth_(1.0)
+        pilot_chip.layer().setBorderColor_(Theme.SURFACE1.CGColor())
+        pilot_chip.layer().setCornerRadius_(6.0)
+
+        ap_lbl1 = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(8.0, 3.0, 96.0, 18.0))
+        ap_lbl1.setStringValue_(f"✨ {t('hangar_active_pilot_label')}:")
+        ap_lbl1.setFont_(AppKit.NSFont.systemFontOfSize_(10.5))
+        ap_lbl1.setTextColor_(Theme.SUBTEXT0)
+        ap_lbl1.setBezeled_(False)
+        ap_lbl1.setDrawsBackground_(False)
+        ap_lbl1.setEditable_(False)
+        ap_lbl1.setUsesSingleLineMode_(True)
+        pilot_chip.addSubview_(ap_lbl1)
+
+        ap_name_lbl = AppKit.NSTextField.alloc().initWithFrame_(
+            AppKit.NSMakeRect(104.0, 3.0, chip_w - 110.0, 18.0)
+        )
+        ap_name_lbl.setStringValue_(combo_name)
+        ap_name_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(11.0))
+        ap_name_lbl.setTextColor_(accent_color)
+        ap_name_lbl.setBezeled_(False)
+        ap_name_lbl.setDrawsBackground_(False)
+        ap_name_lbl.setEditable_(False)
+        ap_name_lbl.setUsesSingleLineMode_(True)
+        pilot_chip.addSubview_(ap_name_lbl)
+        self.subtitle_labels[cat_key] = (ap_name_lbl, preview_outfit)
+        upper_view.addSubview_(pilot_chip)
 
         # Controls on Right
-        # Row 1: Mascot Selector (Label stacked cleanly above Popup)
-        animal_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(w - 186, 78, 170, 16))
-        animal_lbl.setStringValue_(t("hangar_animal_mascot"))
+        # Row 1: Mascot Selector (Direct Hangar Pilot Changer)
+        animal_lbl_txt = f"🎭 {t('hangar_change_pilot_btn')}:"
+        if cat_key == "study":
+            subcat_name_map = {
+                "study": t("hangar_subcat_study"),
+                "class": t("hangar_subcat_class"),
+                "exam": t("hangar_subcat_exam"),
+            }
+            active_sc = getattr(self, "active_study_subcat", "study")
+            animal_lbl_txt = f"🎭 {t('hangar_change_pilot_btn')} ({subcat_name_map.get(active_sc, '')}):"
+
+        animal_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(w - 236, 74 + y_off, 228, 16))
+        animal_lbl.setStringValue_(animal_lbl_txt)
         animal_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(10.5))
         animal_lbl.setTextColor_(Theme.SUBTEXT1)
         animal_lbl.setBezeled_(False)
         animal_lbl.setDrawsBackground_(False)
         animal_lbl.setEditable_(False)
+        animal_lbl.setUsesSingleLineMode_(True)
         upper_view.addSubview_(animal_lbl)
 
         animals = get_animals()
         animal_popup = AppKit.NSPopUpButton.alloc().initWithFrame_pullsDown_(
-            AppKit.NSMakeRect(w - 188, 50, 172, 28), False
+            AppKit.NSMakeRect(w - 236, 46 + y_off, 228, 26), False
         )
         for a_id, a_label in animals:
             animal_popup.addItemWithTitle_(a_label)
@@ -370,11 +550,8 @@ class HangarTabController(AppKit.NSObject):
 
         # Row 2: Keywords Toggle Button & Test Button
         if cat_key == "study":
-            kw_count = (
-                len(config.get_custom_keywords("study"))
-                + len(config.get_custom_keywords("class"))
-                + len(config.get_custom_keywords("exam"))
-            )
+            active_sc = getattr(self, "active_study_subcat", "study")
+            kw_count = len(config.get_custom_keywords(active_sc))
         else:
             kw_count = len(config.get_custom_keywords(cat_key))
         toggle_title = t(
@@ -382,7 +559,7 @@ class HangarTabController(AppKit.NSObject):
             count=kw_count,
         )
         kw_toggle_btn = Theme.create_button(
-            AppKit.NSMakeRect(w - 236, 14, 126, 28),
+            AppKit.NSMakeRect(w - 236, 12 + y_off, 126, 28),
             title=toggle_title,
             bg_color=Theme.SURFACE1 if is_expanded else Theme.SURFACE0,
             text_color=Theme.TEXT if is_expanded else Theme.SUBTEXT1,
@@ -397,8 +574,9 @@ class HangarTabController(AppKit.NSObject):
         self.kw_toggle_buttons[cat_key] = kw_toggle_btn
         upper_view.addSubview_(kw_toggle_btn)
 
+        target_subcat = getattr(self, "active_study_subcat", "study") if cat_key == "study" else cat_key
         test_btn = Theme.create_button(
-            AppKit.NSMakeRect(w - 102, 14, 94, 28),
+            AppKit.NSMakeRect(w - 102, 14 + y_off, 94, 28),
             title=t("hangar_test_btn"),
             bg_color=accent_color.colorWithAlphaComponent_(0.16),
             text_color=accent_color,
@@ -407,10 +585,56 @@ class HangarTabController(AppKit.NSObject):
             font_size=11.0,
             bold=True,
         )
-        test_btn.setIdentifier_(cat_key)
+        test_btn.setIdentifier_(target_subcat)
         test_btn.setTarget_(self)
-        test_btn.setAction_("onTestCustomCategoryFlight:")
+        test_btn.setAction_("onTestSubcatFlight:" if cat_key == "study" else "onTestCustomCategoryFlight:")
         upper_view.addSubview_(test_btn)
+
+        # Academic Subcategory Switcher (Always accessible directly on Card)
+        if cat_key == "study":
+            cur_subcat = getattr(self, "active_study_subcat", "study")
+            subcats = [
+                ("study", t("hangar_subcat_study")),
+                ("class", t("hangar_subcat_class")),
+                ("exam", t("hangar_subcat_exam")),
+            ]
+            sim_dw = w - 36.0
+            capsule_h = 32.0
+            capsule_view = FlippedView.alloc().initWithFrame_(
+                AppKit.NSMakeRect(18.0, 8.0, sim_dw, capsule_h)
+            )
+            capsule_view.setWantsLayer_(True)
+            capsule_view.layer().setBackgroundColor_(Theme.MANTLE.CGColor())
+            capsule_view.layer().setBorderWidth_(1.0)
+            capsule_view.layer().setBorderColor_(Theme.SURFACE0.CGColor())
+            capsule_view.layer().setCornerRadius_(8.0)
+            upper_view.addSubview_(capsule_view)
+
+            seg_gap = 4.0
+            seg_pad = 3.0
+            seg_w = (sim_dw - (seg_pad * 2.0) - (len(subcats) - 1) * seg_gap) / len(subcats)
+            seg_h = capsule_h - (seg_pad * 2.0)
+
+            for s_i, (s_key, s_label) in enumerate(subcats):
+                s_x = seg_pad + s_i * (seg_w + seg_gap)
+                is_active = (s_key == cur_subcat)
+                sc_kw_count = len(config.get_custom_keywords(s_key))
+                btn_title = f"{s_label} ({sc_kw_count})"
+
+                tab_btn = Theme.create_button(
+                    AppKit.NSMakeRect(s_x, seg_pad, seg_w, seg_h),
+                    title=btn_title,
+                    bg_color=(Theme.SURFACE1 if is_active else AppKit.NSColor.clearColor()),
+                    text_color=(Theme.TEXT if is_active else Theme.SUBTEXT0),
+                    border_color=(Theme.MAUVE if is_active else AppKit.NSColor.clearColor()),
+                    corner_radius=6.0,
+                    font_size=11.0,
+                    bold=is_active,
+                )
+                tab_btn.setIdentifier_(s_key)
+                tab_btn.setTarget_(self)
+                tab_btn.setAction_("onSelectStudySubcat:")
+                capsule_view.addSubview_(tab_btn)
 
         if not is_expanded:
             return card
@@ -427,33 +651,11 @@ class HangarTabController(AppKit.NSObject):
         deck_h = 295.0 if is_preset_open else 172.0
 
         if cat_key == "study":
-            # 🎓 ACADEMIC MASTER DRAWER
+            # 🎓 ACADEMIC MASTER DRAWER - Streamlined Keywords Focus
             cur_subcat = target_k
-            subcats = [
-                ("study", t("hangar_subcat_study")),
-                ("class", t("hangar_subcat_class")),
-                ("exam", t("hangar_subcat_exam")),
-            ]
-            tab_btn_w = (w - 36.0 - 16.0) / 3.0
-            for s_i, (s_key, s_label) in enumerate(subcats):
-                s_x = 18.0 + s_i * (tab_btn_w + 8.0)
-                is_active = (s_key == cur_subcat)
-                tab_btn = Theme.create_button(
-                    AppKit.NSMakeRect(s_x, 10.0, tab_btn_w, 28.0),
-                    title=s_label,
-                    bg_color=(Theme.SURFACE1 if is_active else Theme.SURFACE0),
-                    text_color=(Theme.TEXT if is_active else Theme.SUBTEXT0),
-                    border_color=(Theme.MAUVE if is_active else Theme.SURFACE1),
-                    corner_radius=6.0,
-                    font_size=11.0,
-                    bold=is_active,
-                )
-                tab_btn.setIdentifier_(s_key)
-                tab_btn.setTarget_(self)
-                tab_btn.setAction_("onSelectStudySubcat:")
-                drawer_view.addSubview_(tab_btn)
+            sim_dw = w - 36.0
 
-            # Dynamic Explainer Guide
+            # 1. Dynamic Explainer Guide (y = 10.0, h = 16.0)
             guide_keys = {
                 "study": "hangar_subcat_study_guide",
                 "class": "hangar_subcat_class_guide",
@@ -461,7 +663,7 @@ class HangarTabController(AppKit.NSObject):
             }
             guide_text = t(guide_keys.get(cur_subcat, "hangar_subcat_study_guide"))
             guide_lbl = AppKit.NSTextField.alloc().initWithFrame_(
-                AppKit.NSMakeRect(18.0, 44.0, w - 36.0, 18.0)
+                AppKit.NSMakeRect(18.0, 10.0, sim_dw, 16.0)
             )
             guide_lbl.setStringValue_(guide_text)
             guide_lbl.setFont_(AppKit.NSFont.systemFontOfSize_(10.5))
@@ -469,236 +671,19 @@ class HangarTabController(AppKit.NSObject):
             guide_lbl.setBezeled_(False)
             guide_lbl.setDrawsBackground_(False)
             guide_lbl.setEditable_(False)
-            guide_lbl.cell().setWraps_(True)
-            guide_lbl.setUsesSingleLineMode_(False)
+            guide_lbl.cell().setWraps_(False)
+            guide_lbl.cell().setLineBreakMode_(AppKit.NSLineBreakByTruncatingTail)
+            guide_lbl.setUsesSingleLineMode_(True)
             drawer_view.addSubview_(guide_lbl)
 
-            # Live Alert Banner Preview Mockup Frame (height: 124px, y = 68.0)
-            sim_dw = w - 36.0
-            sim_frame_h = 124.0
-            sim_frame = FlippedView.alloc().initWithFrame_(
-                AppKit.NSMakeRect(18.0, 68.0, sim_dw, sim_frame_h)
-            )
-            sim_frame.setWantsLayer_(True)
-            sim_frame.layer().setBackgroundColor_(Theme.MANTLE.CGColor())
-            sim_frame.layer().setCornerRadius_(10.0)
-            sim_frame.layer().setBorderWidth_(1.0)
-            sim_frame.layer().setBorderColor_(Theme.SURFACE0.CGColor())
-            drawer_view.addSubview_(sim_frame)
-
-            # Top Header Row of Simulator Frame
-            # Left: Tag pill badge
-            tag_view = FlippedView.alloc().initWithFrame_(
-                AppKit.NSMakeRect(10.0, 8.0, 154.0, 24.0)
-            )
-            tag_view.setWantsLayer_(True)
-            tag_view.layer().setBackgroundColor_(Theme.SURFACE0.CGColor())
-            tag_view.layer().setBorderWidth_(1.0)
-            tag_view.layer().setBorderColor_(Theme.MAUVE.CGColor())
-            tag_view.layer().setCornerRadius_(4.0)
-
-            tag_lbl = AppKit.NSTextField.alloc().initWithFrame_(
-                AppKit.NSMakeRect(0, 3.0, 154.0, 18.0)
-            )
-            tag_lbl.setStringValue_(t("hangar_subcat_preview_tag"))
-            tag_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(10.0))
-            tag_lbl.setTextColor_(Theme.MAUVE)
-            tag_lbl.setAlignment_(AppKit.NSTextAlignmentCenter)
-            tag_lbl.setBezeled_(False)
-            tag_lbl.setDrawsBackground_(False)
-            tag_lbl.setEditable_(False)
-            tag_lbl.setUsesSingleLineMode_(True)
-            tag_view.addSubview_(tag_lbl)
-            sim_frame.addSubview_(tag_view)
-
-            # Right: Test button, Mascot sync popup, Mascot label
-            test_btn_w = 135.0
-            test_btn_x = sim_dw - 10.0 - test_btn_w
-            flight_test_btn = Theme.create_button(
-                AppKit.NSMakeRect(test_btn_x, 8.0, test_btn_w, 24.0),
-                title=t("hangar_subcat_test_btn"),
-                bg_color=Theme.MAUVE,
-                text_color=Theme.CRUST,
-                border_color=None,
-                corner_radius=5.0,
-                font_size=10.0,
-                bold=True,
-            )
-            flight_test_btn.setIdentifier_(cur_subcat)
-            flight_test_btn.setTarget_(self)
-            flight_test_btn.setAction_("onTestSubcatFlight:")
-            sim_frame.addSubview_(flight_test_btn)
-
-            popup_w = 215.0
-            popup_x = test_btn_x - 8.0 - popup_w
-            sub_m_popup = AppKit.NSPopUpButton.alloc().initWithFrame_pullsDown_(
-                AppKit.NSMakeRect(popup_x, 8.0, popup_w, 24.0), False
-            )
-            sub_m_popup.addItemWithTitle_(t("hangar_subcat_mascot_sync"))
-            animals = get_animals()
-            for a_id, a_label in animals:
-                sub_m_popup.addItemWithTitle_(a_label)
-
-            c_dict = config.get("mascot_customization", {})
-            subcat_val = c_dict.get(cur_subcat)
-            subcat_animal = subcat_val.get("animal") if isinstance(subcat_val, dict) else subcat_val
-            if subcat_animal and subcat_animal != cur_animal:
-                a_idx = next((i + 1 for i, (a_id, _) in enumerate(animals) if a_id == subcat_animal), 0)
-                sub_m_popup.selectItemAtIndex_(a_idx)
-            else:
-                sub_m_popup.selectItemAtIndex_(0)
-
-            sub_m_popup.setIdentifier_(cur_subcat)
-            sub_m_popup.setTarget_(self)
-            sub_m_popup.setAction_("onStudySubcatMascotChanged:")
-            sim_frame.addSubview_(sub_m_popup)
-
-            lbl_w = 140.0
-            lbl_x = popup_x - 6.0 - lbl_w
-            sub_m_lbl = AppKit.NSTextField.alloc().initWithFrame_(
-                AppKit.NSMakeRect(lbl_x, 11.0, lbl_w, 18.0)
-            )
-            sub_m_lbl.setStringValue_(t("hangar_subcat_mascot_label"))
-            sub_m_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(10.5))
-            sub_m_lbl.setTextColor_(Theme.SUBTEXT0)
-            sub_m_lbl.setAlignment_(AppKit.NSTextAlignmentRight)
-            sub_m_lbl.setBezeled_(False)
-            sub_m_lbl.setDrawsBackground_(False)
-            sub_m_lbl.setEditable_(False)
-            sub_m_lbl.setUsesSingleLineMode_(True)
-            sim_frame.addSubview_(sub_m_lbl)
-
-            # Mockup Banner Card (x=10, y=40, width=sim_dw-20, height=76)
-            mockup_box_w = sim_dw - 20.0
-            mockup_box_h = 76.0
-            mockup_box = FlippedView.alloc().initWithFrame_(
-                AppKit.NSMakeRect(10.0, 40.0, mockup_box_w, mockup_box_h)
-            )
-            mockup_box.setWantsLayer_(True)
-            mockup_box.layer().setBackgroundColor_(Theme.CRUST.CGColor())
-            mockup_box.layer().setCornerRadius_(8.0)
-            mockup_box.layer().setBorderWidth_(1.0)
-            mockup_box.layer().setBorderColor_(Theme.SURFACE0.CGColor())
-            sim_frame.addSubview_(mockup_box)
-
-            # Live Mini Mascot inside mockup card (68x60, centered at y=8)
-            sc_pilot_animal = subcat_animal if (subcat_animal and subcat_animal != cur_animal) else cur_animal
-            sim_mini = MascotMiniCanvasView.alloc().initWithFrame_animal_outfit_(
-                AppKit.NSMakeRect(10.0, 8.0, 68.0, 60.0), sc_pilot_animal, "student"
-            )
-            sim_mini.setCustomCornerRadius_(8.0)
-            sim_mini.setBgColor_(Theme.CRUST)
-            sim_mini.setAccentColor_(Theme.MAUVE)
-            self.mini_canvases["study_sim"] = sim_mini
-            mockup_box.addSubview_(sim_mini)
-
-            # Mockup Action Button on Right
-            mockup_btn_texts = {
-                "study": t("hangar_subcat_sim_study_btn"),
-                "class": t("hangar_subcat_sim_class_btn"),
-                "exam": t("hangar_subcat_sim_exam_btn"),
-            }
-            subcat_btn_colors = {
-                "study": Theme.YELLOW,
-                "class": Theme.BLUE,
-                "exam": Theme.RED,
-            }
-            btn_bg = subcat_btn_colors.get(cur_subcat, Theme.MAUVE)
-            btn_title = mockup_btn_texts.get(cur_subcat, t("hangar_subcat_sim_study_btn"))
-            btn_font = AppKit.NSFont.boldSystemFontOfSize_(11.0)
-            text_size = AppKit.NSString.stringWithString_(btn_title).sizeWithAttributes_({AppKit.NSFontAttributeName: btn_font})
-            action_btn_w = max(135.0, math.ceil(text_size.width) + 24.0)
-            action_btn_h = 32.0
-            action_btn_x = mockup_box_w - 12.0 - action_btn_w
-            action_btn_y = (mockup_box_h - action_btn_h) / 2.0  # 22.0
-
-            mockup_action_btn = Theme.create_button(
-                AppKit.NSMakeRect(action_btn_x, action_btn_y, action_btn_w, action_btn_h),
-                title=btn_title,
-                bg_color=btn_bg,
-                text_color=Theme.CRUST,
-                border_color=None,
-                corner_radius=6.0,
-                font_size=11.0,
-                bold=True,
-            )
-            mockup_action_btn.setIdentifier_(cur_subcat)
-            mockup_action_btn.setTarget_(self)
-            mockup_action_btn.setAction_("onTestSubcatFlight:")
-            mockup_box.addSubview_(mockup_action_btn)
-
-            # Middle Information Column: Title + Badges
-            info_x = 88.0
-            info_w = max(140.0, action_btn_x - info_x - 12.0)
-            mockup_titles = {
-                "study": t("hangar_subcat_sim_study_title"),
-                "class": t("hangar_subcat_sim_class_title"),
-                "exam": t("hangar_subcat_sim_exam_title"),
-            }
-            m_title_lbl = AppKit.NSTextField.alloc().initWithFrame_(
-                AppKit.NSMakeRect(info_x, 14.0, info_w, 18.0)
-            )
-            m_title_lbl.setStringValue_(mockup_titles.get(cur_subcat, t("hangar_subcat_sim_study_title")))
-            m_title_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(12.5))
-            m_title_lbl.setTextColor_(Theme.TEXT)
-            m_title_lbl.setBezeled_(False)
-            m_title_lbl.setDrawsBackground_(False)
-            m_title_lbl.setEditable_(False)
-            m_title_lbl.setUsesSingleLineMode_(True)
-            mockup_box.addSubview_(m_title_lbl)
-
-            # Badges Row
-            badge_specs = {
-                "study": [
-                    (t("hangar_subcat_sim_study_badge1"), Theme.YELLOW),
-                    (t("hangar_subcat_sim_study_badge2"), Theme.BLUE),
-                    (t("hangar_subcat_sim_in_10m"), Theme.PEACH),
-                ],
-                "class": [
-                    (t("hangar_subcat_sim_class_badge1"), Theme.GREEN),
-                    (t("hangar_subcat_sim_class_badge2"), Theme.BLUE),
-                    (t("hangar_subcat_sim_in_10m"), Theme.PEACH),
-                ],
-                "exam": [
-                    (t("hangar_subcat_sim_exam_badge1"), Theme.RED),
-                    (t("hangar_subcat_sim_exam_badge2"), Theme.YELLOW),
-                    (t("hangar_subcat_sim_in_10m"), Theme.PEACH),
-                ],
-            }.get(cur_subcat, [])
-
-            bx = info_x
-            b_font = AppKit.NSFont.boldSystemFontOfSize_(9.5)
-            for b_txt, b_color in badge_specs:
-                b_str_w = AppKit.NSString.stringWithString_(b_txt).sizeWithAttributes_({AppKit.NSFontAttributeName: b_font}).width
-                b_w = math.ceil(b_str_w) + 16.0
-                b_view = FlippedView.alloc().initWithFrame_(AppKit.NSMakeRect(bx, 40.0, b_w, 20.0))
-                b_view.setWantsLayer_(True)
-                b_view.layer().setBackgroundColor_(b_color.colorWithAlphaComponent_(0.15).CGColor())
-                b_view.layer().setBorderWidth_(1.0)
-                b_view.layer().setBorderColor_(b_color.colorWithAlphaComponent_(0.45).CGColor())
-                b_view.layer().setCornerRadius_(4.0)
-
-                b_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(0, 2.0, b_w, 16.0))
-                b_lbl.setStringValue_(b_txt)
-                b_lbl.setFont_(b_font)
-                b_lbl.setTextColor_(b_color)
-                b_lbl.setAlignment_(AppKit.NSTextAlignmentCenter)
-                b_lbl.setBezeled_(False)
-                b_lbl.setDrawsBackground_(False)
-                b_lbl.setEditable_(False)
-                b_lbl.setUsesSingleLineMode_(True)
-                b_view.addSubview_(b_lbl)
-                mockup_box.addSubview_(b_view)
-                bx += b_w + 6.0
-
-            # Subcategory Keywords Section Header
+            # 2. Subcategory Keywords Section Header (y = 34.0, h = 18.0)
             subcat_name_map = {
                 "study": t("hangar_subcat_study"),
                 "class": t("hangar_subcat_class"),
                 "exam": t("hangar_subcat_exam"),
             }
             kw_head_lbl = AppKit.NSTextField.alloc().initWithFrame_(
-                AppKit.NSMakeRect(18.0, 206.0, sim_dw, 18.0)
+                AppKit.NSMakeRect(18.0, 34.0, sim_dw, 18.0)
             )
             kw_head_lbl.setStringValue_(t("hangar_subcat_keywords_heading", subcat=subcat_name_map.get(cur_subcat, "")))
             kw_head_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(11.0))
@@ -708,7 +693,7 @@ class HangarTabController(AppKit.NSObject):
             kw_head_lbl.setEditable_(False)
             drawer_view.addSubview_(kw_head_lbl)
 
-            deck_y = 230.0
+            deck_y = 56.0
         else:
             # Drawer Guidance Subtitle for standard categories
             guide_lbl = AppKit.NSTextField.alloc().initWithFrame_(
@@ -989,14 +974,7 @@ class HangarTabController(AppKit.NSObject):
         # 1. Update Card Toggle Button title
         if cat_key in self.kw_toggle_buttons:
             is_exp = cat_key in self.expanded_categories
-            if cat_key == "study":
-                total_cnt = (
-                    len(config.get_custom_keywords("study"))
-                    + len(config.get_custom_keywords("class"))
-                    + len(config.get_custom_keywords("exam"))
-                )
-            else:
-                total_cnt = len(all_kws)
+            total_cnt = len(all_kws)
             self.kw_toggle_buttons[cat_key].setTitle_(
                 t(
                     "hangar_keywords_toggle_btn_open" if is_exp else "hangar_keywords_toggle_btn",
@@ -1239,20 +1217,21 @@ class HangarTabController(AppKit.NSObject):
         sel_animal = animals[sel_idx][0]
 
         fixed_outfit = next((fo for k, _, _, fo, _, _ in CATEGORIES_DEF if k == cat_key), "aviator")
+        target_subcat = getattr(self, "active_study_subcat", "study") if cat_key == "study" else cat_key
 
         customs = config.get("mascot_customization", {})
         if not isinstance(customs, dict):
             customs = {}
-        if cat_key not in customs or not isinstance(customs[cat_key], dict):
+        if target_subcat not in customs or not isinstance(customs[target_subcat], dict):
             selected_outfit = "agent" if sel_animal == "platypus" else fixed_outfit
-            customs[cat_key] = {"animal": sel_animal, "outfit": selected_outfit, "accessories": list(normalize_accessories(selected_outfit, animal=sel_animal))}
+            customs[target_subcat] = {"animal": sel_animal, "outfit": selected_outfit, "accessories": list(normalize_accessories(selected_outfit, animal=sel_animal))}
         else:
-            customs[cat_key]["animal"] = sel_animal
+            customs[target_subcat]["animal"] = sel_animal
             selected_outfit = "agent" if sel_animal == "platypus" else fixed_outfit
-            customs[cat_key]["outfit"] = selected_outfit
-            customs[cat_key]["accessories"] = list(normalize_accessories(selected_outfit, animal=sel_animal))
+            customs[target_subcat]["outfit"] = selected_outfit
+            customs[target_subcat]["accessories"] = list(normalize_accessories(selected_outfit, animal=sel_animal))
 
-        if cat_key == "study":
+        if cat_key == "study" and target_subcat == "study":
             for sub in ("class", "exam"):
                 if sub not in customs or not isinstance(customs[sub], dict):
                     customs[sub] = {"animal": sel_animal, "outfit": "student"}
@@ -1266,8 +1245,8 @@ class HangarTabController(AppKit.NSObject):
             self.mini_canvases[cat_key].updateAnimal_(sel_animal)
             self.mini_canvases[cat_key].updateOutfit_(active_outfit)
         if cat_key in self.subtitle_labels:
-            lbl, desc, outfit = self.subtitle_labels[cat_key]
-            lbl.setStringValue_(f"{desc}\n✨ Active Pilot: {get_combo_title(sel_animal, active_outfit)}")
+            p_lbl, _ = self.subtitle_labels[cat_key]
+            p_lbl.setStringValue_(get_combo_title(sel_animal, active_outfit))
 
         self.invalidate_cache()
         self.start_animation_timer()
@@ -1291,8 +1270,8 @@ class HangarTabController(AppKit.NSObject):
             if cat_key in self.mini_canvases:
                 self.mini_canvases[cat_key].updateAnimal_(chosen_a)
             if cat_key in self.subtitle_labels:
-                lbl, desc, outfit = self.subtitle_labels[cat_key]
-                lbl.setStringValue_(f"{desc}\n✨ {t('hangar_active_pilot_label')}: {get_combo_title(chosen_a, outfit)}")
+                p_lbl, _ = self.subtitle_labels[cat_key]
+                p_lbl.setStringValue_(get_combo_title(chosen_a, fixed_outfit))
 
         config.set("mascot_customization", customs)
         event_bus.publish("CONFIG_CHANGED", key="mascot_customization", value=customs)
@@ -1310,7 +1289,7 @@ class HangarTabController(AppKit.NSObject):
             "in_person": {"animal": "fox", "outfit": "racer"},
             "health": {"animal": "panda", "outfit": "zen"},
             "work": {"animal": "penguin", "outfit": "agent"},
-            "concert": {"animal": "fox", "outfit": "aviator"},
+            "concert": {"animal": "fox", "outfit": "concert"},
             "general": {"animal": "duck", "outfit": "aviator"}
         }
         animals = get_animals()
@@ -1323,8 +1302,8 @@ class HangarTabController(AppKit.NSObject):
             if cat_key in self.mini_canvases:
                 self.mini_canvases[cat_key].updateAnimal_(chosen_a)
             if cat_key in self.subtitle_labels:
-                lbl, desc, outfit = self.subtitle_labels[cat_key]
-                lbl.setStringValue_(f"{desc}\n✨ {t('hangar_active_pilot_label')}: {get_combo_title(chosen_a, outfit)}")
+                p_lbl, outfit = self.subtitle_labels[cat_key]
+                p_lbl.setStringValue_(get_combo_title(chosen_a, outfit))
 
         config.set("mascot_customization", defaults)
         event_bus.publish("CONFIG_CHANGED", key="mascot_customization", value=defaults)

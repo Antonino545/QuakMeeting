@@ -64,7 +64,7 @@ DEFAULT_CONFIG = {
         "in_person": {"animal": "fox", "outfit": "racer"},
         "health": {"animal": "panda", "outfit": "zen"},
         "work": {"animal": "penguin", "outfit": "agent"},
-        "concert": {"animal": "fox", "outfit": "aviator", "accessories": ["headphones"]},
+        "concert": {"animal": "fox", "outfit": "concert", "accessories": ["headphones"]},
         "general": {"animal": "duck", "outfit": "aviator"}
     },
     "custom_keywords": {

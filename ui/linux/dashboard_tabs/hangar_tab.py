@@ -34,7 +34,7 @@ CATEGORIES_DEF = [
     ("in_person", "cat_in_person_title", "cat_in_person_desc", "racer", "fox", "#f9e2af"),
     ("health", "cat_health_title", "cat_health_desc", "zen", "panda", "#94e2d5"),
     ("work", "cat_work_title", "cat_work_desc", "agent", "penguin", "#89b4fa"),
-    ("concert", "cat_concert_title", "cat_concert_desc", "aviator", "fox", "#f5c2e7"),
+    ("concert", "cat_concert_title", "cat_concert_desc", "concert", "fox", "#f5c2e7"),
     ("general", "cat_general_title", "cat_general_desc", "aviator", "duck", "#a6e3a1")
 ]
 
@@ -248,7 +248,7 @@ class QtHangarTab(QWidget):
                 "in_person": {"animal": "fox", "outfit": "racer"},
                 "health": {"animal": "panda", "outfit": "zen"},
                 "work": {"animal": "penguin", "outfit": "agent"},
-                "concert": {"animal": "fox", "outfit": "aviator"},
+                "concert": {"animal": "fox", "outfit": "concert"},
                 "general": {"animal": "duck", "outfit": "aviator"}
             }
             config.set("mascot_customization", defs)
@@ -408,8 +408,12 @@ class QtHangarTab(QWidget):
         customs: dict,
         ANIMALS: list,
     ) -> QFrame:
-        current_setting = customs.get(cat_key, {})
-        current_animal = current_setting.get("animal", def_animal) if isinstance(current_setting, dict) else (current_setting or def_animal)
+        if cat_key == "study":
+            sc_val = customs.get(self.active_study_subcat, customs.get("study", {}))
+            current_animal = sc_val.get("animal", "owl") if isinstance(sc_val, dict) else (sc_val or "owl")
+        else:
+            current_setting = customs.get(cat_key, {})
+            current_animal = current_setting.get("animal", def_animal) if isinstance(current_setting, dict) else (current_setting or def_animal)
 
         card = QFrame(self.h_content)
         card.setObjectName("Card")
@@ -502,7 +506,16 @@ class QtHangarTab(QWidget):
         ctrl_box.setSpacing(8)
         ctrl_widget.setFixedWidth(248)
 
-        m_head_lbl = QLabel(t("hangar_animal_mascot"), ctrl_widget)
+        animal_lbl_txt = f"🎭 {t('hangar_change_pilot_btn')}:"
+        if cat_key == "study":
+            subcat_name_map = {
+                "study": t("hangar_subcat_study"),
+                "class": t("hangar_subcat_class"),
+                "exam": t("hangar_subcat_exam"),
+            }
+            animal_lbl_txt = f"🎭 {t('hangar_change_pilot_btn')} ({subcat_name_map.get(self.active_study_subcat, '')}):"
+
+        m_head_lbl = QLabel(animal_lbl_txt, ctrl_widget)
         m_head_lbl.setStyleSheet("color: #a6adc8; font-size: 10.5px; font-weight: bold;")
         ctrl_box.addWidget(m_head_lbl)
 
@@ -521,8 +534,9 @@ class QtHangarTab(QWidget):
             if not isinstance(c_dict, dict):
                 c_dict = {}
             selected_outfit = "agent" if sel_a == "platypus" else fixed_outfit
-            c_dict[cat_key] = {"animal": sel_a, "outfit": selected_outfit, "accessories": list(normalize_accessories(selected_outfit, animal=sel_a))}
-            if cat_key == "study":
+            target_sc = self.active_study_subcat if cat_key == "study" else cat_key
+            c_dict[target_sc] = {"animal": sel_a, "outfit": selected_outfit, "accessories": list(normalize_accessories(selected_outfit, animal=sel_a))}
+            if cat_key == "study" and target_sc == "study":
                 for sub in ("class", "exam"):
                     if sub not in c_dict or not isinstance(c_dict[sub], dict):
                         c_dict[sub] = {"animal": sel_a, "outfit": "student"}
@@ -535,12 +549,72 @@ class QtHangarTab(QWidget):
 
         # Test Flight Button
         def _trigger_test():
+            if cat_key == "study":
+                cur_sc = self.active_study_subcat
+                cd = config.get("mascot_customization", {})
+                val = cd.get(cur_sc, cd.get("study", {}))
+                an = val.get("animal", "owl") if isinstance(val, dict) else (val or "owl")
+                out = "student"
+                now = datetime.now().astimezone()
+                if cur_sc == "study":
+                    evt = {
+                        "title": "Deep Focus & Solo Study Session",
+                        "provider": get_combo_title(an, out),
+                        "pilot_type": f"{an}_{out}",
+                        "animal": an,
+                        "outfit": out,
+                        "action_btn_text": "⚡ TIME TO STUDY! 📖",
+                        "action_url": "https://notion.so",
+                        "start_time": now + timedelta(minutes=10),
+                        "end_time": now + timedelta(minutes=90),
+                        "reminder_stage": 10,
+                        "is_travel": False,
+                        "is_test_banner": True,
+                        "is_late": False,
+                    }
+                elif cur_sc == "class":
+                    evt = {
+                        "title": "Neural Networks & AI Lecture (Room 3B)",
+                        "provider": get_combo_title(an, out),
+                        "pilot_type": f"{an}_{out}",
+                        "animal": an,
+                        "outfit": out,
+                        "action_btn_text": "🏫 ROOM 3B & NOTES",
+                        "action_url": "https://meet.google.com/study-class-room",
+                        "start_time": now + timedelta(minutes=10),
+                        "end_time": now + timedelta(minutes=110),
+                        "reminder_stage": 10,
+                        "is_travel": False,
+                        "is_test_banner": True,
+                        "is_late": False,
+                    }
+                else:
+                    evt = {
+                        "title": "General Physics Final Exam (Main Hall)",
+                        "provider": get_combo_title(an, out),
+                        "pilot_type": f"{an}_{out}",
+                        "animal": an,
+                        "outfit": out,
+                        "action_btn_text": "🎓 MAIN HALL & NOTES",
+                        "action_url": "https://exam-portal.edu",
+                        "start_time": now + timedelta(minutes=10),
+                        "end_time": now + timedelta(minutes=130),
+                        "reminder_stage": 10,
+                        "is_travel": False,
+                        "is_test_banner": True,
+                        "is_late": False,
+                    }
+                from core.services.sound_service import play_test_chime
+                play_test_chime()
+                from ui.linux.banner.qt_banner import show_qt_banner
+                show_qt_banner(evt)
+                return
+
             c_dict = config.get("mascot_customization", {})
             val = c_dict.get(cat_key, {})
             an = val.get("animal", "duck") if isinstance(val, dict) else (val or "duck")
             out = "agent" if an == "platypus" else fixed_outfit
             titles = {
-                "study": "Neural Networks & AI University Lecture",
                 "food": "Dinner with Friends at Pizzeria",
                 "travel": "Flight BA 257 to London Heathrow",
                 "sport": "CrossFit & Palestra Workout Session",
@@ -549,7 +623,7 @@ class QtHangarTab(QWidget):
                 "work": "Executive Board Strategy & Sprint Review",
                 "concert": "Rock Arena Live World Tour Concert",
                 "secret": "Top Secret Agent Mission Briefing",
-                "general": "Weekly Team Sprint Planning"
+                "general": "Weekly Team Sprint Planning",
             }
             now = datetime.now().astimezone()
             evt = {
@@ -565,7 +639,7 @@ class QtHangarTab(QWidget):
                 "reminder_stage": 10,
                 "is_travel": cat_key in ("food", "travel", "sport", "in_person", "concert"),
                 "is_test_banner": True,
-                "is_late": False
+                "is_late": False,
             }
             from core.services.sound_service import play_test_chime
             play_test_chime()
@@ -576,11 +650,7 @@ class QtHangarTab(QWidget):
         btn_row.setSpacing(6)
 
         if cat_key == "study":
-            kw_count = (
-                len(config.get_custom_keywords("study"))
-                + len(config.get_custom_keywords("class"))
-                + len(config.get_custom_keywords("exam"))
-            )
+            kw_count = len(config.get_custom_keywords(self.active_study_subcat))
         else:
             kw_count = len(config.get_custom_keywords(cat_key))
         is_exp = cat_key in self.expanded_categories
@@ -651,36 +721,22 @@ class QtHangarTab(QWidget):
         ctrl_box.addLayout(btn_row)
         top_row.addWidget(ctrl_widget)
         card_layout.addLayout(top_row)
-        self.category_cards[cat_key] = card
-
-        # ── Hairline Divider ──
-        h_line = QFrame(card)
-        h_line.setFrameShape(QFrame.Shape.HLine)
-        h_line.setStyleSheet("background-color: #313244; max-height: 1px; border: none;")
-        h_line.setVisible(is_exp)
-        card_layout.addWidget(h_line)
-
-        # ── Expandable Drawer ──
-        drawer = QFrame(card)
-        drawer.setStyleSheet("background: transparent; border: none;")
-        drawer.setVisible(is_exp)
-        drawer_layout = QVBoxLayout(drawer)
-        drawer_layout.setContentsMargins(4, 6, 4, 4)
-        drawer_layout.setSpacing(8)
-        card_layout.addWidget(drawer)
 
         if cat_key == "study":
-            # 🎓 ACADEMIC MASTER DRAWER
+            # 🎓 Academic Subcategory Switcher (Always accessible directly on Card)
             subcat_tabs_row = QHBoxLayout()
             subcat_tabs_row.setSpacing(8)
+            subcat_tabs_row.setContentsMargins(0, 4, 0, 2)
             subcats = [
                 ("study", t("hangar_subcat_study")),
                 ("class", t("hangar_subcat_class")),
-                ("exam", t("hangar_subcat_exam"))
+                ("exam", t("hangar_subcat_exam")),
             ]
             cur_sc = self.active_study_subcat
             for s_key, s_lbl in subcats:
-                sc_btn = QPushButton(s_lbl.replace("&", "&&"), drawer)
+                sc_kw_count = len(config.get_custom_keywords(s_key))
+                btn_title = f"{s_lbl} ({sc_kw_count})".replace("&", "&&")
+                sc_btn = QPushButton(btn_title, card)
                 sc_btn.setCursor(Qt.CursorShape.PointingHandCursor)
                 sc_btn.setFixedHeight(28)
                 is_active = (s_key == cur_sc)
@@ -719,272 +775,44 @@ class QtHangarTab(QWidget):
                     return _set_sc
                 sc_btn.clicked.connect(_make_sc_click())
                 subcat_tabs_row.addWidget(sc_btn)
-            drawer_layout.addLayout(subcat_tabs_row)
+            card_layout.addLayout(subcat_tabs_row)
 
-            # Explainer Guide
+        self.category_cards[cat_key] = card
+
+        # ── Hairline Divider ──
+        h_line = QFrame(card)
+        h_line.setFrameShape(QFrame.Shape.HLine)
+        h_line.setStyleSheet("background-color: #313244; max-height: 1px; border: none;")
+        h_line.setVisible(is_exp)
+        card_layout.addWidget(h_line)
+
+        # ── Expandable Drawer ──
+        drawer = QFrame(card)
+        drawer.setStyleSheet("background: transparent; border: none;")
+        drawer.setVisible(is_exp)
+        drawer_layout = QVBoxLayout(drawer)
+        drawer_layout.setContentsMargins(4, 6, 4, 4)
+        drawer_layout.setSpacing(8)
+        card_layout.addWidget(drawer)
+
+        if cat_key == "study":
+            cur_sc = self.active_study_subcat
+            # 1. Dynamic Explainer Guide (Dedicated full-width row)
             guide_keys = {
                 "study": "hangar_subcat_study_guide",
                 "class": "hangar_subcat_class_guide",
-                "exam": "hangar_subcat_exam_guide"
+                "exam": "hangar_subcat_exam_guide",
             }
             guide_lbl = QLabel(t(guide_keys.get(cur_sc, "hangar_subcat_study_guide")), drawer)
             guide_lbl.setStyleSheet("color: #bac2de; font-size: 10.5px; font-style: italic; border: none; padding: 2px 0;")
             guide_lbl.setWordWrap(True)
             drawer_layout.addWidget(guide_lbl)
 
-            # Live Alert Banner Preview Mockup Frame
-            sim_frame = QFrame(drawer)
-            sim_frame.setObjectName("SimFrame")
-            sim_frame.setStyleSheet("""
-                QFrame#SimFrame {
-                    background-color: #181825;
-                    border: 1px solid #313244;
-                    border-radius: 10px;
-                }
-            """)
-            sim_layout = QVBoxLayout(sim_frame)
-            sim_layout.setContentsMargins(10, 8, 10, 8)
-            sim_layout.setSpacing(8)
-
-            # Top Header Row of Simulator Frame
-            sim_header_row = QHBoxLayout()
-            sim_header_row.setSpacing(8)
-
-            tag_lbl = QLabel(f"⚡ {t('hangar_subcat_preview_tag')}", sim_frame)
-            tag_lbl.setStyleSheet("""
-                background-color: #313244;
-                color: #cba6f7;
-                font-size: 10px;
-                font-weight: 800;
-                border: 1px solid #cba6f7;
-                border-radius: 4px;
-                padding: 2px 8px;
-            """)
-            sim_header_row.addWidget(tag_lbl)
-            sim_header_row.addStretch()
-
-            sc_m_lbl = QLabel(t("hangar_subcat_mascot_label"), sim_frame)
-            sc_m_lbl.setStyleSheet("color: #a6adc8; font-size: 10.5px; font-weight: bold;")
-            sim_header_row.addWidget(sc_m_lbl)
-
-            sc_combo = QComboBox(sim_frame)
-            sc_combo.addItem(t("hangar_subcat_mascot_sync"), "sync")
-            for a_id, a_name in ANIMALS:
-                sc_combo.addItem(a_name, a_id)
-            sc_combo.setFixedHeight(26)
-            sc_combo.setStyleSheet(get_combo_box_qss(bg_color="#1e1e2e", min_width=160))
-
-            c_dict = config.get("mascot_customization", {})
-            sc_val = c_dict.get(cur_sc)
-            sc_an = sc_val.get("animal") if isinstance(sc_val, dict) else sc_val
-            if sc_an and sc_an != current_animal:
-                a_idx = next((i + 1 for i, (a_id, _) in enumerate(ANIMALS) if a_id == sc_an), 0)
-                sc_combo.setCurrentIndex(a_idx)
-            else:
-                sc_combo.setCurrentIndex(0)
-
-            def _on_sc_mascot_changed(idx_val):
-                cd = config.get("mascot_customization", {})
-                if not isinstance(cd, dict):
-                    cd = {}
-                if idx_val == 0:
-                    main_study = cd.get("study", {})
-                    main_a = main_study.get("animal", "owl") if isinstance(main_study, dict) else (main_study or "owl")
-                    cd[self.active_study_subcat] = {"animal": main_a, "outfit": "student"}
-                else:
-                    chosen_a = ANIMALS[idx_val - 1][0]
-                    cd[self.active_study_subcat] = {"animal": chosen_a, "outfit": "student"}
-                config.set("mascot_customization", cd)
-                event_bus.publish("CONFIG_CHANGED", key="mascot_customization", value=cd)
-                self.refresh_hangar()
-
-            sc_combo.currentIndexChanged.connect(_on_sc_mascot_changed)
-            sim_header_row.addWidget(sc_combo)
-
-            flight_test_btn = QPushButton(t("hangar_subcat_test_btn"), sim_frame)
-            flight_test_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            flight_test_btn.setFixedHeight(26)
-            flight_test_btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #cba6f7;
-                    color: #11111b;
-                    font-size: 10.5px;
-                    font-weight: bold;
-                    border-radius: 5px;
-                    padding: 3px 10px;
-                }
-                QPushButton:hover { background-color: #d6b4fc; }
-            """)
-            sim_header_row.addWidget(flight_test_btn)
-            sim_layout.addLayout(sim_header_row)
-
-            # Mockup Banner Card
-            mockup_box = QFrame(sim_frame)
-            mockup_box.setStyleSheet("""
-                QFrame {
-                    background-color: #11111b;
-                    border: 1px solid #313244;
-                    border-radius: 8px;
-                }
-            """)
-            mockup_lay = QHBoxLayout(mockup_box)
-            mockup_lay.setContentsMargins(10, 8, 12, 8)
-            mockup_lay.setSpacing(12)
-
-            sc_pilot_val = c_dict.get(cur_sc, {})
-            sc_pilot_animal = sc_pilot_val.get("animal", current_animal) if isinstance(sc_pilot_val, dict) else (sc_pilot_val or current_animal)
-            sim_mini = QtMascotMiniWidget(animal=sc_pilot_animal, outfit="student", cat_color="#cba6f7", parent=mockup_box)
-            self.h_mini_widgets.append(sim_mini)
-            mockup_lay.addWidget(sim_mini)
-
-            info_col = QVBoxLayout()
-            info_col.setSpacing(3)
-
-            title_map = {
-                "study": t("hangar_subcat_sim_study_title"),
-                "class": t("hangar_subcat_sim_class_title"),
-                "exam": t("hangar_subcat_sim_exam_title")
-            }
-            m_title = QLabel(title_map.get(cur_sc, t("hangar_subcat_sim_study_title")), mockup_box)
-            m_title.setStyleSheet("color: #cdd6f4; font-weight: 700; font-size: 12px; border: none;")
-            info_col.addWidget(m_title)
-
-            badges_row = QHBoxLayout()
-            badges_row.setSpacing(6)
-
-            badge_specs = {
-                "study": [
-                    (t("hangar_subcat_sim_study_badge1"), "#f9e2af", "rgba(249, 226, 175, 0.15)"),
-                    (t("hangar_subcat_sim_study_badge2"), "#89b4fa", "rgba(137, 180, 250, 0.15)"),
-                    (t("hangar_subcat_sim_in_10m"), "#fab387", "rgba(250, 179, 135, 0.15)"),
-                ],
-                "class": [
-                    (t("hangar_subcat_sim_class_badge1"), "#a6e3a1", "rgba(166, 227, 161, 0.15)"),
-                    (t("hangar_subcat_sim_class_badge2"), "#89b4fa", "rgba(137, 180, 250, 0.15)"),
-                    (t("hangar_subcat_sim_in_10m"), "#fab387", "rgba(250, 179, 135, 0.15)"),
-                ],
-                "exam": [
-                    (t("hangar_subcat_sim_exam_badge1"), "#f38ba8", "rgba(243, 139, 168, 0.20)"),
-                    (t("hangar_subcat_sim_exam_badge2"), "#f9e2af", "rgba(249, 226, 175, 0.15)"),
-                    (t("hangar_subcat_sim_in_10m"), "#fab387", "rgba(250, 179, 135, 0.15)"),
-                ]
-            }.get(cur_sc, [])
-
-            for b_txt, b_color, b_bg in badge_specs:
-                b_lbl = QLabel(b_txt, mockup_box)
-                b_lbl.setStyleSheet(f"""
-                    QLabel {{
-                        background-color: {b_bg};
-                        color: {b_color};
-                        font-size: 10px;
-                        font-weight: 600;
-                        border: 1px solid {b_color};
-                        border-radius: 4px;
-                        padding: 2px 6px;
-                    }}
-                """)
-                badges_row.addWidget(b_lbl)
-
-            badges_row.addStretch()
-            info_col.addLayout(badges_row)
-            mockup_lay.addLayout(info_col, stretch=1)
-
-            btn_text = {
-                "study": t("hangar_subcat_sim_study_btn"),
-                "class": t("hangar_subcat_sim_class_btn"),
-                "exam": t("hangar_subcat_sim_exam_btn")
-            }.get(cur_sc, t("hangar_subcat_sim_study_btn"))
-
-            mockup_btn = QPushButton(btn_text.replace("&", "&&"), mockup_box)
-            mockup_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            mockup_btn.setFixedHeight(30)
-            mockup_btn.setToolTip("Click to test this flight!")
-            btn_style = {
-                "study": "background: #f9e2af; color: #11111b; border: 1px solid #f9e2af;",
-                "class": "background: #89b4fa; color: #11111b; border: 1px solid #89b4fa;",
-                "exam": "background: #f38ba8; color: #11111b; border: 1px solid #f38ba8;"
-            }.get(cur_sc, "background: #cba6f7; color: #11111b; border: 1px solid #cba6f7;")
-
-            mockup_btn.setStyleSheet(f"""
-                QPushButton {{
-                    {btn_style}
-                    font-weight: 800;
-                    font-size: 10.5px;
-                    border-radius: 5px;
-                    padding: 4px 12px;
-                }}
-                QPushButton:hover {{ opacity: 0.9; }}
-            """)
-            mockup_lay.addWidget(mockup_btn)
-            sim_layout.addWidget(mockup_box)
-            drawer_layout.addWidget(sim_frame)
-
-            def _trigger_subcat_test():
-                cd = config.get("mascot_customization", {})
-                val = cd.get(cur_sc, cd.get("study", {}))
-                an = val.get("animal", "owl") if isinstance(val, dict) else (val or "owl")
-                out = "student"
-                now = datetime.now().astimezone()
-                if cur_sc == "study":
-                    evt = {
-                        "title": "Deep Focus & Solo Study Session",
-                        "provider": get_combo_title(an, out),
-                        "pilot_type": f"{an}_{out}",
-                        "animal": an,
-                        "outfit": out,
-                        "action_btn_text": "⚡ TIME TO STUDY! 📖",
-                        "action_url": "https://notion.so",
-                        "start_time": now + timedelta(minutes=10),
-                        "end_time": now + timedelta(minutes=90),
-                        "reminder_stage": 10,
-                        "is_travel": False,
-                        "is_test_banner": True,
-                        "is_late": False
-                    }
-                elif cur_sc == "class":
-                    evt = {
-                        "title": "Neural Networks & AI Lecture (Room 3B)",
-                        "provider": get_combo_title(an, out),
-                        "pilot_type": f"{an}_{out}",
-                        "animal": an,
-                        "outfit": out,
-                        "action_btn_text": "🏫 ROOM 3B & NOTES",
-                        "action_url": "https://meet.google.com/study-class-room",
-                        "start_time": now + timedelta(minutes=10),
-                        "end_time": now + timedelta(minutes=110),
-                        "reminder_stage": 10,
-                        "is_travel": False,
-                        "is_test_banner": True,
-                        "is_late": False
-                    }
-                else:
-                    evt = {
-                        "title": "General Physics Final Exam (Main Hall)",
-                        "provider": get_combo_title(an, out),
-                        "pilot_type": f"{an}_{out}",
-                        "animal": an,
-                        "outfit": out,
-                        "action_btn_text": "🎓 MAIN HALL & NOTES",
-                        "action_url": "https://exam-portal.edu",
-                        "start_time": now + timedelta(minutes=10),
-                        "end_time": now + timedelta(minutes=130),
-                        "reminder_stage": 10,
-                        "is_travel": False,
-                        "is_test_banner": True,
-                        "is_late": False
-                    }
-                from core.services.sound_service import play_test_chime
-                play_test_chime()
-                from ui.linux.banner.qt_banner import show_qt_banner
-                show_qt_banner(evt)
-
-            mockup_btn.clicked.connect(_trigger_subcat_test)
-            flight_test_btn.clicked.connect(_trigger_subcat_test)
-
+            # 2. Subcategory Keywords Section Header
             subcat_name_map = {
                 "study": t("hangar_subcat_study"),
                 "class": t("hangar_subcat_class"),
-                "exam": t("hangar_subcat_exam")
+                "exam": t("hangar_subcat_exam"),
             }
             kw_head_lbl = QLabel(t("hangar_subcat_keywords_heading", subcat=subcat_name_map.get(cur_sc, "")), drawer)
             kw_head_lbl.setStyleSheet("color: #a6adc8; font-size: 11px; font-weight: 700; border: none; padding-top: 4px;")
@@ -1253,11 +1081,7 @@ class QtHangarTab(QWidget):
 
             # Update toggle button on card
             is_open = drawer.isVisible()
-            total_cnt = (
-                (len(config.get_custom_keywords("study")) + len(config.get_custom_keywords("class")) + len(config.get_custom_keywords("exam")))
-                if cat_key == "study"
-                else len(all_kws)
-            )
+            total_cnt = len(all_kws)
             kw_toggle_btn.setText(
                 t(
                     "hangar_keywords_toggle_btn_open" if is_open else "hangar_keywords_toggle_btn",
