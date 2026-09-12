@@ -1,5 +1,5 @@
 """
-Reminder Engine for QuakMeeting.
+Reminder Engine for FlightDeck.
 Calculates multi-stage notification windows (e.g. 45m, 30m, 20m, 10m, 5m, 2m, 0m),
 handles snooze timers, immediate first-time triggers for soon-starting events,
 departure time triggers for travel/transit events, and publishes REMINDER_TRIGGERED events via EventBus.
@@ -18,7 +18,7 @@ from core.domain.clock import Clock, system_clock
 from core.domain.state_machine import EventState, resolve_event_state
 from core.domain.reminder_policy import ReminderPolicyRegistry
 
-logger = logging.getLogger("QuakMeeting.ReminderEngine")
+logger = logging.getLogger("FlightDeck.ReminderEngine")
 
 class ReminderEngine:
     """Calculates reminder triggers for meetings based on configurable stage intervals, arrival status, and travel ETA."""
@@ -109,7 +109,7 @@ class ReminderEngine:
     def trigger_startup_catch_up(
         self, meetings: List[Meeting], current_time: Optional[datetime] = None
     ) -> Optional[Tuple[Meeting, int]]:
-        """Show the most recent missed reminder once when QuakMeeting starts.
+        """Show the most recent missed reminder once when FlightDeck starts.
 
         Calendar reminders can be missed while the app is closed. On startup,
         surface today's latest due reminder only when no banner for that event

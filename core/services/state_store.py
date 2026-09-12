@@ -7,10 +7,10 @@ from typing import Set
 
 from core.services.database_service import database_service
 
-logger = logging.getLogger("QuakMeeting.StateStore")
+logger = logging.getLogger("FlightDeck.StateStore")
 
 class NotifiedStateStore:
-    def __init__(self, path: str = os.path.expanduser("~/.quakmeeting/notified_stages.json")):
+    def __init__(self, path: str = os.path.expanduser("~/.flightdeck/notified_stages.json")):
         self.path = path
         self._db = database_service
 
@@ -46,8 +46,8 @@ class NotifiedStateStore:
 
 
 class BannerHistoryStore:
-    """Persistent storage for all banner notifications sent by QuakMeeting via SQLite."""
-    def __init__(self, path: str = os.path.expanduser("~/.quakmeeting/banner_history.json")):
+    """Persistent storage for all banner notifications sent by FlightDeck via SQLite."""
+    def __init__(self, path: str = os.path.expanduser("~/.flightdeck/banner_history.json")):
         self.path = path
         self._db = database_service
 

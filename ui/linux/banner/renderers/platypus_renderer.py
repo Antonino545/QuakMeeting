@@ -1,5 +1,5 @@
 """
-Secret Agent Platypus Pilot Renderer for QuakMeeting (Linux PyQt6 QPainter).
+Secret Agent Platypus Pilot Renderer for FlightDeck (Linux PyQt6 QPainter).
 Inspired by Perry the Platypus from Phineas & Ferb:
 Features stealth spy glider, teal platypus body, flat beaver tail, orange duck bill, and iconic brown fedora hat.
 """

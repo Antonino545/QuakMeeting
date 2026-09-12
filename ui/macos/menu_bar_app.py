@@ -1,5 +1,5 @@
 """
-Menu Bar Application for QuakMeeting.
+Menu Bar Application for FlightDeck.
 Displays dynamic status bar item, full macOS top menu bar, quick-action context menu, and background scanning.
 """
 import AppKit
@@ -176,7 +176,7 @@ class FlightDeckMenuBar(AppKit.NSObject):
         app_menu = AppKit.NSMenu.alloc().initWithTitle_("FlightDeck")
 
         about_item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            t("about_quakmeeting"), "openAbout:", ""
+            t("about_flightdeck"), "openAbout:", ""
         )
         about_item.setTarget_(self)
         app_menu.addItem_(about_item)
@@ -274,7 +274,7 @@ class FlightDeckMenuBar(AppKit.NSObject):
 
     @objc.IBAction
     def openHelp_(self, sender):
-        webbrowser.open("https://github.com/Antonino545/QuakMeeting")
+        webbrowser.open("https://github.com/Antonino545/FlightDeck")
 
     def _on_reminder_triggered(
         self,
@@ -652,10 +652,6 @@ class FlightDeckMenuBar(AppKit.NSObject):
 
     def run(self):
         self.app.run()
-
-# Backward compatibility alias
-QuakMeetingMenuBar = FlightDeckMenuBar
-QuakMeetingAppDelegate = FlightDeckAppDelegate
 
 def run_menu_bar_app():
     """Initializes and runs the native macOS menu bar status item and event loop."""

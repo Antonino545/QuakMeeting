@@ -1,5 +1,5 @@
 """
-Context Engine & "Why?" Transparency Engine for QuakMeeting.
+Context Engine & "Why?" Transparency Engine for FlightDeck.
 Single authority that evaluates real-time calendar schedules, transit ETA buffers,
 user presence signals (Wi-Fi, active call processes), and time horizons to output
 actionable transition recommendations with explicit, human-readable rationale.

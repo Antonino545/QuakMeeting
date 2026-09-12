@@ -1,5 +1,5 @@
 """
-Speed Racer Driver Pilot Renderer for QuakMeeting.
+Speed Racer Driver Pilot Renderer for FlightDeck.
 Features emerald speedster chassis, racing double stripes, race number #1, and red racing helmet with mirrored neon visor.
 """
 import AppKit

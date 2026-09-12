@@ -1,5 +1,5 @@
 """
-Banner View for macOS QuakMeeting Banners.
+Banner View for macOS FlightDeck Banners.
 Coordinates Cocoa view lifecycle, animation loop ticks, mouse interaction,
 and delegates HUD rendering, particle physics, and speech quotes to specialized modules.
 """

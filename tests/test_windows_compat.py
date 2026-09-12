@@ -1,5 +1,5 @@
 """
-Unit tests for QuakMeeting Windows Platform Compatibility.
+Unit tests for FlightDeck Windows Platform Compatibility.
 Validates autostart via Windows Registry, audio playback via winsound,
 file/folder launch via os.startfile, calendar provider selection,
 process and Wi-Fi detection, and updater asset resolution on Windows.
@@ -190,10 +190,10 @@ class TestWindowsCompatibility(unittest.TestCase):
         from core.services.updater_service import UpdaterService
 
         assets = [
-            {"name": "QuakMeeting-macOS.dmg", "browser_download_url": "https://example.com/mac.dmg"},
-            {"name": "quakmeeting_1.0.0_amd64.deb", "browser_download_url": "https://example.com/linux.deb"},
-            {"name": "QuakMeeting-Windows.zip", "browser_download_url": "https://example.com/win.zip"},
-            {"name": "QuakMeeting-Setup.exe", "browser_download_url": "https://example.com/win.exe"}
+            {"name": "FlightDeck-macOS.dmg", "browser_download_url": "https://example.com/mac.dmg"},
+            {"name": "flightdeck_1.0.0_amd64.deb", "browser_download_url": "https://example.com/linux.deb"},
+            {"name": "FlightDeck-Windows.zip", "browser_download_url": "https://example.com/win.zip"},
+            {"name": "FlightDeck-Setup.exe", "browser_download_url": "https://example.com/win.exe"}
         ]
 
         service = UpdaterService()
@@ -205,9 +205,9 @@ class TestWindowsCompatibility(unittest.TestCase):
             # Test installation of .exe installer
             mock_startfile = MagicMock()
             with patch("os.startfile", mock_startfile, create=True):
-                res = service._install_windows_update("C:\\Temp\\QuakMeeting-Setup.exe", "C:\\Temp")
+                res = service._install_windows_update("C:\\Temp\\FlightDeck-Setup.exe", "C:\\Temp")
                 self.assertTrue(res)
-                mock_startfile.assert_called_with("C:\\Temp\\QuakMeeting-Setup.exe")
+                mock_startfile.assert_called_with("C:\\Temp\\FlightDeck-Setup.exe")
 
 
 if __name__ == "__main__":

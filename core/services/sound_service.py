@@ -1,5 +1,5 @@
 """
-Sound and Volume Service for QuakMeeting.
+Sound and Volume Service for FlightDeck.
 Handles cross-platform notification chime playback with system volume detection (macOS & Linux).
 Ensures sounds are only played when computer volume is on and unmuted.
 """
@@ -15,7 +15,7 @@ from typing import Optional
 
 from core.services.config_service import config
 
-logger = logging.getLogger("QuakMeeting.SoundService")
+logger = logging.getLogger("FlightDeck.SoundService")
 
 _last_chime_time = 0.0
 _chime_lock = threading.Lock()
@@ -153,7 +153,7 @@ def play_chime(
     is_testing = bool(
         "unittest" in sys.modules or
         "pytest" in sys.modules or
-        os.environ.get("QUAKMEETING_TESTING") or
+        os.environ.get("FLIGHTDECK_TESTING") or
         (event_dict and event_dict.get("is_test_banner"))
     )
     if is_testing and not sync:

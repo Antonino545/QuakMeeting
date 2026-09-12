@@ -1,0 +1,55 @@
+app-id: com.flightdeck.FlightDeck
+runtime: org.kde.Platform
+runtime-version: '6.8'
+sdk: org.kde.Sdk
+command: flightdeck
+
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --socket=pulseaudio
+  - --share=network
+  - --device=dri
+  - --talk-name=org.kde.StatusNotifierWatcher
+  - --own-name=org.kde.StatusNotifierItem-*
+  - --talk-name=org.freedesktop.Notifications
+  - --filesystem=xdg-config/flightdeck:create
+  - --filesystem=~/.flightdeck:create
+
+modules:
+  - name: python3-dependencies
+    buildsystem: simple
+    build-commands:
+      - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}" --prefix=${FLATPAK_DEST} requests urllib3 PyQt6 || pip3 install --prefix=${FLATPAK_DEST} requests urllib3 PyQt6
+
+  - name: flightdeck
+    buildsystem: simple
+    build-commands:
+      # Install payload into /app/share/flightdeck
+      - install -d /app/share/flightdeck
+      - cp -r core /app/share/flightdeck/
+      - cp -r ui /app/share/flightdeck/
+      # Isolate Linux UI: strip macOS AppKit/Quartz files from flatpak bundle
+      - rm -rf /app/share/flightdeck/ui/macos
+      - find /app/share/flightdeck -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+      - cp -r assets /app/share/flightdeck/
+      - cp main.py /app/share/flightdeck/
+
+      # Install desktop integration and metainfo
+      - install -D -m 644 packaging/flatpak/com.flightdeck.FlightDeck.desktop /app/share/applications/com.flightdeck.FlightDeck.desktop
+      - install -D -m 644 packaging/flatpak/com.flightdeck.FlightDeck.metainfo.xml /app/share/metainfo/com.flightdeck.FlightDeck.metainfo.xml
+      - install -D -m 644 assets/icon.png /app/share/icons/hicolor/512x512/apps/com.flightdeck.FlightDeck.png
+
+      # Create launcher script
+      - install -d /app/bin
+      - |
+        cat << 'WRAPPER_EOF' > /app/bin/flightdeck
+        #!/bin/bash
+        export PYTHONUNBUFFERED=1
+        exec python3 /app/share/flightdeck/main.py "$@"
+        WRAPPER_EOF
+      - chmod +x /app/bin/flightdeck
+    sources:
+      - type: dir
+        path: ../..

@@ -17,7 +17,7 @@ from core.services.event_bus import event_bus
 from core.domain.models import format_duration
 from core.logger import open_log_file
 
-logger = logging.getLogger("QuakMeeting.QtTrayApp")
+logger = logging.getLogger("FlightDeck.QtTrayApp")
 
 from ui.common.tray_viewmodel import TrayViewModel
 
@@ -28,7 +28,7 @@ class SignalBridge(QObject):
     menu = pyqtSignal()
     agenda = pyqtSignal()
 
-class QuakMeetingTrayApp:
+class FlightDeckTrayApp:
     def __init__(self, app: QApplication):
         self.app = app
         self._startup_catch_up_checked = False
@@ -295,7 +295,7 @@ def run_qt_tray_app():
     
     app.setApplicationName("FlightDeck")
     app.setApplicationDisplayName("FlightDeck")
-    app.setDesktopFileName("quakmeeting")
+    app.setDesktopFileName("flightdeck")
     
     icon_path = os.path.join(
         os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
@@ -332,9 +332,9 @@ def run_qt_tray_app():
             logger.info("Successfully initialized AyatanaAppIndicator3 for native GNOME text support.")
         except Exception as e:
             logger.info(f"AyatanaAppIndicator3 not available, falling back to QSystemTrayIcon: {e}")
-            tray = QuakMeetingTrayApp(app)
+            tray = FlightDeckTrayApp(app)
     else:
-        tray = QuakMeetingTrayApp(app)
+        tray = FlightDeckTrayApp(app)
 
     if "--silent" not in sys.argv:
         tray.show_flight_deck(0)
@@ -347,6 +347,3 @@ def run_qt_tray_app():
     from core.app_controller import app_controller
     app_controller.start_background_loop()
     app.exec()
-
-# Alias for FlightDeck
-FlightDeckTrayApp = QuakMeetingTrayApp

@@ -53,7 +53,7 @@ def check_python_code():
 
     py_files = []
     for root, _, files in os.walk(PROJECT_DIR):
-        if any(x in root for x in [".git", "QuakMeeting.app", "__pycache__", "deb_dist", "dmg_temp"]):
+        if any(x in root for x in [".git", "FlightDeck.app", "__pycache__", "deb_dist", "dmg_temp"]):
             continue
         for file in files:
             if file.endswith(".py"):

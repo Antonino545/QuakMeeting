@@ -1,5 +1,5 @@
 """
-Agenda View Model for QuakMeeting.
+Agenda View Model for FlightDeck.
 Builds cross-platform AgendaEventVM presentation models from domain CalendarEvent/Meeting objects.
 Decouples macOS AppKit and Linux PyQt6 presentation tabs from raw data structures.
 """

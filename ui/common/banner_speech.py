@@ -1,5 +1,5 @@
 """
-Common Pilot Speech Generation for QuakMeeting Banners.
+Common Pilot Speech Generation for FlightDeck Banners.
 Provides animal-specific vocalizations and context-aware quotes across macOS & Linux in English & Italian.
 """
 from typing import Dict, Any, Optional

@@ -6,7 +6,7 @@ from core.services.reminder_engine import reminder_engine
 from core.services.updater_service import updater_service
 from core.services.event_bus import event_bus
 
-logger = logging.getLogger("QuakMeeting.AppController")
+logger = logging.getLogger("FlightDeck.AppController")
 
 class AppController:
     """Central orchestrator for background tasks, removing polling from the UI layer."""

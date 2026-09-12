@@ -20,7 +20,7 @@ fi
 
 clear
 echo "============================================================"
-echo " 🦆 QuakMeeting - Banner & Full Screen Overlay Test"
+echo " 🦆 FlightDeck - Banner & Full Screen Overlay Test"
 echo "============================================================"
 echo ""
 echo "Select which notification banner to test over your Full Screen apps:"

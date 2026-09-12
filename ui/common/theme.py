@@ -1,5 +1,5 @@
 """
-Shared Catppuccin Mocha Theme System for QuakMeeting.
+Shared Catppuccin Mocha Theme System for FlightDeck.
 Single source of truth for color palette tokens across macOS (AppKit) and Linux (PyQt6).
 """
 from typing import Dict, Tuple

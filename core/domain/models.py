@@ -1,5 +1,5 @@
 """
-Domain models, Enums, and Value Objects for QuakMeeting.
+Domain models, Enums, and Value Objects for FlightDeck.
 Pure Python representations decoupled from PyObjC, PyQt, and external frameworks.
 """
 from dataclasses import dataclass, field
@@ -188,7 +188,7 @@ class EventPresentation:
 
 class CalendarEvent:
     """
-    Central domain entity representing any scheduled calendar item in QuakMeeting.
+    Central domain entity representing any scheduled calendar item in FlightDeck.
     Composes pure value objects (EventTime, Location, MeetingLink, TravelPlan,
     PresenceStatus, EventPresentation) while providing full backward compatibility
     with the historical Meeting dataclass.

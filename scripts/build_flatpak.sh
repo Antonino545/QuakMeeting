@@ -3,12 +3,12 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
-MANIFEST="$ROOT_DIR/packaging/flatpak/com.quakmeeting.QuakMeeting.yaml"
+MANIFEST="$ROOT_DIR/packaging/flatpak/com.flightdeck.FlightDeck.yaml"
 BUILD_DIR="$ROOT_DIR/build/flatpak"
 REPO_DIR="$ROOT_DIR/build/flatpak_repo"
 DIST_DIR="$ROOT_DIR/flatpak_dist"
 
-echo "📦 QuakMeeting Flatpak Builder"
+echo "📦 FlightDeck Flatpak Builder"
 echo "=============================="
 
 if ! command -v flatpak &>/dev/null; then
@@ -31,11 +31,11 @@ mkdir -p "$BUILD_DIR"
 echo "🔨 Building Flatpak package using manifest: $MANIFEST..."
 flatpak-builder --force-clean --repo="$REPO_DIR" "$BUILD_DIR" "$MANIFEST"
 
-BUNDLE_NAME="quakmeeting.flatpak"
+BUNDLE_NAME="flightdeck.flatpak"
 echo "📦 Exporting standalone Flatpak bundle: $DIST_DIR/$BUNDLE_NAME..."
-flatpak build-bundle "$REPO_DIR" "$DIST_DIR/$BUNDLE_NAME" com.quakmeeting.QuakMeeting
+flatpak build-bundle "$REPO_DIR" "$DIST_DIR/$BUNDLE_NAME" com.flightdeck.FlightDeck
 
 echo "✅ Flatpak bundle successfully created at $DIST_DIR/$BUNDLE_NAME"
 echo "To test run locally:"
 echo "   flatpak install --user $DIST_DIR/$BUNDLE_NAME"
-echo "   flatpak run com.quakmeeting.QuakMeeting"
+echo "   flatpak run com.flightdeck.FlightDeck"

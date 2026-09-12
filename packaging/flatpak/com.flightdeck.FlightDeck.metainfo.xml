@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>com.quakmeeting.QuakMeeting</id>
+  <id>com.flightdeck.FlightDeck</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>MIT</project_license>
-  <name>QuakMeeting</name>
+  <name>FlightDeck</name>
   <summary>Smart Meeting Reminders &amp; Flight Deck HUD</summary>
   <description>
     <p>
-      QuakMeeting is a cross-platform desktop application that provides smart meeting reminders,
+      FlightDeck is a cross-platform desktop application that provides smart meeting reminders,
       flight deck timeline agendas, and multi-modal transit leave-time alerts with customizable mascot pilots.
     </p>
     <p>Features include:</p>
@@ -18,11 +18,11 @@
       <li>Clean Catppuccin Mocha aesthetic with full Wayland and X11 support</li>
     </ul>
   </description>
-  <launchable type="desktop-id">com.quakmeeting.QuakMeeting.desktop</launchable>
-  <url type="homepage">https://github.com/Antonino545/QuakMeeting</url>
-  <url type="bugtracker">https://github.com/Antonino545/QuakMeeting/issues</url>
+  <launchable type="desktop-id">com.flightdeck.FlightDeck.desktop</launchable>
+  <url type="homepage">https://github.com/Antonino545/FlightDeck</url>
+  <url type="bugtracker">https://github.com/Antonino545/FlightDeck/issues</url>
   <provides>
-    <binary>quakmeeting</binary>
+    <binary>flightdeck</binary>
   </provides>
   <content_rating type="oars-1.1" />
   <releases>

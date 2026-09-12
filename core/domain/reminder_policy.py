@@ -1,5 +1,5 @@
 """
-Category-Specific Reminder Policies and Strategy Registry for QuakMeeting.
+Category-Specific Reminder Policies and Strategy Registry for FlightDeck.
 Decouples reminder intervals, urgency, and suppression logic into modular policies.
 """
 from typing import Protocol, List, Optional, Any

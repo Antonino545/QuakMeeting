@@ -1,5 +1,5 @@
 """
-Common Particle Physics Simulation for QuakMeeting Banners.
+Common Particle Physics Simulation for FlightDeck Banners.
 Handles turbo afterburner flames, smoke puffs, and sparkle trails.
 """
 import math

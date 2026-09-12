@@ -1,5 +1,5 @@
 """
-Secret Agent Platypus Pilot Renderer for QuakMeeting (macOS Quartz 2D).
+Secret Agent Platypus Pilot Renderer for FlightDeck (macOS Quartz 2D).
 Inspired by Perry the Platypus from Phineas & Ferb:
 Features stealth spy glider, teal platypus body, flat beaver tail, orange duck bill, and iconic brown fedora hat.
 """

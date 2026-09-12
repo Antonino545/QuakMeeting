@@ -1,5 +1,5 @@
 """
-Base Pilot Renderer interface for QuakMeeting Banner.
+Base Pilot Renderer interface for FlightDeck Banner.
 Defines abstract drawing hooks for vehicle and character rendering.
 """
 import math

@@ -1,2 +1,2 @@
-# Windows Python requirements for QuakMeeting
+# Windows Python requirements for FlightDeck
 PyQt6>=6.4.0

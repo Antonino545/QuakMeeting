@@ -1,5 +1,5 @@
 """
-Banner Window Controller for QuakMeeting.
+Banner Window Controller for FlightDeck.
 Manages transparent overlay window, multi-screen placement, animation timer, sound effects, and user actions.
 Supports full-screen spaces overlay across all macOS desktops.
 """
@@ -18,7 +18,7 @@ from .banner_view import QuakPitBannerView
 from .quiet_banner_view import QuietReminderView
 from .update_banner_view import MacUpdateBannerView
 
-logger = logging.getLogger("QuakMeeting.BannerController")
+logger = logging.getLogger("FlightDeck.BannerController")
 
 class QuakPitFlyingBanner(AppKit.NSObject):
     def initWithMeetingData_callback_(self, meeting_data: Dict[str, Any], on_close_callback: Optional[Callable] = None):

@@ -1,10 +1,10 @@
 ---
-name: quakmeeting-workflow
-description: Required operating guide for all work in QuakMeeting: architecture boundaries, reminder safety rules, verification, and delivery hygiene.
+name: flightdeck-workflow
+description: Required operating guide for all work in FlightDeck: architecture boundaries, reminder safety rules, verification, and delivery hygiene.
 trigger: always_on
 ---
 
-# QuakMeeting Agent Operating Guide
+# FlightDeck Agent Operating Guide
 
 Read this file before changing the project. For deeper reference, use [docs/PROJECT_GUIDE.md](../../docs/PROJECT_GUIDE.md), [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md), and [docs/CONFIGURATION.md](../../docs/CONFIGURATION.md).
 

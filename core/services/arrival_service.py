@@ -1,5 +1,5 @@
 """
-Arrival & Presence Detection Service for QuakMeeting.
+Arrival & Presence Detection Service for FlightDeck.
 Detects whether the user has already arrived at a venue (Campus / Office Wi-Fi)
 or is already participating in an online video call (Zoom, Teams, Webex, Skype, etc.).
 Supports manual "I'm Here" suppression and user-configurable settings.
@@ -13,7 +13,7 @@ from typing import Set, Optional, Dict, Any, List
 from core.domain.models import Meeting
 from core.services.config_service import config_service, ConfigService
 
-logger = logging.getLogger("QuakMeeting.ArrivalService")
+logger = logging.getLogger("FlightDeck.ArrivalService")
 
 class ArrivalService:
     """Manages automatic presence detection and manual arrival suppression."""

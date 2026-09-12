@@ -1,5 +1,5 @@
 """
-QuakMeeting UI Package.
+FlightDeck UI Package.
 
 Subpackages:
   - `ui.macos`: Native macOS UI components (PyObjC / AppKit / Quartz 2D).

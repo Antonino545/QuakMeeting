@@ -51,7 +51,7 @@ tail -15 ~/.flightdeck/flightdeck.log
 ## 🏗️ Architecture & Core Components
 
 ```
-QuakMeeting/
+FlightDeck/
 ├── main.py                        # App entry point (cross-platform dispatch)
 ├── build_macos_app.py             # Custom build script compiling C launcher Mach-O & bundling app (macOS)
 ├── scripts/
@@ -116,9 +116,9 @@ QuakMeeting/
 
 ### 1. Cross-Platform Runtime, macOS Mach-O Embedding & TCC Code Signing
 - **Rule**: Code must be cross-platform using `sys.platform` checks. Linux uses standard Python entry points (e.g., Wayland/Qt/AppIndicator) while macOS requires a specialized build.
-- **macOS Exception (Mach-O)**: When building `QuakMeeting.app`, the launcher stub in `build_macos_app.py` compiles a native C Mach-O binary that loads `libpython3.13.dylib` via `dlopen`/`dlsym` and invokes `Py_Main` in-process.
-- **Why (macOS)**: Calling `execv` to a shell script or external interpreter breaks macOS bundle association and causes the top macOS menu bar (`QuakMeeting`, `Edit`, `Window`, `Help`) to disappear.
-- **TCC Permission Persistence**: macOS codesigning must include an explicit Designated Requirement (`-r '=designated => identifier "com.quakmeeting.app"'`). Without this, ad-hoc codesigning binds permissions to the binary's `cdhash`, which causes macOS TCC to prompt for Calendar permissions after every update or rebuild.
+- **macOS Exception (Mach-O)**: When building `FlightDeck.app`, the launcher stub in `build_macos_app.py` compiles a native C Mach-O binary that loads `libpython3.13.dylib` via `dlopen`/`dlsym` and invokes `Py_Main` in-process.
+- **Why (macOS)**: Calling `execv` to a shell script or external interpreter breaks macOS bundle association and causes the top macOS menu bar (`FlightDeck`, `Edit`, `Window`, `Help`) to disappear.
+- **TCC Permission Persistence**: macOS codesigning must include an explicit Designated Requirement (`-r '=designated => identifier "com.flightdeck.app"'`). Without this, ad-hoc codesigning binds permissions to the binary's `cdhash`, which causes macOS TCC to prompt for Calendar permissions after every update or rebuild.
 
 ### 2. Strict Today-Only Calendar Filter
 - **Rule**: `CalendarService` only fetches and evaluates events scheduled for **Today** (`00:00:00` to `23:59:59`).
@@ -131,7 +131,7 @@ QuakMeeting/
 - **Rule**: On Linux, `EDSCalendarProvider` must cache connected `ECal.Client` instances and connect to uncached sources concurrently to prevent sequential timeout stalls.
 
 ### 2b. Responsive Linux Startup
-- **Rule**: Do not force `QT_QPA_PLATFORM=xcb` for Wayland sessions. Set it only when `QUAKMEETING_QT_XCB` is explicitly enabled.
+- **Rule**: Do not force `QT_QPA_PLATFORM=xcb` for Wayland sessions. Set it only when `FLIGHTDECK_QT_XCB` is explicitly enabled.
 - **Rule**: Notification banners are rendered by a dedicated XCB/XWayland helper process when the main Qt application is native Wayland, because native Wayland does not permit animated top-level window positioning.
 - **Rule**: The Flight Deck must show a loading, empty, or recovery state before optional tabs, provider discovery, updater checks, or presence detection complete.
 - **Rule**: Dashboard construction failures must remain visible through a retryable error window; logging alone is not an acceptable startup failure experience.
@@ -168,7 +168,7 @@ QuakMeeting/
 
 ### 7. Platform Packaging Isolation
 - **Rule**: Distribution builds must exclusively contain the target platform's UI layer and common design tokens:
-  - **macOS (`QuakMeeting.app`)**: Packages only `ui/macos/` and `ui/common/`. The Qt UI tree (`ui/linux/`) is excluded.
+  - **macOS (`FlightDeck.app`)**: Packages only `ui/macos/` and `ui/common/`. The Qt UI tree (`ui/linux/`) is excluded.
   - **Linux (`.deb` & Flatpak)**: Packages only `ui/linux/` and `ui/common/`. The Cocoa/AppKit UI tree (`ui/macos/`) is excluded.
   - **Windows**: PyInstaller packaging excludes `ui.macos`.
   - **Shared Presets**: Test and update presets must live in `ui/common/banner_presets.py` to avoid cross-platform dependencies.
@@ -233,4 +233,4 @@ python main.py
 pip install pyinstaller pillow
 python scripts/build_windows_release.py 1.0.0
 ```
-This produces `QuakMeeting-Windows.zip` containing the standalone executable and all required assets.
+This produces `FlightDeck-Windows.zip` containing the standalone executable and all required assets.

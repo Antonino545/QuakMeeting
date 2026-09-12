@@ -1,5 +1,5 @@
 """
-Centralized logging and diagnostic system for QuakMeeting.
+Centralized logging and diagnostic system for FlightDeck.
 Provides formatted console output, rotating file logs, global crash hooks,
 threading exception catchers, and native macOS error alerts.
 """
@@ -165,7 +165,7 @@ def open_log_file() -> bool:
         return False
 
 def open_log_folder() -> bool:
-    """Opens ~/.quakmeeting in file manager."""
+    """Opens ~/.flightdeck in file manager."""
     try:
         import subprocess
         os.makedirs(LOG_DIR, exist_ok=True)

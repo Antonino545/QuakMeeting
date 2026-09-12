@@ -178,10 +178,10 @@ class TestDashboardUI(unittest.TestCase):
 
     @unittest.skipUnless(HAS_APPKIT, "macOS AppKit required")
     def test_menu_bar_build_with_upcoming_events(self):
-        from ui.macos.menu_bar_app import QuakMeetingMenuBar
+        from ui.macos.menu_bar_app import FlightDeckMenuBar
         from datetime import datetime, timedelta
         now = datetime.now().astimezone()
-        menu_bar = QuakMeetingMenuBar.alloc().init()
+        menu_bar = FlightDeckMenuBar.alloc().init()
         self.assertIsNotNone(menu_bar)
 
         # Set upcoming meeting for today
@@ -201,13 +201,13 @@ class TestDashboardUI(unittest.TestCase):
     @unittest.skipUnless(HAS_APPKIT, "macOS AppKit required")
     def test_reminder_event_payload_shows_banner(self):
         """The EventBus payload includes event_dict as well as meeting/stage."""
-        from ui.macos.menu_bar_app import QuakMeetingMenuBar
+        from ui.macos.menu_bar_app import FlightDeckMenuBar
         from unittest.mock import patch
 
         payload = {"title": "Banner regression test", "reminder_stage": 0}
 
         with patch("ui.macos.menu_bar_app.show_banner_async") as show_banner:
-            QuakMeetingMenuBar._on_reminder_triggered(
+            FlightDeckMenuBar._on_reminder_triggered(
                 object(), meeting=None, stage=0, event_dict=payload
             )
 
@@ -289,14 +289,14 @@ class TestDashboardUI(unittest.TestCase):
     def test_qt_tray_debug_menu_visibility(self):
         try:
             from PyQt6.QtWidgets import QApplication
-            from ui.linux.qt_tray_app import QuakMeetingTrayApp
+            from ui.linux.qt_tray_app import FlightDeckTrayApp
             from core.services.config_service import config
         except (ImportError, ModuleNotFoundError):
             self.skipTest("PyQt6 not available for Qt tray app testing")
 
         app = QApplication.instance() or QApplication(sys.argv)
         with unittest.mock.patch("core.services.updater_service.updater_service.check_for_updates"):
-            tray_app = QuakMeetingTrayApp(app)
+            tray_app = FlightDeckTrayApp(app)
 
         # 1. Non-debug mode: logs action should not be present
         with unittest.mock.patch("ui.linux.qt_tray_app.is_debug_mode", return_value=False):

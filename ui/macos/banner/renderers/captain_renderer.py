@@ -1,5 +1,5 @@
 """
-Captain Jet Pilot Renderer for QuakMeeting.
+Captain Jet Pilot Renderer for FlightDeck.
 Features modern airliner livery, turbofan engine, pilot sunglasses, and naval captain cap with gold emblem.
 """
 import AppKit

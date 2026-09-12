@@ -1,5 +1,5 @@
 """
-Athlete / Gym Sport Duck Pilot Renderer for QuakMeeting.
+Athlete / Gym Sport Duck Pilot Renderer for FlightDeck.
 Features fiery athletic crimson chassis, athletic sweatband, dumbbell emblem,
 lightning sport wing stripes, and workout energy aura.
 """

@@ -1,5 +1,5 @@
 """
-Hyper Squirrel Pilot Renderer for QuakMeeting (Linux PyQt6 QPainter).
+Hyper Squirrel Pilot Renderer for FlightDeck (Linux PyQt6 QPainter).
 Features chestnut squirrel with dynamic bushy tail wave, white chest fluff, acorn-shell pilot helmet with stem, and golden goggles.
 """
 from __future__ import annotations

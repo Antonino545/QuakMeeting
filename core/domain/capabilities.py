@@ -1,5 +1,5 @@
 """
-Event Capabilities Value Object for QuakMeeting.
+Event Capabilities Value Object for FlightDeck.
 Exposes boolean capability flags to simplify presentation logic and prevent platform UI divergence.
 """
 from dataclasses import dataclass

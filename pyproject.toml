@@ -1,12 +1,12 @@
 [project]
-name = "quakmeeting"
+name = "flightdeck"
 version = "1.0.5"
 description = "Cross-platform smart meeting reminder & flight deck application for macOS and Linux"
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
 authors = [
-    { name = "Antonino", email = "antonino@quakmeeting.local" }
+    { name = "Antonino", email = "antonino@flightdeck.local" }
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -44,7 +44,7 @@ dev = [
 ]
 
 [project.scripts]
-quakmeeting = "ui.app_launcher:launch_application"
+flightdeck = "ui.app_launcher:launch_application"
 
 [tool.ruff]
 line-length = 150

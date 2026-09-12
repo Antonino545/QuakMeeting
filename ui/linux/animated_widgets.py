@@ -1,5 +1,5 @@
 """
-Rock-Solid, Glitch-Free PyQt6 Animations for QuakMeeting Flight Deck.
+Rock-Solid, Glitch-Free PyQt6 Animations for FlightDeck Flight Deck.
 - Event-driven: Timers ONLY run when active, 0 overhead when idle.
 - Zero QGraphicsOpacityEffect: Eliminates Linux compositor font blur, tearing, and black box glitches.
 - UpdatingHUDWidget: High-energy animated update HUD with flying mascot jet, exhaust flames, phase tracking & gears.
@@ -23,7 +23,7 @@ from PyQt6.QtGui import (
     QLinearGradient, QRadialGradient, QPainterPath
 )
 
-logger = logging.getLogger("QuakMeeting.AnimatedWidgets")
+logger = logging.getLogger("FlightDeck.AnimatedWidgets")
 
 
 class BouncingMascotLabel(QLabel):
@@ -38,7 +38,7 @@ class BouncingMascotLabel(QLabel):
         self.emoji = emoji
         self.setFixedSize(54, 54)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setToolTip("QuakMeeting Mascot — Click for a bounce! 🦆")
+        self.setToolTip("FlightDeck Mascot — Click for a bounce! 🦆")
 
         self._bounce_step = 0
         self._max_steps = 30
@@ -230,7 +230,7 @@ class AnimatedUpdateCard(QFrame):
 
 class UpdatingHUDWidget(QFrame):
     """
-    Rich Animated HUD displayed while QuakMeeting is updating itself.
+    Rich Animated HUD displayed while FlightDeck is updating itself.
     Features:
     - 4-Phase Step pipeline (1. Connect -> 2. Download -> 3. Install -> 4. Ready)
     - Flying Mascot Jet Rocket moving across the progress bar track
@@ -302,7 +302,7 @@ class UpdatingHUDWidget(QFrame):
         """Switches HUD to the completed / relaunch step."""
         self._phase_index = 3
         self._target_percent = 100.0
-        self._status_caption = "Update installed successfully! Relaunching QuakMeeting..."
+        self._status_caption = "Update installed successfully! Relaunching FlightDeck..."
         self.setVisible(True)
         self.update()
         QTimer.singleShot(4000, self._auto_stop)

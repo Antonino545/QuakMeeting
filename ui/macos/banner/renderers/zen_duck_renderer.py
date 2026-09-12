@@ -1,5 +1,5 @@
 """
-Zen Duck Pilot Renderer for QuakMeeting.
+Zen Duck Pilot Renderer for FlightDeck.
 Features mint/teal cloud fuselage, meditating smiling duck, pink lotus flower, and pastel wing.
 """
 import AppKit

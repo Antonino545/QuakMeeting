@@ -1,5 +1,5 @@
 """
-Clock Protocol and Implementations for QuakMeeting.
+Clock Protocol and Implementations for FlightDeck.
 Provides an abstraction over system time for deterministic testing and simulation.
 """
 from typing import Protocol, runtime_checkable

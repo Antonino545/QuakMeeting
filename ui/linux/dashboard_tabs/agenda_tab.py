@@ -1,5 +1,5 @@
 """
-PyQt6 Agenda Tab for QuakMeeting Flight Deck on Linux.
+PyQt6 Agenda Tab for FlightDeck Flight Deck on Linux.
 Displays today's Command Center (NOW / NEXT / LATER) with "Why?" transparency,
 countdown badges, location details, and 1-click actions.
 """
@@ -21,7 +21,7 @@ from core.domain.models import format_duration
 from core.domain.classifier import EventClassifier
 from ui.common.agenda_viewmodel import AgendaViewModel, AgendaEventVM, CommandCenterVM
 
-logger = logging.getLogger("QuakMeeting.QtAgendaTab")
+logger = logging.getLogger("FlightDeck.QtAgendaTab")
 
 
 class QtAgendaTab(QWidget):

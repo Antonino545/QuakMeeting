@@ -12,7 +12,7 @@ from core.services.database_service import DatabaseService
 class TestDatabaseService(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.mkdtemp()
-        self.db_path = os.path.join(self.temp_dir, "test_quakmeeting.db")
+        self.db_path = os.path.join(self.temp_dir, "test_flightdeck.db")
         # Instantiate with isolated path
         self.db = DatabaseService(self.db_path)
         self.db.db_path = self.db_path

@@ -1,5 +1,5 @@
 """
-Hyper Squirrel Pilot Renderer for QuakMeeting (macOS Quartz 2D).
+Hyper Squirrel Pilot Renderer for FlightDeck (macOS Quartz 2D).
 Features chestnut squirrel with dynamic bushy tail wave, white chest fluff, acorn-shell pilot helmet with stem, and golden goggles.
 """
 import math

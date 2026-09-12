@@ -419,5 +419,5 @@ class SystemCardController(AppKit.NSObject):
         resp = alert.runModal()
         if resp == AppKit.NSAlertSecondButtonReturn:
             AppKit.NSWorkspace.sharedWorkspace().openURL_(
-                AppKit.NSURL.URLWithString_("https://github.com/Antonino545/QuakMeeting")
+                AppKit.NSURL.URLWithString_("https://github.com/Antonino545/FlightDeck")
             )

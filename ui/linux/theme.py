@@ -57,7 +57,7 @@ def get_asset_path(filename: str) -> str:
     candidate = os.path.join(root_dir, "assets", filename)
     if os.path.exists(candidate):
         return candidate
-    opt_candidate = os.path.join("/opt", "quakmeeting", "assets", filename)
+    opt_candidate = os.path.join("/opt", "flightdeck", "assets", filename)
     if os.path.exists(opt_candidate):
         return opt_candidate
     return candidate

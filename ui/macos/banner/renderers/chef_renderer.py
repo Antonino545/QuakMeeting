@@ -1,5 +1,5 @@
 """
-Chef Duck Pilot Renderer for QuakMeeting.
+Chef Duck Pilot Renderer for FlightDeck.
 Features coral biplane, Toque Blanche chef hat, polka dot bandana, steaming pizza slice, and propeller.
 """
 import math

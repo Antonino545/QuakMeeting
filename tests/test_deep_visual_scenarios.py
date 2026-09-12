@@ -1,5 +1,5 @@
 """
-Deep Visual and Scenario Test Suite for QuakMeeting.
+Deep Visual and Scenario Test Suite for FlightDeck.
 Creates realistic fake events (Lectures, Video meetings, Travel/transit, Therapy, Exams),
 renders both macOS AppKit and Linux PyQt6 Agenda tabs offscreen, generates high-DPI
 visual snapshots, verifies layout geometries and multiplatform parity, and creates
@@ -28,7 +28,7 @@ from core.domain.capabilities import EventCapabilities
 from ui.common.agenda_viewmodel import AgendaViewModel, AgendaEventVM
 
 # Artifacts output directory
-ARTIFACTS_DIR = os.environ.get("ARTIFACTS_DIR") or os.path.expanduser("~/.quakmeeting/test_artifacts")
+ARTIFACTS_DIR = os.environ.get("ARTIFACTS_DIR") or os.path.expanduser("~/.flightdeck/test_artifacts")
 os.makedirs(ARTIFACTS_DIR, exist_ok=True)
 
 
@@ -277,7 +277,7 @@ class TestDeepVisualScenarios(unittest.TestCase):
             # Header
             p.setFont(QFont("Inter, Arial", 16, QFont.Weight.Bold))
             p.setPen(QColor(205, 214, 244)) # Text
-            p.drawText(24, 36, "QuakMeeting Agenda Tab: Cross-Platform Parity Verification")
+            p.drawText(24, 36, "FlightDeck Agenda Tab: Cross-Platform Parity Verification")
 
             p.setFont(QFont("Inter, Arial", 11))
             p.setPen(QColor(166, 173, 200)) # Subtext0

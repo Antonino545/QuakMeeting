@@ -1,5 +1,5 @@
 """
-Unit Tests for QuakMeeting Autostart Subsystem.
+Unit Tests for FlightDeck Autostart Subsystem.
 """
 import unittest
 from unittest.mock import patch, MagicMock

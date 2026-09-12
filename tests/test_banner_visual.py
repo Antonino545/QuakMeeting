@@ -1,5 +1,5 @@
 """
-Visual Snapshot Test for QuakMeeting Banners.
+Visual Snapshot Test for FlightDeck Banners.
 Renders both the Advance Flyby Reminder (stage > 0) and the Event-Time Looping Banner (stage 0),
 asserts visual differentiation, and saves snapshot images to artifacts for visual verification.
 """

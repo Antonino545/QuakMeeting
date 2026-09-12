@@ -1,5 +1,5 @@
 """
-Modular Vector Pilot Renderer for QuakMeeting (Linux PyQt6 QPainter).
+Modular Vector Pilot Renderer for FlightDeck (Linux PyQt6 QPainter).
 Dynamically composites any base animal (Duck 🦆, Owl 🦉, Bunny 🐰)
 with any costume/headwear (Student 🎓, Chef 👨‍🍳, Captain 🧑‍✈️, Agent 🕵️, Gym 🏋️, Racer 🏎️, Zen 🌸, Aviator 🪖).
 """
