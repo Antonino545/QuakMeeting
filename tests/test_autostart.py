@@ -56,9 +56,9 @@ class TestAutostartService(unittest.TestCase):
         mock_remove.assert_called_with(LINUX_DESKTOP_FILE)
 
     def test_generate_launchagent_plist(self):
-        plist_str = generate_launchagent_plist("/Applications/QuakMeeting.app")
-        self.assertIn("<string>com.quakmeeting.app</string>", plist_str)
-        self.assertIn("<string>/Applications/QuakMeeting.app</string>", plist_str)
+        plist_str = generate_launchagent_plist("/Applications/FlightDeck.app")
+        self.assertIn("<string>com.flightdeck.app</string>", plist_str)
+        self.assertIn("<string>/Applications/FlightDeck.app</string>", plist_str)
         self.assertIn("<string>--silent</string>", plist_str)
         self.assertIn("<string>--autostart</string>", plist_str)
         self.assertIn("<key>LimitLoadToSessionType</key>", plist_str)

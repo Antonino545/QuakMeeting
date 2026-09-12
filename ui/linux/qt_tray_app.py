@@ -44,7 +44,7 @@ class QuakMeetingTrayApp:
             self.icon = QIcon()
 
         self.tray = QSystemTrayIcon(self.icon, self.app)
-        self.tray.setToolTip("QuakMeeting")
+        self.tray.setToolTip("FlightDeck")
 
         self.build_menu()
         self.tray.show()
@@ -174,7 +174,7 @@ class QuakMeetingTrayApp:
 
         menu.addSeparator()
 
-        quit_act = QAction("Quit QuakMeeting", menu)
+        quit_act = QAction("Quit FlightDeck", menu)
         quit_act.triggered.connect(lambda chk=False: self.app.quit())
         menu.addAction(quit_act)
 
@@ -293,8 +293,8 @@ def run_qt_tray_app():
     if app is None:
         app = QApplication(sys.argv)
     
-    app.setApplicationName("QuakMeeting")
-    app.setApplicationDisplayName("QuakMeeting")
+    app.setApplicationName("FlightDeck")
+    app.setApplicationDisplayName("FlightDeck")
     app.setDesktopFileName("quakmeeting")
     
     icon_path = os.path.join(
@@ -347,3 +347,6 @@ def run_qt_tray_app():
     from core.app_controller import app_controller
     app_controller.start_background_loop()
     app.exec()
+
+# Alias for FlightDeck
+FlightDeckTrayApp = QuakMeetingTrayApp

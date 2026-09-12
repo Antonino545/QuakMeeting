@@ -3,6 +3,7 @@ Menu Bar Application for QuakMeeting.
 Displays dynamic status bar item, full macOS top menu bar, quick-action context menu, and background scanning.
 """
 import AppKit
+import Foundation
 import objc
 import webbrowser
 import threading
@@ -25,10 +26,76 @@ from ui.macos.banner import show_banner_async, _run_banner
 from ui.macos.dashboard_window import show_dashboard
 from ui.common.tray_viewmodel import TrayViewModel
 
-class QuakMeetingAppDelegate(AppKit.NSObject):
+_theme_observer = None
+
+def get_theme_icon_path(mode: str = "dark") -> str:
+    """Finds the icon path for the requested appearance mode ('dark' or 'light')."""
+    filename = "icon_dark.png" if mode == "dark" else "icon_light.png"
+    candidates = []
+    bundle = AppKit.NSBundle.mainBundle()
+    if bundle and bundle.resourcePath():
+        candidates.append(os.path.join(bundle.resourcePath(), "assets", filename))
+        candidates.append(os.path.join(bundle.resourcePath(), "assets", "icon.png"))
+    project_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    candidates.append(os.path.join(project_dir, "assets", filename))
+    candidates.append(os.path.join(project_dir, "assets", "icon.png"))
+    for c in candidates:
+        if os.path.isfile(c):
+            return c
+    return ""
+
+
+def update_dock_icon(app=None):
+    """Dynamically updates the macOS Dock icon according to the active system theme (Light vs Dark)."""
+    if app is None:
+        app = AppKit.NSApplication.sharedApplication()
+    try:
+        appearance = app.effectiveAppearance().bestMatchFromAppearancesWithNames_([
+            AppKit.NSAppearanceNameAqua,
+            AppKit.NSAppearanceNameDarkAqua
+        ])
+        is_dark = (appearance == AppKit.NSAppearanceNameDarkAqua)
+        target_path = get_theme_icon_path("dark" if is_dark else "light")
+        if target_path and os.path.exists(target_path):
+            img = AppKit.NSImage.alloc().initWithContentsOfFile_(target_path)
+            if img and img.isValid():
+                app.setApplicationIconImage_(img)
+                logger.debug("macOS Dock icon set to %s (%s)", "Dark" if is_dark else "Light", target_path)
+    except Exception as e:
+        logger.warning("Could not update dynamic Dock icon: %s", e)
+
+
+def init_system_theme_listener():
+    """Listens for macOS system Dark/Light theme changes to update the Dock icon in real time."""
+    if sys.platform != "darwin":
+        return
+    global _theme_observer
+    if _theme_observer is not None:
+        return
+    try:
+        class SystemThemeObserver(Foundation.NSObject):
+            def themeDidChange_(self, notification):
+                logger.info("macOS System Theme changed (Dark/Light), updating Dock icon.")
+                update_dock_icon()
+
+        _theme_observer = SystemThemeObserver.alloc().init()
+        center = Foundation.NSDistributedNotificationCenter.defaultCenter()
+        center.addObserver_selector_name_object_(
+            _theme_observer,
+            objc.selector(_theme_observer.themeDidChange_, signature=b"v@:@"),
+            "AppleInterfaceThemeChangedNotification",
+            None
+        )
+        logger.debug("Registered AppleInterfaceThemeChangedNotification observer for dynamic Dock icon.")
+    except Exception as e:
+        logger.debug("Could not register system theme observer: %s", e)
+
+class FlightDeckAppDelegate(AppKit.NSObject):
     def applicationDidFinishLaunching_(self, notification):
-        logger.info("QuakMeeting running in macOS menu bar & system status bar!")
+        logger.info("FlightDeck running in macOS menu bar & system status bar!")
         logger.debug("macOS application finished launching; argv=%s", sys.argv)
+        update_dock_icon()
+        init_system_theme_listener()
         if "--silent" not in sys.argv and "--autostart" not in sys.argv:
             show_dashboard()
 
@@ -43,30 +110,24 @@ class QuakMeetingAppDelegate(AppKit.NSObject):
     def showBannerOnMainThread_(self, meeting_data):
         _run_banner(meeting_data)
 
-class QuakMeetingMenuBar(AppKit.NSObject):
+class FlightDeckMenuBar(AppKit.NSObject):
     def init(self):
-        self = objc.super(QuakMeetingMenuBar, self).init()
+        self = objc.super(FlightDeckMenuBar, self).init()
         if self is None:
             return None
 
         self.app = AppKit.NSApplication.sharedApplication()
 
         # Force macOS to (re-)register this process as a GUI app with menu bar.
-        # When launched from a .app bundle via execv, the WindowServer may not
-        # recognise the Python process as the bundle's application. Toggling
-        # Accessory → Regular forces a re-registration so the top menu bar and
-        # keyboard shortcuts work correctly.
         self.app.setActivationPolicy_(AppKit.NSApplicationActivationPolicyAccessory)
         self.app.setActivationPolicy_(AppKit.NSApplicationActivationPolicyRegular)
 
-        self.delegate = QuakMeetingAppDelegate.alloc().init()
+        self.delegate = FlightDeckAppDelegate.alloc().init()
         self.app.setDelegate_(self.delegate)
 
-        # Application icon
-        icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "icon.png")
-        if os.path.exists(icon_path):
-            icon_img = AppKit.NSImage.alloc().initWithContentsOfFile_(icon_path)
-            self.app.setApplicationIconImage_(icon_img)
+        # Dynamic Application icon matching macOS theme (Light/Dark)
+        update_dock_icon(self.app)
+        init_system_theme_listener()
 
         # 1. macOS Top Menu Bar (App Menu, Edit, Window, Help)
         self._setup_main_menubar()
@@ -81,8 +142,8 @@ class QuakMeetingMenuBar(AppKit.NSObject):
 
         btn = self.status_item.button()
         if btn:
-            btn.setTitle_("🦆")
-            btn.setToolTip_("QuakMeeting — Smart Meeting & Travel Reminders")
+            btn.setTitle_("✈️")
+            btn.setToolTip_("FlightDeck — Smart Schedule & Travel Reminders")
 
         self.menu = AppKit.NSMenu.alloc().init()
         self.status_item.setMenu_(self.menu)
@@ -112,7 +173,7 @@ class QuakMeetingMenuBar(AppKit.NSObject):
 
         # --- APP MENU ---
         app_menu_item = AppKit.NSMenuItem.alloc().init()
-        app_menu = AppKit.NSMenu.alloc().initWithTitle_("QuakMeeting")
+        app_menu = AppKit.NSMenu.alloc().initWithTitle_("FlightDeck")
 
         about_item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
             t("about_quakmeeting"), "openAbout:", ""
@@ -191,14 +252,14 @@ class QuakMeetingMenuBar(AppKit.NSObject):
 
         if is_debug_mode():
             help_log = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-                "View Log File (quakmeeting.log)", "openLogFileAction:", "l"
+                "View Log File (flightdeck.log)", "openLogFileAction:", "l"
             )
             help_log.setTarget_(self)
             help_menu.addItem_(help_log)
             help_menu.addItem_(AppKit.NSMenuItem.separatorItem())
 
         help_doc = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "QuakMeeting Guide & GitHub", "openHelp:", ""
+            "FlightDeck Guide & GitHub", "openHelp:", ""
         )
         help_doc.setTarget_(self)
         help_menu.addItem_(help_doc)
@@ -592,12 +653,16 @@ class QuakMeetingMenuBar(AppKit.NSObject):
     def run(self):
         self.app.run()
 
+# Backward compatibility alias
+QuakMeetingMenuBar = FlightDeckMenuBar
+QuakMeetingAppDelegate = FlightDeckAppDelegate
+
 def run_menu_bar_app():
     """Initializes and runs the native macOS menu bar status item and event loop."""
     import sys
-    app_instance = QuakMeetingMenuBar.alloc().init()
+    app_instance = FlightDeckMenuBar.alloc().init()
     if app_instance is None:
-        logger.error("Failed to allocate and initialize QuakMeetingMenuBar!")
+        logger.error("Failed to allocate and initialize FlightDeckMenuBar!")
         return
 
     from core.app_controller import app_controller

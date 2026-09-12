@@ -3,7 +3,7 @@ import sys
 import shutil
 import subprocess
 
-APP_NAME = "QuakMeeting.app"
+APP_NAME = "FlightDeck.app"
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 APP_DIR = os.path.join(PROJECT_DIR, APP_NAME)
 CONTENTS_DIR = os.path.join(APP_DIR, "Contents")
@@ -112,8 +112,12 @@ def build_bundle():
     # 2. Copy assets/
     assets_dest = os.path.join(RESOURCES_DIR, "assets")
     os.makedirs(assets_dest, exist_ok=True)
-    if os.path.exists(os.path.join(PROJECT_DIR, "assets", "icon.png")):
-        shutil.copy2(os.path.join(PROJECT_DIR, "assets", "icon.png"), os.path.join(assets_dest, "icon.png"))
+    assets_src = os.path.join(PROJECT_DIR, "assets")
+    if os.path.exists(assets_src):
+        for f_name in os.listdir(assets_src):
+            s_path = os.path.join(assets_src, f_name)
+            if os.path.isfile(s_path):
+                shutil.copy2(s_path, os.path.join(assets_dest, f_name))
 
     # 3. Copy Python module directories (core/ and ui/) and main.py
     # Note: ui/linux (Qt runtime) is explicitly excluded from macOS bundle for clean packaging
@@ -154,15 +158,15 @@ def build_bundle():
 <plist version="1.0">
 <dict>
     <key>CFBundleExecutable</key>
-    <string>QuakMeeting</string>
+    <string>FlightDeck</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>CFBundleIdentifier</key>
-    <string>com.quakmeeting.app</string>
+    <string>com.flightdeck.app</string>
     <key>CFBundleName</key>
-    <string>QuakMeeting</string>
+    <string>FlightDeck</string>
     <key>CFBundleDisplayName</key>
-    <string>QuakMeeting</string>
+    <string>FlightDeck</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
@@ -183,9 +187,9 @@ def build_bundle():
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>NSCalendarsUsageDescription</key>
-    <string>QuakMeeting requires Calendar access to display smart reminders and travel routes for your scheduled events.</string>
+    <string>FlightDeck requires Calendar access to display smart reminders and travel routes for your scheduled events.</string>
     <key>NSCalendarsFullAccessUsageDescription</key>
-    <string>QuakMeeting requires full Calendar access to fetch your upcoming meetings and travel routes.</string>
+    <string>FlightDeck requires full Calendar access to fetch your upcoming meetings and travel routes.</string>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
 </dict>
@@ -198,15 +202,15 @@ def build_bundle():
     os.makedirs(os.path.join(RESOURCES_DIR, "en.lproj"), exist_ok=True)
     os.makedirs(os.path.join(RESOURCES_DIR, "it.lproj"), exist_ok=True)
 
-    # 5. Create Launcher Bash executable in MacOS/QuakMeeting.sh (debug fallback only)
+    # 5. Create Launcher Bash executable in MacOS/FlightDeck.sh (debug fallback only)
     launcher_content = """#!/bin/bash
 DIR="$(cd "$(dirname "$0")/../Resources" && pwd)"
-LOG_DIR="$HOME/.quakmeeting"
+LOG_DIR="$HOME/.flightdeck"
 mkdir -p "$LOG_DIR"
-LOG_FILE="$LOG_DIR/quakmeeting.log"
+LOG_FILE="$LOG_DIR/flightdeck.log"
 LAUNCHER_LOG="$LOG_DIR/launcher.log"
 
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] [Launcher] QuakMeeting launching from $DIR..." >> "$LAUNCHER_LOG"
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] [Launcher] FlightDeck launching from $DIR..." >> "$LAUNCHER_LOG"
 
 export PATH="/opt/miniconda3/bin:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:$PATH"
 
@@ -222,11 +226,11 @@ done
 if [ -z "$PYTHON_BIN" ]; then
     ERR_MSG="Python 3 with PyObjC (AppKit) not found. Please install pyobjc: pip3 install pyobjc"
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] [Launcher Error] $ERR_MSG" >> "$LAUNCHER_LOG"
-    osascript -e "display alert \"QuakMeeting Launch Error\" message \"$ERR_MSG\" as critical"
+    osascript -e "display alert \"FlightDeck Launch Error\" message \"$ERR_MSG\" as critical"
     exit 1
 fi
 
-BUNDLE_PYTHON="$DIR/../MacOS/QuakMeeting_Python"
+BUNDLE_PYTHON="$DIR/../MacOS/FlightDeck_Python"
 if [ ! -f "$BUNDLE_PYTHON" ]; then
     cp "$PYTHON_BIN" "$BUNDLE_PYTHON"
     chmod +x "$BUNDLE_PYTHON"
@@ -235,7 +239,7 @@ fi
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] [Launcher] Executing $BUNDLE_PYTHON $DIR/main.py --dashboard $@" >> "$LAUNCHER_LOG"
 exec "$BUNDLE_PYTHON" "$DIR/main.py" --dashboard "$@" >> "$LOG_FILE" 2>&1
 """
-    bash_path = os.path.join(MACOS_DIR, "QuakMeeting.sh")
+    bash_path = os.path.join(MACOS_DIR, "FlightDeck.sh")
     with open(bash_path, "w", encoding="utf-8") as f:
         f.write(launcher_content)
     os.chmod(bash_path, 0o755)
@@ -254,10 +258,10 @@ exec "$BUNDLE_PYTHON" "$DIR/main.py" --dashboard "$@" >> "$LOG_FILE" 2>&1
                 continue
 
     if python_bin:
-        bundle_python_path = os.path.join(MACOS_DIR, "QuakMeeting_Python")
+        bundle_python_path = os.path.join(MACOS_DIR, "FlightDeck_Python")
         shutil.copy2(python_bin, bundle_python_path)
         os.chmod(bundle_python_path, 0o755)
-        print(f"  ✓ Bundled Python binary: {python_bin} → QuakMeeting_Python")
+        print(f"  ✓ Bundled Python binary: {python_bin} → FlightDeck_Python")
     else:
         print("  ⚠️ Could not find Python with PyObjC at build time; will fall back to shell launcher.")
 
@@ -286,20 +290,20 @@ int main(int argc, char **argv) {
     char exe_path[PATH_MAX];
     uint32_t size = sizeof(exe_path);
     if (_NSGetExecutablePath(exe_path, &size) != 0) {
-        fprintf(stderr, "QuakMeeting: _NSGetExecutablePath failed\n");
+        fprintf(stderr, "FlightDeck: _NSGetExecutablePath failed\n");
         return 1;
     }
 
     char real_path[PATH_MAX];
     if (!realpath(exe_path, real_path)) {
-        fprintf(stderr, "QuakMeeting: realpath failed\n");
+        fprintf(stderr, "FlightDeck: realpath failed\n");
         return 1;
     }
 
     /* Trim to MacOS/ directory */
     char *last_slash = strrchr(real_path, '/');
     if (!last_slash) return 1;
-    *last_slash = '\0';
+    *last_slash = 0;
 
     char resources_path[PATH_MAX];
     char main_py_path[PATH_MAX];
@@ -311,10 +315,10 @@ int main(int argc, char **argv) {
     const char *home = getenv("HOME");
     if (home) {
         char log_dir[PATH_MAX];
-        snprintf(log_dir, sizeof(log_dir), "%s/.quakmeeting", home);
+        snprintf(log_dir, sizeof(log_dir), "%s/.flightdeck", home);
         mkdir(log_dir, 0755);
         char log_path[PATH_MAX];
-        snprintf(log_path, sizeof(log_path), "%s/quakmeeting.log", log_dir);
+        snprintf(log_path, sizeof(log_path), "%s/flightdeck.log", log_dir);
         FILE *log_fp = fopen(log_path, "a");
         if (log_fp) {
             dup2(fileno(log_fp), STDOUT_FILENO);
@@ -342,19 +346,19 @@ int main(int argc, char **argv) {
     for (int i = 0; dylib_candidates[i] != NULL; i++) {
         python_lib = dlopen(dylib_candidates[i], RTLD_LAZY | RTLD_GLOBAL);
         if (python_lib) {
-            fprintf(stderr, "[QuakMeeting Launcher] Loaded: %s\n", dylib_candidates[i]);
+            fprintf(stderr, "[FlightDeck Launcher] Loaded: %s\n", dylib_candidates[i]);
             break;
         }
     }
 
     if (!python_lib) {
-        fprintf(stderr, "QuakMeeting: Could not load libpython. dlerror: %s\n", dlerror());
+        fprintf(stderr, "FlightDeck: Could not load libpython. dlerror: %s\n", dlerror());
         /* Fall back to execv as last resort */
         char python_bin[PATH_MAX];
-        snprintf(python_bin, sizeof(python_bin), "%s/QuakMeeting_Python", real_path);
+        snprintf(python_bin, sizeof(python_bin), "%s/FlightDeck_Python", real_path);
         char *fallback_argv[] = {python_bin, main_py_path, NULL};
         execv(python_bin, fallback_argv);
-        perror("QuakMeeting: execv fallback also failed");
+        perror("FlightDeck: execv fallback also failed");
         return 1;
     }
 
@@ -363,7 +367,7 @@ int main(int argc, char **argv) {
     Py_DecodeLocale_t py_decode = (Py_DecodeLocale_t)dlsym(python_lib, "Py_DecodeLocale");
 
     if (!py_main || !py_decode) {
-        fprintf(stderr, "QuakMeeting: Could not resolve Py_Main/Py_DecodeLocale\n");
+        fprintf(stderr, "FlightDeck: Could not resolve Py_Main/Py_DecodeLocale\n");
         return 1;
     }
 
@@ -408,7 +412,7 @@ int main(int argc, char **argv) {
     with open(c_path, "w") as f:
         f.write(c_stub)
 
-    launcher_path = os.path.join(MACOS_DIR, "QuakMeeting")
+    launcher_path = os.path.join(MACOS_DIR, "FlightDeck")
     # Compile with include path for Python.h (not strictly needed for dlopen approach,
     # but ensures the build environment is clean)
     subprocess.run(["clang", "-O2", "-Wall", c_path, "-o", launcher_path], check=True)
@@ -419,18 +423,18 @@ int main(int argc, char **argv) {
         subprocess.run(["xattr", "-cr", APP_DIR], check=False)
         subprocess.run([
             "codesign", "--force", "--deep", "-s", "-",
-            "-i", "com.quakmeeting.app",
-            "-r", '=designated => identifier "com.quakmeeting.app"',
+            "-i", "com.flightdeck.app",
+            "-r", '=designated => identifier "com.flightdeck.app"',
             APP_DIR
         ], check=False)
-        print(f"  ✓ Applied ad-hoc codesign signature with designated requirement (id: com.quakmeeting.app) to {APP_NAME}")
+        print(f"  ✓ Applied ad-hoc codesign signature with designated requirement (id: com.flightdeck.app) to {APP_NAME}")
     except Exception as cs_err:
         print(f"  Note on codesign: {cs_err}")
 
-    print(f"🚀 QuakMeeting.app successfully created in: {APP_DIR}")
+    print(f"🚀 FlightDeck.app successfully created in: {APP_DIR}")
 
     # 6. Install cleanly into /Applications
-    apps_target = "/Applications/QuakMeeting.app"
+    apps_target = "/Applications/FlightDeck.app"
     try:
         if os.path.exists(apps_target):
             if os.path.islink(apps_target):
@@ -443,7 +447,7 @@ int main(int argc, char **argv) {
         print(f"Applications install note: {e}")
 
     # 7. Create Desktop shortcut
-    desktop_app = os.path.expanduser("~/Desktop/QuakMeeting.app")
+    desktop_app = os.path.expanduser("~/Desktop/FlightDeck.app")
     try:
         if os.path.exists(desktop_app):
             if os.path.islink(desktop_app):

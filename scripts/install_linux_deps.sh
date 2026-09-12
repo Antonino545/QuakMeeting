@@ -2,7 +2,7 @@
 set -e
 
 echo "============================================================"
-echo " 🐧 Installing QuakMeeting Linux Dependencies on Ubuntu"
+echo " 🐧 Installing FlightDeck Linux Dependencies on Ubuntu"
 echo "============================================================"
 echo ""
 

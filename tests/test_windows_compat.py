@@ -59,13 +59,13 @@ class TestWindowsCompatibility(unittest.TestCase):
                 # 2. Enable autostart
                 self.assertTrue(autostart.enable_autostart())
                 self.assertTrue(autostart.is_autostart_enabled())
-                self.assertIn("QuakMeeting", fake_reg)
-                self.assertIn("--silent --autostart", fake_reg["QuakMeeting"])
+                self.assertIn("FlightDeck", fake_reg)
+                self.assertIn("--silent --autostart", fake_reg["FlightDeck"])
 
                 # 3. Disable autostart
                 self.assertTrue(autostart.disable_autostart())
                 self.assertFalse(autostart.is_autostart_enabled())
-                self.assertNotIn("QuakMeeting", fake_reg)
+                self.assertNotIn("FlightDeck", fake_reg)
 
     def test_windows_sound_playback(self):
         """Tests Windows audio volume detection and chime playback using winsound."""

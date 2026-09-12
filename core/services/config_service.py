@@ -8,9 +8,10 @@ import subprocess
 import logging
 from typing import Any, Dict, Optional, List
 
-logger = logging.getLogger("QuakMeeting.ConfigService")
+logger = logging.getLogger("FlightDeck.ConfigService")
 
-CONFIG_DIR = os.path.expanduser("~/.quakmeeting")
+CONFIG_DIR = os.path.expanduser("~/.flightdeck")
+LEGACY_CONFIG_DIR = os.path.expanduser("~/.quakmeeting")
 CONFIG_PATH = os.path.join(CONFIG_DIR, "config.json")
 
 DEFAULT_CONFIG = {
@@ -160,7 +161,16 @@ class ConfigService:
     def _load_or_create(self) -> Dict[str, Any]:
         try:
             if not os.path.exists(CONFIG_DIR):
-                os.makedirs(CONFIG_DIR, exist_ok=True)
+                if os.path.exists(LEGACY_CONFIG_DIR):
+                    try:
+                        import shutil
+                        shutil.copytree(LEGACY_CONFIG_DIR, CONFIG_DIR, dirs_exist_ok=True)
+                        logger.info("Migrated legacy directory %s to %s", LEGACY_CONFIG_DIR, CONFIG_DIR)
+                    except Exception as mig_err:
+                        logger.warning("Could not auto-migrate legacy dir: %s", mig_err)
+                        os.makedirs(CONFIG_DIR, exist_ok=True)
+                else:
+                    os.makedirs(CONFIG_DIR, exist_ok=True)
 
             if os.path.exists(CONFIG_PATH):
                 with open(CONFIG_PATH, "r", encoding="utf-8") as f:

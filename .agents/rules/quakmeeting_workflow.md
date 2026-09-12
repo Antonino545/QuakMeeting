@@ -73,11 +73,11 @@ Run the complete platform workflow for the detected OS only. If a command needs 
 /opt/miniconda3/bin/python3 build_macos_app.py
 
 # 3. Install the fresh bundle, then restart it
-ditto "$PWD/QuakMeeting.app" /Applications/QuakMeeting.app
-pkill -f "QuakMeeting" 2>/dev/null; sleep 1; open /Applications/QuakMeeting.app
+ditto "$PWD/FlightDeck.app" /Applications/FlightDeck.app
+pkill -f "FlightDeck" 2>/dev/null; sleep 1; open /Applications/FlightDeck.app
 
 # 4. Confirm process and logs
-sleep 2 && ps aux | grep -i "[Q]uakMeeting" && tail -15 ~/.quakmeeting/quakmeeting.log
+sleep 2 && ps aux | grep -i "[F]lightDeck" && tail -15 ~/.flightdeck/flightdeck.log
 ```
 
 ### Ubuntu/Debian Linux
@@ -90,11 +90,11 @@ python3 -m unittest discover -s tests -v
 bash scripts/build_ubuntu_deb.sh
 
 # 3. Install and restart (requires explicit user approval)
-sudo apt-get install --reinstall ./deb_dist/quakmeeting_*_amd64.deb
-pkill -f "quakmeeting" 2>/dev/null; sleep 1; quakmeeting &
+sudo apt-get install --reinstall ./deb_dist/flightdeck_*_amd64.deb
+pkill -f "flightdeck" 2>/dev/null; sleep 1; flightdeck &
 
 # 4. Confirm logs
-tail -15 ~/.quakmeeting/quakmeeting.log
+tail -15 ~/.flightdeck/flightdeck.log
 ```
 
 ### Static hygiene (before delivery)

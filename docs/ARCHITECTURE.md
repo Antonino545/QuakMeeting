@@ -1,12 +1,12 @@
-# 📐 QuakMeeting — Technical Architecture & Lifecycle
+# 📐 FlightDeck — Technical Architecture & Lifecycle
 
-This document outlines the internal architecture, cross-platform capabilities, and data flow of QuakMeeting following a Clean Architecture design pattern.
+This document outlines the internal architecture, cross-platform capabilities, and data flow of FlightDeck following a Clean Architecture design pattern.
 
 ---
 
 ## 🏗️ System Overview
 
-QuakMeeting has been heavily refactored to fully decouple business logic from the presentation layer. The codebase is organized into two primary packages:
+FlightDeck has been heavily refactored to fully decouple business logic from the presentation layer. The codebase is organized into two primary packages:
 
 1. **`core/`**: Platform-agnostic business logic, data models, services, and repository layers.
 2. **`ui/`**: Presentation layer containing UI components specific to macOS (Cocoa/Quartz) and Linux/Windows (PyQt6).
@@ -29,8 +29,8 @@ flowchart TD
     end
 
     subgraph Storage
-        DiskCache[(~/.quakmeeting/calendar_cache.json)]
-        ConfigStore[(~/.quakmeeting/config.json)]
+        DiskCache[(~/.flightdeck/flightdeck.db)]
+        ConfigStore[(~/.flightdeck/config.json)]
     end
 
     subgraph UI Package [ui/]
@@ -84,7 +84,7 @@ Data ingestion layer fetching events from various platforms.
 
 ### 3. Services (`core/services/`)
 Orchestrates business use cases.
-- **`database_service.py`**: Centralized SQLite state storage (`~/.quakmeeting/quakmeeting.db`). Replaces legacy separate JSON files with ACID transactions, WAL mode, foreign keys, and transparent migration. Manages tables for `events`, `notified_stages`, `banner_history`, `eta_cache`, and `address_cache`, with automatic `:memory:` fallback when running in sandboxed test suites.
+- **`database_service.py`**: Centralized SQLite state storage (`~/.flightdeck/flightdeck.db`). Replaces legacy separate JSON files with ACID transactions, WAL mode, foreign keys, and transparent migration. Manages tables for `events`, `notified_stages`, `banner_history`, `eta_cache`, and `address_cache`, with automatic `:memory:` fallback when running in sandboxed test suites.
 - **`notification_service.py`**: Unified `NotificationProvider` architecture. Standardizes notification delivery across `MascotBannerProvider` (animated floating mascot banners), `SystemNotificationProvider` (native OS desktop notification fallback via AppleScript/osascript on macOS, notify-send on Linux, and PowerShell toast on Windows), `SoundNotificationProvider` (audio chime playback), and `CompositeNotificationProvider` with automatic fallback.
 - **`calendar_service.py`**: Filters events strictly for **Today**, performs smart multi-calendar deduplication for exams and lectures, manages the state database via `MeetingRepository`, and enriches travel events with transit/driving ETA from home or default exam locations. Automatically selects EventKit on macOS, EDS on GNOME/Linux, and CalDAV on Windows.
 - **`reminder_engine.py`**: Evaluates when to fire notifications. Integrates with `ReminderPolicyRegistry` and `NotificationService`, dispatching multi-stage notifications relative to `start_time` for standard events or `departure_time` for travel events.
@@ -191,11 +191,11 @@ The UI follows strict multiplatform parity where both macOS AppKit and Linux PyQ
 | ![macOS Downloading](../assets/screenshots/macos_update_downloading.png) | ![macOS Installed](../assets/screenshots/macos_update_installed.png) |
 
 #### 5. 🦆 Advance Flyby Reminder vs. Event-Time Looping Banner
-QuakMeeting provides clear visual and functional distinction between advance heads-up reminders and event-time alarms:
+FlightDeck provides clear visual and functional distinction between advance heads-up reminders and event-time alarms:
 - **Advance Flyby Reminder (`reminder_stage > 0`, e.g., 20m, 10m, 5m, 2m)**:
   - Single-pass non-looping flight across the screen that auto-dismisses upon exiting the display.
   - Distinctive `[✈️ FLYBY]` / `[✈️ AL VOLO]` badge pill and soft Lavender accent border (`Theme.LAVENDER`).
-  - Contextual flyby speech quotes across all mascots (e.g., *"Quak! Heads up! Just flying by! 🦆✈️"*).
+  - Contextual flyby speech quotes across all mascots (e.g., *"Heads up! Just flying by! ✈️"*).
   - **Adaptive Slim Height (`96px`)**: For buttonless general event reminders (advance reminders with no online meeting URL or transit link), the banner card dynamically shrinks from `132px` to `96px`. This completely eliminates bottom whitespace while keeping symmetrical 18px content padding, with towing cables and the pilot plane automatically re-centering.
   - **Zero bottom buttons for general events**: Since the reminder engine automatically re-alerts at subsequent stages (e.g., 5m, 2m), manual snooze is redundant. The card serves as a pure ambient heads-up widget without buttons prompting unnecessary clicks.
   - **Single `[🚀 Join Meeting]` button for online meetings**: Retained at standard `132px` height so users can enter calls early with 1 click, without redundant snooze or skip controls.
@@ -206,7 +206,7 @@ QuakMeeting provides clear visual and functional distinction between advance hea
   - Minimalist, high-contrast action bar: single primary action (`[🚀 Join Meeting]` for online events, `[📍 I'm Here]` for in-person travel events, or `[✅ Got it]` for general events) avoids visual clutter and ensures maximum readability.
 - **Interactive Keyboard & Mascot Controls (Both macOS & Linux)**:
   - **Instant `Esc` Dismissal**: Pressing the `Escape` key immediately dismisses any active flying banner via Qt `QShortcut` / `keyPressEvent` on Linux and `NSEvent` monitor / `keyDown_` on macOS.
-  - **Playful Mascot Hover Reaction**: Hovering the cursor over the pilot mascot airplane pauses flight progression and triggers an animal-specific playful speech quote (e.g., *"Quak! Hover mode engaged! 🛸"*, *"Uhu! Osservo dall'alto! 🦉✨"*), smoothly restoring the normal reminder speech when the mouse leaves.
+  - **Playful Mascot Hover Reaction**: Hovering the cursor over the pilot mascot airplane pauses flight progression and triggers an animal-specific playful speech quote, smoothly restoring the normal reminder speech when the mouse leaves.
 
 
 ---
@@ -215,7 +215,7 @@ QuakMeeting provides clear visual and functional distinction between advance hea
 
 ### 1. Zero-Latency Caching (Stale-While-Revalidate)
 Querying calendars (especially via EventKit on macOS or EDS on Linux) can be slow. 
-- On launch or UI interaction, `calendar_service.py` immediately reads `~/.quakmeeting/calendar_cache.json` to instantly populate the UI.
+- On launch or UI interaction, `calendar_service.py` immediately reads `~/.flightdeck/flightdeck.db` to instantly populate the UI.
 - On Linux, `EDSCalendarProvider` connects to uncached calendar sources concurrently using a worker pool and caches connected `ECal.Client` handles, cutting sync time from over 12 seconds to sub-second (< 0.05s on repeat).
 - Initial and periodic calendar syncs run in guarded daemon workers (`_schedule_background_sync`), eliminating concurrent worker collisions and startup delays.
 - `app_controller.py` polls `CalendarService.get_upcoming_meetings()` in the background every 15-30 seconds.
@@ -223,7 +223,7 @@ Querying calendars (especially via EventKit on macOS or EDS on Linux) can be slo
 - If a provider refresh fails, the service keeps or reloads the last valid cache, publishes it to the UI, and waits for the normal cache interval before retrying.
 - Linux settings calendar metadata is loaded off the Qt main thread and delivered through a Qt signal; provider and parsing work must never block dashboard construction.
 
-On Linux Wayland sessions, Qt uses the native Wayland platform by default. Set `QUAKMEETING_QT_XCB=1` only when an XCB/XWayland compatibility fallback is required.
+On Linux Wayland sessions, Qt uses the native Wayland platform by default. Set `FLIGHTDECK_QT_XCB=1` only when an XCB/XWayland compatibility fallback is required.
 
 ### 2. In-Place Automatic Update Lifecycle
 - `updater_service.py` checks GitHub Releases in the background (startup/periodic) or on demand (`manual=True`).
@@ -234,7 +234,7 @@ On Linux Wayland sessions, Qt uses the native Wayland platform by default. Set `
   - If already up to date: Catppuccin Green-to-Teal accent border, "You're Up to Date! ✨", and a single "✓ Great" confirmation button with auto-dismiss.
 - Clicking **`⚡ UPDATE NOW`** switches into active installation mode:
   1. Downloads release asset while publishing `UPDATE_PROGRESS` events.
-  2. Replaces `/Applications/QuakMeeting.app` (macOS) or installs via `dpkg` (Linux).
+  2. Replaces `/Applications/FlightDeck.app` (macOS) or installs via `dpkg` (Linux).
   3. Displays `✅ Update Installed! Relaunching...` and smoothly relaunches the application.
 
 ### 3. Application Entry & Loop (`main.py`)
@@ -246,7 +246,7 @@ On Linux Wayland sessions, Qt uses the native Wayland platform by default. Set `
 ### 4. Linux Startup Lifecycle
 The Linux launcher keeps the first Qt paint independent from calendar and network availability:
 
-1. `main.py` preserves the native Qt platform selected by the session. `QUAKMEETING_QT_XCB=1` is the explicit XCB compatibility override.
+1. `main.py` preserves the native Qt platform selected by the session. `FLIGHTDECK_QT_XCB=1` is the explicit XCB compatibility override.
 2. `run_qt_tray_app()` creates the Qt application and tray shell. Tray data is cache-first.
 3. The Flight Deck creates its header, navigation, and agenda placeholder immediately. Hangar and Settings are initialized after the first event-loop turn.
 4. Agenda refresh reads the local cache and displays meetings, an empty state, or a retryable error state. Arrival/presence checks are not part of the first paint.

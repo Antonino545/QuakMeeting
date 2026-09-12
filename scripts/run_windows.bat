@@ -2,7 +2,7 @@
 setlocal enabledelayedexpansion
 
 echo ===================================================
-echo  🦆 Starting QuakMeeting for Windows
+echo  ✈️ Starting FlightDeck for Windows
 echo ===================================================
 
 :: Check for Python installation

@@ -251,7 +251,7 @@ class QtFlightDeckWindow(QMainWindow):
         super().__init__()
         self._defer_heavy_tabs = defer_heavy_tabs
         self._deferred_tabs_initialized = False
-        self.setWindowTitle("QuakMeeting — Flight Deck Control Center")
+        self.setWindowTitle("FlightDeck")
         self.resize(920, 640)
         self.setMinimumSize(880, 580)
 
@@ -283,15 +283,15 @@ class QtFlightDeckWindow(QMainWindow):
         pix = None
         if os.path.exists(icon_path):
             pix = QPixmap(icon_path).scaled(48, 48, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-        self.mascot_lbl = BouncingMascotLabel(pix, emoji="🦆", parent=header)
+        self.mascot_lbl = BouncingMascotLabel(pix, emoji="✈️", parent=header)
         header_layout.addWidget(self.mascot_lbl)
 
         title_box = QVBoxLayout()
         title_box.setSpacing(2)
 
-        t_lbl = QLabel("QuakMeeting — Flight Deck", header)
+        t_lbl = QLabel("FlightDeck", header)
         t_lbl.setObjectName("HeaderTitle")
-        s_lbl = QLabel("Smart Calendar Reminders & Mascot Alert Companion", header)
+        s_lbl = QLabel("Smart Schedule & Travel Reminders", header)
         s_lbl.setObjectName("HeaderSub")
 
         title_box.addWidget(t_lbl)
@@ -541,7 +541,7 @@ def show_qt_dashboard_error(error: Exception):
         return
 
     window = QMainWindow()
-    window.setWindowTitle("QuakMeeting — Flight Deck unavailable")
+    window.setWindowTitle("FlightDeck unavailable")
     window.setMinimumSize(520, 220)
     content = QWidget(window)
     layout = QVBoxLayout(content)
@@ -551,7 +551,7 @@ def show_qt_dashboard_error(error: Exception):
     title = QLabel("The Flight Deck could not be opened")
     title.setObjectName("HeaderTitle")
     detail = QLabel(
-        "QuakMeeting is still running in the tray. You can retry now or inspect "
+        "FlightDeck is still running in the tray. You can retry now or inspect "
         "the application log for details.\n\n"
         f"{type(error).__name__}: {error}"
     )

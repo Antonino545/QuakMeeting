@@ -9,18 +9,19 @@ import subprocess
 import logging
 from typing import Optional
 
-logger = logging.getLogger("QuakMeeting.Autostart")
+logger = logging.getLogger("FlightDeck.Autostart")
 
-PLIST_LABEL = "com.quakmeeting.app"
+PLIST_LABEL = "com.flightdeck.app"
+LEGACY_PLIST_LABEL = "com.quakmeeting.app"
 PLIST_PATH = os.path.expanduser(f"~/Library/LaunchAgents/{PLIST_LABEL}.plist")
 
 IS_LINUX = platform.system() == "Linux"
 IS_WINDOWS = sys.platform == "win32"
 LINUX_AUTOSTART_DIR = os.path.expanduser("~/.config/autostart")
-LINUX_DESKTOP_FILE = os.path.join(LINUX_AUTOSTART_DIR, "quakmeeting.desktop")
+LINUX_DESKTOP_FILE = os.path.join(LINUX_AUTOSTART_DIR, "flightdeck.desktop")
 
 WINREG_RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
-WINREG_VAL_NAME = "QuakMeeting"
+WINREG_VAL_NAME = "FlightDeck"
 
 def _get_windows_executable_cmd() -> str:
     if getattr(sys, "frozen", False) and hasattr(sys, "executable"):
@@ -94,10 +95,10 @@ def _enable_autostart_linux() -> bool:
         exec_cmd = _get_linux_executable_path()
         desktop_content = f"""[Desktop Entry]
 Type=Application
-Name=QuakMeeting
-Comment=Smart Meeting Reminders
+Name=FlightDeck
+Comment=Smart Schedule & Travel Reminders
 Exec={exec_cmd} --silent --autostart
-Icon=quakmeeting
+Icon=flightdeck
 Terminal=false
 StartupNotify=false
 """
@@ -120,8 +121,8 @@ def _disable_autostart_linux() -> bool:
 
 
 def _get_target_app_path() -> str:
-    """Resolves the installed or running QuakMeeting.app bundle path."""
-    standard_app = "/Applications/QuakMeeting.app"
+    """Resolves the installed or running FlightDeck.app bundle path."""
+    standard_app = "/Applications/FlightDeck.app"
     if os.path.exists(standard_app):
         return standard_app
 
@@ -137,7 +138,7 @@ def _get_target_app_path() -> str:
 
     # Check project directory app bundle
     project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    local_app = os.path.join(project_dir, "QuakMeeting.app")
+    local_app = os.path.join(project_dir, "FlightDeck.app")
     if os.path.exists(local_app):
         return local_app
 
@@ -205,7 +206,7 @@ def _check_smappservice_status() -> Optional[bool]:
 
 
 def is_autostart_enabled() -> bool:
-    """Determines whether QuakMeeting is configured to launch at macOS/Linux/Windows login."""
+    """Determines whether FlightDeck is configured to launch at macOS/Linux/Windows login."""
     if IS_WINDOWS:
         return _is_autostart_enabled_windows()
     if IS_LINUX:
@@ -220,7 +221,7 @@ def is_autostart_enabled() -> bool:
 
 def enable_autostart() -> bool:
     """Enables launch at login using Windows Registry, SMAppService / LaunchAgent on macOS, or .desktop on Linux."""
-    logger.info("Enabling Launch-at-Login for QuakMeeting...")
+    logger.info("Enabling Launch-at-Login for FlightDeck...")
     
     if IS_WINDOWS:
         return _enable_autostart_windows()
@@ -274,7 +275,7 @@ def enable_autostart() -> bool:
 
 def disable_autostart() -> bool:
     """Disables launch at login by removing Registry Run key on Windows, unregistering on macOS, or removing .desktop on Linux."""
-    logger.info("Disabling Launch-at-Login for QuakMeeting...")
+    logger.info("Disabling Launch-at-Login for FlightDeck...")
     
     if IS_WINDOWS:
         return _disable_autostart_windows()

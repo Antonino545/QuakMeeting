@@ -11,9 +11,10 @@ import logging
 from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Optional, Any, Set, Tuple
 
-logger = logging.getLogger("QuakMeeting.DatabaseService")
+logger = logging.getLogger("FlightDeck.DatabaseService")
 
-DEFAULT_DB_PATH = os.path.expanduser("~/.quakmeeting/quakmeeting.db")
+DEFAULT_DB_PATH = os.path.expanduser("~/.flightdeck/flightdeck.db")
+LEGACY_DB_PATH = os.path.expanduser("~/.quakmeeting/quakmeeting.db")
 
 
 class DatabaseService:
@@ -44,6 +45,13 @@ class DatabaseService:
             try:
                 if self.db_path != ":memory:":
                     os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
+                    if self.db_path == DEFAULT_DB_PATH and not os.path.exists(self.db_path) and os.path.exists(LEGACY_DB_PATH):
+                        try:
+                            import shutil
+                            shutil.copy2(LEGACY_DB_PATH, self.db_path)
+                            logger.info("Migrated legacy database from %s to %s", LEGACY_DB_PATH, self.db_path)
+                        except Exception as db_mig_err:
+                            logger.warning("Could not copy legacy database: %s", db_mig_err)
                 conn = sqlite3.connect(self.db_path, timeout=15.0, check_same_thread=False)
             except Exception as e:
                 logger.warning(f"Could not open SQLite database at {self.db_path}, using in-memory: {e}")

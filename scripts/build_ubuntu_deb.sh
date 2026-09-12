@@ -11,37 +11,37 @@ if [ -z "$RAW_VER" ]; then
 fi
 # Strip any leading 'v'
 VERSION="${RAW_VER#v}"
-PACKAGE_NAME="quakmeeting_${VERSION}_amd64"
+PACKAGE_NAME="flightdeck_${VERSION}_amd64"
 BUILD_ROOT="$ROOT_DIR/deb_dist/$PACKAGE_NAME"
 OUTPUT_DEB="$ROOT_DIR/deb_dist/${PACKAGE_NAME}.deb"
 
-echo "🐧 Building Debian/Ubuntu .deb package for QuakMeeting v${VERSION} (Wayland & X11)..."
+echo "🐧 Building Debian/Ubuntu .deb package for FlightDeck v${VERSION} (Wayland & X11)..."
 
 rm -rf "$ROOT_DIR/deb_dist"
 mkdir -p "$BUILD_ROOT/DEBIAN"
-mkdir -p "$BUILD_ROOT/opt/quakmeeting"
+mkdir -p "$BUILD_ROOT/opt/flightdeck"
 mkdir -p "$BUILD_ROOT/usr/bin"
 mkdir -p "$BUILD_ROOT/usr/share/applications"
 mkdir -p "$BUILD_ROOT/usr/share/icons/hicolor/512x512/apps"
 
 # 1. Copy Application payload
-cp -R "$ROOT_DIR/core" "$BUILD_ROOT/opt/quakmeeting/"
-cp -R "$ROOT_DIR/ui" "$BUILD_ROOT/opt/quakmeeting/"
+cp -R "$ROOT_DIR/core" "$BUILD_ROOT/opt/flightdeck/"
+cp -R "$ROOT_DIR/ui" "$BUILD_ROOT/opt/flightdeck/"
 # Exclude macOS-specific UI files (AppKit/Quartz) and pycache from Linux package
-rm -rf "$BUILD_ROOT/opt/quakmeeting/ui/macos"
-find "$BUILD_ROOT/opt/quakmeeting" -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
-cp -R "$ROOT_DIR/assets" "$BUILD_ROOT/opt/quakmeeting/"
-cp "$ROOT_DIR/main.py" "$BUILD_ROOT/opt/quakmeeting/"
+rm -rf "$BUILD_ROOT/opt/flightdeck/ui/macos"
+find "$BUILD_ROOT/opt/flightdeck" -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+cp -R "$ROOT_DIR/assets" "$BUILD_ROOT/opt/flightdeck/"
+cp "$ROOT_DIR/main.py" "$BUILD_ROOT/opt/flightdeck/"
 
 # Stamp dynamic package version into payload
-echo "$VERSION" > "$BUILD_ROOT/opt/quakmeeting/VERSION"
-sed -i "s/__version__ = .*/__version__ = \"$VERSION\"/" "$BUILD_ROOT/opt/quakmeeting/core/domain/models.py" 2>/dev/null || true
+echo "$VERSION" > "$BUILD_ROOT/opt/flightdeck/VERSION"
+sed -i "s/__version__ = .*/__version__ = \"$VERSION\"/" "$BUILD_ROOT/opt/flightdeck/core/domain/models.py" 2>/dev/null || true
 
 # 2. Icon & Desktop integration
 if [ -f "$ROOT_DIR/assets/icon.png" ]; then
     # Always install 512x512 base icon directly
     mkdir -p "$BUILD_ROOT/usr/share/icons/hicolor/512x512/apps"
-    cp "$ROOT_DIR/assets/icon.png" "$BUILD_ROOT/usr/share/icons/hicolor/512x512/apps/quakmeeting.png"
+    cp "$ROOT_DIR/assets/icon.png" "$BUILD_ROOT/usr/share/icons/hicolor/512x512/apps/flightdeck.png"
 
     # Generate multi-resolution icons (PIL -> PyQt6 fallback -> safe continue)
     python3 -c "
@@ -57,7 +57,7 @@ try:
         dest_dir = f'$BUILD_ROOT/usr/share/icons/hicolor/{sz}x{sz}/apps'
         os.makedirs(dest_dir, exist_ok=True)
         resized = im.resize((sz, sz), Image.Resampling.LANCZOS)
-        resized.save(os.path.join(dest_dir, 'quakmeeting.png'))
+        resized.save(os.path.join(dest_dir, 'flightdeck.png'))
     exit(0)
 except ImportError:
     pass
@@ -72,7 +72,7 @@ try:
             dest_dir = f'$BUILD_ROOT/usr/share/icons/hicolor/{sz}x{sz}/apps'
             os.makedirs(dest_dir, exist_ok=True)
             scaled = im.scaled(sz, sz, Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.SmoothTransformation)
-            scaled.save(os.path.join(dest_dir, 'quakmeeting.png'))
+            scaled.save(os.path.join(dest_dir, 'flightdeck.png'))
         exit(0)
 except ImportError:
     pass
@@ -81,40 +81,40 @@ print('ℹ️ PIL and PyQt6 not available for multi-resolution scaling; base 512
 " || true
 fi
 
-cat << 'DESKTOP_EOF' > "$BUILD_ROOT/usr/share/applications/quakmeeting.desktop"
+cat << 'DESKTOP_EOF' > "$BUILD_ROOT/usr/share/applications/flightdeck.desktop"
 [Desktop Entry]
-Name=QuakMeeting
-Comment=Smart Meeting Reminders & Flight Deck HUD for Wayland and macOS
-Exec=/usr/bin/quakmeeting
-Icon=quakmeeting
+Name=FlightDeck
+Comment=Smart Schedule & Travel Reminders & Flight Deck HUD for Wayland and macOS
+Exec=/usr/bin/flightdeck
+Icon=flightdeck
 Terminal=false
 Type=Application
 Categories=Office;Calendar;Utility;
-Keywords=Meeting;Calendar;Reminder;Timer;HUD;
+Keywords=Meeting;Calendar;Reminder;Timer;HUD;Travel;FlightDeck;
 StartupNotify=true
-StartupWMClass=quakmeeting
+StartupWMClass=flightdeck
 DESKTOP_EOF
 
 # 3. Launcher executable script
-cat << 'LAUNCHER_EOF' > "$BUILD_ROOT/usr/bin/quakmeeting"
+cat << 'LAUNCHER_EOF' > "$BUILD_ROOT/usr/bin/flightdeck"
 #!/bin/bash
 export PYTHONUNBUFFERED=1
-cd /opt/quakmeeting
-exec /usr/bin/python3 /opt/quakmeeting/main.py "$@"
+cd /opt/flightdeck
+exec /usr/bin/python3 /opt/flightdeck/main.py "$@"
 LAUNCHER_EOF
-chmod +x "$BUILD_ROOT/usr/bin/quakmeeting"
+chmod +x "$BUILD_ROOT/usr/bin/flightdeck"
 
 # 4. Debian Control file
 cat << CONTROL_EOF > "$BUILD_ROOT/DEBIAN/control"
-Package: quakmeeting
+Package: flightdeck
 Version: $VERSION
 Section: utils
 Priority: optional
 Architecture: amd64
-Maintainer: QuakMeeting Team <support@quakmeeting.com>
+Maintainer: FlightDeck Team <support@flightdeck.com>
 Depends: python3 (>= 3.10), python3-pyqt6, python3-gi, gir1.2-edataserver-1.2, gir1.2-ecal-2.0, gir1.2-ayatanaappindicator3-0.1
-Description: Smart Meeting Reminders & Animated Flight Deck HUD
- QuakMeeting provides progressive multi-stage notifications, real-time Apple/Google
+Description: Smart Schedule & Travel Reminders & Animated Flight Deck HUD
+ FlightDeck provides progressive multi-stage notifications, real-time Apple/Google
  Maps travel ETAs, and pilot avatars floating smoothly over full-screen workspaces.
 CONTROL_EOF
 
