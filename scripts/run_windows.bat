@@ -42,7 +42,7 @@ if %ERRORLEVEL% neq 0 (
     )
 )
 
-echo [INFO] Launching QuakMeeting Flight Deck...
+echo [INFO] Launching FlightDeck Flight Deck...
 start "" %PYW_CMD% main.py %*
 if %ERRORLEVEL% neq 0 (
     start "" %PY_CMD% main.py %*

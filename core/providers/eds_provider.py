@@ -11,7 +11,7 @@ from core.domain.classifier import EventClassifier
 from core.services.config_service import config_service, ConfigService
 from .base import BaseCalendarProvider
 
-logger = logging.getLogger("QuakMeeting.EDSProvider")
+logger = logging.getLogger("FlightDeck.EDSProvider")
 
 class EDSCalendarProvider(BaseCalendarProvider):
     """Calendar provider using GNOME Evolution Data Server (EDS)."""

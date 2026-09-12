@@ -1,5 +1,5 @@
 """
-Thread-safe EventBus (Publish-Subscribe) for QuakMeeting.
+Thread-safe EventBus (Publish-Subscribe) for FlightDeck.
 Allows loose coupling across background workers, UI controllers, and services.
 """
 import threading
@@ -7,7 +7,7 @@ import logging
 from collections import defaultdict
 from typing import Callable, Dict, List, Any
 
-logger = logging.getLogger("QuakMeeting.EventBus")
+logger = logging.getLogger("FlightDeck.EventBus")
 
 class EventBus:
     """Thread-safe event dispatcher supporting synchronous and asynchronous subscribers."""

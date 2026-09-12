@@ -1,5 +1,5 @@
 """
-Event Classification and URL Extraction Engine for QuakMeeting.
+Event Classification and URL Extraction Engine for FlightDeck.
 Pure Python matching logic for video meeting providers, keyword pilots, and travel detection.
 
 Known limitations:

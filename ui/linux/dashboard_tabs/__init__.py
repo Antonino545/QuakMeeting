@@ -1,5 +1,5 @@
 """
-PyQt6 Dashboard Tabs package for QuakMeeting on Linux.
+PyQt6 Dashboard Tabs package for FlightDeck on Linux.
 Modular tabs matching macOS AppKit architecture:
 - agenda_tab: Today's agenda timeline, countdown badges, 1-click meeting joins & maps
 - hangar_tab: Mascot mini animations, category customizers, live flight previews

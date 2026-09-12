@@ -26,7 +26,7 @@ class TestSystemDiagnostics(unittest.TestCase):
     def test_format_diagnostics_report(self):
         report = format_diagnostics_report()
         self.assertIsInstance(report, str)
-        self.assertIn("QuakMeeting System Health & Diagnostics Check", report)
+        self.assertIn("FlightDeck System Health & Diagnostics Check", report)
         self.assertIn("Python & Runtime Environment", report)
         self.assertIn("Calendar Integration", report)
         self.assertIn("Smart Presence & Arrival Detection", report)
@@ -54,7 +54,7 @@ class TestSystemDiagnostics(unittest.TestCase):
         report = format_diagnostics_report(mock_diag)
         self.assertIn("Venue Mode", report)
         self.assertIn("eduroam (Recognized Venue ✅)", report)
-        self.assertIn("All systems operational. QuakMeeting is ready to fly! 🦆", report)
+        self.assertIn("All systems operational. FlightDeck is ready to fly! 🦆", report)
 
 
 if __name__ == "__main__":

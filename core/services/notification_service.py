@@ -1,5 +1,5 @@
 """
-Unified Notification Provider Architecture for QuakMeeting.
+Unified Notification Provider Architecture for FlightDeck.
 
 Defines the NotificationProvider protocol and concrete providers:
 - MascotBannerProvider: Emits custom animated mascot banner events.
@@ -25,7 +25,7 @@ from core.services.event_bus import event_bus, EventBus
 from core.services.sound_service import play_chime
 from core.services.state_store import banner_history_store
 
-logger = logging.getLogger("QuakMeeting.NotificationService")
+logger = logging.getLogger("FlightDeck.NotificationService")
 
 
 @dataclass
@@ -98,7 +98,7 @@ class NotificationProvider(Protocol):
 
 
 class MascotBannerProvider:
-    """Delivers notifications using QuakMeeting's custom floating mascot banner."""
+    """Delivers notifications using FlightDeck's custom floating mascot banner."""
 
     def __init__(self, bus: Optional[EventBus] = None):
         self.bus = bus or event_bus
@@ -286,7 +286,7 @@ class CompositeNotificationProvider:
 
 class NotificationService:
     """
-    Central manager for all notification dispatches in QuakMeeting.
+    Central manager for all notification dispatches in FlightDeck.
     Coordinates MascotBanner, Native System Notifications, and Sounds.
     """
 

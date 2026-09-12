@@ -1,5 +1,5 @@
 """
-Modular Vector Pilot Renderer for QuakMeeting (macOS Quartz 2D).
+Modular Vector Pilot Renderer for FlightDeck (macOS Quartz 2D).
 Dynamically composites any base animal (Duck 🦆, Owl 🦉, Bunny 🐰)
 with any costume/headwear (Student 🎓, Chef 👨‍🍳, Captain 🧑‍✈️, Agent 🕵️, Gym 🏋️, Racer 🏎️, Zen 🌸, Aviator 🪖).
 """

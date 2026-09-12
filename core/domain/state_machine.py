@@ -1,5 +1,5 @@
 """
-Event State Machine and Lifecycle Transitions for QuakMeeting.
+Event State Machine and Lifecycle Transitions for FlightDeck.
 Replaces scattered boolean conditions with explicit deterministic lifecycle states.
 """
 from enum import Enum

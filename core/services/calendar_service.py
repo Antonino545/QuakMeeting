@@ -1,5 +1,5 @@
 """
-Calendar Service for QuakMeeting.
+Calendar Service for FlightDeck.
 Coordinates in-memory and disk caching, provider querying, background sync, and ETA route enrichment.
 Strictly retrieves only current and upcoming events for Today.
 """
@@ -23,9 +23,9 @@ from core.providers.caldav_provider import CalDAVCalendarProvider
 
 from core.repositories.meeting_repository import MeetingRepository
 
-logger = logging.getLogger("QuakMeeting.CalendarService")
+logger = logging.getLogger("FlightDeck.CalendarService")
 
-CACHE_DIR = os.path.expanduser("~/.quakmeeting")
+CACHE_DIR = os.path.expanduser("~/.flightdeck")
 CACHE_FILE = os.path.join(CACHE_DIR, "calendar_cache.json")
 CACHE_TTL_SECONDS = 90.0
 

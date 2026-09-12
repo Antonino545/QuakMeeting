@@ -1,5 +1,5 @@
 """
-Common Banner Formatting & Time Differentials for QuakMeeting.
+Common Banner Formatting & Time Differentials for FlightDeck.
 Provides unified countdown strings, urgency calculations, and travel formatting in English & Italian.
 """
 from datetime import datetime

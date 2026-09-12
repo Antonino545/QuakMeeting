@@ -1,5 +1,5 @@
 """
-Shared Banner Presets for QuakMeeting.
+Shared Banner Presets for FlightDeck.
 Provides cross-platform mock meeting payloads for mascot test flights
 and software update banner notifications.
 """
@@ -114,15 +114,15 @@ from core.services.language_service import t
 
 
 def get_update_preset(version_str: str = "New Version", release_url: str = "") -> Dict[str, Any]:
-    """Generates banner payload for QuakMeeting software updates."""
+    """Generates banner payload for FlightDeck software updates."""
     return {
-        "title": f"QuakMeeting {version_str} Ready!",
+        "title": f"FlightDeck {version_str} Ready!",
         "provider": "Software Update ✨",
         "subtitle": "⚡ Ready to download & install update",
         "pilot_type": "captain",
         "action_btn_text": "⚡ UPDATE NOW",
         "quote_text": f"🚀 {version_str} IS READY!",
-        "action_url": release_url or "https://github.com/Antonino545/QuakMeeting/releases",
+        "action_url": release_url or "https://github.com/Antonino545/FlightDeck/releases",
         "start_time": datetime.now().astimezone(),
         "is_travel": False,
         "is_update_banner": True,
@@ -132,7 +132,7 @@ def get_update_preset(version_str: str = "New Version", release_url: str = "") -
 
 
 def get_up_to_date_preset(version_str: str = "") -> Dict[str, Any]:
-    """Generates modular banner payload when QuakMeeting is already on the latest version."""
+    """Generates modular banner payload when FlightDeck is already on the latest version."""
     v = version_str or "v1.0.0"
     if not v.startswith("v"):
         v = f"v{v}"
@@ -141,7 +141,7 @@ def get_up_to_date_preset(version_str: str = "") -> Dict[str, Any]:
     pill_str = t("update_up_to_date_pill")
     provider = pill_str if pill_str != "update_up_to_date_pill" else "UP TO DATE ✨"
     sub_str = t("update_up_to_date_sub", version=v)
-    sub = sub_str if sub_str != "update_up_to_date_sub" else f"QuakMeeting {v} is currently the newest version."
+    sub = sub_str if sub_str != "update_up_to_date_sub" else f"FlightDeck {v} is currently the newest version."
     btn_str = t("update_up_to_date_btn")
     btn = btn_str if btn_str != "update_up_to_date_btn" else "✓ Great"
 

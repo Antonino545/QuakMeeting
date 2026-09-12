@@ -39,9 +39,9 @@ class QtUpdateBannerWindow(QWidget):
         self.is_update_error = bool(event_data.get("is_update_error", False))
         self.title = str(event_data.get("title", "Software Update"))
         self.provider = str(event_data.get("provider", "Software Update ✨"))
-        self.subtitle = str(event_data.get("subtitle") or ("⚡ Ready to download & install update" if not self.is_up_to_date else "QuakMeeting is up to date"))
+        self.subtitle = str(event_data.get("subtitle") or ("⚡ Ready to download & install update" if not self.is_up_to_date else "FlightDeck is up to date"))
         self.btn_text = event_data.get("action_btn_text", "⚡ UPDATE NOW" if not self.is_up_to_date else "✓ Great")
-        self.quote_text = event_data.get("quote_text", "🚀 QuakMeeting Update Ready!")
+        self.quote_text = event_data.get("quote_text", "🚀 FlightDeck Update Ready!")
 
         # Formatted time string
         st = event_data.get("start_time")

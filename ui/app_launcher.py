@@ -1,14 +1,14 @@
 """
-Platform-Aware Application Launcher for QuakMeeting.
+Platform-Aware Application Launcher for FlightDeck.
 Selects and launches the native UI runtime for macOS (AppKit) or Ubuntu Linux/Windows (PyQt6).
 """
 import sys
 import logging
 
-logger = logging.getLogger("QuakMeeting.AppLauncher")
+logger = logging.getLogger("FlightDeck.AppLauncher")
 
 def launch_application():
-    """Starts QuakMeeting menu bar status item and event listeners."""
+    """Starts FlightDeck menu bar status item and event listeners."""
     force_qt = "--qt" in sys.argv
     logger.debug("Selecting application UI: platform=%s, force_qt=%s", sys.platform, force_qt)
     if sys.platform == "darwin" and not force_qt:

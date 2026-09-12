@@ -15,7 +15,7 @@ from core.services.language_service import t
 from ui.macos.theme import Theme
 from ui.macos.components.button import ModernButton
 
-logger = logging.getLogger("QuakMeeting.AddressAutocompleteView")
+logger = logging.getLogger("FlightDeck.AddressAutocompleteView")
 
 
 class NonActivatingSuggestionsWindow(AppKit.NSWindow):

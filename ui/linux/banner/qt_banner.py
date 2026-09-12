@@ -131,7 +131,7 @@ def _restore_banner_datetimes(event_data: Dict[str, Any]) -> Dict[str, Any]:
             try:
                 restored[key] = datetime.fromisoformat(value)
             except ValueError:
-                logging.getLogger("QuakMeeting.QtBanner").warning(
+                logging.getLogger("FlightDeck.QtBanner").warning(
                     "Ignoring invalid banner timestamp in %s: %r", key, value
                 )
     return restored
@@ -142,7 +142,7 @@ def _run_xcb_helper(event_data: Dict[str, Any]) -> None:
     global _xcb_helper_process
     env = os.environ.copy()
     env["QT_QPA_PLATFORM"] = "xcb"
-    env["QUAKMEETING_BANNER_HELPER"] = "1"
+    env["FLIGHTDECK_BANNER_HELPER"] = "1"
     project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
     cur_pypath = env.get("PYTHONPATH", "")
     env["PYTHONPATH"] = f"{project_root}:{cur_pypath}" if cur_pypath else project_root
@@ -168,7 +168,7 @@ def _run_xcb_helper(event_data: Dict[str, Any]) -> None:
         helper.stdin.write(payload)
         helper.stdin.close()
     except Exception:
-        logging.getLogger("QuakMeeting.QtBanner").exception(
+        logging.getLogger("FlightDeck.QtBanner").exception(
             "Unable to start the XCB banner helper process."
         )
 
@@ -187,7 +187,7 @@ def show_qt_banner(event_data: Dict[str, Any]) -> None:
         app is not None
         and sys.platform.startswith("linux")
         and str(QApplication.platformName()).lower().startswith("wayland")
-        and os.environ.get("QUAKMEETING_BANNER_HELPER") != "1"
+        and os.environ.get("FLIGHTDECK_BANNER_HELPER") != "1"
     ):
         _run_xcb_helper(event_data)
         return
@@ -209,7 +209,7 @@ def show_qt_banner(event_data: Dict[str, Any]) -> None:
     _active_banners.append(banner)
     banner.show()
 
-    if (standalone or "--test" in sys.argv) and os.environ.get("QUAKMEETING_BANNER_HELPER") != "1":
+    if (standalone or "--test" in sys.argv) and os.environ.get("FLIGHTDECK_BANNER_HELPER") != "1":
         app.exec()
 
 

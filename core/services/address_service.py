@@ -1,5 +1,5 @@
 """
-Address Service for QuakMeeting.
+Address Service for FlightDeck.
 Provides live address autocomplete suggestions, geocoding validation,
 canonical address formatting, and multi-platform map deep links.
 """
@@ -12,9 +12,9 @@ import sys
 from dataclasses import dataclass, field, asdict
 from typing import List, Optional, Tuple, Dict, Any
 
-logger = logging.getLogger("QuakMeeting.AddressService")
+logger = logging.getLogger("FlightDeck.AddressService")
 
-CACHE_DIR = os.path.expanduser("~/.quakmeeting")
+CACHE_DIR = os.path.expanduser("~/.flightdeck")
 ADDRESS_CACHE_FILE = os.path.join(CACHE_DIR, "address_cache.json")
 
 
@@ -179,7 +179,7 @@ class AddressService:
             p_lat, p_lon = proximity_coords
             viewbox_param = f"&viewbox={p_lon-0.35:.4f},{p_lat+0.35:.4f},{p_lon+0.35:.4f},{p_lat-0.35:.4f}&bounded=0"
         url = f"https://nominatim.openstreetmap.org/search?q={encoded}{viewbox_param}&format=json&addressdetails=1&limit={limit}"
-        headers = {"User-Agent": "QuakMeeting/1.0 (https://github.com/Antonino545/QuakMeeting)"}
+        headers = {"User-Agent": "FlightDeck/1.0 (https://github.com/Antonino545/FlightDeck)"}
 
         try:
             req = urllib.request.Request(url, headers=headers)
@@ -260,7 +260,7 @@ class AddressService:
             p_lat, p_lon = proximity_coords
             loc_param = f"&lat={p_lat:.4f}&lon={p_lon:.4f}"
         url = f"https://photon.komoot.io/api/?q={encoded}{loc_param}&limit={limit}"
-        headers = {"User-Agent": "QuakMeeting/1.0"}
+        headers = {"User-Agent": "FlightDeck/1.0"}
 
         try:
             req = urllib.request.Request(url, headers=headers)

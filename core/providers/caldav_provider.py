@@ -1,5 +1,5 @@
 """
-Universal CalDAV / iCalendar (.ics / webcal) Calendar Provider for QuakMeeting.
+Universal CalDAV / iCalendar (.ics / webcal) Calendar Provider for FlightDeck.
 Pure Python calendar provider for Ubuntu/Linux and cross-platform feed sync.
 """
 from __future__ import annotations
@@ -15,7 +15,7 @@ from core.domain.classifier import EventClassifier
 from core.services.config_service import config_service, ConfigService
 from .base import BaseCalendarProvider
 
-logger = logging.getLogger("QuakMeeting.CalDAVProvider")
+logger = logging.getLogger("FlightDeck.CalDAVProvider")
 
 class CalDAVCalendarProvider(BaseCalendarProvider):
     """Calendar provider supporting CalDAV endpoints, webcal feeds, and local .ics files."""
@@ -31,7 +31,7 @@ class CalDAVCalendarProvider(BaseCalendarProvider):
         calendar_sources = list(self.config.get("calendar_urls", []))
         if not calendar_sources:
             # Check default local calendars directory or test ICS
-            local_cal_dir = os.path.expanduser("~/.quakmeeting/calendars")
+            local_cal_dir = os.path.expanduser("~/.flightdeck/calendars")
             if os.path.isdir(local_cal_dir):
                 try:
                     for fname in os.listdir(local_cal_dir):
@@ -129,7 +129,7 @@ class CalDAVCalendarProvider(BaseCalendarProvider):
 
             if source.startswith("http://") or source.startswith("https://"):
                 logger.debug("Loading remote calendar source: %s", source)
-                req = urllib.request.Request(source, headers={"User-Agent": "QuakMeeting/1.0"})
+                req = urllib.request.Request(source, headers={"User-Agent": "FlightDeck/1.0"})
                 with urllib.request.urlopen(req, timeout=10) as resp:
                     content = resp.read().decode("utf-8", errors="ignore")
                     self._feed_cache[source] = content

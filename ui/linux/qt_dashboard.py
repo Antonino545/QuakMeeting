@@ -11,7 +11,7 @@ import os
 import sys
 
 if sys.platform.startswith("linux"):
-    if os.environ.get("QUAKMEETING_QT_XCB", "").strip().lower() in ("1", "true", "yes", "on"):
+    if os.environ.get("FLIGHTDECK_QT_XCB", "").strip().lower() in ("1", "true", "yes", "on"):
         os.environ.setdefault("QT_QPA_PLATFORM", "xcb")
 
 import threading
@@ -34,7 +34,7 @@ from ui.linux.theme import get_asset_path
 from core.services.calendar_service import calendar_service
 from core.services.event_bus import event_bus
 
-logger = logging.getLogger("QuakMeeting.QtDashboard")
+logger = logging.getLogger("FlightDeck.QtDashboard")
 
 
 class DashboardSignalBridge(QObject):

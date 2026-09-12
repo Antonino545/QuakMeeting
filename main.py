@@ -4,10 +4,10 @@ import logging
 
 if "--debug" in sys.argv or "-d" in sys.argv:
     os.environ["FLIGHTDECK_DEBUG"] = "1"
-    os.environ["QUAKMEETING_DEBUG"] = "1"
+    os.environ["FLIGHTDECK_DEBUG"] = "1"
 
 if sys.platform.startswith("linux"):
-    if os.environ.get("FLIGHTDECK_QT_XCB", os.environ.get("QUAKMEETING_QT_XCB", "")).strip().lower() in ("1", "true", "yes", "on"):
+    if os.environ.get("FLIGHTDECK_QT_XCB", os.environ.get("FLIGHTDECK_QT_XCB", "")).strip().lower() in ("1", "true", "yes", "on"):
         os.environ.setdefault("QT_QPA_PLATFORM", "xcb")
 
 # Ensure current project directory is in import path

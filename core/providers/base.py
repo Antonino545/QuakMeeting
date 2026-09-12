@@ -1,5 +1,5 @@
 """
-Base Calendar Provider abstract interface for QuakMeeting.
+Base Calendar Provider abstract interface for FlightDeck.
 Defines standard contract for querying calendar events across different data sources.
 """
 from abc import ABC, abstractmethod

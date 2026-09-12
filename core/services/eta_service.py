@@ -1,5 +1,5 @@
 """
-Multi-Modal Travel Time Estimation & Apple Maps Routing Service for QuakMeeting.
+Multi-Modal Travel Time Estimation & Apple Maps Routing Service for FlightDeck.
 Calculates ETA for Public Transit (Bus, Metro, Tram, Treno), Driving, Walking, and Cycling.
 """
 import os
@@ -15,9 +15,9 @@ from typing import Optional, Dict, Any, Tuple
 
 from core.services.config_service import config_service, ConfigService
 
-logger = logging.getLogger("QuakMeeting.ETAService")
+logger = logging.getLogger("FlightDeck.ETAService")
 
-ETA_CACHE_FILE = os.path.expanduser("~/.quakmeeting/eta_cache.json")
+ETA_CACHE_FILE = os.path.expanduser("~/.flightdeck/eta_cache.json")
 
 MODE_ICONS = {
     "transit": "🚆",
@@ -284,7 +284,7 @@ class ETAService:
             f"https://router.project-osrm.org/route/v1/driving/{lon1},{lat1};{lon2},{lat2}?overview=false"
         ]
 
-        headers = {"User-Agent": "QuakMeeting/1.0 (https://github.com/Antonino545/QuakMeeting)"}
+        headers = {"User-Agent": "FlightDeck/1.0 (https://github.com/Antonino545/FlightDeck)"}
 
         for url in candidate_urls:
             try:

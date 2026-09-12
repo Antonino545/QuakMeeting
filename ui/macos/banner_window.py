@@ -1,5 +1,5 @@
 """
-Backward-compatibility facade for QuakMeeting banner window.
+Backward-compatibility facade for FlightDeck banner window.
 Delegates to modular components in ui.banner.
 """
 from ui.macos.banner import (

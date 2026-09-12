@@ -1,5 +1,5 @@
 """
-Common Tray View Model for QuakMeeting.
+Common Tray View Model for FlightDeck.
 Provides multi-platform dynamic status bar formatting in English & Italian.
 """
 from datetime import datetime
@@ -16,7 +16,7 @@ class TrayViewModel:
         active_lang = lang or get_active_language()
 
         if not next_m:
-            return "🦆" if mode == "icon_only" else "🦆 QuakMeeting"
+            return "🦆" if mode == "icon_only" else "🦆 FlightDeck"
 
         if now.tzinfo is None:
             now = now.astimezone()

@@ -22,7 +22,7 @@ from core.logger import open_log_file
 from ui.common.tray_viewmodel import TrayViewModel
 from ui.linux.qt_tray_app import SignalBridge
 
-logger = logging.getLogger("QuakMeeting.AppIndicatorTray")
+logger = logging.getLogger("FlightDeck.AppIndicatorTray")
 
 class AppIndicatorTrayApp:
     def __init__(self, app):
@@ -165,7 +165,7 @@ class AppIndicatorTrayApp:
 
         menu.append(Gtk.SeparatorMenuItem())
 
-        item_quit = Gtk.MenuItem(label="Quit QuakMeeting")
+        item_quit = Gtk.MenuItem(label="Quit FlightDeck")
         item_quit.connect("activate", lambda _: self.app.quit())
         menu.append(item_quit)
 

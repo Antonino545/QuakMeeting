@@ -17,7 +17,7 @@ from core.services.address_service import address_service, AddressCandidate, Add
 from core.services.config_service import is_debug_mode
 from core.services.language_service import t
 
-logger = logging.getLogger("QuakMeeting.AddressAutocomplete")
+logger = logging.getLogger("FlightDeck.AddressAutocomplete")
 
 
 class QtAddressAutocompleteWidget(QWidget):

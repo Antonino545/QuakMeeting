@@ -1,5 +1,5 @@
 """
-Aviator Duck Pilot Renderer for QuakMeeting.
+Aviator Duck Pilot Renderer for FlightDeck.
 Features vintage biplane, animated scarf in the wind, 3D beak, and leather flight helmet with goggles.
 """
 import math

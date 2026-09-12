@@ -26,12 +26,12 @@ class TestLanguageService(unittest.TestCase):
 
     def test_translation_basic_and_fallback(self):
         # English lookup
-        self.assertEqual(t("app_title", lang="en"), "QuakMeeting")
+        self.assertEqual(t("app_title", lang="en"), "FlightDeck")
         self.assertEqual(t("banner_join_flight", lang="en"), "🚀 Join Flight")
         self.assertEqual(t("banner_got_it", lang="en"), "✅ Got it")
 
         # Italian lookup
-        self.assertEqual(t("app_title", lang="it"), "QuakMeeting")
+        self.assertEqual(t("app_title", lang="it"), "FlightDeck")
         self.assertEqual(t("banner_join_flight", lang="it"), "🚀 Entra nel Volo")
         self.assertEqual(t("banner_got_it", lang="it"), "✅ Capito")
 

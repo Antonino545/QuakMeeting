@@ -12,7 +12,7 @@ from ui.linux.dashboard_tabs.settings.arrival_card import ArrivalCardWidget
 from ui.linux.dashboard_tabs.settings.calendars_card import CalendarsCardWidget
 from ui.linux.dashboard_tabs.settings.system_card import SystemCardWidget, QtUpdateBridge
 
-logger = logging.getLogger("QuakMeeting.QtSettingsTab")
+logger = logging.getLogger("FlightDeck.QtSettingsTab")
 
 
 class QtSettingsTab(QWidget):

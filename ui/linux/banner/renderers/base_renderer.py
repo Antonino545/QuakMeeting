@@ -1,5 +1,5 @@
 """
-Base Pilot Renderer interface for QuakMeeting Qt Banner.
+Base Pilot Renderer interface for FlightDeck Qt Banner.
 Defines abstract drawing hooks for vehicle and character rendering using PyQt6 QPainter.
 """
 from __future__ import annotations

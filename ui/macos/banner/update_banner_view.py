@@ -29,9 +29,9 @@ class MacUpdateBannerView(AppKit.NSView):
         self.is_update_error = bool(meeting_data.get("is_update_error", False))
         self.title = str(meeting_data.get("title", "Software Update"))
         self.provider = str(meeting_data.get("provider", "Software Update ✨"))
-        self.subtitle = str(meeting_data.get("subtitle") or ("⚡ Ready to download & install update" if not self.is_up_to_date else "QuakMeeting is up to date"))
+        self.subtitle = str(meeting_data.get("subtitle") or ("⚡ Ready to download & install update" if not self.is_up_to_date else "FlightDeck is up to date"))
         self.btn_text = str(meeting_data.get("action_btn_text", "⚡ UPDATE NOW" if not self.is_up_to_date else "✓ Great"))
-        self.quote_text = str(meeting_data.get("quote_text", "🚀 QuakMeeting Update Ready!"))
+        self.quote_text = str(meeting_data.get("quote_text", "🚀 FlightDeck Update Ready!"))
 
         self.tick = 0
         self.is_paused = False

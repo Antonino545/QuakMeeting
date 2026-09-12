@@ -1,5 +1,5 @@
 """
-PyQt6 Hangar Tab for QuakMeeting Flight Deck on Linux.
+PyQt6 Hangar Tab for FlightDeck Flight Deck on Linux.
 Provides interactive mascot workshop, custom animal outfit combinations,
 live vector animation previews, and 1-click test flights.
 """

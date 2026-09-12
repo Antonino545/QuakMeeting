@@ -1,5 +1,5 @@
 """
-End-to-End Scenario-Based Tests for QuakMeeting.
+End-to-End Scenario-Based Tests for FlightDeck.
 Simulates day-in-the-life user journeys across time using FakeClock,
 EventState lifecycle transitions, and adaptive ReminderPolicy suppression.
 """

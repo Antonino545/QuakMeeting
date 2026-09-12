@@ -4,7 +4,7 @@ import logging
 from typing import List
 from core.domain.models import Meeting
 
-logger = logging.getLogger("QuakMeeting.MeetingRepository")
+logger = logging.getLogger("FlightDeck.MeetingRepository")
 
 class MeetingRepository:
     """Handles serialization and file I/O for cached meetings."""

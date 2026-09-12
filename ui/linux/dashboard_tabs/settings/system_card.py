@@ -111,7 +111,7 @@ class SystemCardWidget(QFrame):
         # 2. Autostart row
         auto_row = QHBoxLayout()
         auto_row.setSpacing(10)
-        auto_lbl = QLabel("🚀 Launch QuakMeeting automatically at system login", self)
+        auto_lbl = QLabel("🚀 Launch FlightDeck automatically at system login", self)
         auto_lbl.setStyleSheet("color: #cdd6f4; font-size: 12px; font-weight: 500;")
         auto_row.addWidget(auto_lbl)
         auto_row.addStretch()
@@ -223,7 +223,7 @@ class SystemCardWidget(QFrame):
         self.update_icon_lbl.setStyleSheet("font-size: 22px; border: none;")
         status_header_row.addWidget(self.update_icon_lbl)
 
-        self.update_status_lbl = QLabel(f"QuakMeeting <b>v{updater_service.current_version}</b>  •  <span style='color:#a6adc8;'>Ready</span>", self.update_status_box)
+        self.update_status_lbl = QLabel(f"FlightDeck <b>v{updater_service.current_version}</b>  •  <span style='color:#a6adc8;'>Ready</span>", self.update_status_box)
         self.update_status_lbl.setStyleSheet("color: #cdd6f4; font-size: 13px; border: none;")
         status_header_row.addWidget(self.update_status_lbl, stretch=1)
         usb_layout.addLayout(status_header_row)
@@ -272,7 +272,7 @@ class SystemCardWidget(QFrame):
 
         # Interactive animation preview simulation
         def _run_update_animation_demo():
-            self.updating_hud.start_downloading("quakmeeting_latest_amd64.deb")
+            self.updating_hud.start_downloading("flightdeck_latest_amd64.deb")
             demo_up_btn.setEnabled(False)
             self.install_btn.setVisible(False)
             total_size = 28 * 1024 * 1024  # 28 MB simulation
@@ -350,7 +350,7 @@ class SystemCardWidget(QFrame):
 
         def _on_installed(**k):
             self.update_icon_lbl.setText("🎉")
-            self.update_status_lbl.setText("<b style='color:#a6e3a1;'>Update installed successfully!</b> Relaunching QuakMeeting...")
+            self.update_status_lbl.setText("<b style='color:#a6e3a1;'>Update installed successfully!</b> Relaunching FlightDeck...")
             self.install_btn.setVisible(False)
             self.updating_hud.set_installed()
 

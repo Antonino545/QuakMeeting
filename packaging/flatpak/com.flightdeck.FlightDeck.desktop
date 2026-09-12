@@ -1,12 +1,12 @@
 [Desktop Entry]
-Name=QuakMeeting
+Name=FlightDeck
 GenericName=Meeting Reminders & Flight Deck
 Comment=Smart Meeting Reminders & Flight Deck HUD for Desktop
-Exec=quakmeeting
-Icon=com.quakmeeting.QuakMeeting
+Exec=flightdeck
+Icon=com.flightdeck.FlightDeck
 Terminal=false
 Type=Application
 Categories=Office;Calendar;Utility;Qt;
 Keywords=Meeting;Calendar;Reminder;Timer;HUD;Flight;
 StartupNotify=true
-StartupWMClass=quakmeeting
+StartupWMClass=flightdeck

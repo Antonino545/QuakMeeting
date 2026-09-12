@@ -21,12 +21,12 @@ class TestBannerPresets(unittest.TestCase):
         self.assertEqual(preset.get("pilot_type"), "duck")
 
     def test_update_preset(self):
-        up = get_update_preset("v2.0.0", "https://github.com/Antonino545/QuakMeeting/releases/tag/v2.0.0")
+        up = get_update_preset("v2.0.0", "https://github.com/Antonino545/FlightDeck/releases/tag/v2.0.0")
         self.assertIsInstance(up, dict)
         self.assertTrue(up.get("is_update_banner"))
         self.assertFalse(up.get("is_up_to_date", False))
         self.assertIn("v2.0.0", up.get("title", ""))
-        self.assertEqual(up.get("action_url"), "https://github.com/Antonino545/QuakMeeting/releases/tag/v2.0.0")
+        self.assertEqual(up.get("action_url"), "https://github.com/Antonino545/FlightDeck/releases/tag/v2.0.0")
 
     def test_up_to_date_preset(self):
         utd = get_up_to_date_preset("1.0.49")

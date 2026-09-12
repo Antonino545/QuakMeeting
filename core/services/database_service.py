@@ -1,5 +1,5 @@
 """
-SQLite Local State Storage Engine (quakmeeting.db).
+SQLite Local State Storage Engine (flightdeck.db).
 Consolidates scattered JSON cache files into a single, ACID-compliant SQLite database
 with WAL journal mode, thread safety, and transparent legacy migration.
 """
@@ -14,7 +14,7 @@ from typing import Dict, List, Optional, Any, Set, Tuple
 logger = logging.getLogger("FlightDeck.DatabaseService")
 
 DEFAULT_DB_PATH = os.path.expanduser("~/.flightdeck/flightdeck.db")
-LEGACY_DB_PATH = os.path.expanduser("~/.quakmeeting/quakmeeting.db")
+LEGACY_DB_PATH = os.path.expanduser("~/.flightdeck/flightdeck.db")
 
 
 class DatabaseService:

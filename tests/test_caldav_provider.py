@@ -9,7 +9,7 @@ from core.services.config_service import ConfigService
 
 SAMPLE_ICS_DATA = """BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//QuakMeeting Test//EN
+PRODID:-//FlightDeck Test//EN
 X-WR-CALNAME:Work Calendar
 BEGIN:VEVENT
 UID:meet-12345

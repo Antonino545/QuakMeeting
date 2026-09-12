@@ -1,5 +1,5 @@
 """
-Autostart / Launch-at-Login Management Subsystem for QuakMeeting.
+Autostart / Launch-at-Login Management Subsystem for FlightDeck.
 Supports native macOS 13+ SMAppService and universal Aqua LaunchAgents plist.
 """
 import os
@@ -12,7 +12,7 @@ from typing import Optional
 logger = logging.getLogger("FlightDeck.Autostart")
 
 PLIST_LABEL = "com.flightdeck.app"
-LEGACY_PLIST_LABEL = "com.quakmeeting.app"
+LEGACY_PLIST_LABEL = "com.flightdeck.app"
 PLIST_PATH = os.path.expanduser(f"~/Library/LaunchAgents/{PLIST_LABEL}.plist")
 
 IS_LINUX = platform.system() == "Linux"
@@ -80,10 +80,10 @@ def _disable_autostart_windows() -> bool:
         return False
 
 def _get_linux_executable_path() -> str:
-    # If installed via deb package, it's in /usr/bin/quakmeeting
+    # If installed via deb package, it's in /usr/bin/flightdeck
     # Otherwise fallback to python3 main.py
-    if os.path.exists("/usr/bin/quakmeeting"):
-        return "/usr/bin/quakmeeting"
+    if os.path.exists("/usr/bin/flightdeck"):
+        return "/usr/bin/flightdeck"
     # fallback to source dir
     project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     main_py = os.path.join(project_dir, "main.py")

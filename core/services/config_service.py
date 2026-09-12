@@ -1,5 +1,5 @@
 """
-Configuration Service for QuakMeeting.
+Configuration Service for FlightDeck.
 Handles loading, saving, defaults merging, and disk persistence.
 """
 import os
@@ -11,7 +11,7 @@ from typing import Any, Dict, Optional, List
 logger = logging.getLogger("FlightDeck.ConfigService")
 
 CONFIG_DIR = os.path.expanduser("~/.flightdeck")
-LEGACY_CONFIG_DIR = os.path.expanduser("~/.quakmeeting")
+LEGACY_CONFIG_DIR = os.path.expanduser("~/.flightdeck")
 CONFIG_PATH = os.path.join(CONFIG_DIR, "config.json")
 
 DEFAULT_CONFIG = {
@@ -332,7 +332,7 @@ def is_debug_mode() -> bool:
     import sys
     if "--debug" in sys.argv or "-d" in sys.argv:
         return True
-    if os.environ.get("QUAKMEETING_DEBUG", "").strip().lower() in ("1", "true", "yes", "on"):
+    if os.environ.get("FLIGHTDECK_DEBUG", "").strip().lower() in ("1", "true", "yes", "on"):
         return True
     if os.environ.get("DEBUG", "").strip().lower() in ("1", "true", "yes", "on"):
         return True

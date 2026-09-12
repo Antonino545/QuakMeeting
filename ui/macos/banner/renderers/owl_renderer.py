@@ -1,5 +1,5 @@
 """
-Academic Owl Pilot Renderer for QuakMeeting.
+Academic Owl Pilot Renderer for FlightDeck.
 Features amethyst glider, mortarboard hat with oscillating tassel, round gold spectacles, and graduation scroll.
 """
 import math

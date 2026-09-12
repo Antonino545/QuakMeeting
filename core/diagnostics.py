@@ -1,5 +1,5 @@
 """
-Comprehensive system diagnostics and health check runner for QuakMeeting.
+Comprehensive system diagnostics and health check runner for FlightDeck.
 Provides human-understandable reporting for CLI (--check) and GUI dialogs.
 """
 from __future__ import annotations
@@ -186,7 +186,7 @@ def format_diagnostics_report(diag: Dict[str, Any] | None = None) -> str:
 
     lines: List[str] = [
         "=" * 64,
-        " 🦆 QuakMeeting System Health & Diagnostics Check",
+        " 🦆 FlightDeck System Health & Diagnostics Check",
         "=" * 64,
         "",
         "[1/5] 🐍 Python & Runtime Environment:",
@@ -237,7 +237,7 @@ def format_diagnostics_report(diag: Dict[str, Any] | None = None) -> str:
     warnings = diag.get("warnings", [])
 
     if errors:
-        lines.append("❌ ATTENTION: Issues detected that may prevent QuakMeeting from running:")
+        lines.append("❌ ATTENTION: Issues detected that may prevent FlightDeck from running:")
         for err in errors:
             lines.append(f"   • {err}")
         lines.append("")
@@ -247,7 +247,7 @@ def format_diagnostics_report(diag: Dict[str, Any] | None = None) -> str:
             lines.append(f"   • {warn}")
         lines.append("")
     else:
-        lines.append("✨ All systems operational. QuakMeeting is ready to fly! 🦆")
+        lines.append("✨ All systems operational. FlightDeck is ready to fly! 🦆")
 
     lines.append("=" * 64)
     return "\n".join(lines)

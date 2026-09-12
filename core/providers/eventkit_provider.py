@@ -1,5 +1,5 @@
 """
-Native macOS EventKit Calendar Provider for QuakMeeting.
+Native macOS EventKit Calendar Provider for FlightDeck.
 Uses PyObjC EventKit (EKEventStore) for fast, low-overhead direct API access.
 """
 import sys
@@ -11,7 +11,7 @@ from core.domain.classifier import EventClassifier
 from core.services.config_service import config_service, ConfigService
 from .base import BaseCalendarProvider
 
-logger = logging.getLogger("QuakMeeting.EventKitProvider")
+logger = logging.getLogger("FlightDeck.EventKitProvider")
 
 class EventKitCalendarProvider(BaseCalendarProvider):
     """Calendar provider using native macOS EventKit."""
@@ -45,7 +45,7 @@ class EventKitCalendarProvider(BaseCalendarProvider):
                     status = EventKit.EKEventStore.authorizationStatusForEntityType_(EventKit.EKEntityTypeEvent)
 
                 if status not in (3, 4):  # Not Authorized
-                    logger.warning(f"EventKit Calendar access status: {status}. If events are missing, check System Settings -> Privacy & Security -> Calendars -> QuakMeeting.")
+                    logger.warning(f"EventKit Calendar access status: {status}. If events are missing, check System Settings -> Privacy & Security -> Calendars -> FlightDeck.")
             except ImportError:
                 self._store = None
         return self._store

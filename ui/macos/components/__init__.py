@@ -1,5 +1,5 @@
 """
-Reusable macOS AppKit UI Components for QuakMeeting.
+Reusable macOS AppKit UI Components for FlightDeck.
 """
 from ui.macos.components.address_autocomplete_view import AddressAutocompleteView
 from ui.macos.components.button import (

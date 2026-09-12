@@ -25,8 +25,8 @@ class TestUpdaterService(unittest.TestCase):
 
     def test_platform_asset_resolution(self):
         mock_assets = [
-            {"name": "quakmeeting_1.1.0_amd64.deb", "browser_download_url": "https://example.com/quak.deb"},
-            {"name": "QuakMeeting-macOS.dmg", "browser_download_url": "https://example.com/quak.dmg"}
+            {"name": "flightdeck_1.1.0_amd64.deb", "browser_download_url": "https://example.com/quak.deb"},
+            {"name": "FlightDeck-macOS.dmg", "browser_download_url": "https://example.com/quak.dmg"}
         ]
         asset = self.updater.get_platform_asset(mock_assets)
         self.assertIsNotNone(asset)
@@ -39,10 +39,10 @@ class TestUpdaterService(unittest.TestCase):
 
         mock_payload = json.dumps({
             "tag_name": "v9.9.9",
-            "name": "QuakMeeting 9.9.9",
+            "name": "FlightDeck 9.9.9",
             "body": "Awesome new release",
-            "html_url": "https://github.com/Antonino545/QuakMeeting/releases/tag/v9.9.9",
-            "assets": [{"name": "quakmeeting_9.9.9_amd64.deb", "browser_download_url": "https://example.com/quak.deb"}],
+            "html_url": "https://github.com/Antonino545/FlightDeck/releases/tag/v9.9.9",
+            "assets": [{"name": "flightdeck_9.9.9_amd64.deb", "browser_download_url": "https://example.com/quak.deb"}],
             "published_at": "2026-08-25T12:00:00Z"
         }).encode("utf-8")
 
@@ -67,9 +67,9 @@ class TestUpdaterService(unittest.TestCase):
         # Version older than or equal to current_version (1.0.0 vs current 1.0.49)
         mock_payload = json.dumps({
             "tag_name": "v1.0.0",
-            "name": "QuakMeeting 1.0.0",
+            "name": "FlightDeck 1.0.0",
             "body": "Older release",
-            "html_url": "https://github.com/Antonino545/QuakMeeting/releases/tag/v1.0.0",
+            "html_url": "https://github.com/Antonino545/FlightDeck/releases/tag/v1.0.0",
             "assets": [],
             "published_at": "2026-01-01T12:00:00Z"
         }).encode("utf-8")
@@ -150,7 +150,7 @@ class TestUpdaterService(unittest.TestCase):
                 if "codesign" in args:
                     codesign_called = True
                     self.assertIn("-r", args)
-                    self.assertIn('=designated => identifier "com.quakmeeting.app"', args)
+                    self.assertIn('=designated => identifier "com.flightdeck.app"', args)
             self.assertTrue(codesign_called)
 
 if __name__ == "__main__":

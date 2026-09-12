@@ -1,5 +1,5 @@
 """
-Auto-Updater Service for QuakMeeting.
+Auto-Updater Service for FlightDeck.
 Checks GitHub Releases for new versions, downloads platform assets,
 and performs in-place upgrades for macOS and Ubuntu Linux.
 """
@@ -17,9 +17,9 @@ from typing import Optional, Dict, Any, Tuple
 from core.domain.models import __version__
 from core.services.event_bus import event_bus
 
-logger = logging.getLogger("QuakMeeting.UpdaterService")
+logger = logging.getLogger("FlightDeck.UpdaterService")
 
-DEFAULT_REPO = "Antonino545/QuakMeeting"
+DEFAULT_REPO = "Antonino545/FlightDeck"
 
 class UpdaterService:
     """Manages automatic version checking and seamless updates from GitHub Releases."""
@@ -77,7 +77,7 @@ class UpdaterService:
                 res_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
                 plist_candidate = os.path.join(os.path.dirname(res_dir), "Info.plist")
                 if not os.path.exists(plist_candidate):
-                    plist_candidate = "/Applications/QuakMeeting.app/Contents/Info.plist"
+                    plist_candidate = "/Applications/FlightDeck.app/Contents/Info.plist"
                 if os.path.exists(plist_candidate):
                     import plistlib
                     with open(plist_candidate, "rb") as f:
@@ -90,7 +90,7 @@ class UpdaterService:
         # 4. Check dpkg on Linux
         if sys.platform.startswith("linux"):
             try:
-                res = subprocess.run(["dpkg-query", "-W", "-f=${Version}", "quakmeeting"], capture_output=True, text=True, timeout=1.5)
+                res = subprocess.run(["dpkg-query", "-W", "-f=${Version}", "flightdeck"], capture_output=True, text=True, timeout=1.5)
                 if res.returncode == 0 and res.stdout.strip():
                     return res.stdout.strip()
             except Exception:
@@ -132,7 +132,7 @@ class UpdaterService:
             try:
                 url = f"https://api.github.com/repos/{self.repo}/releases/latest"
                 req = urllib.request.Request(url, headers={
-                    "User-Agent": f"QuakMeeting-Updater/{self.current_version}",
+                    "User-Agent": f"FlightDeck-Updater/{self.current_version}",
                     "Accept": "application/vnd.github.v3+json"
                 })
                 with urllib.request.urlopen(req, timeout=12) as resp:
@@ -153,7 +153,7 @@ class UpdaterService:
                     self.latest_release_info = release_info
                     logger.debug("Update check completed: latest=%s has_update=%s.", tag_name, has_update)
                     if has_update:
-                        logger.info(f"🚀 New QuakMeeting update found: {tag_name} (Current: {self.current_version})")
+                        logger.info(f"🚀 New FlightDeck update found: {tag_name} (Current: {self.current_version})")
                         event_bus.publish("UPDATE_AVAILABLE", **release_info)
                         try:
                             from ui.common.banner_presets import get_update_preset
@@ -161,7 +161,7 @@ class UpdaterService:
                         except Exception as b_err:
                             logger.debug(f"Banner trigger on update: {b_err}")
                     else:
-                        logger.info(f"✨ QuakMeeting is up to date (Current: {self.current_version})")
+                        logger.info(f"✨ FlightDeck is up to date (Current: {self.current_version})")
                         event_bus.publish("UPDATE_CHECK_COMPLETE", has_update=False, current_version=self.current_version)
                         if manual:
                             try:
@@ -229,7 +229,7 @@ class UpdaterService:
 
             download_url = asset["browser_download_url"]
             file_name = asset["name"]
-            temp_dir = tempfile.mkdtemp(prefix="quakmeeting_update_")
+            temp_dir = tempfile.mkdtemp(prefix="flightdeck_update_")
             target_path = os.path.join(temp_dir, file_name)
             logger.debug("Selected update asset %s for download.", file_name)
 
@@ -274,25 +274,25 @@ class UpdaterService:
             return _worker()
 
     def _install_macos_update(self, package_path: str, temp_dir: str) -> bool:
-        """Mounts DMG or unzips update and replaces /Applications/QuakMeeting.app."""
+        """Mounts DMG or unzips update and replaces /Applications/FlightDeck.app."""
         try:
-            app_dest = "/Applications/QuakMeeting.app"
+            app_dest = "/Applications/FlightDeck.app"
             if package_path.endswith(".dmg"):
                 mount_point = os.path.join(temp_dir, "mount")
                 os.makedirs(mount_point, exist_ok=True)
                 subprocess.run(["hdiutil", "attach", package_path, "-mountpoint", mount_point, "-nobrowse", "-quiet"], check=True)
 
-                source_app = os.path.join(mount_point, "QuakMeeting.app")
+                source_app = os.path.join(mount_point, "FlightDeck.app")
                 if os.path.exists(source_app):
                     if os.path.exists(app_dest):
                         shutil.rmtree(app_dest)
                     shutil.copytree(source_app, app_dest)
-                    logger.info("Successfully updated QuakMeeting.app in /Applications!")
+                    logger.info("Successfully updated FlightDeck.app in /Applications!")
 
                 subprocess.run(["hdiutil", "detach", mount_point, "-quiet"], check=False)
             elif package_path.endswith(".zip"):
                 subprocess.run(["unzip", "-q", package_path, "-d", temp_dir], check=True)
-                source_app = os.path.join(temp_dir, "QuakMeeting.app")
+                source_app = os.path.join(temp_dir, "FlightDeck.app")
                 if os.path.exists(source_app):
                     if os.path.exists(app_dest):
                         shutil.rmtree(app_dest)
@@ -303,15 +303,15 @@ class UpdaterService:
                 subprocess.run(["xattr", "-cr", app_dest], check=False)
                 subprocess.run([
                     "codesign", "--force", "--deep", "-s", "-",
-                    "-i", "com.quakmeeting.app",
-                    "-r", '=designated => identifier "com.quakmeeting.app"',
+                    "-i", "com.flightdeck.app",
+                    "-r", '=designated => identifier "com.flightdeck.app"',
                     app_dest
                 ], check=False)
 
             event_bus.publish("UPDATE_INSTALLED")
             time.sleep(1.0)
             # Relaunch newly installed version cleanly on macOS
-            relaunch_cmd = "sleep 1.0; open /Applications/QuakMeeting.app &"
+            relaunch_cmd = "sleep 1.0; open /Applications/FlightDeck.app &"
             subprocess.Popen(["bash", "-c", relaunch_cmd], start_new_session=True)
             os._exit(0)
             return True
@@ -336,12 +336,12 @@ class UpdaterService:
                         relaunch_cmd = (
                             f"tail --pid={current_pid} -f /dev/null 2>/dev/null || sleep 1.5; "
                             "sleep 0.5; "
-                            "if command -v gtk-launch >/dev/null 2>&1 && [ -f /usr/share/applications/quakmeeting.desktop ]; then "
-                            "  gtk-launch quakmeeting.desktop >/dev/null 2>&1 & "
-                            "elif [ -x /usr/bin/quakmeeting ]; then "
-                            "  /usr/bin/quakmeeting >/dev/null 2>&1 & "
-                            "elif [ -f /opt/quakmeeting/main.py ]; then "
-                            "  /usr/bin/python3 /opt/quakmeeting/main.py >/dev/null 2>&1 & "
+                            "if command -v gtk-launch >/dev/null 2>&1 && [ -f /usr/share/applications/flightdeck.desktop ]; then "
+                            "  gtk-launch flightdeck.desktop >/dev/null 2>&1 & "
+                            "elif [ -x /usr/bin/flightdeck ]; then "
+                            "  /usr/bin/flightdeck >/dev/null 2>&1 & "
+                            "elif [ -f /opt/flightdeck/main.py ]; then "
+                            "  /usr/bin/python3 /opt/flightdeck/main.py >/dev/null 2>&1 & "
                             "fi"
                         )
                         subprocess.Popen(["bash", "-c", relaunch_cmd], start_new_session=True)

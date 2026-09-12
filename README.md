@@ -74,7 +74,7 @@ Instead of tiny, easily-missed system notification banners, FlightDeck animates 
   - Automatically suppresses redundant reminder banners when already in an active video call (Zoom, Teams, Webex, Skype, Slack) or connected to venue Wi-Fi (Eduroam, university campus, office networks).
   - Dedicated Settings card with customizable SSIDs, call/Wi-Fi toggles, live presence diagnostics, and transparent badges in Today's Agenda (`[✅ Arrived]`, `[🟢 In Call]`, `[📍 On Site]`).
 - 🗄️ **Robust SQLite ACID State Storage (`core/services/database_service.py`)**:
-  - Centralized SQLite database (`~/.flightdeck/flightdeck.db`) with WAL mode, foreign keys, sandboxed in-memory test fallback, and seamless legacy migration from `~/.quakmeeting/`.
+  - Centralized SQLite database (`~/.flightdeck/flightdeck.db`) with WAL mode, foreign keys, sandboxed in-memory test fallback, and seamless legacy migration from `~/.flightdeck/`.
 - 🔒 **Privacy-First & Local**: No telemetry, tracking, or cloud account requirements.
 
 ---

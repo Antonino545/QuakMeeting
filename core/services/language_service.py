@@ -1,5 +1,5 @@
 """
-Language and Internationalization Service for QuakMeeting.
+Language and Internationalization Service for FlightDeck.
 Provides OS language detection, runtime language resolution, and bilingual translations (English & Italian).
 """
 import os
@@ -8,13 +8,13 @@ import locale
 import logging
 from typing import Dict, Any, Optional
 
-logger = logging.getLogger("QuakMeeting.LanguageService")
+logger = logging.getLogger("FlightDeck.LanguageService")
 
 # Translation Dictionaries: English ('en') & Italian ('it')
 TRANSLATIONS: Dict[str, Dict[str, str]] = {
     "en": {
         # General & App
-        "app_title": "QuakMeeting",
+        "app_title": "FlightDeck",
         "system_language": "System (Auto)",
         "language_en": "English 🇬🇧",
         "language_it": "Italiano 🇮🇹",
@@ -23,7 +23,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "saved": "Saved",
         "cancel": "Cancel",
         "close": "Close",
-        "quit": "Quit QuakMeeting",
+        "quit": "Quit FlightDeck",
         "flight_deck": "Flight Deck",
         "preferences": "Flight Config...",
         "check_updates": "Check for Updates...",
@@ -95,8 +95,8 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "settings_calendars": "Connected Calendars",
         "settings_developer": "Developer & Diagnostic Tools",
         "settings_license": "📜 License & About",
-        "license_title": "QuakMeeting License & Acknowledgements",
-        "license_body": "QuakMeeting is free and open-source software licensed under the MIT License.\n\nAcknowledgements:\n• Inspired by QuakPit (Ooble Studio)\n• Palette & Visual Tokens: Catppuccin Mocha\n• Native Bridges: PyObjC & PyQt6\n• Calendar Sync: Apple EventKit & CalDAV (RFC 5545)",
+        "license_title": "FlightDeck License & Acknowledgements",
+        "license_body": "FlightDeck is free and open-source software licensed under the MIT License.\n\nAcknowledgements:\n• Inspired by QuakPit (Ooble Studio)\n• Palette & Visual Tokens: Catppuccin Mocha\n• Native Bridges: PyObjC & PyQt6\n• Calendar Sync: Apple EventKit & CalDAV (RFC 5545)",
 
         # Banner HUD & Buttons
         "banner_join_flight": "🚀 Join Flight",
@@ -160,13 +160,13 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "update_available_menu": "🚀 Update Available ({version}) - Install...",
         "update_up_to_date_title": "You're Up to Date! ✨",
         "update_up_to_date_pill": "UP TO DATE ✨",
-        "update_up_to_date_sub": "QuakMeeting v{version} is currently the newest version.",
+        "update_up_to_date_sub": "FlightDeck v{version} is currently the newest version.",
         "update_up_to_date_btn": "✓ Great",
         "update_check_failed_title": "Update Check Failed",
         "update_check_failed_sub": "Could not connect to GitHub Releases.",
         "preferences_menu": "Flight Config (Preferences)...",
-        "about_quakmeeting": "About QuakMeeting",
-        "hide_app": "Hide QuakMeeting",
+        "about_flightdeck": "About FlightDeck",
+        "hide_app": "Hide FlightDeck",
         "hide_others": "Hide Others",
         "show_all": "Show All",
         "window_menu": "Window",
@@ -301,13 +301,13 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "settings_system_lang_diag": "⚙️ System, Language & Diagnostics",
         "settings_system_lang": "⚙️ System & Language",
         "settings_lang_selector_label": "🌐 Language / Lingua dell'Applicazione:",
-        "settings_autostart_mac": "🚀 Launch QuakMeeting automatically at macOS login",
+        "settings_autostart_mac": "🚀 Launch FlightDeck automatically at macOS login",
         "settings_mute_lessons": "🤫 Mute banner chime during university lessons & classes",
         "settings_debug_mode": "🐛 Enable Developer & Debug Diagnostics Mode",
         "settings_config_json": "📝 Config JSON",
         "settings_view_logs": "📄 View Logs",
         "settings_log_folder": "📂 Log Folder",
-        "settings_update_ready": "QuakMeeting v{version}  •  Ready",
+        "settings_update_ready": "FlightDeck v{version}  •  Ready",
         "settings_install_update_now": "⚡ Install Update Now",
 
         # Hangar Tab
@@ -423,7 +423,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
 
     "it": {
         # General & App
-        "app_title": "QuakMeeting",
+        "app_title": "FlightDeck",
         "system_language": "Sistema (Auto)",
         "language_en": "English 🇬🇧",
         "language_it": "Italiano 🇮🇹",
@@ -432,7 +432,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "saved": "Salvato",
         "cancel": "Annulla",
         "close": "Chiudi",
-        "quit": "Esci da QuakMeeting",
+        "quit": "Esci da FlightDeck",
         "flight_deck": "Flight Deck",
         "preferences": "Configurazione Volo...",
         "check_updates": "Verifica Aggiornamenti...",
@@ -504,8 +504,8 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "settings_calendars": "Calendari Collegati",
         "settings_developer": "Strumenti Sviluppatore & Diagnostica",
         "settings_license": "📜 Licenza e Info",
-        "license_title": "Licenza e Ringraziamenti di QuakMeeting",
-        "license_body": "QuakMeeting è un software libero e open-source distribuito con licenza MIT.\n\nRingraziamenti:\n• Ispirato da QuakPit (Ooble Studio)\n• Palette e Design: Catppuccin Mocha\n• Integrazioni native: PyObjC e PyQt6\n• Sincronizzazione calendari: Apple EventKit e CalDAV (RFC 5545)",
+        "license_title": "Licenza e Ringraziamenti di FlightDeck",
+        "license_body": "FlightDeck è un software libero e open-source distribuito con licenza MIT.\n\nRingraziamenti:\n• Ispirato da QuakPit (Ooble Studio)\n• Palette e Design: Catppuccin Mocha\n• Integrazioni native: PyObjC e PyQt6\n• Sincronizzazione calendari: Apple EventKit e CalDAV (RFC 5545)",
 
         # Banner HUD & Buttons
         "banner_join_flight": "🚀 Entra nel Volo",
@@ -569,13 +569,13 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "update_available_menu": "🚀 Aggiornamento Disponibile ({version}) - Installa...",
         "update_up_to_date_title": "Sei all'ultima versione! ✨",
         "update_up_to_date_pill": "AGGIORNATO ✨",
-        "update_up_to_date_sub": "QuakMeeting v{version} è la versione più recente disponibile.",
+        "update_up_to_date_sub": "FlightDeck v{version} è la versione più recente disponibile.",
         "update_up_to_date_btn": "✓ Ottimo",
         "update_check_failed_title": "Verifica Aggiornamenti Fallita",
         "update_check_failed_sub": "Impossibile connettersi a GitHub Releases.",
         "preferences_menu": "Configurazione Volo (Preferenze)...",
-        "about_quakmeeting": "Informazioni su QuakMeeting",
-        "hide_app": "Nascondi QuakMeeting",
+        "about_flightdeck": "Informazioni su FlightDeck",
+        "hide_app": "Nascondi FlightDeck",
         "hide_others": "Nascondi Altre",
         "show_all": "Mostra Tutte",
         "window_menu": "Finestra",
@@ -710,13 +710,13 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "settings_system_lang_diag": "⚙️ Sistema, Lingua & Diagnostica",
         "settings_system_lang": "⚙️ Sistema & Lingua",
         "settings_lang_selector_label": "🌐 Lingua dell'Applicazione / Language:",
-        "settings_autostart_mac": "🚀 Avvia QuakMeeting automaticamente all'accesso macOS",
+        "settings_autostart_mac": "🚀 Avvia FlightDeck automaticamente all'accesso macOS",
         "settings_mute_lessons": "🤫 Silenzia il suono del banner durante le lezioni universitarie",
         "settings_debug_mode": "🐛 Abilita Modalità Sviluppatore & Diagnostica Debug",
         "settings_config_json": "📝 Config JSON",
         "settings_view_logs": "📄 Visualizza Log",
         "settings_log_folder": "📂 Cartella Log",
-        "settings_update_ready": "QuakMeeting v{version}  •  Pronto",
+        "settings_update_ready": "FlightDeck v{version}  •  Pronto",
         "settings_install_update_now": "⚡ Installa Aggiornamento Ora",
 
         # Hangar Tab
