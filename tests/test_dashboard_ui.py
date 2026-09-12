@@ -497,6 +497,94 @@ class TestDashboardUI(unittest.TestCase):
         # doc_h = max(600.0, 216.0 + 36.0) = 600.0
         self.assertGreaterEqual(doc_view.frame().size.height, 216.0)
 
+    def test_macos_hangar_tab_category_groups_and_badges(self):
+        """Tests that macOS HangarTabController supports category groups filtering, badges, and pilot chips."""
+        if sys.platform != "darwin":
+            self.skipTest("macOS specific test")
+
+        from ui.macos.dashboard_tabs.hangar_tab import HangarTabController, CATEGORY_GROUPS, CATEGORY_BADGES
+        import AppKit
+
+        hangar = HangarTabController.alloc().init()
+        self.assertIsNotNone(hangar)
+        self.assertEqual(hangar.active_filter, "all")
+
+        # Verify category group definitions
+        self.assertIn("productivity", CATEGORY_GROUPS)
+        self.assertIn("lifestyle", CATEGORY_GROUPS)
+        self.assertIn("commute", CATEGORY_GROUPS)
+        self.assertIn("study", CATEGORY_GROUPS["productivity"])
+        self.assertIn("work", CATEGORY_GROUPS["productivity"])
+
+        # Verify category badges
+        self.assertIn("study", CATEGORY_BADGES)
+        self.assertEqual(CATEGORY_BADGES["study"][1], "ACADEMIC")
+        self.assertEqual(CATEGORY_BADGES["work"][1], "OFFICE")
+
+        # Test filter switching via onFilterPillClicked_
+        mock_sender = MagicMock()
+        mock_sender.identifier.return_value = "productivity"
+        hangar.onFilterPillClicked_(mock_sender)
+        self.assertEqual(hangar.active_filter, "productivity")
+
+        # Test render with active filter
+        container = AppKit.NSView.alloc().initWithFrame_(AppKit.NSMakeRect(0, 0, 780, 600))
+        view = hangar.render(container, 780, 600)
+        self.assertIsNotNone(view)
+        doc = view.documentView()
+        self.assertIsNotNone(doc)
+
+        # Verify filter buttons were populated
+        self.assertIn("all", hangar.filter_buttons)
+        self.assertIn("productivity", hangar.filter_buttons)
+
+    def test_macos_hangar_academic_single_dynamic_preview(self):
+        """Tests single dynamic preview and pilot selection for Academic subcategories on macOS."""
+        if sys.platform != "darwin":
+            self.skipTest("macOS specific test")
+
+        from ui.macos.dashboard_tabs.hangar_tab import HangarTabController
+        import AppKit
+
+        hangar = HangarTabController.alloc().init()
+        self.assertEqual(hangar.active_study_subcat, "study")
+        self.assertEqual(hangar.get_drawer_h("study"), 238.0)
+
+        # Expanding presets should enlarge the drawer height
+        hangar.expanded_presets.add("study")
+        self.assertEqual(hangar.get_drawer_h("study"), 361.0)
+        hangar.expanded_presets.remove("study")
+
+        # Select 'class' subcategory
+        mock_sender = MagicMock()
+        mock_sender.identifier.return_value = "class"
+        hangar.onSelectStudySubcat_(mock_sender)
+        self.assertEqual(hangar.active_study_subcat, "class")
+
+        # Select 'exam' subcategory
+        mock_sender.identifier.return_value = "exam"
+        hangar.onSelectStudySubcat_(mock_sender)
+        self.assertEqual(hangar.active_study_subcat, "exam")
+
+    def test_linux_hangar_academic_single_dynamic_preview(self):
+        """Tests single dynamic preview and subcategory selection for Academic on Linux Qt."""
+        try:
+            from PyQt6.QtWidgets import QApplication
+            from ui.linux.dashboard_tabs.hangar_tab import QtHangarTab
+        except (ImportError, ModuleNotFoundError):
+            self.skipTest("PyQt6 not available for Qt hangar test")
+
+        app = QApplication.instance()
+        if app is None:
+            app = QApplication(sys.argv)
+
+        hangar = QtHangarTab()
+        self.assertEqual(hangar.active_study_subcat, "study")
+        hangar.active_study_subcat = "class"
+        self.assertEqual(hangar.active_study_subcat, "class")
+        hangar.active_study_subcat = "exam"
+        self.assertEqual(hangar.active_study_subcat, "exam")
+
 
 if __name__ == '__main__':
     unittest.main()

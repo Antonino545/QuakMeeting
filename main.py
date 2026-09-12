@@ -3,10 +3,11 @@ import os
 import logging
 
 if "--debug" in sys.argv or "-d" in sys.argv:
+    os.environ["FLIGHTDECK_DEBUG"] = "1"
     os.environ["QUAKMEETING_DEBUG"] = "1"
 
 if sys.platform.startswith("linux"):
-    if os.environ.get("QUAKMEETING_QT_XCB", "").strip().lower() in ("1", "true", "yes", "on"):
+    if os.environ.get("FLIGHTDECK_QT_XCB", os.environ.get("QUAKMEETING_QT_XCB", "")).strip().lower() in ("1", "true", "yes", "on"):
         os.environ.setdefault("QT_QPA_PLATFORM", "xcb")
 
 # Ensure current project directory is in import path
@@ -37,7 +38,7 @@ def _ensure_gui_python_environment():
                 import subprocess
                 res = subprocess.run([system_python, "-c", "import PyQt6; import gi; gi.require_version('EDataServer', '1.2')"], capture_output=True)
                 if res.returncode == 0:
-                    logger.info(f"Relaunching QuakMeeting using system python GUI runtime ({system_python})...")
+                    logger.info(f"Relaunching FlightDeck using system python GUI runtime ({system_python})...")
                     os.execv(system_python, [system_python] + sys.argv)
             except Exception as err:
                 logger.warning(f"Auto-switch to system python failed: {err}")
@@ -45,7 +46,7 @@ def _ensure_gui_python_environment():
 def main():
     if "--help" in sys.argv or "-h" in sys.argv:
         print("Usage: python3 main.py [OPTIONS]")
-        print("\nSmart Meeting Reminders & Flight Deck inspired by QuakPit.\n")
+        print("\nFlightDeck — Smart Schedule & Travel Reminders.\n")
         print("Options:")
         print("  -c, --check, --diagnostics  Run system health & arrival diagnostics check")
         print("  --test                      Trigger notification banner test flight")
@@ -72,7 +73,7 @@ def main():
     logger.debug("Startup arguments: %s", sys.argv)
 
     print("=" * 60)
-    print(" 🦆 QuakMeeting - Smart Meeting Reminders & Flight Deck")
+    print(" ✈️ FlightDeck - Smart Schedule & Travel Reminders")
     print(" Inspired by QuakPit (https://github.com/Ooble-Studio/QuakPit)")
     print("=" * 60)
 
@@ -139,7 +140,7 @@ def main():
                 show_qt_banner(test_m)
             return
 
-        logger.info("Initializing QuakMeeting Menu Bar and Flight Deck UI...")
+        logger.info("Initializing FlightDeck Menu Bar and Flight Deck UI...")
         print(" Launching Menu Bar icon and Flight Deck...")
 
         if sys.platform == "darwin" and not force_qt:

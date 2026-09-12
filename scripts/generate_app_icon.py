@@ -1,7 +1,7 @@
 """
-High-Fidelity Application Icon Generator for QuakMeeting.
-Supports cross-platform rendering (PyQt6 / QPainter on Linux and macOS, with AppKit fallback).
-Generates a smooth G2 continuous-curvature squircle with crisp defined edges and no shadow fringe.
+High-Fidelity Application Icon Generator for FlightDeck.
+Renders the vintage biplane in the official Apple flight direction (climbing up-right)
+on a solid dark squircle background (macOS & iOS Dark Mode style).
 """
 import math
 import os
@@ -24,10 +24,10 @@ def create_superellipse_path(QPainterPath, cx: float, cy: float, rx: float, ry: 
     return path
 
 
-def create_app_icon_qt(output_path="assets/icon.png", size=1024):
+def create_app_icon_qt(output_path="assets/icon.png", size=1024, mode="dark"):
     from PyQt6.QtCore import Qt, QRectF, QPointF
     from PyQt6.QtGui import (
-        QImage, QPainter, QPainterPath, QColor, QLinearGradient, QPen, QBrush
+        QImage, QPainter, QPainterPath, QColor, QPen, QBrush
     )
 
     img = QImage(size, size, QImage.Format.Format_ARGB32_Premultiplied)
@@ -38,193 +38,213 @@ def create_app_icon_qt(output_path="assets/icon.png", size=1024):
     p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
 
     s = size / 512.0
-    margin = size * 0.055
+    # Apple macOS Official Icon Grid: 824x824 squircle centered in 1024x1024 canvas (100px margins at 1024)
+    margin = size * 0.0976
     w_sq = size - 2 * margin
     rx = w_sq / 2.0
     ry = w_sq / 2.0
     cx = size / 2.0
     cy = size / 2.0
+
+    is_light = (mode == "light")
+
+    # 1. Apple macOS Dock Subtle Drop Shadow (Guarantees depth on white and light backgrounds)
+    shadow_alpha = 55 if is_light else 85
+    shadow_path = create_superellipse_path(QPainterPath, cx, cy + 18 * s, rx, ry, n=4.6, steps=720)
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(QBrush(QColor(0, 0, 0, shadow_alpha)))
+    p.fillPath(shadow_path, p.brush())
+
+    # 2. Main Apple Squircle Background
     bg_path = create_superellipse_path(QPainterPath, cx, cy, rx, ry, n=4.6, steps=720)
+    if is_light:
+        # Ceramic White / Light Platinum
+        p.setBrush(QBrush(QColor(246, 247, 250)))
+    else:
+        # Deep Solid Black / Graphite
+        p.setBrush(QBrush(QColor(18, 18, 22)))
+    p.fillPath(bg_path, p.brush())
 
-    # 1. Sky Gradient Background
-    grad = QLinearGradient(cx, margin, cx, size - margin)
-    grad.setColorAt(0.0, QColor(38, 115, 224))   # vibrant sky blue (0.15, 0.45, 0.88)
-    grad.setColorAt(1.0, QColor(13, 46, 107))    # deep navy blue (0.05, 0.18, 0.42)
-    p.fillPath(bg_path, QBrush(grad))
-
-    # Clean, crisp boundary hairline stroke (defines boundary against dark/light wallpapers)
-    edge_pen = QPen(QColor(10, 30, 70, 160), 1.0 * s)
+    # 3. Apple HIG Perimeter Rim Stroke (Guarantees squircle contour is crisp on both black and white themes)
+    if is_light:
+        edge_pen = QPen(QColor(0, 0, 0, 24), 1.2 * s)
+    else:
+        edge_pen = QPen(QColor(255, 255, 255, 42), 1.2 * s)
     p.strokePath(bg_path, edge_pen)
 
-    # Inner Rim Highlight (strictly clipped inside the squircle)
+    # Top specular highlight inside squircle
+    top_bevel = create_superellipse_path(QPainterPath, cx, cy + 1.0 * s, rx - 1.2 * s, ry - 1.2 * s, n=4.6, steps=720)
+    bevel_pen = QPen(QColor(255, 255, 255, 220 if is_light else 32), 1.0 * s)
+    p.strokePath(top_bevel, bevel_pen)
+
     p.save()
     p.setClipPath(bg_path)
 
-    inner_pen = QPen(QColor(255, 255, 255, 65), 2.2 * s)
-    p.strokePath(bg_path, inner_pen)
+    # 4. Apple Direction: Climbing diagonally up and to the right (-35 degrees)
+    p.save()
+    p.translate(cx, cy)
+    p.rotate(-35)
 
-    # Convert coordinates to match AppKit canvas convention (y=0 bottom, y=size top)
-    p.translate(0, size)
-    p.scale(1, -1)
+    plane_scale = 0.88
+    plane_cx = 15.0 * s * plane_scale
+    plane_cy = 0.0
+    ps = s * plane_scale
 
-    # 2. Clouds in Background
-    cloud_col = QColor(255, 255, 255, 38)
+    red_wing = QColor(228, 42, 55) if is_light else QColor(235, 60, 72)
+    strut_color = QColor(55, 60, 75) if is_light else QColor(70, 74, 90)
+    body_pen_color = QColor(40, 32, 28) if is_light else QColor(45, 35, 30)
+
+    # Top Biplane Wing (behind fuselage)
     p.setPen(Qt.PenStyle.NoPen)
-    p.setBrush(QBrush(cloud_col))
-    p.drawEllipse(QRectF(size * 0.15, size * 0.25, size * 0.35, size * 0.20))
-    p.drawEllipse(QRectF(size * 0.45, size * 0.30, size * 0.40, size * 0.22))
+    p.setBrush(QBrush(red_wing))
+    top_wing = QPainterPath()
+    top_wing.moveTo(plane_cx - 60 * ps, plane_cy - 46 * ps)
+    top_wing.lineTo(plane_cx + 60 * ps, plane_cy - 46 * ps)
+    top_wing.lineTo(plane_cx + 44 * ps, plane_cy - 33 * ps)
+    top_wing.lineTo(plane_cx - 44 * ps, plane_cy - 33 * ps)
+    top_wing.closeSubpath()
+    p.fillPath(top_wing, p.brush())
 
-    # 3. Aviator Duck Mascot (Center)
-    center_x = size * 0.50
-    center_y = size * 0.48
+    # Top wing crisp edge trim
+    p.setPen(QPen(QColor(255, 255, 255, 240), 2.2 * ps))
+    p.drawLine(QPointF(plane_cx - 60 * ps, plane_cy - 46 * ps), QPointF(plane_cx + 60 * ps, plane_cy - 46 * ps))
+    p.setPen(Qt.PenStyle.NoPen)
+
+    # Wing Struts
+    strut_pen = QPen(strut_color, 2.5 * ps, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
+    p.setPen(strut_pen)
+    p.drawLine(QPointF(plane_cx - 28 * ps, plane_cy - 33 * ps), QPointF(plane_cx - 24 * ps, plane_cy - 10 * ps))
+    p.drawLine(QPointF(plane_cx + 28 * ps, plane_cy - 33 * ps), QPointF(plane_cx + 24 * ps, plane_cy - 10 * ps))
+    p.setPen(Qt.PenStyle.NoPen)
 
     # Timone di Coda (Tail Rudder)
-    p.setBrush(QBrush(QColor(int(0.92 * 255), int(0.38 * 255), int(0.32 * 255))))
+    p.setBrush(QBrush(red_wing))
     tail = QPainterPath()
-    tail.moveTo(center_x - 110 * s, center_y)
-    tail.lineTo(center_x - 170 * s, center_y + 70 * s)
-    tail.lineTo(center_x - 145 * s, center_y)
+    tail.moveTo(plane_cx - 110 * ps, plane_cy)
+    tail.lineTo(plane_cx - 172 * ps, plane_cy - 72 * ps)
+    tail.lineTo(plane_cx - 146 * ps, plane_cy)
     tail.closeSubpath()
     p.fillPath(tail, p.brush())
 
-    # Fusoliera Vintage Dorata / Avorio
-    p.setBrush(QBrush(QColor(int(0.98 * 255), int(0.88 * 255), int(0.65 * 255))))
-    body_pen = QPen(QColor(int(0.35 * 255), int(0.25 * 255), int(0.15 * 255)), 4.0 * s)
+    # Tail fin crisp white chevron racing stripe
+    tail_deco = QPainterPath()
+    tail_deco.moveTo(plane_cx - 130 * ps, plane_cy - 12 * ps)
+    tail_deco.lineTo(plane_cx - 152 * ps, plane_cy - 50 * ps)
+    tail_deco.lineTo(plane_cx - 144 * ps, plane_cy - 50 * ps)
+    tail_deco.lineTo(plane_cx - 124 * ps, plane_cy - 12 * ps)
+    tail_deco.closeSubpath()
+    p.setBrush(QBrush(QColor(255, 255, 255, 245)))
+    p.fillPath(tail_deco, p.brush())
+
+    # Fusoliera Vintage Crema / Avorio
+    p.setBrush(QBrush(QColor(215, 192, 160) if is_light else QColor(218, 196, 165)))
+    body_shade = QRectF(plane_cx - 128 * ps, plane_cy - 38 * ps, 226 * ps, 80 * ps)
+    p.drawEllipse(body_shade)
+
+    # Main ivory fuselage
+    p.setBrush(QBrush(QColor(253, 246, 230) if is_light else QColor(252, 244, 225)))
+    body_pen = QPen(body_pen_color, 4.4 * ps if is_light else 4.2 * ps)
     p.setPen(body_pen)
-    body_rect = QRectF(center_x - 130 * s, center_y - 40 * s, 230 * s, 90 * s)
+    body_rect = QRectF(plane_cx - 130 * ps, plane_cy - 50 * ps, 230 * ps, 90 * ps)
     p.drawEllipse(body_rect)
 
     # Striscia Rossa Racing sulla Fiancata
     p.setPen(Qt.PenStyle.NoPen)
-    p.setBrush(QBrush(QColor(int(0.90 * 255), int(0.25 * 255), int(0.22 * 255))))
-    p.drawRoundedRect(QRectF(center_x - 105 * s, center_y - 8 * s, 175 * s, 16 * s), 4 * s, 4 * s)
+    p.setBrush(QBrush(red_wing))
+    p.drawRoundedRect(QRectF(plane_cx - 105 * ps, plane_cy - 8 * ps, 175 * ps, 16 * ps), 4 * ps, 4 * ps)
 
-    # Parabrezza Cockpit Lucido
-    p.setBrush(QBrush(QColor(int(0.65 * 255), int(0.88 * 255), int(0.98 * 255), int(0.85 * 255))))
-    p.drawEllipse(QRectF(center_x - 40 * s, center_y - 5 * s, 90 * s, 70 * s))
+    # White pin-stripe accent on racing stripe
+    p.setPen(QPen(QColor(255, 255, 255, 235), 1.8 * ps))
+    p.drawLine(QPointF(plane_cx - 100 * ps, plane_cy), QPointF(plane_cx + 65 * ps, plane_cy))
+    p.setPen(Qt.PenStyle.NoPen)
 
-    # Testa Papero Dorato 🦆
-    p.setBrush(QBrush(QColor(int(1.0 * 255), int(0.82 * 255), int(0.28 * 255))))
-    p.drawEllipse(QRectF(center_x - 25 * s, center_y + 5 * s, 60 * s, 60 * s))
+    # Cockpit & Sleek Aerodynamic Bubble Canopy
+    canopy_rect = QRectF(plane_cx - 42 * ps, plane_cy - 62 * ps, 84 * ps, 64 * ps)
+    canopy_bg = QColor(56, 150, 245) if is_light else QColor(116, 199, 236)
+    p.setBrush(QBrush(canopy_bg))
+    p.setPen(QPen(QColor(255, 255, 255, 240), 2.6 * ps))
+    p.drawEllipse(canopy_rect)
 
-    # Occhio con punto luce
-    p.setBrush(QBrush(QColor(0, 0, 0)))
-    p.drawEllipse(QRectF(center_x + 8 * s, center_y + 35 * s, 13 * s, 13 * s))
-    p.setBrush(QBrush(QColor(255, 255, 255)))
-    p.drawEllipse(QRectF(center_x + 13 * s, center_y + 40 * s, 5 * s, 5 * s))
+    # Canopy inner cockpit depth
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(QBrush(QColor(16, 25, 38) if is_light else QColor(20, 30, 45)))
+    p.drawEllipse(QRectF(plane_cx - 36 * ps, plane_cy - 44 * ps, 72 * ps, 42 * ps))
 
-    # Becco d Anatra Arancione Brillante
-    p.setBrush(QBrush(QColor(int(1.0 * 255), int(0.48 * 255), 0)))
-    beak = QPainterPath()
-    beak.moveTo(center_x + 18 * s, center_y + 36 * s)
-    beak.lineTo(center_x + 55 * s, center_y + 26 * s)
-    beak.lineTo(center_x + 18 * s, center_y + 16 * s)
-    beak.closeSubpath()
-    p.fillPath(beak, p.brush())
+    # Flight deck artificial horizon / HUD line inside canopy
+    hud_color = QColor(0, 220, 160) if is_light else QColor(166, 227, 161)
+    hud_pen = QPen(hud_color, 2.0 * ps, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
+    p.setPen(hud_pen)
+    p.drawLine(QPointF(plane_cx - 14 * ps, plane_cy - 22 * ps), QPointF(plane_cx + 14 * ps, plane_cy - 22 * ps))
+    p.setPen(Qt.PenStyle.NoPen)
 
-    # Occhialoni da Aviatore con riflesso azzurro
-    p.setBrush(QBrush(QColor(int(0.35 * 255), int(0.25 * 255), int(0.18 * 255))))
-    p.drawRect(QRectF(center_x - 25 * s, center_y + 28 * s, 60 * s, 10 * s))
-
-    goggle_rect = QRectF(center_x - 5 * s, center_y + 22 * s, 36 * s, 34 * s)
-    p.setPen(QPen(QColor(int(0.90 * 255), int(0.75 * 255), int(0.35 * 255)), 6.0 * s))
-    p.setBrush(QBrush(QColor(int(0.55 * 255), int(0.88 * 255), int(0.98 * 255), int(0.75 * 255))))
-    p.drawEllipse(goggle_rect)
+    # Canopy specular curved shine
+    shine_path = QPainterPath()
+    shine_path.moveTo(plane_cx - 22 * ps, plane_cy - 44 * ps)
+    shine_path.quadTo(plane_cx, plane_cy - 56 * ps, plane_cx + 18 * ps, plane_cy - 46 * ps)
+    shine_pen = QPen(QColor(255, 255, 255, 245), 2.8 * ps, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
+    p.strokePath(shine_path, shine_pen)
 
     # Ala Inferiore Vintage
     p.setPen(Qt.PenStyle.NoPen)
-    p.setBrush(QBrush(QColor(int(0.92 * 255), int(0.38 * 255), int(0.32 * 255))))
+    p.setBrush(QBrush(red_wing))
     wing = QPainterPath()
-    wing.moveTo(center_x - 50 * s, center_y - 8 * s)
-    wing.lineTo(center_x + 50 * s, center_y - 8 * s)
-    wing.lineTo(center_x + 20 * s, center_y - 75 * s)
-    wing.lineTo(center_x - 30 * s, center_y - 75 * s)
+    wing.moveTo(plane_cx - 50 * ps, plane_cy + 8 * ps)
+    wing.lineTo(plane_cx + 50 * ps, plane_cy + 8 * ps)
+    wing.lineTo(plane_cx + 20 * ps, plane_cy + 75 * ps)
+    wing.lineTo(plane_cx - 30 * ps, plane_cy + 75 * ps)
     wing.closeSubpath()
     p.fillPath(wing, p.brush())
 
-    # Ogiva Anteriore
-    p.setBrush(QBrush(QColor(int(0.22 * 255), int(0.25 * 255), int(0.32 * 255))))
-    p.drawEllipse(QRectF(center_x + 95 * s, center_y - 12 * s, 26 * s, 26 * s))
+    # White tip trim on lower wing
+    p.setPen(QPen(QColor(255, 255, 255, 240), 2.4 * ps))
+    p.drawLine(QPointF(plane_cx - 30 * ps, plane_cy + 75 * ps), QPointF(plane_cx + 20 * ps, plane_cy + 75 * ps))
+    p.setPen(Qt.PenStyle.NoPen)
 
-    # Elica con Motion Blur Rotante
-    prop_pen = QPen(QColor(int(0.90 * 255), int(0.94 * 255), 255, int(0.75 * 255)), 8.0 * s)
-    prop_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-    p.setPen(prop_pen)
-    p.drawLine(QPointF(center_x + 108 * s, center_y - 60 * s), QPointF(center_x + 108 * s, center_y + 60 * s))
+    # Wingtip navigation strobe light (Sapphire)
+    p.setBrush(QBrush(QColor(56, 189, 248) if is_light else QColor(116, 215, 255)))
+    p.drawEllipse(QRectF(plane_cx + 16 * ps, plane_cy + 79 * ps, 7 * ps, 7 * ps))
 
+    # Ogiva Anteriore (Dark nose cone)
+    p.setBrush(QBrush(QColor(38, 42, 54) if is_light else QColor(42, 45, 58)))
+    p.drawEllipse(QRectF(plane_cx + 95 * ps, plane_cy - 14 * ps, 26 * ps, 26 * ps))
+
+    # Elica con Motion Blur Rotante (Contrast tuned for light/white and dark/black)
+    if is_light:
+        prop_pen_outer = QPen(QColor(80, 90, 110, 110), 9.0 * ps, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
+        p.setPen(prop_pen_outer)
+        p.drawLine(QPointF(plane_cx + 108 * ps, plane_cy - 60 * ps), QPointF(plane_cx + 108 * ps, plane_cy + 60 * ps))
+        prop_pen = QPen(QColor(255, 255, 255, 240), 4.5 * ps, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
+        p.setPen(prop_pen)
+        p.drawLine(QPointF(plane_cx + 108 * ps, plane_cy - 56 * ps), QPointF(plane_cx + 108 * ps, plane_cy + 56 * ps))
+    else:
+        prop_pen = QPen(QColor(230, 235, 245, 225), 8.0 * ps, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
+        p.setPen(prop_pen)
+        p.drawLine(QPointF(plane_cx + 108 * ps, plane_cy - 60 * ps), QPointF(plane_cx + 108 * ps, plane_cy + 60 * ps))
+
+    p.restore()
     p.restore()
     p.end()
 
     os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
     img.save(output_path)
-    print(f"✅ Icon successfully generated: {output_path} ({size}x{size})")
+    print(f"✅ Icon ({mode}) successfully generated: {output_path} ({size}x{size})")
 
 
-def export_multi_resolution(master_path="assets/icon.png", target_dir=None, sizes=(512, 256, 128, 64, 48, 32, 24, 16)):
-    """Exports multi-resolution PNGs using high-quality Lanczos resampling."""
-    try:
-        from PIL import Image
-    except ImportError:
-        print("ℹ️ PIL not available for multi-resolution export, skipping.")
-        return
+def generate_all_app_icons(base_dir="assets", size=1024):
+    """Generates the full set of icons: dark, light, and default universal."""
+    dark_path = os.path.join(base_dir, "icon_dark.png")
+    light_path = os.path.join(base_dir, "icon_light.png")
+    default_path = os.path.join(base_dir, "icon.png")
 
-    if not os.path.exists(master_path):
-        return
-
-    img = Image.open(master_path)
-    if target_dir is None:
-        target_dir = os.path.dirname(os.path.abspath(master_path))
-
-    for sz in sizes:
-        dest_path = os.path.join(target_dir, f"icon_{sz}x{sz}.png")
-        resized = img.resize((sz, sz), Image.Resampling.LANCZOS)
-        resized.save(dest_path)
-        print(f"  📦 Generated {dest_path}")
+    create_app_icon_qt(dark_path, size=size, mode="dark")
+    create_app_icon_qt(light_path, size=size, mode="light")
+    # Universal default is the dark icon with luminous HIG rim, which stands out on both black & white
+    create_app_icon_qt(default_path, size=size, mode="dark")
 
 
 def create_app_icon(output_path="assets/icon.png", size=1024):
-    try:
-        create_app_icon_qt(output_path, size)
-    except ImportError:
-        # Fallback to AppKit on macOS if PyQt6 is not installed
-        import AppKit
-        s = size / 512.0
-        image = AppKit.NSImage.alloc().initWithSize_(AppKit.NSMakeSize(size, size))
-        image.lockFocus()
-
-        margin = size * 0.055
-        icon_rect = AppKit.NSMakeRect(margin, margin, size - 2 * margin, size - 2 * margin)
-        corner_radius = size * 0.22
-        bg_path = AppKit.NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(
-            icon_rect, corner_radius, corner_radius
-        )
-
-        c_top = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.15, 0.45, 0.88, 1.0)
-        c_bot = AppKit.NSColor.colorWithRed_green_blue_alpha_(0.05, 0.18, 0.42, 1.0)
-        grad = AppKit.NSGradient.alloc().initWithStartingColor_endingColor_(c_top, c_bot)
-        grad.drawInBezierPath_angle_(bg_path, 270.0)
-
-        # Hairline outer edge
-        AppKit.NSColor.colorWithRed_green_blue_alpha_(0.04, 0.12, 0.28, 0.65).set()
-        bg_path.setLineWidth_(1.0 * s)
-        bg_path.stroke()
-
-        ctx = AppKit.NSGraphicsContext.currentContext()
-        ctx.saveGraphicsState()
-        bg_path.addClip()
-
-        AppKit.NSColor.colorWithWhite_alpha_(1.0, 0.25).set()
-        bg_path.setLineWidth_(2.2 * s)
-        bg_path.stroke()
-
-        ctx.restoreGraphicsState()
-        image.unlockFocus()
-
-        tiff_data = image.TIFFRepresentation()
-        bitmap = AppKit.NSBitmapImageRep.imageRepsWithData_(tiff_data)[0]
-        png_data = bitmap.representationUsingType_properties_(AppKit.NSBitmapImageFileTypePNG, None)
-        png_data.writeToFile_atomically_(output_path, True)
-        print(f"✅ Icon successfully generated (AppKit fallback): {output_path}")
+    base_dir = os.path.dirname(os.path.abspath(output_path))
+    generate_all_app_icons(base_dir, size)
 
 
 if __name__ == "__main__":

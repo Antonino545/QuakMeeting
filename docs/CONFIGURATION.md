@@ -1,7 +1,7 @@
-# ⚙️ QuakMeeting — Configuration & Custom Rules Guide
+# ⚙️ FlightDeck — Configuration & Custom Rules Guide
 
-QuakMeeting stores all user preferences, timing thresholds, routing configurations, and custom keyword rules in:
-`~/.quakmeeting/config.json`
+FlightDeck stores all user preferences, timing thresholds, routing configurations, and custom keyword rules in:
+`~/.flightdeck/config.json`
 
 ---
 
@@ -40,7 +40,7 @@ QuakMeeting stores all user preferences, timing thresholds, routing configuratio
 
 ## 📅 Direct Calendar-to-Category Mapping (`calendar_category_map`)
 
-You can connect any calendar source directly to a specific category. When an event originates from a mapped calendar, QuakMeeting immediately assigns that category without needing keyword matching heuristics:
+You can connect any calendar source directly to a specific category. When an event originates from a mapped calendar, FlightDeck immediately assigns that category without needing keyword matching heuristics:
 
 ```json
 {
@@ -59,7 +59,7 @@ This mapping can be configured interactively from the **Settings > Connected Cal
 
 ## 🏷️ Custom Keyword Rules (`custom_keywords`)
 
-Category keywords can be managed visually directly within the application's **Hangar** tab under each event category card, or edited manually in `~/.quakmeeting/config.json`. The Academic category is divided into three distinct subcategories with their own keywords and mascots:
+Category keywords can be managed visually directly within the application's **Hangar** tab under each event category card, or edited manually in `~/.flightdeck/config.json`. The Academic category is divided into three distinct subcategories with their own keywords and mascots:
 
 ```json
 {

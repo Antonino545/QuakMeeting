@@ -25,14 +25,18 @@ ACCESSORIES = (
     "briefcase",
     "badge",
     "earpiece",
+    "tuxedo",
+    "top_hat",
 )
 
 LEGACY_OUTFIT_ACCESSORIES = {
-    "agent": ("fedora",),
+    "agent": ("tuxedo",),
+    "tuxedo": ("tuxedo", "top_hat"),
     "student": ("graduation_cap",),
     "captain": ("cap",),
     "racer": ("pilot_helmet",),
     "aviator": ("aviator_goggles",),
+    "concert": ("headphones",),
 }
 
 
@@ -41,9 +45,32 @@ def normalize_accessories(outfit=None, accessories=None, animal=None):
     values = []
     if accessories:
         values.extend(accessories if isinstance(accessories, (list, tuple)) else [accessories])
-    values.extend(LEGACY_OUTFIT_ACCESSORIES.get(str(outfit or "").lower(), ()))
-    if animal == "platypus" and "fedora" not in values:
-        values.append("fedora")
+    clean_outfit = str(outfit or "").lower()
+    values.extend(LEGACY_OUTFIT_ACCESSORIES.get(clean_outfit, ()))
+
+    if animal == "platypus":
+        # Fedora is strictly reserved for Perry the Platypus on work/agent attire
+        if "top_hat" in values:
+            values.remove("top_hat")
+        if clean_outfit in ("agent", "tuxedo"):
+            if "fedora" not in values:
+                values.append("fedora")
+        elif clean_outfit == "concert":
+            while "fedora" in values:
+                values.remove("fedora")
+    else:
+        # Non-platypus animals never wear the fedora; they wear the formal top hat
+        while "fedora" in values:
+            values.remove("fedora")
+        if clean_outfit in ("agent", "tuxedo"):
+            if "top_hat" not in values:
+                values.append("top_hat")
+            if "tuxedo" not in values:
+                values.append("tuxedo")
+
+    if clean_outfit == "concert" and "headphones" not in values:
+        values.append("headphones")
+
     return tuple(dict.fromkeys(value for value in values if value in ACCESSORIES))
 
 

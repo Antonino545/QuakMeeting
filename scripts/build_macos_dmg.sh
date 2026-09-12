@@ -3,11 +3,11 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
-DMG_NAME="QuakMeeting-macOS.dmg"
+DMG_NAME="FlightDeck-macOS.dmg"
 OUTPUT_DMG="$ROOT_DIR/$DMG_NAME"
 TEMP_DMG_DIR="$ROOT_DIR/dmg_temp"
 
-echo "📦 Packaging QuakMeeting into macOS .dmg..."
+echo "📦 Packaging FlightDeck into macOS .dmg..."
 
 # 1. Build .app bundle first
 cd "$ROOT_DIR"
@@ -20,9 +20,9 @@ fi
 RAW_VER="${1:-${RELEASE_TAG:-${VERSION}}}"
 "$PYTHON_CMD" build_macos_app.py "$RAW_VER"
 
-APP_PATH="$ROOT_DIR/QuakMeeting.app"
+APP_PATH="$ROOT_DIR/FlightDeck.app"
 if [ ! -d "$APP_PATH" ]; then
-    echo "❌ Error: QuakMeeting.app not found in $ROOT_DIR"
+    echo "❌ Error: FlightDeck.app not found in $ROOT_DIR"
     exit 1
 fi
 
@@ -35,12 +35,12 @@ ln -s /Applications "$TEMP_DMG_DIR/Applications"
 
 # Clear quarantine flags and ad-hoc sign the bundle with designated requirement
 echo "✍️ Applying ad-hoc codesign signature with designated requirement..."
-xattr -cr "$TEMP_DMG_DIR/QuakMeeting.app" 2>/dev/null || true
-codesign --force --deep -s - -i "com.quakmeeting.app" -r '=designated => identifier "com.quakmeeting.app"' "$TEMP_DMG_DIR/QuakMeeting.app" 2>/dev/null || true
+xattr -cr "$TEMP_DMG_DIR/FlightDeck.app" 2>/dev/null || true
+codesign --force --deep -s - -i "com.flightdeck.app" -r '=designated => identifier "com.flightdeck.app"' "$TEMP_DMG_DIR/FlightDeck.app" 2>/dev/null || true
 
 # 3. Create DMG using hdiutil
 echo "💽 Creating disk image: $OUTPUT_DMG..."
-hdiutil create -volname "QuakMeeting Installer" \
+hdiutil create -volname "FlightDeck Installer" \
     -srcfolder "$TEMP_DMG_DIR" \
     -ov -format UDZO \
     "$OUTPUT_DMG"

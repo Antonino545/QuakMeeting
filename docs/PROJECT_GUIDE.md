@@ -1,4 +1,4 @@
-# 🦆 QuakMeeting — Developer & Agent Guide
+# ✈️ FlightDeck — Developer & Agent Guide
 
 > **IMPORTANT FOR AI AGENTS & DEVELOPERS:**
 > Read this document first before making changes. It contains the project architecture, operational rules, and the **mandatory 4-step development workflow** to follow after every code modification.
@@ -18,10 +18,10 @@ Whenever you make any change to code or configuration in this project, **always 
 /opt/miniconda3/bin/python3 build_macos_app.py
 
 # 3. Close the running instance and reopen the freshly built .app
-pkill -f "QuakMeeting" 2>/dev/null; sleep 1; open /Applications/QuakMeeting.app
+pkill -f "FlightDeck" 2>/dev/null; sleep 1; open /Applications/FlightDeck.app
 
 # 4. Verify running process and inspect live logs
-sleep 2 && ps aux | grep -i "[Q]uakMeeting" && echo "---" && tail -15 ~/.quakmeeting/quakmeeting.log
+sleep 2 && ps aux | grep -i "[F]lightDeck" && echo "---" && tail -15 ~/.flightdeck/flightdeck.log
 ```
 
 ### For Linux (Ubuntu/Debian):
@@ -36,11 +36,11 @@ bash scripts/build_ubuntu_deb.sh
 bash scripts/build_flatpak.sh
 
 # 4. Install and run (if testing installation)
-sudo apt-get install --reinstall ./deb_dist/quakmeeting_*_amd64.deb
-pkill -f "quakmeeting" 2>/dev/null; sleep 1; quakmeeting &
+sudo apt-get install --reinstall ./deb_dist/flightdeck_*_amd64.deb
+pkill -f "flightdeck" 2>/dev/null; sleep 1; flightdeck &
 
 # 5. Verify live logs
-tail -15 ~/.quakmeeting/quakmeeting.log
+tail -15 ~/.flightdeck/flightdeck.log
 ```
 
 > ⚠️ **IMPORTANT COMMIT RULE**:
@@ -72,16 +72,16 @@ QuakMeeting/
 │   │   ├── eventkit_provider.py   # Native Apple EventKit bridge (macOS)
 │   │   └── caldav_provider.py     # CalDAV/ICS provider with RRULE expansion, TZID & fallback cache
 │   ├── services/
-│   │   ├── database_service.py    # Centralized ACID SQLite store (~/.quakmeeting/quakmeeting.db)
+│   │   ├── database_service.py    # Centralized ACID SQLite store (~/.flightdeck/flightdeck.db)
 │   │   ├── notification_service.py # Unified NotificationProvider protocol (Mascot, System, Sound, Composite)
 │   │   ├── calendar_service.py    # Synchronizes & caches Today-only events via MeetingRepository
 │   │   ├── reminder_engine.py     # Multi-stage notification triggers (evaluates leave vs start time)
 │   │   ├── state_store.py         # NotifiedStateStore & BannerHistoryStore backed by SQLite
 │   │   ├── eta_service.py         # Apple Maps route URLs & departure time calculator
 │   │   ├── arrival_service.py     # Multiplatform presence detection (call apps, venue Wi-Fi, diagnostics)
-│   │   ├── config_service.py      # Configuration manager (~/.quakmeeting/config.json)
+│   │   ├── config_service.py      # Configuration manager (~/.flightdeck/config.json)
 │   │   └── event_bus.py           # Decoupled pub/sub event system
-│   └── logger.py                  # Dual console & file logger (~/.quakmeeting/quakmeeting.log)
+│   └── logger.py                  # Dual console & file logger (~/.flightdeck/flightdeck.log)
 ├── ui/
 │   ├── app_launcher.py            # Platform-aware UI dispatcher
 │   ├── common/                    # Cross-platform UI helpers

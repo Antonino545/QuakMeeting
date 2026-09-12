@@ -915,7 +915,7 @@ class EventClassifier:
                 "in_person": "racer",
                 "health": "zen",
                 "work": "agent",
-                "concert": "aviator",
+                "concert": "concert",
                 "general": "aviator"
             }
 
@@ -925,7 +925,22 @@ class EventClassifier:
                 if isinstance(custom_val, dict):
                     meeting.animal = custom_val.get("animal", "duck")
                     meeting.outfit = custom_val.get("outfit", def_outfit)
-                    meeting.accessories = custom_val.get("accessories", [])
+                    meeting.accessories = list(custom_val.get("accessories", []))
+                    if cat_key == "concert" and "headphones" not in meeting.accessories:
+                        meeting.accessories.append("headphones")
+                    if meeting.animal == "platypus":
+                        if "top_hat" in meeting.accessories:
+                            meeting.accessories.remove("top_hat")
+                        if "fedora" not in meeting.accessories:
+                            meeting.accessories.append("fedora")
+                    else:
+                        while "fedora" in meeting.accessories:
+                            meeting.accessories.remove("fedora")
+                        if meeting.outfit in ("agent", "tuxedo"):
+                            if "top_hat" not in meeting.accessories:
+                                meeting.accessories.append("top_hat")
+                            if "tuxedo" not in meeting.accessories:
+                                meeting.accessories.append("tuxedo")
                     meeting.pilot_type = LEGACY_PILOT_MAP.get(
                         (meeting.animal, meeting.outfit),
                         f"{meeting.animal}_{meeting.outfit}"
@@ -933,6 +948,16 @@ class EventClassifier:
                 elif isinstance(custom_val, str) and custom_val:
                     meeting.animal = custom_val
                     meeting.outfit = def_outfit
+                    if cat_key == "concert" and "headphones" not in meeting.accessories:
+                        meeting.accessories.append("headphones")
+                    if meeting.animal == "platypus":
+                        if "fedora" not in meeting.accessories:
+                            meeting.accessories.append("fedora")
+                    elif meeting.outfit in ("agent", "tuxedo"):
+                        if "top_hat" not in meeting.accessories:
+                            meeting.accessories.append("top_hat")
+                        if "tuxedo" not in meeting.accessories:
+                            meeting.accessories.append("tuxedo")
                     meeting.pilot_type = LEGACY_PILOT_MAP.get(
                         (meeting.animal, meeting.outfit),
                         f"{meeting.animal}_{meeting.outfit}"

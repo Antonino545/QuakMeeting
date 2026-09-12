@@ -42,8 +42,8 @@ jobs:
       - name: Upload Test macOS Artifact
         uses: actions/upload-artifact@v7
         with:
-          name: Test-QuakMeeting-macOS-DMG
-          path: QuakMeeting-macOS.dmg
+          name: Test-FlightDeck-macOS-DMG
+          path: FlightDeck-macOS.dmg
           retention-days: 7
 
   test-ubuntu:
@@ -94,7 +94,7 @@ jobs:
       - name: Upload Test Ubuntu Artifact
         uses: actions/upload-artifact@v7
         with:
-          name: Test-QuakMeeting-Ubuntu-DEB
+          name: Test-FlightDeck-Ubuntu-DEB
           path: deb_dist/*.deb
           retention-days: 7
 

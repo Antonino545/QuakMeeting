@@ -11,8 +11,8 @@ import threading
 import platform
 from logging.handlers import RotatingFileHandler
 
-LOG_DIR = os.path.expanduser("~/.quakmeeting")
-LOG_FILE = os.path.join(LOG_DIR, "quakmeeting.log")
+LOG_DIR = os.path.expanduser("~/.flightdeck")
+LOG_FILE = os.path.join(LOG_DIR, "flightdeck.log")
 CRASH_FILE = os.path.join(LOG_DIR, "crash.log")
 
 def _show_macos_error_dialog(title: str, message: str) -> None:
@@ -37,7 +37,7 @@ def _global_exception_handler(exc_type, exc_value, exc_traceback):
 
     crash_report = (
         f"\n{'='*70}\n"
-        f"🚨 CRITICAL UNCAUGHT EXCEPTION — QUAKMEETING CRASH REPORT\n"
+        f"🚨 CRITICAL UNCAUGHT EXCEPTION — FLIGHTDECK CRASH REPORT\n"
         f"{'='*70}\n"
         f"Timestamp:        {logging.Formatter().formatTime(logging.LogRecord('', 0, '', 0, '', (), None))}\n"
         f"Python:           {sys.version}\n"
@@ -60,22 +60,22 @@ def _global_exception_handler(exc_type, exc_value, exc_traceback):
         pass
 
     # Log to logger
-    log = logging.getLogger("QuakMeeting")
+    log = logging.getLogger("FlightDeck")
     log.critical(f"Uncaught Exception: {exc_value}\n{tb_text}")
 
     # Fallback to sys.stderr
     sys.stderr.write(crash_report)
 
     # If starting up or GUI active, alert the user
-    short_msg = f"{exc_type.__name__}: {exc_value}\n\nCheck logs at ~/.quakmeeting/quakmeeting.log"
-    _show_macos_error_dialog("QuakMeeting Startup Error", short_msg)
+    short_msg = f"{exc_type.__name__}: {exc_value}\n\nCheck logs at {LOG_FILE}"
+    _show_macos_error_dialog("FlightDeck Startup Error", short_msg)
 
 def _threading_exception_handler(args):
     """Intercepts unhandled exceptions in background threads (Python 3.8+)."""
     tb_lines = traceback.format_exception(args.exc_type, args.exc_value, args.exc_traceback)
     tb_text = "".join(tb_lines)
 
-    log = logging.getLogger("QuakMeeting")
+    log = logging.getLogger("FlightDeck")
     log.error(
         f"💥 Unhandled exception in background thread '{args.thread.name}': "
         f"{args.exc_type.__name__}: {args.exc_value}\n{tb_text}"
@@ -84,14 +84,14 @@ def _threading_exception_handler(args):
 def setup_logging(level=None) -> logging.Logger:
     """Configures root logger with formatted console, rotating file handlers, and crash hooks."""
     if level is None:
-        level = logging.DEBUG if os.environ.get("QUAKMEETING_DEBUG", "").strip().lower() in ("1", "true", "yes", "on") else logging.INFO
+        level = logging.DEBUG if os.environ.get("FLIGHTDECK_DEBUG", "").strip().lower() in ("1", "true", "yes", "on") else logging.INFO
 
     try:
         os.makedirs(LOG_DIR, exist_ok=True)
     except Exception:
         pass
 
-    root_logger = logging.getLogger("QuakMeeting")
+    root_logger = logging.getLogger("FlightDeck")
     root_logger.setLevel(level)
 
     for handler in root_logger.handlers:
@@ -133,9 +133,9 @@ def setup_logging(level=None) -> logging.Logger:
 
 def log_system_diagnostics():
     """Logs complete environment diagnostics on startup for debugging."""
-    log = logging.getLogger("QuakMeeting.Diagnostics")
+    log = logging.getLogger("FlightDeck.Diagnostics")
     log.info("=" * 60)
-    log.info("🚀 QuakMeeting Initializing")
+    log.info("🚀 FlightDeck Initializing")
     log.info(f"📍 Log File:       {LOG_FILE}")
     log.info(f"🐍 Python:         {sys.version.split()[0]} ({sys.executable})")
     log.info(f"💻 System:         {platform.platform()} ({platform.machine()})")
@@ -150,7 +150,7 @@ def open_log_file() -> bool:
         if not os.path.exists(LOG_FILE):
             os.makedirs(LOG_DIR, exist_ok=True)
             with open(LOG_FILE, "w", encoding="utf-8") as f:
-                f.write("QuakMeeting Log Initialized\n")
+                f.write("FlightDeck Log Initialized\n")
         if sys.platform == "win32":
             if hasattr(os, "startfile"):
                 os.startfile(LOG_FILE)

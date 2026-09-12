@@ -64,8 +64,10 @@ class QtModularRenderer(BaseQtPilotRenderer):
 
     def _draw_fuselage(self, p: QPainter, px: float, py: float, tick: int) -> None:
         p.setPen(QPen(QColor(51, 38, 25, 204), 1.4))
-        if self.outfit in ("agent", "racer"):
+        if self.outfit in ("agent", "tuxedo", "racer"):
             p.setBrush(QColor(46, 56, 71))
+        elif self.outfit == "concert":
+            p.setBrush(QColor(76, 46, 107))
         elif self.outfit == "captain":
             p.setBrush(QColor(31, 51, 97))
         elif self.outfit == "student":
@@ -84,8 +86,10 @@ class QtModularRenderer(BaseQtPilotRenderer):
         p.setPen(Qt.PenStyle.NoPen)
         if self.outfit == "student":
             p.setBrush(QColor(204, 166, 250))
-        elif self.outfit == "agent":
+        elif self.outfit in ("agent", "tuxedo"):
             p.setBrush(QColor(38, 217, 209))
+        elif self.outfit == "concert":
+            p.setBrush(QColor(245, 194, 231))
         elif self.outfit == "captain":
             p.setBrush(QColor(242, 199, 89))
         else:
@@ -109,8 +113,17 @@ class QtModularRenderer(BaseQtPilotRenderer):
         # Wingtip navigation strobe beacon
         self.draw_wingtip_strobe(p, px + 2.0, py - 26.0, tick)
 
+    def _get_animal_bob(self, tick: int) -> float:
+        if self.animal in ("duck", "bunny", "platypus", "squirrel", "fox"):
+            return math.sin(tick * 0.14) * 1.2
+        elif self.animal in ("owl", "penguin"):
+            return math.sin(tick * 0.12) * 1.0
+        elif self.animal == "panda":
+            return math.sin(tick * 0.10) * 0.9
+        return math.sin(tick * 0.14) * 1.2
+
     def _draw_duck(self, p: QPainter, px: float, py: float, tick: int) -> None:
-        hb_y = math.sin(tick * 0.14) * 1.2
+        hb_y = self._get_animal_bob(tick)
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(QColor(255, 209, 71))
         p.drawEllipse(QRectF(px - 10, py + 2 + hb_y, 22, 20))
@@ -203,7 +216,7 @@ class QtModularRenderer(BaseQtPilotRenderer):
             p.drawEllipse(QRectF(px + 3.5, py + 12.5 + hb_y, 1.5, 1.5))
 
     def _draw_owl(self, p: QPainter, px: float, py: float, tick: int) -> None:
-        hb_y = math.sin(tick * 0.12) * 1.0
+        hb_y = self._get_animal_bob(tick)
         tuft_wave = math.sin(tick * 0.22) * 2.8
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(QColor(148, 117, 97))
@@ -248,7 +261,7 @@ class QtModularRenderer(BaseQtPilotRenderer):
             p.drawEllipse(QRectF(px + 5, py + 13 + hb_y, 1.2, 1.2))
 
     def _draw_bunny(self, p: QPainter, px: float, py: float, tick: int) -> None:
-        hb_y = math.sin(tick * 0.14) * 1.2
+        hb_y = self._get_animal_bob(tick)
         ear_base_wave = math.sin(tick * 0.18) * 2.5
         ear_tip_wave = math.sin(tick * 0.22 + 0.8) * 4.2
         p.setPen(Qt.PenStyle.NoPen)
@@ -340,7 +353,7 @@ class QtModularRenderer(BaseQtPilotRenderer):
         p.drawEllipse(QRectF(px + 4.8, py + 4.8 + hb_y, 1.1, 1.1))
 
     def _draw_platypus(self, p: QPainter, px: float, py: float, tick: int) -> None:
-        hb_y = math.sin(tick * 0.14) * 1.2
+        hb_y = self._get_animal_bob(tick)
         tail_bob = math.sin(tick * 0.16) * 3.5
         p.setPen(Qt.PenStyle.NoPen)
         # Tail bobbing in slipstream
@@ -377,7 +390,7 @@ class QtModularRenderer(BaseQtPilotRenderer):
             p.drawEllipse(QRectF(px + 4.5, py + 12.5 + hb_y, 1.5, 1.5))
 
     def _draw_squirrel(self, p: QPainter, px: float, py: float, tick: int) -> None:
-        hb_y = math.sin(tick * 0.14) * 1.2
+        hb_y = self._get_animal_bob(tick)
         tail_wave = math.sin(tick * 0.18) * 3.8
         tail_path = QPainterPath()
         tail_path.moveTo(px - 34, py - 4)
@@ -416,7 +429,7 @@ class QtModularRenderer(BaseQtPilotRenderer):
             p.drawEllipse(QRectF(px + 3.5, py + 12 + hb_y, 1.8, 1.8))
 
     def _draw_fox(self, p: QPainter, px: float, py: float, tick: int) -> None:
-        hb_y = math.sin(tick * 0.14) * 1.2
+        hb_y = self._get_animal_bob(tick)
         tail_sway = math.sin(tick * 0.18) * 3.2
         p.setPen(Qt.PenStyle.NoPen)
 
@@ -560,7 +573,7 @@ class QtModularRenderer(BaseQtPilotRenderer):
             p.drawEllipse(QRectF(px + 4.8, py + 11.2 + hb_y, 0.9, 0.9))
 
     def _draw_penguin(self, p: QPainter, px: float, py: float, tick: int) -> None:
-        hb_y = math.sin(tick * 0.12) * 1.0
+        hb_y = self._get_animal_bob(tick)
         wing_flap = math.sin(tick * 0.22) * 3.0
         p.setPen(Qt.PenStyle.NoPen)
 
@@ -614,22 +627,23 @@ class QtModularRenderer(BaseQtPilotRenderer):
         p.drawLine(QPointF(px + 8.5, py + 8.8 + hb_y), QPointF(px + 12.5, py + 7.8 + hb_y))
         p.setPen(Qt.PenStyle.NoPen)
 
-        # 🐧 5. Dapper Ruby Bow Tie
-        p.setBrush(QColor(224, 56, 71))
-        bow_l = QPainterPath()
-        bow_l.moveTo(px + 1, py + 3 + hb_y)
-        bow_l.lineTo(px - 3, py + 5.5 + hb_y)
-        bow_l.lineTo(px - 3, py + 1.5 + hb_y)
-        bow_l.closeSubpath()
-        p.drawPath(bow_l)
-        bow_r = QPainterPath()
-        bow_r.moveTo(px + 1, py + 3 + hb_y)
-        bow_r.lineTo(px + 5, py + 5.5 + hb_y)
-        bow_r.lineTo(px + 5, py + 1.5 + hb_y)
-        bow_r.closeSubpath()
-        p.drawPath(bow_r)
-        p.setBrush(QColor(179, 38, 51))
-        p.drawEllipse(QRectF(px - 0.5, py + 2.0 + hb_y, 3, 3))
+        # 🐧 5. Dapper Ruby Bow Tie (only when not wearing tuxedo)
+        if self.outfit not in ("agent", "tuxedo") and "tuxedo" not in self.accessories:
+            p.setBrush(QColor(224, 56, 71))
+            bow_l = QPainterPath()
+            bow_l.moveTo(px + 1, py + 3 + hb_y)
+            bow_l.lineTo(px - 3, py + 5.5 + hb_y)
+            bow_l.lineTo(px - 3, py + 1.5 + hb_y)
+            bow_l.closeSubpath()
+            p.drawPath(bow_l)
+            bow_r = QPainterPath()
+            bow_r.moveTo(px + 1, py + 3 + hb_y)
+            bow_r.lineTo(px + 5, py + 5.5 + hb_y)
+            bow_r.lineTo(px + 5, py + 1.5 + hb_y)
+            bow_r.closeSubpath()
+            p.drawPath(bow_r)
+            p.setBrush(QColor(179, 38, 51))
+            p.drawEllipse(QRectF(px - 0.5, py + 2.0 + hb_y, 3, 3))
 
         # 🐧 6. Sparkling Blinking Eyes
         if self.is_eye_blinking(tick):
@@ -652,7 +666,7 @@ class QtModularRenderer(BaseQtPilotRenderer):
             p.drawEllipse(QRectF(px + 4.2, py + 10.4 + hb_y, 0.9, 0.9))
 
     def _draw_panda(self, p: QPainter, px: float, py: float, tick: int) -> None:
-        hb_y = math.sin(tick * 0.10) * 0.9
+        hb_y = self._get_animal_bob(tick)
         ear_twitch = math.sin(tick * 0.15) * 0.6
         p.setPen(Qt.PenStyle.NoPen)
 
@@ -790,24 +804,15 @@ class QtModularRenderer(BaseQtPilotRenderer):
             p.setBrush(QColor(245, 204, 64))
             p.drawEllipse(QRectF(px + 2, py + 19, 4, 4))
 
-        elif self.outfit == "agent":
-            # 🕵️ Fedora
-            p.setPen(QPen(QColor(64, 33, 17), 1.0))
-            p.setBrush(QColor(140, 82, 43))
-            p.drawEllipse(QRectF(px - 14, py + 16, 28, 6))
-            crown_path = QPainterPath()
-            crown_path.moveTo(px - 7, py + 18)
-            crown_path.lineTo(px - 6, py + 28)
-            crown_path.lineTo(px - 1, py + 30)
-            crown_path.lineTo(px + 5, py + 28)
-            crown_path.lineTo(px + 7, py + 18)
-            crown_path.closeSubpath()
-            p.setBrush(QColor(153, 92, 49))
-            p.drawPath(crown_path)
-            p.setBrush(QColor(38, 38, 46))
-            p.drawRect(QRectF(px - 6.5, py + 18, 13, 3))
-            p.setPen(QPen(QColor(194, 128, 71, 204), 0.8))
-            p.drawLine(QPointF(px - 1, py + 28.5), QPointF(px + 1, py + 28.5))
+        elif self.outfit in ("agent", "tuxedo"):
+            self._draw_tuxedo(p, px, py, tick)
+            if self.animal == "platypus":
+                self._draw_fedora(p, px, py, tick)
+            else:
+                self._draw_top_hat(p, px, py, tick)
+
+        elif self.outfit == "concert":
+            self._draw_headphones(p, px, py, tick)
 
         elif self.outfit == "gym":
             p.setBrush(QColor(235, 64, 64))
@@ -836,14 +841,221 @@ class QtModularRenderer(BaseQtPilotRenderer):
             p.setBrush(QColor(140, 224, 250, 191))
             p.drawEllipse(QRectF(px, py + 9, 10, 10))
 
+    def _draw_fedora(self, p: QPainter, px: float, py: float, tick: int) -> None:
+        """Iconic brown fedora with black ribbon band - strictly for Perry the Platypus."""
+        hb_y = self._get_animal_bob(tick)
+        p.setPen(QPen(QColor(64, 33, 17), 1.0))
+        p.setBrush(QColor(140, 82, 43))
+        p.drawEllipse(QRectF(px - 14, py + 16 + hb_y, 28, 6))
+        crown_path = QPainterPath()
+        crown_path.moveTo(px - 7, py + 18 + hb_y)
+        crown_path.lineTo(px - 6, py + 28 + hb_y)
+        crown_path.lineTo(px - 1, py + 30 + hb_y)
+        crown_path.lineTo(px + 5, py + 28 + hb_y)
+        crown_path.lineTo(px + 7, py + 18 + hb_y)
+        crown_path.closeSubpath()
+        p.setBrush(QColor(153, 92, 49))
+        p.drawPath(crown_path)
+        p.setBrush(QColor(38, 38, 46))
+        p.drawRect(QRectF(px - 6.5, py + 18 + hb_y, 13, 3))
+        p.setPen(QPen(QColor(194, 128, 71, 204), 0.8))
+        p.drawLine(QPointF(px - 1, py + 28.5 + hb_y), QPointF(px + 1, py + 28.5 + hb_y))
+
+    def _draw_top_hat(self, p: QPainter, px: float, py: float, tick: int) -> None:
+        """Dapper black formal silk top hat with satin ribbon band for work animals."""
+        hb_y = self._get_animal_bob(tick)
+        p.setPen(Qt.PenStyle.NoPen)
+        # Flared brim
+        p.setBrush(QColor(20, 20, 30))
+        p.drawEllipse(QRectF(px - 13, py + 16 + hb_y, 26, 5))
+
+        # Tall silk crown
+        crown_path = QPainterPath()
+        crown_path.moveTo(px - 7, py + 18 + hb_y)
+        crown_path.lineTo(px - 8, py + 33 + hb_y)
+        crown_path.lineTo(px + 8, py + 33 + hb_y)
+        crown_path.lineTo(px + 7, py + 18 + hb_y)
+        crown_path.closeSubpath()
+        p.setBrush(QColor(28, 28, 40))
+        p.drawPath(crown_path)
+
+        # Crown top oval
+        p.setBrush(QColor(36, 36, 50))
+        p.drawEllipse(QRectF(px - 8, py + 31.5 + hb_y, 16, 3))
+
+        # Satin ribbon band
+        p.setBrush(QColor(217, 56, 76))
+        p.drawRect(QRectF(px - 7, py + 18 + hb_y, 14, 3.2))
+
+        # Gold buckle
+        p.setBrush(QColor(245, 204, 64))
+        p.drawRect(QRectF(px + 3, py + 18.5 + hb_y, 2.2, 2.2))
+
+    def _draw_tuxedo(self, p: QPainter, px: float, py: float, tick: int) -> None:
+        """Tailored black tuxedo jacket with satin lapels, white pleated shirt, black studs, and pocket square."""
+        hb_y = self._get_animal_bob(tick)
+        p.setPen(Qt.PenStyle.NoPen)
+
+        # 1. Tailored onyx jacket base hugging animal's round torso
+        p.setBrush(QColor(20, 20, 30))
+        jacket = QPainterPath()
+        jacket.moveTo(px - 4.5, py + 5.5 + hb_y)
+        jacket.cubicTo(px - 7.8, py + 5.2 + hb_y, px - 11.0, py + 3.2 + hb_y, px - 10.5, py + 1.2 + hb_y)
+        jacket.cubicTo(px - 6.0, py - 0.5 + hb_y, px + 2.5, py - 0.5 + hb_y, px + 6.5, py + 1.2 + hb_y)
+        jacket.cubicTo(px + 7.2, py + 2.6 + hb_y, px + 5.8, py + 4.2 + hb_y, px + 3.8, py + 4.8 + hb_y)
+        jacket.cubicTo(px + 1.0, py + 5.6 + hb_y, px - 2.0, py + 5.6 + hb_y, px - 4.5, py + 5.5 + hb_y)
+        jacket.closeSubpath()
+        p.drawPath(jacket)
+
+        # 2. Crisp white pleated shirt bib (curved V-neck)
+        p.setBrush(QColor(250, 250, 255))
+        shirt = QPainterPath()
+        shirt.moveTo(px - 2.4, py + 5.0 + hb_y)
+        shirt.lineTo(px + 2.4, py + 5.0 + hb_y)
+        shirt.cubicTo(px + 1.8, py + 2.8 + hb_y, px + 0.8, py + 1.6 + hb_y, px + 0.1, py + 0.8 + hb_y)
+        shirt.cubicTo(px - 0.6, py + 1.6 + hb_y, px - 1.8, py + 2.8 + hb_y, px - 2.4, py + 5.0 + hb_y)
+        shirt.closeSubpath()
+        p.drawPath(shirt)
+
+        # Black studs
+        p.setBrush(QColor(26, 26, 38))
+        p.drawEllipse(QRectF(px - 0.4, py + 2.6 + hb_y, 1.1, 1.1))
+        p.drawEllipse(QRectF(px - 0.4, py + 1.4 + hb_y, 1.1, 1.1))
+
+        # 3. Satin peak lapels
+        p.setBrush(QColor(46, 48, 66))
+        l_lapel = QPainterPath()
+        l_lapel.moveTo(px - 3.8, py + 5.0 + hb_y)
+        l_lapel.cubicTo(px - 4.8, py + 4.6 + hb_y, px - 5.6, py + 4.0 + hb_y, px - 5.5, py + 3.4 + hb_y)
+        l_lapel.lineTo(px - 0.2, py + 0.9 + hb_y)
+        l_lapel.cubicTo(px - 0.8, py + 2.2 + hb_y, px - 1.6, py + 3.6 + hb_y, px - 2.0, py + 5.0 + hb_y)
+        l_lapel.closeSubpath()
+        p.drawPath(l_lapel)
+
+        r_lapel = QPainterPath()
+        r_lapel.moveTo(px + 3.6, py + 5.0 + hb_y)
+        r_lapel.cubicTo(px + 4.4, py + 4.4 + hb_y, px + 5.0, py + 3.8 + hb_y, px + 4.8, py + 3.2 + hb_y)
+        r_lapel.lineTo(px + 0.2, py + 0.9 + hb_y)
+        r_lapel.cubicTo(px + 0.8, py + 2.2 + hb_y, px + 1.6, py + 3.6 + hb_y, px + 2.0, py + 5.0 + hb_y)
+        r_lapel.closeSubpath()
+        p.drawPath(r_lapel)
+
+        # 4. Pocket square (two white folded silk peaks)
+        p.setBrush(QColor(250, 250, 255))
+        psquare = QPainterPath()
+        psquare.moveTo(px - 7.5, py + 2.0 + hb_y)
+        psquare.lineTo(px - 6.2, py + 3.8 + hb_y)
+        psquare.lineTo(px - 5.5, py + 2.8 + hb_y)
+        psquare.lineTo(px - 4.8, py + 3.6 + hb_y)
+        psquare.lineTo(px - 4.2, py + 2.0 + hb_y)
+        psquare.closeSubpath()
+        p.drawPath(psquare)
+
+        # 5. Dapper ruby butterfly bow tie
+        p.setBrush(QColor(224, 51, 66))
+        bow_l = QPainterPath()
+        bow_l.moveTo(px + 0.1, py + 4.9 + hb_y)
+        bow_l.cubicTo(px - 1.2, py + 5.7 + hb_y, px - 2.8, py + 6.3 + hb_y, px - 3.6, py + 6.1 + hb_y)
+        bow_l.cubicTo(px - 4.0, py + 5.1 + hb_y, px - 4.0, py + 4.5 + hb_y, px - 3.6, py + 3.7 + hb_y)
+        bow_l.cubicTo(px - 2.8, py + 3.5 + hb_y, px - 1.2, py + 4.3 + hb_y, px + 0.1, py + 4.9 + hb_y)
+        bow_l.closeSubpath()
+        p.drawPath(bow_l)
+
+        bow_r = QPainterPath()
+        bow_r.moveTo(px + 0.1, py + 4.9 + hb_y)
+        bow_r.cubicTo(px + 1.4, py + 5.7 + hb_y, px + 2.8, py + 6.3 + hb_y, px + 3.6, py + 6.1 + hb_y)
+        bow_r.cubicTo(px + 4.0, py + 5.1 + hb_y, px + 4.0, py + 4.5 + hb_y, px + 3.6, py + 3.7 + hb_y)
+        bow_r.cubicTo(px + 2.8, py + 3.5 + hb_y, px + 1.4, py + 4.3 + hb_y, px + 0.1, py + 4.9 + hb_y)
+        bow_r.closeSubpath()
+        p.drawPath(bow_r)
+
+        p.setBrush(QColor(178, 36, 51))
+        p.drawEllipse(QRectF(px - 1.0, py + 3.9 + hb_y, 2.2, 2.0))
+
+    def _draw_headphones(self, p: QPainter, px: float, py: float, tick: int) -> None:
+        """Cushioned over-ear DJ concert headphones with glowing accents and animated floating music notes."""
+        hb_y = self._get_animal_bob(tick)
+        p.setPen(Qt.PenStyle.NoPen)
+
+        # 1. Padded arched headband over top of crown
+        band_path = QPainterPath()
+        band_path.moveTo(px - 4.5, py + 18.0 + hb_y)
+        band_path.cubicTo(px - 4.0, py + 26.5 + hb_y, px + 2.5, py + 27.5 + hb_y, px + 4.0, py + 21.0 + hb_y)
+        p.setPen(QPen(QColor(31, 33, 46), 3.6, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+        p.drawPath(band_path)
+
+        # Headband top soft cushion (Catppuccin Mauve)
+        cushion_path = QPainterPath()
+        cushion_path.moveTo(px - 2.5, py + 23.8 + hb_y)
+        cushion_path.cubicTo(px - 1.5, py + 26.8 + hb_y, px + 1.8, py + 27.0 + hb_y, px + 2.8, py + 24.2 + hb_y)
+        p.setPen(QPen(QColor(204, 166, 250), 2.4, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+        p.drawPath(cushion_path)
+
+        p.setPen(Qt.PenStyle.NoPen)
+        # 2. Main DJ Ear-Cup on the side of the head (behind eye, unobscured face)
+        cx = px - 4.5
+        cy = py + 7.5 + hb_y
+        p.setBrush(QColor(31, 33, 46))
+        p.drawEllipse(QRectF(cx - 4.5, cy, 9.0, 13.0))
+
+        p.setPen(QPen(QColor(245, 194, 231), 1.6))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawEllipse(QRectF(cx - 3.2, cy + 1.8, 6.4, 9.4))
+
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(204, 166, 250))
+        p.drawEllipse(QRectF(cx - 1.8, cy + 3.8, 3.6, 5.4))
+
+        p.setBrush(QColor(255, 255, 255))
+        p.drawEllipse(QRectF(cx - 0.9, cy + 5.2, 1.8, 2.6))
+
+        # 3. Animated floating music notes (♪ ♫)
+        note_bob1 = math.sin(tick * 0.16) * 2.0
+        note_bob2 = math.sin(tick * 0.16 + 1.8) * 2.0
+
+        # Note 1 (♪) floating top-left
+        p.setBrush(QColor(250, 217, 102, 242))
+        n1_x = px - 15.0
+        n1_y = py + 22.0 + hb_y + note_bob1
+        p.drawEllipse(QRectF(n1_x, n1_y, 3.5, 2.6))
+        p.setPen(QPen(QColor(250, 217, 102, 242), 1.1))
+        n1_stem = QPainterPath()
+        n1_stem.moveTo(n1_x + 3.0, n1_y + 1.5)
+        n1_stem.lineTo(n1_x + 3.0, n1_y + 7.5)
+        n1_stem.cubicTo(n1_x + 3.2, n1_y + 8.5, n1_x + 5.5, n1_y + 7.5, n1_x + 6.0, n1_y + 5.5)
+        p.drawPath(n1_stem)
+
+        # Note 2 (♫ beamed pair) floating top-right
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(245, 194, 231, 242))
+        n2_x = px + 12.0
+        n2_y = py + 23.0 + hb_y + note_bob2
+        p.drawEllipse(QRectF(n2_x, n2_y, 3.0, 2.2))
+        p.drawEllipse(QRectF(n2_x + 5.0, n2_y + 1.5, 3.0, 2.2))
+        p.setPen(QPen(QColor(245, 194, 231, 242), 1.0))
+        p.drawLine(QPointF(n2_x + 2.5, n2_y + 1.0), QPointF(n2_x + 2.5, n2_y + 7.0))
+        p.drawLine(QPointF(n2_x + 7.5, n2_y + 2.5), QPointF(n2_x + 7.5, n2_y + 8.5))
+        p.setPen(QPen(QColor(245, 194, 231, 242), 1.8))
+        p.drawLine(QPointF(n2_x + 2.0, n2_y + 7.0), QPointF(n2_x + 8.0, n2_y + 8.5))
+
     def _draw_accessories(self, p: QPainter, px: float, py: float, tick: int) -> None:
         """Draws optional reusable layers without changing animal geometry."""
         p.setPen(Qt.PenStyle.NoPen)
+        # Dedicated full accessories
+        if "headphones" in self.accessories and self.outfit != "concert":
+            self._draw_headphones(p, px, py, tick)
+        if "tuxedo" in self.accessories and self.outfit not in ("agent", "tuxedo"):
+            self._draw_tuxedo(p, px, py, tick)
+        if "top_hat" in self.accessories and self.animal != "platypus" and self.outfit not in ("agent", "tuxedo"):
+            self._draw_top_hat(p, px, py, tick)
+        if "fedora" in self.accessories and self.animal == "platypus" and self.outfit not in ("agent", "tuxedo"):
+            self._draw_fedora(p, px, py, tick)
+
         if "sunglasses" in self.accessories:
             p.setBrush(QColor(20, 24, 34, 235))
             p.drawEllipse(QRectF(px + 1, py + 9, 8, 5))
             p.drawEllipse(QRectF(px + 10, py + 9, 8, 5))
-        if "bow_tie" in self.accessories:
+        if "bow_tie" in self.accessories and self.animal != "penguin" and self.outfit not in ("agent", "tuxedo") and "tuxedo" not in self.accessories:
             p.setBrush(QColor(217, 70, 76))
             p.drawEllipse(QRectF(px - 1, py + 1, 6, 5))
             p.drawEllipse(QRectF(px + 5, py + 1, 6, 5))

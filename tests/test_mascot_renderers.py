@@ -16,12 +16,12 @@ class TestMascotRenderers(unittest.TestCase):
 
         try:
             for animal, _ in ANIMALS:
-                # Test with default outfit, student outfit, accessories
-                for outfit in ("aviator", "student", "agent"):
+                # Test with default outfit, student outfit, work/agent, concert, and tuxedo outfits
+                for outfit in ("aviator", "student", "agent", "concert", "tuxedo"):
                     renderer = ModularPilotRenderer(
                         animal=animal,
                         outfit=outfit,
-                        accessories=("sunglasses", "bow_tie", "badge", "earpiece")
+                        accessories=("sunglasses", "bow_tie", "badge", "earpiece", "headphones", "tuxedo", "top_hat")
                     )
                     # Tick 10 (open eyes) and Tick 76 (blinking eye window)
                     for tick in (10, 76):
@@ -43,11 +43,11 @@ class TestMascotRenderers(unittest.TestCase):
         p = QPainter(img)
         try:
             for animal, _ in ANIMALS:
-                for outfit in ("aviator", "student", "agent"):
+                for outfit in ("aviator", "student", "agent", "concert", "tuxedo"):
                     renderer = QtModularRenderer(
                         animal=animal,
                         outfit=outfit,
-                        accessories=("sunglasses", "bow_tie", "badge", "earpiece")
+                        accessories=("sunglasses", "bow_tie", "badge", "earpiece", "headphones", "tuxedo", "top_hat")
                     )
                     for tick in (10, 76):
                         try:
@@ -56,6 +56,35 @@ class TestMascotRenderers(unittest.TestCase):
                             self.fail(f"QtModularRenderer failed for animal='{animal}', outfit='{outfit}', tick={tick}: {e}")
         finally:
             p.end()
+
+    def test_perry_fedora_and_concert_rules(self):
+        from ui.common.mascot_catalog import normalize_accessories
+
+        # 1. Perry the Platypus always has fedora, never top_hat
+        perry_acc = normalize_accessories(outfit="agent", animal="platypus")
+        self.assertIn("fedora", perry_acc)
+        self.assertNotIn("top_hat", perry_acc)
+
+        perry_tux = normalize_accessories(outfit="tuxedo", animal="platypus")
+        self.assertIn("fedora", perry_tux)
+        self.assertNotIn("top_hat", perry_tux)
+
+        # 2. Non-platypus animals in work/agent/tuxedo NEVER get fedora; they get top_hat & tuxedo
+        for non_perry in ("penguin", "duck", "owl", "bunny", "fox", "squirrel", "panda"):
+            work_acc = normalize_accessories(outfit="agent", animal=non_perry)
+            self.assertNotIn("fedora", work_acc)
+            self.assertIn("top_hat", work_acc)
+            self.assertIn("tuxedo", work_acc)
+
+            tux_acc = normalize_accessories(outfit="tuxedo", animal=non_perry)
+            self.assertNotIn("fedora", tux_acc)
+            self.assertIn("top_hat", tux_acc)
+            self.assertIn("tuxedo", tux_acc)
+
+        # 3. Concert outfit always includes headphones
+        concert_acc = normalize_accessories(outfit="concert", animal="fox")
+        self.assertIn("headphones", concert_acc)
+
 
 if __name__ == "__main__":
     unittest.main()

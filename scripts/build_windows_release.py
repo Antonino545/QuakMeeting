@@ -1,6 +1,6 @@
 """
-Build & Packaging script for QuakMeeting on Windows.
-Produces a portable standalone distribution (QuakMeeting-Windows.zip) using PyInstaller.
+Build & Packaging script for FlightDeck on Windows.
+Produces a portable standalone distribution (FlightDeck-Windows.zip) using PyInstaller.
 """
 import os
 import sys
@@ -31,7 +31,7 @@ def ensure_ico():
 def build():
     os.chdir(PROJECT_ROOT)
     version = sys.argv[1] if len(sys.argv) > 1 else "1.0.0"
-    print(f"Building QuakMeeting Windows release {version}...")
+    print(f"Building FlightDeck Windows release {version}...")
 
     ico_path = ensure_ico()
 
@@ -40,7 +40,7 @@ def build():
         "--noconfirm",
         "--onedir",
         "--windowed",
-        "--name=QuakMeeting",
+        "--name=FlightDeck",
         "--add-data", f"assets{os.pathsep}assets",
         "--hidden-import=PyQt6.QtCore",
         "--hidden-import=PyQt6.QtGui",
@@ -55,11 +55,11 @@ def build():
     print(" ".join(cmd))
     subprocess.run(cmd, check=True)
 
-    dist_dir = os.path.join(PROJECT_ROOT, "dist", "QuakMeeting")
+    dist_dir = os.path.join(PROJECT_ROOT, "dist", "FlightDeck")
     # Include runner batch script in the distribution
     shutil.copyfile(os.path.join(PROJECT_ROOT, "scripts", "run_windows.bat"), os.path.join(dist_dir, "run_windows.bat"))
 
-    zip_name = "QuakMeeting-Windows.zip"
+    zip_name = "FlightDeck-Windows.zip"
     zip_path = os.path.join(PROJECT_ROOT, zip_name)
     print(f"Compressing distribution into {zip_path}...")
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:

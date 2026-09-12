@@ -1,4 +1,4 @@
-name: Build & Release Multiplatform QuakMeeting
+name: Build & Release Multiplatform FlightDeck
 
 on:
   push:
@@ -92,8 +92,8 @@ jobs:
       - name: Upload macOS Artifact
         uses: actions/upload-artifact@v7
         with:
-          name: QuakMeeting-macOS-DMG
-          path: QuakMeeting-macOS.dmg
+          name: FlightDeck-macOS-DMG
+          path: FlightDeck-macOS.dmg
 
   build-ubuntu:
     name: Build Ubuntu DEB
@@ -143,7 +143,7 @@ jobs:
       - name: Upload Ubuntu DEB Artifact
         uses: actions/upload-artifact@v7
         with:
-          name: QuakMeeting-Ubuntu-DEB
+          name: FlightDeck-Ubuntu-DEB
           path: deb_dist/*.deb
 
   publish-release:
@@ -158,20 +158,20 @@ jobs:
       - name: Download macOS Artifact
         uses: actions/download-artifact@v8
         with:
-          name: QuakMeeting-macOS-DMG
+          name: FlightDeck-macOS-DMG
           path: release_assets/
 
       - name: Download Ubuntu Artifact
         uses: actions/download-artifact@v8
         with:
-          name: QuakMeeting-Ubuntu-DEB
+          name: FlightDeck-Ubuntu-DEB
           path: release_assets/
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.prepare-tag.outputs.release_tag }}
-          name: QuakMeeting ${{ needs.prepare-tag.outputs.release_tag }}
+          name: FlightDeck ${{ needs.prepare-tag.outputs.release_tag }}
           files: release_assets/*
           draft: false
           prerelease: false

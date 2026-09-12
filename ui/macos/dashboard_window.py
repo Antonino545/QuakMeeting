@@ -8,7 +8,7 @@ import warnings
 import logging
 from datetime import datetime
 
-logger = logging.getLogger("QuakMeeting.DashboardWindow")
+logger = logging.getLogger("FlightDeck.DashboardWindow")
 
 if hasattr(objc, 'ObjCPointerWarning'):
     warnings.filterwarnings("ignore", category=objc.ObjCPointerWarning)
@@ -125,7 +125,7 @@ class DashboardWindowController(AppKit.NSObject):
             frame, style, AppKit.NSBackingStoreBuffered, False
         )
         self.window.setReleasedWhenClosed_(False)
-        self.window.setTitle_("QuakMeeting — Flight Deck")
+        self.window.setTitle_("FlightDeck")
         self.window.setTitlebarAppearsTransparent_(True)
         self.window.setTitleVisibility_(AppKit.NSWindowTitleHidden)
         self.window.setMovableByWindowBackground_(True)
@@ -188,7 +188,7 @@ class DashboardWindowController(AppKit.NSObject):
             header_view.addSubview_(icon_lbl)
 
         self.title_lbl = AppKit.NSTextField.alloc().initWithFrame_(AppKit.NSMakeRect(76, 36, 350, 30))
-        self.title_lbl.setStringValue_(f"QuakMeeting — {t('flight_deck')}")
+        self.title_lbl.setStringValue_("FlightDeck")
         self.title_lbl.setFont_(AppKit.NSFont.boldSystemFontOfSize_(18))
         self.title_lbl.setTextColor_(Theme.TEXT)
         self.title_lbl.setBezeled_(False)
@@ -387,13 +387,13 @@ class DashboardWindowController(AppKit.NSObject):
 
     def _update_localized_ui(self):
         if hasattr(self, "title_lbl") and self.title_lbl:
-            self.title_lbl.setStringValue_(f"QuakMeeting — {t('flight_deck')}")
+            self.title_lbl.setStringValue_("FlightDeck")
         if hasattr(self, "refresh_btn") and self.refresh_btn:
             self.refresh_btn.setTitle_(f"🔄 {t('sync_now')}")
 
         tab_titles = [
             "📅 " + t("tab_agenda"),
-            "🦆 " + t("tab_hangar"),
+            "✈️ " + t("tab_hangar"),
             "⚙️ " + t("tab_settings")
         ]
         if hasattr(self, "tab_buttons") and self.tab_buttons:
